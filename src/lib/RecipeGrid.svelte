@@ -116,7 +116,7 @@
           >
             <ItemIcon {entry} size={56} />
             {#if ingredient.oreDictionaryId}
-              <span class="ore-count">ORE ×{alternatives.length}</span>
+              <span class="ore-count">ORE +{alternatives.length}</span>
             {/if}
             {#if ingredient.amount !== undefined && (ingredient.amount !== 1 || entry.kind === 'fluid')}
               <span class="amount">
