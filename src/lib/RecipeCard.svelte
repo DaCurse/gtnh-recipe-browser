@@ -2,6 +2,7 @@
   import type { CatalogEntry, Recipe } from './types';
   import ItemIcon from './ItemIcon.svelte';
   import RecipeGrid from './RecipeGrid.svelte';
+  import { recipeItemInputLabel } from './recipePresentation';
   let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string, view: 'recipes' | 'usages') => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
   const crafter = $derived(recipe.crafterId ? resolve(recipe.crafterId) : undefined);
 
@@ -13,11 +14,11 @@
     ingredient.kind !== 'fluid' && resolve(ingredient.id)?.kind !== 'fluid'));
   const fluidOutputs = $derived(recipe.outputs.filter((ingredient) =>
     ingredient.kind === 'fluid' || resolve(ingredient.id)?.kind === 'fluid'));
-  const itemInputLabel = $derived(recipe.layout.shapeless
-    ? 'Shapeless'
-    : recipe.type === 'Crafting'
-      ? `${recipe.layout.itemInputs.columns} × ${recipe.layout.itemInputs.rows} shaped`
-      : 'Items');
+  const itemInputLabel = $derived(recipeItemInputLabel(
+    recipe.type,
+    recipe.layout.shapeless,
+    recipe.layout.itemInputs
+  ));
 </script>
 
 <article class="card">
@@ -37,16 +38,18 @@
       </div>
       <div class="arrow"><span>→</span><small>{recipe.duration}</small></div>
       <div class="io-side">
-        <RecipeGrid dimensions={recipe.layout.itemOutputs} ingredients={itemOutputs} {navigate} {resolve} label="Output" />
-        <RecipeGrid dimensions={recipe.layout.fluidOutputs} ingredients={fluidOutputs} {navigate} {resolve} label="Fluid output" />
+        <RecipeGrid dimensions={recipe.layout.itemOutputs} ingredients={itemOutputs} {navigate} {resolve} label="Output" showChances />
+        <RecipeGrid dimensions={recipe.layout.fluidOutputs} ingredients={fluidOutputs} {navigate} {resolve} label="Fluid output" showChances />
       </div>
     </div>
   </div>
   <div class="meta">
-    {#if recipe.voltage}<span><b>⚡</b> {recipe.voltage}</span>{/if}
+    {#if recipe.voltage}<span title={recipe.voltageExact}><b>⚡</b> {recipe.voltage}</span>{/if}
+    {#if recipe.amperage}<span>{recipe.amperage}</span>{/if}
     {#if recipe.eu}<span title={recipe.euExact}>{recipe.eu}</span>{/if}
     {#if recipe.euPerTick}<span title={recipe.euPerTickExact}>{recipe.euPerTick}</span>{/if}
     {#each recipe.metadata ?? [] as line}<span>{line}</span>{/each}
+    {#if recipe.circuitConflicts}<span>{recipe.circuitConflicts}</span>{/if}
     {#if recipe.note}<span class="note">{recipe.note}</span>{/if}
   </div>
 </article>

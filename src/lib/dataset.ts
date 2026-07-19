@@ -7,7 +7,13 @@ import {
   productionFallbackDictionary
 } from './oreDictionary';
 import { fluidRecipeScope } from './fluidContainers';
-import { formatGtMetadata, hasRelevantPower } from './recipeMetadata';
+import {
+  formatCircuitConflicts,
+  formatGtMetadata,
+  hasRelevantPower,
+  voltageTierName
+} from './recipeMetadata';
+import { recipeCrafterId, recipeTypeIconId } from './recipePresentation';
 import {
   cacheAsset,
   cacheMetadata,
@@ -119,6 +125,8 @@ interface PackedRecipe {
     amperage: number;
     voltageTier: number;
     metadata: Array<{ key: string; value: number }>;
+    circuitConflicts: number;
+    specialValue: number;
   } | null;
 }
 
@@ -137,8 +145,6 @@ interface AssetLoadProgress {
   total: number;
   cached: boolean;
 }
-
-const voltageTiers = ['ULV','LV','MV','HV','EV','IV','LuV','ZPM','UV','UHV','UEV','UIV','UMV','UXV','MAX'];
 
 function plainText(html: string | null): string {
   if (!html) return '';
@@ -436,13 +442,25 @@ export class DatasetRepository {
         outputs: recipe.outputs.map(convert),
         layout: { ...type.dimensions, shapeless: type.shapeless },
         duration: powerInfo ? duration(powerInfo.durationTicks) : undefined,
-        voltage: powerInfo ? voltageTiers[powerInfo.voltageTier] ?? `T${powerInfo.voltageTier}` : undefined,
+        voltage: powerInfo ? voltageTierName(powerInfo.voltageTier) : undefined,
+        voltageExact: powerInfo ? `${powerInfo.voltage.toLocaleString('en-US')} V` : undefined,
+        amperage: powerInfo && powerInfo.amperage !== 1 ? `${powerInfo.amperage} A` : undefined,
         eu: totalEu === undefined ? undefined : amount(totalEu),
         euExact: totalEu === undefined ? undefined : `${totalEu.toLocaleString('en-US')} EU`,
         euPerTick: euPerTick === undefined ? undefined : power(euPerTick),
         euPerTickExact: euPerTick === undefined ? undefined : `${euPerTick.toLocaleString('en-US')} EU/t`,
-        metadata: gt?.metadata.map(formatGtMetadata).filter((line): line is string => line !== null),
-        crafterId: type.defaultCrafter?.id ?? type.singleblocks[0]?.id ?? type.multiblocks[0]?.id
+        metadata: gt?.metadata
+          .map((metadata) => formatGtMetadata(metadata, {
+            recipeType: type.name,
+            voltageTier: gt.voltageTier
+          }))
+          .filter((line): line is string => line !== null),
+        crafterId: recipeCrafterId(type, gt?.voltageTier),
+        typeIconId: recipeTypeIconId(type),
+        circuitConflicts: gt && gt.circuitConflicts !== 0
+          ? formatCircuitConflicts(gt.circuitConflicts)
+          : undefined,
+        specialValue: gt?.specialValue
       };
     });
   }

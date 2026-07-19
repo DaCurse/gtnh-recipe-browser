@@ -70,6 +70,8 @@ export interface Recipe {
   layout: RecipeLayout;
   duration?: string;
   voltage?: string;
+  voltageExact?: string;
+  amperage?: string;
   eu?: string;
   euExact?: string;
   euPerTick?: string;
@@ -77,6 +79,9 @@ export interface Recipe {
   metadata?: string[];
   note?: string;
   crafterId?: string;
+  typeIconId?: string;
+  circuitConflicts?: string;
+  specialValue?: number;
 }
 
 export interface AssetDescriptor {

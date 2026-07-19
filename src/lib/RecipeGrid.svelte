@@ -1,6 +1,7 @@
 <script lang="ts">
   import ItemIcon from './ItemIcon.svelte';
   import { oreCycle } from './oreCycle';
+  import { ingredientsByGridSlot } from './recipePresentation';
   import type { CatalogEntry, GridDimensions, Ingredient } from './types';
 
   let {
@@ -8,16 +9,19 @@
     ingredients,
     navigate,
     resolve,
-    label
+    label,
+    showChances = false
   }: {
     dimensions: GridDimensions;
     ingredients: Ingredient[];
     navigate: (id: string, view: 'recipes' | 'usages') => void;
     resolve: (id: string) => CatalogEntry | undefined;
     label?: string;
+    showChances?: boolean;
   } = $props();
 
   const cellCount = $derived(dimensions.columns * dimensions.rows);
+  const slotIngredients = $derived(ingredientsByGridSlot(ingredients, dimensions));
   let chooserOpen = $state(false);
   let chosenItemId = $state('');
   let chosenOreId = $state('');
@@ -53,7 +57,7 @@
       aria-label={label}
     >
       {#each Array(cellCount) as _, slot}
-        {@const ingredient = ingredients.find((candidate) => (candidate.slot ?? 0) === slot)}
+        {@const ingredient = slotIngredients.get(slot)}
         {@const alternatives = ingredient?.alternatives ?? []}
         {@const alternativeIndex = alternatives.length > 0 ? $oreCycle % alternatives.length : 0}
         {@const displayId = alternatives[alternativeIndex] ?? ingredient?.id}
@@ -85,7 +89,7 @@
                 {displayAmount(ingredient.amount, entry.kind === 'fluid')}
               </span>
             {/if}
-            {#if ingredient.chance !== undefined && ingredient.chance < 1}
+            {#if showChances && ingredient.chance !== undefined && ingredient.chance < 1}
               <span class="chance">{Math.round(ingredient.chance * 100)}%</span>
             {/if}
           </button>
