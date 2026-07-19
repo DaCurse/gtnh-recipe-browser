@@ -5,6 +5,7 @@
   import { oreCycle } from './lib/oreCycle';
   import RecipeCard from './lib/RecipeCard.svelte';
   import { DatasetRepository } from './lib/dataset';
+  import { itemListUrl } from './lib/navigation';
   import { normalize } from './lib/search';
   import type { CatalogEntry, Recipe } from './lib/types';
 
@@ -246,6 +247,15 @@
     history.replaceState({ id: selectedId }, '', url);
   }
 
+  function showItemList(clearSearch = false) {
+    ++recipeRequest;
+    detailsOpen = false;
+    recipeLoading = false;
+    recipeError = '';
+    if (clearSearch) query = '';
+    history.replaceState({ route: 'items' }, '', itemListUrl(location.href));
+  }
+
   function recipeCount(view: 'recipes' | 'usages'): number | undefined {
     if (!selected) return undefined;
     const declared = view === 'recipes' ? selected.productionCount : selected.usageCount;
@@ -382,12 +392,7 @@
   <header>
     <a class="brand" href="./" aria-label="GTNH Recipe Browser home" onclick={(event) => {
       event.preventDefault();
-      detailsOpen = false;
-      query = '';
-      const url = new URL(location.href);
-      url.searchParams.delete('item');
-      url.searchParams.delete('view');
-      history.pushState({}, '', url);
+      showItemList(true);
     }}>
       <span class="brand-cube"><img src="./assets/gtnh-logo.png" alt="" /></span>
       <span><b>GTNH</b><small>RECIPE BROWSER</small></span>
@@ -492,7 +497,7 @@
     </aside>
 
     <section class:mobile-visible={detailsOpen} class="detail">
-      <button class="back" onclick={() => { detailsOpen = false; history.back(); }}>
+      <button class="back" onclick={() => showItemList()}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
         Back to items
       </button>
