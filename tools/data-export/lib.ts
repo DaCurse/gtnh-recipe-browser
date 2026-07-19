@@ -107,22 +107,31 @@ export async function readExportSession(path: string): Promise<ExportSession> {
   return session;
 }
 
-export async function validateCombinedTooltipSchema(scriptPath: string): Promise<void> {
+export async function validateCombinedTooltipSchema(
+  scriptPath: string,
+  requiredPlugins: string[] = []
+): Promise<void> {
   const lines = createInterface({
     input: createReadStream(scriptPath, { encoding: 'utf8' }),
     crlfDelay: Infinity
   });
   let itemSchema = '';
   let collectionSchema = false;
+  const activePlugins = new Set<string>();
   for await (const line of lines) {
     if (line.startsWith('CREATE MEMORY TABLE PUBLIC.ITEM(')) itemSchema = line;
     if (line.startsWith('CREATE MEMORY TABLE PUBLIC.ITEM_TOOLTIP(')) collectionSchema = true;
-    if (itemSchema && collectionSchema) break;
+    const plugin = /^INSERT INTO METADATA_ACTIVE_PLUGINS VALUES\(\d+,'([^']+)'\)$/.exec(line);
+    if (plugin?.[1]) activePlugins.add(plugin[1]);
   }
   lines.close();
   if (!itemSchema) throw new Error('NESQL export has no PUBLIC.ITEM table');
   if (!/\bTOOLTIP\b/.test(itemSchema) || collectionSchema) {
     throw new Error('NESQL tooltip compatibility patch was not applied: expected one TOOLTIP column');
+  }
+  const missingPlugins = requiredPlugins.filter((plugin) => !activePlugins.has(plugin));
+  if (missingPlugins.length > 0) {
+    throw new Error(`NESQL export is missing required active plugins: ${missingPlugins.join(', ')}`);
   }
 }
 

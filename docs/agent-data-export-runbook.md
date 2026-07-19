@@ -36,7 +36,9 @@ The committed compatibility patch is applied only to `.export-work/<version>/nes
 - combines ordered tooltip lines into the single format-v5 `TOOLTIP` column expected by the pinned processor;
 - retains exporter failures as tooltip text for parity with the prior representation;
 - skips only dangling BetterQuesting prerequisite edges while warning with both quest IDs. GTNH packs can retain
-  references to removed quests; aborting the entire item and recipe export for an impossible edge is not useful.
+  references to removed quests; aborting the entire item and recipe export for an impossible edge is not useful;
+- builds against AspectRecipeIndex 1.1.3 and its `aspectrecipeindex` mod ID. The old `thaumcraftneiplugin`
+  dependency otherwise silently disables the entire Thaumcraft exporter on GTNH 2.9.
 
 Use `patch --dry-run -p1` followed by `patch -p1`. Do not substitute `git apply` inside the ignored temporary copy:
 Git discovers the parent repository and interprets paths from the wrong root.
@@ -45,6 +47,10 @@ The official Windows ZIP contains BetterQuesting paths differing only by case. E
 `unzip -o` so the last ZIP entry wins deterministically without an interactive prompt. Install the unclassified
 production exporter jar and `-deps.jar`; never install the `-dev.jar`. Move BugTorch only within the disposable
 instance.
+
+Before accepting an in-game export, confirm its “Active plugins” log includes `thaumcraft`. Processing enforces this
+again from `METADATA_ACTIVE_PLUGINS`; do not bypass the check, because a database without it omits aspects and native
+Thaumcraft recipes while appearing otherwise complete.
 
 ## Manual checkpoint
 

@@ -93,6 +93,7 @@ const patchedQuestFactory = await readFile(
 );
 if (
   !patchedBuild.includes('retrofuturagradle") version "1.4.9"') ||
+  !patchedBuild.includes('com.github.GTNewHorizons:AspectRecipeIndex:') ||
   !patchedItem.includes('private String tooltip;') ||
   !patchedQuestFactory.includes('Skipping missing required quest {} referenced by quest {}')
 ) {

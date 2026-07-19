@@ -31,10 +31,13 @@ describe('data export tooling', () => {
       const compatible = join(directory, 'compatible.script');
       await writeFile(
         compatible,
-        'CREATE MEMORY TABLE PUBLIC.ITEM(ID VARCHAR,TOOLTIP VARCHAR)\n',
+        [
+          'CREATE MEMORY TABLE PUBLIC.ITEM(ID VARCHAR,TOOLTIP VARCHAR)',
+          "INSERT INTO METADATA_ACTIVE_PLUGINS VALUES(0,'THAUMCRAFT')"
+        ].join('\n'),
         'utf8'
       );
-      await expect(validateCombinedTooltipSchema(compatible)).resolves.toBeUndefined();
+      await expect(validateCombinedTooltipSchema(compatible, ['THAUMCRAFT'])).resolves.toBeUndefined();
 
       const incompatible = join(directory, 'incompatible.script');
       await writeFile(
@@ -47,6 +50,10 @@ describe('data export tooling', () => {
       );
       await expect(validateCombinedTooltipSchema(incompatible)).rejects.toThrow(
         /compatibility patch was not applied/
+      );
+
+      await expect(validateCombinedTooltipSchema(compatible, ['QUEST'])).rejects.toThrow(
+        /missing required active plugins: QUEST/
       );
     } finally {
       await rm(directory, { recursive: true, force: true });
@@ -61,6 +68,8 @@ describe('data export tooling', () => {
 
     expect(patch).toContain('Skipping missing required quest {} referenced by quest {}');
     expect(patch).toContain('findQuestOrNull(requiredQuestId)');
+    expect(patch).toContain('com.github.GTNewHorizons:AspectRecipeIndex:');
+    expect(patch).toContain('THAUMCRAFT_NEI("aspectrecipeindex")');
     expect(patch).not.toMatch(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/i);
   });
 

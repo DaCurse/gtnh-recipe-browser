@@ -41,7 +41,7 @@ if ((await stat(scripts[0]!)).size < 100_000_000) {
 if ((await stat(imageZip)).size < 10_000_000) {
   throw new Error('NESQL image archive is unexpectedly small; export may be incomplete');
 }
-await validateCombinedTooltipSchema(scripts[0]!);
+await validateCombinedTooltipSchema(scripts[0]!, ['THAUMCRAFT']);
 
 const processedDirectory = join(session.workDirectory, 'processed');
 const firstBuild = join(session.workDirectory, 'pack-a');

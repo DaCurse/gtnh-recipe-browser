@@ -37,7 +37,8 @@ Open the inventory and let the NEI item list populate. Read a creative Thaumonom
 ```
 
 Run `/nesql gtnh_2_9_0_beta_2`, pause the game if desired, and wait for the completion message. Do not process a
-partial export.
+partial export. The log’s “Active plugins” list must include `thaumcraft`; the processor rejects an export that
+silently omitted its aspects and native recipes.
 
 If an export fails after creating its repository, fully exit Minecraft before replacing exporter jars. Relaunch
 and retry with `/nesqlf gtnh_2_9_0_beta_2`; the `f` command deletes and recreates only that named export repository.
