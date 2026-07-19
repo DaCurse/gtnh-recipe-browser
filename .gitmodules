@@ -1,0 +1,3 @@
+[submodule "gtnh"]
+	path = gtnh@ShadowTheAge
+	url = https://github.com/ShadowTheAge/gtnh/
