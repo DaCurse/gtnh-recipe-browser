@@ -161,8 +161,8 @@
   .choice-actions button { min-width:82px; min-height:44px; padding:0 11px; border:1px solid #5a5f65; border-radius:7px; background:#35393d; color:#e3e5e7; font-weight:700; cursor:pointer; }
   .choice-actions button:first-child { background:#d1d4d7; color:#17191b; border-color:#d1d4d7; }
   @media (max-width:600px) {
-    .ore-choice-scrim { align-items:end; padding:0; }
-    .ore-choice { width:100%; padding:24px 16px max(18px,env(safe-area-inset-bottom)); border-width:1px 0 0; border-radius:16px 16px 0 0; }
+    .ore-choice-scrim { align-items:center; padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom)); }
+    .ore-choice { width:min(520px,100%); max-height:calc(100dvh - 32px); overflow:auto; padding:24px 16px; border-width:1px; border-radius:16px; }
     .choice-option { grid-template-columns:56px minmax(0,1fr); }
     .choice-actions { grid-column:1/-1; }
     .choice-actions button { flex:1; }
