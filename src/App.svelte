@@ -6,6 +6,7 @@
   import ItemIcon from './lib/ItemIcon.svelte';
   import MinecraftText from './lib/MinecraftText.svelte';
   import { oreCycle } from './lib/oreCycle';
+  import ProjectLinks from './lib/ProjectLinks.svelte';
   import RecipeCard from './lib/RecipeCard.svelte';
   import { DatasetRepository } from './lib/dataset';
   import { itemListUrl } from './lib/navigation';
@@ -778,6 +779,7 @@
           : 'Online only'}</small>
       <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5"></path></svg>
     </button>
+    <ProjectLinks variant="header-links" />
   </header>
 
   {#if updateReady}<button class="update-banner" onclick={() => location.reload()}>A new app version is ready · Refresh</button>{/if}
@@ -869,7 +871,13 @@
           {/if}
         {/if}
       </div>
-      <footer><span><i></i> Catalog ready</span><span>{searchableCatalog.length.toLocaleString()} entries</span></footer>
+      <footer>
+        <div class="sidebar-status">
+          <span><i></i> Catalog ready</span>
+          <span>{searchableCatalog.length.toLocaleString()} entries</span>
+        </div>
+        <ProjectLinks variant="mobile-sidebar-links" />
+      </footer>
       <button
         class="sidebar-resizer"
         aria-label="Resize item sidebar"

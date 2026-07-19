@@ -59,3 +59,6 @@ recipe-parity tests. `public/data/2.8.0-r6d351536/` is the generated pack consum
 - The bundled [Minecraft font](https://www.fontspace.com/minecraft-font-f28180) archive declares the font Public
   Domain. The supplied inventory-slot artwork remains subject to its owner's terms and is not covered by this
   repository's source-code license.
+
+However, the project contains some assets from Minecraft (Mojang trademark and copyright), the GTNH development
+team, and respective mod authors. These assets are used under fair use.
