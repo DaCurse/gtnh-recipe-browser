@@ -14,7 +14,14 @@ import {
   hasRelevantPower,
   voltageTierName
 } from './recipeMetadata';
-import { recipeCrafterId, recipeTypeCrafters, recipeTypeIconId } from './recipePresentation';
+import {
+  machineCanProcessVoltage,
+  propagateOreMachineCapabilities,
+  recipeCrafterId,
+  recipeTypeCrafters,
+  recipeTypeIconId,
+  recipeTypeMachineCapabilities
+} from './recipePresentation';
 import { mapProgressively } from './progressive';
 import {
   activateDataset,
@@ -35,7 +42,8 @@ import type {
   DatasetVersion,
   OfflineInstallProgress,
   Recipe,
-  RecipeLayout
+  RecipeLayout,
+  RecipeView
 } from './types';
 
 interface VersionsIndex {
@@ -307,6 +315,29 @@ export class DatasetRepository {
       );
       if (fallback) this.productionFallbacks.set(goods.id, fallback);
     }
+    const shardsByRecipeType = new Map<string, string[]>();
+    for (const shard of manifest.recipeShards) {
+      const shardIds = shardsByRecipeType.get(shard.recipeTypeId) ?? [];
+      shardIds.push(shard.id);
+      shardsByRecipeType.set(shard.recipeTypeId, shardIds);
+    }
+    const directCapabilities = new Map<string, NonNullable<CatalogEntry['machineCapabilities']>>();
+    for (const type of catalog.recipeTypes) {
+      for (const machine of recipeTypeMachineCapabilities(type)) {
+        const capabilities = directCapabilities.get(machine.id) ?? [];
+        capabilities.push({
+          recipeTypeId: type.id,
+          recipeTypeName: type.name,
+          recipeShards: shardsByRecipeType.get(type.id) ?? [],
+          maxVoltageTier: machine.maxVoltageTier
+        });
+        directCapabilities.set(machine.id, capabilities);
+      }
+    }
+    const capabilitiesByMachine = propagateOreMachineCapabilities(
+      directCapabilities,
+      catalog.oreDictionaries
+    );
     const goodsEntries = catalog.goods.map((goods): CatalogEntry => {
       const sheet = goods.icon ? sheets.get(goods.icon.sheetId) : undefined;
       const formattedName = parseMinecraftHtml(goods.name);
@@ -350,7 +381,8 @@ export class DatasetRepository {
         usageCount: fluidScope ? undefined : goods.usageCount,
         productionOreDictionaryId: fluidScope ? undefined : productionFallback?.id,
         container: goods.container,
-        containerItemIds: goods.containerItemIds
+        containerItemIds: goods.containerItemIds,
+        machineCapabilities: capabilitiesByMachine.get(goods.id)
       };
     });
     const goodsEntriesById = new Map(goodsEntries.map((entry) => [entry.id, entry]));
@@ -381,7 +413,8 @@ export class DatasetRepository {
         icon: representative?.icon,
         productionShards: [...productionShards].sort(),
         usageShards: [...usageShards].sort(),
-        members: ore.itemIds
+        members: ore.itemIds,
+        machineCapabilities: capabilitiesByMachine.get(ore.id)
       };
     });
     this.entries = [...goodsEntries, ...oreEntries];
@@ -562,7 +595,7 @@ export class DatasetRepository {
 
   async recipesFor(
     entryId: string,
-    view: 'recipes' | 'usages',
+    view: RecipeView,
     onProgress?: (progress: RecipeLoadProgress) => void,
     signal?: AbortSignal
   ): Promise<Recipe[]> {
@@ -572,7 +605,10 @@ export class DatasetRepository {
     const catalogEntry = this.entries.find((entry) => entry.id === entryId);
     const productionFallback = this.productionFallbacks.get(entryId);
     const fluidScope = fluidRecipeScope(entryId, this.packedGoods);
-    const shardIds = selectedOre
+    const machineCapabilities = catalogEntry?.machineCapabilities ?? [];
+    const shardIds = view === 'machineUsages'
+      ? [...new Set(machineCapabilities.flatMap((capability) => capability.recipeShards))]
+      : selectedOre
       ? view === 'recipes'
         ? catalogEntry?.productionShards ?? []
         : catalogEntry?.usageShards ?? []
@@ -584,11 +620,19 @@ export class DatasetRepository {
       : view === 'recipes' && productionFallback
         ? new Set(productionFallback.itemIds)
         : null;
-    const matches = (recipe: PackedRecipe) =>
-      (view === 'recipes' ? recipe.outputs : recipe.inputs).some((io) => {
+    const matches = (recipe: PackedRecipe) => {
+      if (view === 'machineUsages') {
+        const capability = machineCapabilities.find(
+          (candidate) => candidate.recipeTypeId === recipe.recipeTypeId
+        );
+        return capability !== undefined
+          && machineCanProcessVoltage(capability, recipe.gt?.voltageTier);
+      }
+      return (view === 'recipes' ? recipe.outputs : recipe.inputs).some((io) => {
         if (fluidScope) return fluidScope.memberIds.has(io.goodsId);
         return ingredientMatchesEntry(io, entryId, selectedMembers, this.ores);
       });
+    };
     const convertRecipe = (recipe: PackedRecipe, order: number): Recipe => {
       const type = this.types.get(recipe.recipeTypeId);
       if (!type) throw new Error(`Unknown recipe type ${recipe.recipeTypeId}`);

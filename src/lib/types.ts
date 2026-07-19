@@ -1,6 +1,14 @@
 import type { MinecraftTextLine } from './minecraftText';
 
 export type Kind = 'item' | 'fluid' | 'oreDict';
+export type RecipeView = 'recipes' | 'usages' | 'machineUsages';
+
+export interface MachineRecipeCapability {
+  recipeTypeId: string;
+  recipeTypeName: string;
+  recipeShards: string[];
+  maxVoltageTier?: number;
+}
 
 export interface CatalogEntry {
   id: string;
@@ -35,6 +43,8 @@ export interface CatalogEntry {
   searchable?: boolean;
   /** Stable item IDs accepted by a synthetic ore-dictionary entry. */
   members?: string[];
+  /** Recipe categories this item can process when used as a machine/crafter. */
+  machineCapabilities?: MachineRecipeCapability[];
 }
 
 export interface Ingredient {

@@ -2,10 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   boundedPage,
   ingredientsByGridSlot,
+  machineCanProcessVoltage,
+  propagateOreMachineCapabilities,
   recipeCrafterId,
   recipeItemInputLabel,
   recipeTypeCrafters,
-  recipeTypeIconId
+  recipeTypeIconId,
+  recipeTypeMachineCapabilities
 } from '../src/lib/recipePresentation';
 
 const type = {
@@ -33,6 +36,35 @@ describe('recipe presentation parity', () => {
       multiblocks: [],
       defaultCrafter: { id: 'machine:fallback' }
     })).toEqual([{ id: 'machine:fallback', role: 'default' }]);
+  });
+
+  it('maps machine tiers to their recipe voltage ceilings', () => {
+    expect(recipeTypeMachineCapabilities(type)).toEqual([
+      { id: 'machine:lv', maxVoltageTier: 0 },
+      { id: 'machine:mv', maxVoltageTier: 1 },
+      { id: 'machine:hv', maxVoltageTier: 2 },
+      { id: 'machine:large' }
+    ]);
+    expect(machineCanProcessVoltage({ maxVoltageTier: 2 }, 1)).toBe(true);
+    expect(machineCanProcessVoltage({ maxVoltageTier: 2 }, 3)).toBe(false);
+    expect(machineCanProcessVoltage({}, 12)).toBe(true);
+  });
+
+  it('propagates machine categories through overlapping ore dictionaries', () => {
+    const capabilities = propagateOreMachineCapabilities(new Map([
+      ['machine:canonical', [{
+        recipeTypeId: 'crafting',
+        recipeTypeName: 'Crafting',
+        recipeShards: ['crafting-0']
+      }]]
+    ]), [
+      { id: 'o:craftingTable', itemIds: ['machine:canonical', 'machine:alternate'] },
+      { id: 'o:workbench', itemIds: ['machine:alternate', 'machine:third'] }
+    ]);
+
+    expect(capabilities.get('machine:alternate')?.[0].recipeTypeId).toBe('crafting');
+    expect(capabilities.get('machine:third')?.[0].recipeTypeId).toBe('crafting');
+    expect(capabilities.get('o:craftingTable')?.[0].recipeShards).toEqual(['crafting-0']);
   });
 
   it('only labels actual crafting types as shaped or shapeless', () => {

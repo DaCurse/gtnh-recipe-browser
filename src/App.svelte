@@ -24,7 +24,8 @@
     DatasetState,
     DatasetVersion,
     OfflineInstallProgress,
-    Recipe
+    Recipe,
+    RecipeView
   } from './lib/types';
 
   interface ManagedDataset {
@@ -61,7 +62,7 @@
   let recipeRequest = 0;
   let query = $state('');
   let selectedId = $state('');
-  let mode = $state<'recipes' | 'usages'>('recipes');
+  let mode = $state<RecipeView>('recipes');
   let type = $state('');
   let detailsOpen = $state(false);
   let versionOpen = $state(false);
@@ -122,6 +123,7 @@
     }));
   });
   const activeDatasetState = $derived(datasetRecords.find((state) => state.active));
+  const modeLabel = $derived(mode === 'machineUsages' ? 'machine usages' : mode);
 
   $effect(() => {
     const nextQuery = query;
@@ -337,7 +339,17 @@
     saveSidebarWidth();
   }
 
-  function select(id: string, push = true, nextMode: 'recipes' | 'usages' = 'recipes') {
+  function viewUrlValue(view: RecipeView): string {
+    return view === 'machineUsages' ? 'machine-usages' : view;
+  }
+
+  function viewFromUrl(value: string | null): RecipeView {
+    if (value === 'usages') return 'usages';
+    if (value === 'machine-usages') return 'machineUsages';
+    return 'recipes';
+  }
+
+  function select(id: string, push = true, nextMode: RecipeView = 'recipes') {
     mode = nextMode;
     selectedId = id;
     recipeQuery = '';
@@ -348,19 +360,19 @@
     if (push) {
       const url = new URL(location.href);
       url.searchParams.set('item', id);
-      url.searchParams.set('view', mode);
+      url.searchParams.set('view', viewUrlValue(mode));
       history.pushState({ id }, '', url);
     }
   }
 
-  function setMode(next: 'recipes' | 'usages') {
+  function setMode(next: RecipeView) {
     mode = next;
     recipeQuery = '';
     recipeFilter = '';
     type = '';
     void refreshRecipes();
     const url = new URL(location.href);
-    url.searchParams.set('view', mode);
+    url.searchParams.set('view', viewUrlValue(mode));
     history.replaceState({ id: selectedId }, '', url);
   }
 
@@ -375,9 +387,13 @@
     history.replaceState({ route: 'items' }, '', itemListUrl(location.href));
   }
 
-  function recipeCount(view: 'recipes' | 'usages'): number | undefined {
+  function recipeCount(view: RecipeView): number | undefined {
     if (!selected) return undefined;
-    const declared = view === 'recipes' ? selected.productionCount : selected.usageCount;
+    const declared = view === 'recipes'
+      ? selected.productionCount
+      : view === 'usages'
+        ? selected.usageCount
+        : undefined;
     return loadedRecipeCounts[`${selected.id}:${view}`] ?? declared;
   }
 
@@ -470,6 +486,8 @@
     selectedId = preferredId && loaded.entries.some((entry) => entry.id === preferredId)
       ? preferredId
       : loaded.entries.find((entry) => entry.searchable !== false)?.id ?? loaded.entries[0]?.id ?? '';
+    const selectedEntry = loaded.entries.find((entry) => entry.id === selectedId);
+    if (mode === 'machineUsages' && !selectedEntry?.machineCapabilities?.length) mode = 'recipes';
     if (preserveSelection && preferredId !== selectedId) detailsOpen = false;
     if (!preserveSelection) detailsOpen = Boolean(linkedId && linkedId === selectedId);
     searchWorker?.postMessage({
@@ -478,6 +496,10 @@
         .filter((entry) => entry.searchable !== false)
         .map(({ id, name, mod }) => ({ id, name, mod }))
     });
+    searchIds = [];
+    searchTotal = 0;
+    searchPending = true;
+    searchLoadingMore = false;
     type = '';
     const url = new URL(location.href);
     url.searchParams.set('version', loaded.datasetId);
@@ -614,7 +636,7 @@
 
   onMount(() => {
     const params = new URLSearchParams(location.search);
-    if (params.get('view') === 'usages') mode = 'usages';
+    mode = viewFromUrl(params.get('view'));
     try {
       const storedWidth = Number(localStorage.getItem('gtnh-sidebar-width'));
       if (Number.isFinite(storedWidth) && storedWidth > 0) sidebarWidth = clampSidebarWidth(storedWidth);
@@ -625,6 +647,11 @@
     searchWorker.onmessage = (event: MessageEvent<
       { type: 'ready' } | { type: 'results'; id: number; offset: number; total: number; ids: string[] }
     >) => {
+      if (event.data.type === 'ready') {
+        const request = ++searchRequest;
+        searchWorker?.postMessage({ type: 'search', id: request, query, offset: 0, limit: 300 });
+        return;
+      }
       if (event.data.type !== 'results' || event.data.id !== searchRequest) return;
       searchIds = event.data.offset === 0
         ? event.data.ids
@@ -639,7 +666,7 @@
     };
     const handlePopState = () => {
       const id = new URLSearchParams(location.search).get('item');
-      const linkedView = new URLSearchParams(location.search).get('view') === 'usages' ? 'usages' : 'recipes';
+      const linkedView = viewFromUrl(new URLSearchParams(location.search).get('view'));
       if (id && entryById.has(id)) select(id, false, linkedView);
       else detailsOpen = false;
     };
@@ -858,6 +885,12 @@
         <button class:active={mode === 'usages'} onclick={() => setMode('usages')}>
           Usages {#if recipeCount('usages') !== undefined}<span>{recipeCount('usages')}</span>{/if}
         </button>
+        {#if selected.machineCapabilities?.length}
+          <button class:active={mode === 'machineUsages'} onclick={() => setMode('machineUsages')}>
+            Machine Usages
+            {#if recipeCount('machineUsages') !== undefined}<span>{recipeCount('machineUsages')}</span>{/if}
+          </button>
+        {/if}
       </nav>
       {#if mode === 'recipes' && selected.productionOreDictionaryId}
         <div class="ore-production-note">
@@ -885,8 +918,8 @@
             </svg>
             <input
               bind:value={recipeQuery}
-              placeholder={`Filter ${mode} by item, mod, or metadata…`}
-              aria-label={`Filter ${mode}`}
+              placeholder={`Filter ${modeLabel} by item, mod, or metadata…`}
+              aria-label={`Filter ${modeLabel}`}
             />
             {#if recipeQuery}
               <button onclick={() => recipeQuery = ''} aria-label="Clear recipe filter">
@@ -896,14 +929,14 @@
           </div>
           <small>{recipeSearchPending
             ? 'Filtering…'
-            : `${matchingRecipes.length.toLocaleString()} matching ${mode}`}</small>
+            : `${matchingRecipes.length.toLocaleString()} matching ${modeLabel}`}</small>
         </div>
       {/if}
       <div class="recipe-list">
         {#if recipeLoading}
           <div class:partial={related.length > 0} class="recipe-loading" aria-live="polite">
             <span class="spinner" aria-hidden="true"></span>
-            <b>Loading {mode}…</b>
+            <b>Loading {modeLabel}…</b>
             <p>{recipeTotalShards > 0
               ? `${recipeLoadedShards} of ${recipeTotalShards} recipe chunks`
               : 'Finding the recipe data needed for this item.'}</p>
@@ -914,16 +947,16 @@
         {/if}
         {#if recipeError}
           <div class="no-recipes recipe-error">
-            <span>!</span><b>Could not load {mode}</b><p>{recipeError}</p>
+            <span>!</span><b>Could not load {modeLabel}</b><p>{recipeError}</p>
             <button onclick={refreshRecipes}>Try again</button>
           </div>
         {:else if !recipeLoading && visibleRecipes.length === 0}
           <div class="no-recipes">
             <span>⌁</span>
-            <b>{recipeFilter ? `No matching ${mode}` : `No ${mode} found`}</b>
+            <b>{recipeFilter ? `No matching ${modeLabel}` : `No ${modeLabel} found`}</b>
             <p>{recipeFilter
               ? 'Try fewer terms or clear the recipe filter.'
-              : `This item has no known ${mode} in the active dataset.`}</p>
+              : `This item has no known ${modeLabel} in the active dataset.`}</p>
           </div>
         {:else}
           {#each visibleRecipes as recipe (recipe.id)}

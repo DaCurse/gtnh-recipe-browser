@@ -7,6 +7,7 @@ import { formatCircuitConflicts, formatGtMetadata, voltageTierName } from '../sr
 import {
   boundedPage,
   ingredientsByGridSlot,
+  propagateOreMachineCapabilities,
   recipeCrafterId,
   recipeTypeIconId
 } from '../src/lib/recipePresentation';
@@ -36,6 +37,26 @@ describe.skipIf(!existsSync(fixturePath))('pinned ShadowTheAge recipe parity', (
     expect(shapelessRecipe.inputs).toEqual(expect.arrayContaining([
       expect.objectContaining({ kind: 'oreDict', goodsId: 'o:cropPear', slot: 1 })
     ]));
+  });
+
+  it('propagates crafting machine usage through craftingTableWood', () => {
+    const crafting = recipeType('Crafting (Shaped)');
+    const craftingTables = repository.oreDictionaries.find(
+      (dictionary) => dictionary.id === 'o:craftingTableWood'
+    )!;
+    const canonical = crafting.defaultCrafter!.id;
+    const alternate = craftingTables.itemIds.find((id) => id !== canonical)!;
+    const capabilities = propagateOreMachineCapabilities(new Map([
+      [canonical, [{
+        recipeTypeId: crafting.id,
+        recipeTypeName: crafting.name,
+        recipeShards: ['crafting-shaped']
+      }]]
+    ]), [craftingTables]);
+
+    expect(craftingTables.itemIds).toContain(canonical);
+    expect(capabilities.get(alternate)?.[0].recipeTypeId).toBe(crafting.id);
+    expect(capabilities.get(craftingTables.id)?.[0].recipeTypeName).toBe('Crafting (Shaped)');
   });
 
   it('matches GT single-block grids, tiered crafters, fluids, duration, and power', () => {
