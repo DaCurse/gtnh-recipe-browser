@@ -7,6 +7,7 @@ import {
   productionFallbackDictionary
 } from './oreDictionary';
 import { fluidRecipeScope } from './fluidContainers';
+import { parseMinecraftHtml, plainMinecraftText } from './minecraftText';
 import {
   formatCircuitConflicts,
   formatGtMetadata,
@@ -153,12 +154,6 @@ interface AssetLoadProgress {
   cached: boolean;
 }
 
-function plainText(html: string | null): string {
-  if (!html) return '';
-  const document = new DOMParser().parseFromString(html.replace(/<br\s*\/?>/gi, '\n'), 'text/html');
-  return document.body.textContent?.trim() ?? '';
-}
-
 async function sha256(bytes: Uint8Array): Promise<string> {
   return bytesToHex(nobleSha256(bytes));
 }
@@ -287,7 +282,14 @@ export class DatasetRepository {
     }
     const goodsEntries = catalog.goods.map((goods): CatalogEntry => {
       const sheet = goods.icon ? sheets.get(goods.icon.sheetId) : undefined;
-      const tooltip = plainText(goods.tooltip).split(/\n+/).map((line) => line.trim()).filter(Boolean);
+      const formattedName = parseMinecraftHtml(goods.name);
+      const parsedTooltip = parseMinecraftHtml(goods.tooltip);
+      const formattedTooltip = parsedTooltip.plainText
+        ? parsedTooltip
+        : plainMinecraftText(goods.unlocalizedName);
+      const tooltip = formattedTooltip.lines
+        .map((line) => line.segments.map((segment) => segment.text).join('').trim())
+        .filter(Boolean);
       const productionFallback = this.productionFallbacks.get(goods.id);
       const fluidScope = fluidRecipeScope(goods.id, this.packedGoods);
       const recipeScopeIds = fluidScope?.memberIds ?? productionFallback?.itemIds;
@@ -301,10 +303,12 @@ export class DatasetRepository {
         : goods.usageShards;
       return {
         id: goods.id,
-        name: plainText(goods.name),
+        name: formattedName.plainText.trim(),
         mod: goods.mod,
         kind: goods.kind,
         tooltip: tooltip.length ? tooltip : [goods.unlocalizedName],
+        formattedName: formattedName.lines,
+        formattedTooltip: formattedTooltip.lines,
         color: '#aeb3b8',
         glyph: goods.kind === 'fluid' ? '≈' : '□',
         recipeTypes: [],

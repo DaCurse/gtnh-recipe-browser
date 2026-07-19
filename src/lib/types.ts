@@ -1,3 +1,5 @@
+import type { MinecraftTextLine } from './minecraftText';
+
 export type Kind = 'item' | 'fluid' | 'oreDict';
 
 export interface CatalogEntry {
@@ -7,6 +9,8 @@ export interface CatalogEntry {
   kind: Kind;
   formula?: string;
   tooltip: string[];
+  formattedName?: MinecraftTextLine[];
+  formattedTooltip?: MinecraftTextLine[];
   color: string;
   glyph: string;
   recipeTypes: string[];
