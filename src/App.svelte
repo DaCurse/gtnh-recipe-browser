@@ -5,6 +5,7 @@
   import { oreCycle } from './lib/oreCycle';
   import RecipeCard from './lib/RecipeCard.svelte';
   import { DatasetRepository } from './lib/dataset';
+  import { normalize } from './lib/search';
   import type { CatalogEntry, Recipe } from './lib/types';
 
   let catalog = $state<CatalogEntry[]>([]);
@@ -22,6 +23,9 @@
   let recipeTotalShards = $state(0);
   let recipeLimit = $state(30);
   let loadedRecipeCounts = $state<Record<string, number>>({});
+  let recipeQuery = $state('');
+  let recipeFilter = $state('');
+  let recipeSearchPending = $state(false);
   let searchIds = $state<string[]>([]);
   let searchTotal = $state(0);
   let searchPending = $state(true);
@@ -36,6 +40,8 @@
   let detailsOpen = $state(false);
   let versionOpen = $state(false);
   let updateReady = $state(false);
+  let sidebarWidth = $state(410);
+  let sidebarResizing = $state(false);
   let searchInput = $state<HTMLInputElement>();
 
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
@@ -49,7 +55,11 @@
     : selected);
   const related = $derived(allRecipes);
   const types = $derived([...new Set(related.map((x) => x.type))]);
-  const matchingRecipes = $derived(type ? related.filter((x) => x.type === type) : []);
+  const recipeTerms = $derived(normalize(recipeFilter).split(/\s+/).filter(Boolean));
+  const recipeDocuments = $derived(new Map(related.map((recipe) => [recipe.id, recipeSearchDocument(recipe)])));
+  const matchingRecipes = $derived(type ? related.filter((recipe) =>
+    recipe.type === type &&
+    recipeTerms.every((term) => recipeDocuments.get(recipe.id)?.includes(term))) : []);
   const visibleRecipes = $derived(matchingRecipes.slice(0, recipeLimit));
 
   $effect(() => {
@@ -68,8 +78,42 @@
     selectedId;
     mode;
     type;
+    recipeFilter;
     recipeLimit = 30;
   });
+
+  $effect(() => {
+    const nextQuery = recipeQuery;
+    recipeSearchPending = nextQuery !== recipeFilter;
+    const timeout = window.setTimeout(() => {
+      recipeFilter = nextQuery;
+      recipeSearchPending = false;
+    }, nextQuery ? 100 : 0);
+    return () => window.clearTimeout(timeout);
+  });
+
+  function recipeSearchDocument(recipe: Recipe): string {
+    const ingredientText = [...recipe.inputs, ...recipe.outputs].flatMap((ingredient) => {
+      const ids = [ingredient.id, ...(ingredient.alternatives ?? [])];
+      return ids.flatMap((id) => {
+        const entry = entryById.get(id);
+        return entry ? [id, entry.name, entry.mod, ...entry.tooltip] : [id];
+      });
+    });
+    return normalize([
+      recipe.id,
+      recipe.type,
+      recipe.duration,
+      recipe.voltage,
+      recipe.eu,
+      recipe.euExact,
+      recipe.euPerTick,
+      recipe.euPerTickExact,
+      ...(recipe.metadata ?? []),
+      recipe.note,
+      ...ingredientText
+    ].filter(Boolean).join(' '));
+  }
 
   async function refreshRecipes() {
     if (!repository || !selectedId) return;
@@ -136,9 +180,50 @@
     return { destroy: () => observer.disconnect() };
   }
 
+  function clampSidebarWidth(width: number): number {
+    return Math.round(Math.max(300, Math.min(width, Math.min(720, window.innerWidth - 360))));
+  }
+
+  function saveSidebarWidth() {
+    try {
+      localStorage.setItem('gtnh-sidebar-width', String(sidebarWidth));
+    } catch {
+      // Resizing still works when storage is unavailable.
+    }
+  }
+
+  function startSidebarResize(event: PointerEvent) {
+    if (window.innerWidth <= 800) return;
+    sidebarResizing = true;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  function moveSidebarResize(event: PointerEvent) {
+    if (!sidebarResizing) return;
+    sidebarWidth = clampSidebarWidth(event.clientX);
+  }
+
+  function stopSidebarResize(event: PointerEvent) {
+    if (!sidebarResizing) return;
+    sidebarResizing = false;
+    const target = event.currentTarget as HTMLElement;
+    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
+    saveSidebarWidth();
+  }
+
+  function resizeSidebarWithKeyboard(event: KeyboardEvent) {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    sidebarWidth = clampSidebarWidth(sidebarWidth + (event.key === 'ArrowRight' ? 20 : -20));
+    saveSidebarWidth();
+  }
+
   function select(id: string, push = true, nextMode: 'recipes' | 'usages' = 'recipes') {
     mode = nextMode;
     selectedId = id;
+    recipeQuery = '';
+    recipeFilter = '';
     detailsOpen = true;
     type = '';
     void refreshRecipes();
@@ -152,6 +237,8 @@
 
   function setMode(next: 'recipes' | 'usages') {
     mode = next;
+    recipeQuery = '';
+    recipeFilter = '';
     type = '';
     void refreshRecipes();
     const url = new URL(location.href);
@@ -241,6 +328,12 @@
   onMount(() => {
     const params = new URLSearchParams(location.search);
     if (params.get('view') === 'usages') mode = 'usages';
+    try {
+      const storedWidth = Number(localStorage.getItem('gtnh-sidebar-width'));
+      if (Number.isFinite(storedWidth) && storedWidth > 0) sidebarWidth = clampSidebarWidth(storedWidth);
+    } catch {
+      // Use the default width when storage is unavailable.
+    }
     searchWorker = new Worker(new URL('./workers/search.worker.ts', import.meta.url), { type: 'module' });
     searchWorker.onmessage = (event: MessageEvent<
       { type: 'ready' } | { type: 'results'; id: number; offset: number; total: number; ids: string[] }
@@ -337,7 +430,7 @@
       </section>
     </main>
   {:else if selected}
-  <main class:home-view={!detailsOpen}>
+  <main class:home-view={!detailsOpen} class:resizing={sidebarResizing} style:--sidebar-width={`${sidebarWidth}px`}>
     <aside class:mobile-hidden={detailsOpen}>
       <div class="search-wrap">
         <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -386,6 +479,16 @@
         {/if}
       </div>
       <footer><span><i></i> Catalog ready</span><span>{searchableCatalog.length.toLocaleString()} entries</span></footer>
+      <button
+        class="sidebar-resizer"
+        aria-label="Resize item sidebar"
+        title="Drag to resize item sidebar"
+        onpointerdown={startSidebarResize}
+        onpointermove={moveSidebarResize}
+        onpointerup={stopSidebarResize}
+        onpointercancel={stopSidebarResize}
+        onkeydown={resizeSidebarWithKeyboard}
+      ><span></span></button>
     </aside>
 
     <section class:mobile-visible={detailsOpen} class="detail">
@@ -443,6 +546,29 @@
           </button>
         {/each}
       </div>
+      {#if !recipeLoading && related.length > 0}
+        <div class="recipe-search-block">
+          <div class="recipe-search-wrap">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <circle cx="10.5" cy="10.5" r="6.5"></circle>
+              <path d="m15.5 15.5 4 4"></path>
+            </svg>
+            <input
+              bind:value={recipeQuery}
+              placeholder={`Filter ${mode} by item, mod, or metadata…`}
+              aria-label={`Filter ${mode}`}
+            />
+            {#if recipeQuery}
+              <button onclick={() => recipeQuery = ''} aria-label="Clear recipe filter">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
+              </button>
+            {/if}
+          </div>
+          <small>{recipeSearchPending
+            ? 'Filtering…'
+            : `${matchingRecipes.length.toLocaleString()} matching ${mode}`}</small>
+        </div>
+      {/if}
       <div class="recipe-list">
         {#if recipeLoading}
           <div class="recipe-loading" aria-live="polite">
@@ -464,7 +590,13 @@
           {#each visibleRecipes as recipe (recipe.id)}
             <RecipeCard {recipe} navigate={(id, view) => select(id, true, view)} resolve={(id) => entryById.get(id)} />
           {:else}
-            <div class="no-recipes"><span>⌁</span><b>No {mode} found</b><p>This item has no known {mode} in the active dataset.</p></div>
+            <div class="no-recipes">
+              <span>⌁</span>
+              <b>{recipeFilter ? `No matching ${mode}` : `No ${mode} found`}</b>
+              <p>{recipeFilter
+                ? 'Try fewer terms or clear the recipe filter.'
+                : `This item has no known ${mode} in the active dataset.`}</p>
+            </div>
           {/each}
           {#if visibleRecipes.length < matchingRecipes.length}
             <button class="recipe-more" use:loadMoreRecipes onclick={() => recipeLimit += 30}>

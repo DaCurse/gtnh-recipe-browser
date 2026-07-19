@@ -23,11 +23,12 @@ header { height:68px; flex:none; display:flex; align-items:center; padding:0 24p
 .install { min-height:44px; padding:0 15px; display:inline-flex; align-items:center; justify-content:center; gap:8px; border:1px solid #4b4f54; border-radius:8px; background:#292c30; color:#d0d3d6; cursor:pointer; }
 .download-icon { width:23px; height:23px; flex:0 0 23px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .update-banner { border:0; padding:8px; background:#bfc3c7; color:#17191b; cursor:pointer; }
-main { min-height:0; display:grid; grid-template-columns:335px 1fr; flex:1; }
+main { min-height:0; display:grid; grid-template-columns:var(--sidebar-width,410px) 1fr; flex:1; }
 .home-view { grid-template-columns:1fr; }
 .home-view aside { border-right:0; }
 .home-view .detail { display:none; }
 .home-view .item-grid { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); }
+.home-view .sidebar-resizer { display:none; }
 .state-main { grid-template-columns:1fr; place-items:center; overflow:auto; padding:28px; }
 .app-state { width:min(620px,100%); display:flex; flex-direction:column; align-items:center; padding:52px 34px; border:1px solid #3c4044; border-radius:14px; background:#1b1d20; box-shadow:0 24px 80px #0007; text-align:center; }
 .app-state h1 { margin:22px 0 8px; font-size:27px; }
@@ -45,7 +46,12 @@ main { min-height:0; display:grid; grid-template-columns:335px 1fr; flex:1; }
 .state-actions button { min-width:120px; min-height:44px; padding:0 16px; border:1px solid #53585e; border-radius:7px; background:#2a2d31; cursor:pointer; }
 .state-actions button.primary { background:#d1d4d7; color:#17191b; border-color:#d1d4d7; font-weight:700; }
 @keyframes spin { to { transform:rotate(360deg); } }
-aside { min-height:0; display:flex; flex-direction:column; background:#1a1b1e; border-right:1px solid #373a3e; }
+aside { min-height:0; position:relative; display:flex; flex-direction:column; background:#1a1b1e; border-right:1px solid #373a3e; }
+.sidebar-resizer { position:absolute; right:-7px; top:0; bottom:0; z-index:8; width:14px; padding:0; border:0; background:transparent; cursor:col-resize; touch-action:none; }
+.sidebar-resizer span { position:absolute; left:6px; top:0; bottom:0; width:2px; background:transparent; transition:background .15s; }
+.sidebar-resizer:hover span,.sidebar-resizer:focus-visible span,.resizing .sidebar-resizer span { background:#858b91; }
+.sidebar-resizer:focus-visible { outline:2px solid #aeb3b8; outline-offset:-3px; }
+.resizing,.resizing * { cursor:col-resize!important; user-select:none!important; }
 .search-wrap { margin:16px 14px 10px; height:44px; display:flex; align-items:center; gap:9px; padding:0 10px; border:1px solid #45494e; border-radius:8px; background:#121315; box-shadow:inset 0 1px 5px #0005; }
 .search-wrap:focus-within { border-color:#8c9298; box-shadow:0 0 0 2px #aab0b622; }
 .search-icon { width:19px; height:19px; flex:0 0 19px; fill:none; stroke:#90959a; stroke-width:1.8; stroke-linecap:round; }
@@ -92,6 +98,15 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .type-row button { flex:0 0 62px; width:62px; height:62px; padding:0; display:grid; place-items:center; border:0;background:transparent;color:#92979c;font-size:24px;cursor:pointer; }
 .type-row button.active { color:#f0f1f2; }
 .machine-fallback { line-height:1; }
+.recipe-search-block { max-width:1020px; margin:0 auto 14px; }
+.recipe-search-wrap { height:44px; display:flex; align-items:center; gap:9px; padding:0 10px; border:1px solid #45494e; border-radius:8px; background:#121315; box-shadow:inset 0 1px 5px #0005; }
+.recipe-search-wrap:focus-within { border-color:#8c9298; box-shadow:0 0 0 2px #aab0b622; }
+.recipe-search-wrap>svg { width:19px; height:19px; flex:0 0 19px; fill:none; stroke:#90959a; stroke-width:1.8; stroke-linecap:round; }
+.recipe-search-wrap input { min-width:0; height:100%; flex:1; border:0; outline:0; color:#eef0f2; background:transparent; font-size:14px; }
+.recipe-search-wrap input::placeholder { color:#74787d; }
+.recipe-search-wrap button { width:32px; height:32px; flex:0 0 32px; display:grid; place-items:center; padding:0; border:0; background:none; color:#959a9f; cursor:pointer; }
+.recipe-search-wrap button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; }
+.recipe-search-block>small { display:block; min-height:16px; margin:6px 3px 0; color:#858a8f; font-size:11px; }
 .recipe-list { max-width:1020px;margin:auto;display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:14px; }
 .no-recipes,.recipe-loading { grid-column:1/-1; display:grid; place-items:center; padding:70px; color:#7f8489; text-align:center; }.no-recipes>span { font-size:40px; }.no-recipes b,.recipe-loading b { margin-top:10px; color:#b5b9bd; }.no-recipes p,.recipe-loading p { margin:8px 0 0; }
 .recipe-loading .spinner { width:32px; height:32px; }
@@ -106,7 +121,7 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .download { width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid #686d72;border-radius:8px;background:#484c51;color:#f0f1f2;font-weight:700;cursor:pointer; }.download .download-icon { width:25px;height:25px;flex-basis:25px; }.download:disabled { opacity:.45;cursor:not-allowed; }.storage { display:block;margin-top:12px;text-align:center;color:#7c8186; }
 @media (max-width:800px) {
   header { padding:0 12px;height:62px;position:sticky;top:0; }.brand { width:auto;gap:8px; }.brand span:last-child { display:flex; }.brand b { display:none; }.brand small { margin:0;color:#c5c9cd;font-size:10px;letter-spacing:.9px;white-space:nowrap; }.version { min-width:0;margin-left:auto;margin-right:7px; }.install span { display:none; }
-  main { display:block;overflow:hidden; }.app-shell { height:100dvh; } aside { height:100%;border:0; }.detail { display:none;height:100%;padding:12px 14px 60px; }.detail.mobile-visible { display:block; }.mobile-hidden { display:none; }
+  main { display:block;overflow:hidden; }.app-shell { height:100dvh; } aside { height:100%;border:0; }.sidebar-resizer { display:none; }.detail { display:none;height:100%;padding:12px 14px 60px; }.detail.mobile-visible { display:block; }.mobile-hidden { display:none; }
   .search-wrap { margin:12px; height:48px; flex:none; }
   .result-bar { min-height:38px; padding:0 14px; }
   .item-grid { display:flex; flex-direction:column; padding:0; gap:0; }
