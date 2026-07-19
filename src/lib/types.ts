@@ -21,6 +21,12 @@ export interface CatalogEntry {
   usageCount?: number;
   /** Ore dictionary used when this item has no direct production recipes. */
   productionOreDictionaryId?: string;
+  container?: {
+    fluidId: string;
+    amount: number;
+    emptyItemId: string | null;
+  } | null;
+  containerItemIds?: string[];
   searchable?: boolean;
   /** Stable item IDs accepted by a synthetic ore-dictionary entry. */
   members?: string[];

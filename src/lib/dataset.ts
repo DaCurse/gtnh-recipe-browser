@@ -6,6 +6,7 @@ import {
   materializeIngredient,
   productionFallbackDictionary
 } from './oreDictionary';
+import { fluidRecipeScope } from './fluidContainers';
 import { formatGtMetadata, hasRelevantPower } from './recipeMetadata';
 import {
   cacheAsset,
@@ -68,6 +69,12 @@ interface PackedGoods {
   usageShards: string[];
   productionCount: number;
   usageCount: number;
+  container?: {
+    fluidId: string;
+    amount: number;
+    emptyItemId: string | null;
+  } | null;
+  containerItemIds?: string[];
 }
 
 interface PackedRecipeType {
@@ -265,10 +272,16 @@ export class DatasetRepository {
       const sheet = goods.icon ? sheets.get(goods.icon.sheetId) : undefined;
       const tooltip = plainText(goods.tooltip).split(/\n+/).map((line) => line.trim()).filter(Boolean);
       const productionFallback = this.productionFallbacks.get(goods.id);
-      const productionShards = productionFallback
-        ? [...new Set(productionFallback.itemIds.flatMap((itemId) =>
+      const fluidScope = fluidRecipeScope(goods.id, this.packedGoods);
+      const recipeScopeIds = fluidScope?.memberIds ?? productionFallback?.itemIds;
+      const productionShards = recipeScopeIds
+        ? [...new Set([...recipeScopeIds].flatMap((itemId) =>
             this.packedGoods.get(itemId)?.productionShards ?? []))].sort()
         : goods.productionShards;
+      const usageShards = fluidScope
+        ? [...new Set([...fluidScope.memberIds].flatMap((itemId) =>
+            this.packedGoods.get(itemId)?.usageShards ?? []))].sort()
+        : goods.usageShards;
       return {
         id: goods.id,
         name: plainText(goods.name),
@@ -285,10 +298,12 @@ export class DatasetRepository {
           columns: sheet.columns
         } : undefined,
         productionShards,
-        usageShards: goods.usageShards,
-        productionCount: productionFallback ? undefined : goods.productionCount,
-        usageCount: goods.usageCount,
-        productionOreDictionaryId: productionFallback?.id
+        usageShards,
+        productionCount: recipeScopeIds ? undefined : goods.productionCount,
+        usageCount: fluidScope ? undefined : goods.usageCount,
+        productionOreDictionaryId: fluidScope ? undefined : productionFallback?.id,
+        container: goods.container,
+        containerItemIds: goods.containerItemIds
       };
     });
     const goodsEntriesById = new Map(goodsEntries.map((entry) => [entry.id, entry]));
@@ -382,6 +397,7 @@ export class DatasetRepository {
     if (!goods && !selectedOre) return [];
     const catalogEntry = this.entries.find((entry) => entry.id === entryId);
     const productionFallback = this.productionFallbacks.get(entryId);
+    const fluidScope = fluidRecipeScope(entryId, this.packedGoods);
     const shardIds = selectedOre
       ? view === 'recipes'
         ? catalogEntry?.productionShards ?? []
@@ -402,6 +418,7 @@ export class DatasetRepository {
       return recipes;
     }))).flat()
       .filter((recipe) => (view === 'recipes' ? recipe.outputs : recipe.inputs).some((io) => {
+        if (fluidScope) return fluidScope.memberIds.has(io.goodsId);
         return ingredientMatchesEntry(io, entryId, selectedMembers, this.ores);
       }));
     return packed.map((recipe) => {

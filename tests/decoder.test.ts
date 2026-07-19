@@ -3,6 +3,7 @@ import { gzipSync } from 'node:zlib';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeFormat5, PackDecodeError } from '../tools/pack-builder/decoder';
+import { fluidRecipeScope } from '../src/lib/fluidContainers';
 import { productionFallbackDictionary } from '../src/lib/oreDictionary';
 
 function words(...values: number[]): Buffer {
@@ -74,6 +75,35 @@ describe.skipIf(!existsSync(realDataPath))('pinned real format-v5 dataset', () =
       recipe.recipeTypeId === semiFluidType?.id &&
       recipe.inputs.some((input) => input.goodsId === creosote?.id));
     expect(fuelRecipe?.gt?.metadata).toContainEqual({ key: 'fuel_value', value: 48 });
+  });
+
+  it('preserves fluid containers and their shared recipe directions', () => {
+    const creosote = repository.fluids.find((fluid) => fluid.id === 'f:Railcraft:creosote')!;
+    const cell = repository.items.find(
+      (item) => item.id === 'i:Railcraft:fluid.creosote.cell:0'
+    )!;
+    const emptyCellId = 'i:IC2:itemCellEmpty:0';
+    const goods = new Map(
+      [...repository.items, ...repository.fluids].map((entry) => [entry.id, entry])
+    );
+    const fluidScope = fluidRecipeScope(creosote.id, goods)!;
+    const containerScope = fluidRecipeScope(cell.id, goods)!;
+
+    expect(cell.container).toEqual({
+      fluidId: creosote.id,
+      amount: 1_000,
+      emptyItemId: emptyCellId
+    });
+    expect(containerScope.memberIds).toEqual(fluidScope.memberIds);
+    expect(fluidScope.memberIds.has(emptyCellId)).toBe(false);
+
+    const members = [...fluidScope.memberIds].map((id) => goods.get(id)!);
+    const production = new Set(members.flatMap((entry) => entry.productionRecipeIds));
+    const usages = new Set(members.flatMap((entry) => entry.usageRecipeIds));
+    expect(production.size).toBe(463);
+    expect(usages.size).toBe(167);
+    expect(production.size).toBeGreaterThan(creosote.productionRecipeIds.length);
+    expect(usages.size).toBeGreaterThan(creosote.usageRecipeIds.length);
   });
 
   it('retains ore-dictionary members and indexes their interchangeable usages', () => {
