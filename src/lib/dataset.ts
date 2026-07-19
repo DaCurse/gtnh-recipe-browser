@@ -2,7 +2,7 @@ import { decode } from '@msgpack/msgpack';
 import { sha256 as nobleSha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
 import { ingredientMatchesEntry, materializeIngredient } from './oreDictionary';
-import { formatGtMetadata } from './recipeMetadata';
+import { formatGtMetadata, hasRelevantPower } from './recipeMetadata';
 import {
   cacheAsset,
   cacheMetadata,
@@ -374,21 +374,23 @@ export class DatasetRepository {
       const type = this.types.get(recipe.recipeTypeId);
       if (!type) throw new Error(`Unknown recipe type ${recipe.recipeTypeId}`);
       const convert = (io: PackedIo) => materializeIngredient(io, this.ores);
-      const totalEu = recipe.gt ? recipe.gt.voltage * recipe.gt.amperage * recipe.gt.durationTicks : undefined;
-      const euPerTick = recipe.gt ? recipe.gt.voltage * recipe.gt.amperage : undefined;
+      const gt = recipe.gt;
+      const powerInfo = hasRelevantPower(gt) ? gt : null;
+      const totalEu = powerInfo ? powerInfo.voltage * powerInfo.amperage * powerInfo.durationTicks : undefined;
+      const euPerTick = powerInfo ? powerInfo.voltage * powerInfo.amperage : undefined;
       return {
         id: recipe.id,
         type: type.name,
         inputs: recipe.inputs.map(convert),
         outputs: recipe.outputs.map(convert),
         layout: { ...type.dimensions, shapeless: type.shapeless },
-        duration: recipe.gt ? duration(recipe.gt.durationTicks) : undefined,
-        voltage: recipe.gt ? voltageTiers[recipe.gt.voltageTier] ?? `T${recipe.gt.voltageTier}` : undefined,
+        duration: powerInfo ? duration(powerInfo.durationTicks) : undefined,
+        voltage: powerInfo ? voltageTiers[powerInfo.voltageTier] ?? `T${powerInfo.voltageTier}` : undefined,
         eu: totalEu === undefined ? undefined : amount(totalEu),
         euExact: totalEu === undefined ? undefined : `${totalEu.toLocaleString('en-US')} EU`,
         euPerTick: euPerTick === undefined ? undefined : power(euPerTick),
         euPerTickExact: euPerTick === undefined ? undefined : `${euPerTick.toLocaleString('en-US')} EU/t`,
-        metadata: recipe.gt?.metadata.map(formatGtMetadata).filter((line): line is string => line !== null),
+        metadata: gt?.metadata.map(formatGtMetadata).filter((line): line is string => line !== null),
         crafterId: type.defaultCrafter?.id ?? type.singleblocks[0]?.id ?? type.multiblocks[0]?.id
       };
     });

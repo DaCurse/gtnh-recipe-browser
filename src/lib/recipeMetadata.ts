@@ -3,6 +3,12 @@ export interface GtMetadata {
   value: number;
 }
 
+export interface GtPower {
+  voltage: number;
+  amperage: number;
+  durationTicks: number;
+}
+
 const fuelTypes = ['Diesel', 'Gas', 'Hot', 'Dense Steam', 'Plasma', 'Magic'];
 
 function formatAmount(value: number): string {
@@ -36,10 +42,14 @@ export function formatGtMetadata(metadata: GtMetadata): string | null {
     case 'recycle':
       return metadata.value === 1 ? 'Recycle recipe' : null;
     case 'coil_heat':
-      return `Heat: ${formatAmount(metadata.value)} K`;
+      return `Heat: ${metadata.value.toLocaleString('en-US')} K`;
     case 'nke_range':
       return `Kinetic energy: ${metadata.value % 10_000} - ${Math.floor(metadata.value / 10_000)} MeV`;
     default:
       return `${metadata.key}: ${formatAmount(metadata.value)}`;
   }
+}
+
+export function hasRelevantPower(gt: GtPower | null): gt is GtPower {
+  return gt !== null && gt.voltage > 0 && gt.amperage > 0 && gt.durationTicks > 0;
 }
