@@ -33,3 +33,9 @@ index 503b7eb..f4438ec 100644
 +            GC.WaitForPendingFinalizers();
 +            GC.Collect();
 +
+@@ -19,0 +25,5 @@ namespace Source
++            GC.Collect();
++            GC.WaitForPendingFinalizers();
++            GC.Collect();
++            Console.WriteLine($"Managed heap before recipe remaps: {GC.GetTotalMemory(false)} bytes");
++

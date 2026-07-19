@@ -59,7 +59,8 @@ edit `gtnh@ShadowTheAge/`.
 
 The compatibility patch also releases the processor's parsed SQL tables immediately after repository conversion.
 This is required for current full exports: retaining both object graphs through recipe remapping can exhaust a 16 GiB
-WSL environment. It does not skip records, recipe remaps, or icon generation.
+WSL environment. A second collection boundary releases conflict-analysis temporaries before historical remapping and
+logs the live managed-heap size. It does not skip records, conflict data, recipe remaps, or icon generation.
 
 The processing command additionally caps the .NET managed heap at 50% of available physical memory. The remap
 algorithm creates many short-lived hashing allocations; the cap makes collection occur before WSL invokes its OOM

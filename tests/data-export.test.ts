@@ -86,6 +86,7 @@ describe('data export tooling', () => {
     expect(patch).toContain('aspectIcon.touched = true');
     expect(patch).toContain('dbParser = null');
     expect(patch).toContain('GC.WaitForPendingFinalizers()');
+    expect(patch).toContain('Managed heap before recipe remaps');
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });
 
