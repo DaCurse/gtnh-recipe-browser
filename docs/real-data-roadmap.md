@@ -1,8 +1,8 @@
 # Real data and icon roadmap
 
-This tracks the immutable GTNH data implementation. Phases 1–4 are complete; Phase 5 is substantially implemented
-and covered by the pinned format-v5 fixture. Client work must remain independent of mutable upstream revisions and
-unpublished release assets.
+This tracks the immutable GTNH data implementation. Phases 1–5 are implemented and covered by the pinned
+format-v5 fixture. Phase 6 is implemented in the client and awaits its final browser-level offline acceptance run.
+Client work must remain independent of mutable upstream revisions and unpublished release assets.
 
 ## Source contract
 
@@ -110,7 +110,7 @@ survive reload.
 The production client now rejects catalog failures explicitly, keeps query-based deep links stable, and reuses
 verified IndexedDB assets across in-app navigation and reloads.
 
-## Phase 5 — Load recipes and usages on demand (in progress)
+## Phase 5 — Load recipes and usages on demand (complete)
 
 Catalog entries carry production/usage recipe-shard references. On item selection:
 
@@ -138,8 +138,12 @@ Current progress:
 - `tests/pinned-parity.test.ts` covers crafting, machines, multiblocks, fluids, containers, metadata, service slots,
   chances, and the real 2,254-recipe Charcoal collection without network access.
 
-Remaining Phase 5 work is browser-level cross-engine/touch parity coverage and continued profiling on representative
-phones. Rich Minecraft tooltip formatting can be added without changing the immutable pack contract.
+The client also preserves multiline Minecraft tooltip formatting and colors. Crafter entries expose a third,
+tier-aware Machine Usages view; ore-equivalent machines inherit the same categories, including every
+`craftingTableWood` member. Clicking a recipe crafter opens the exporter-ordered singleblock/multiblock category.
+
+Cross-engine/touch parity and continued profiling on representative phones remain ongoing release checks rather
+than pack-format work.
 
 ### Ore-dictionary compatibility
 
@@ -151,7 +155,7 @@ dictionaries.
 
 Remaining compatibility work: exercise empty dictionaries when a future immutable fixture contains one.
 
-## Phase 6 — Complete offline dataset management
+## Phase 6 — Complete offline dataset management (browser acceptance pending)
 
 Expand the IndexedDB schema into manifests, assets, and dataset-state stores. Implement:
 
@@ -163,6 +167,21 @@ Expand the IndexedDB schema into manifests, assets, and dataset-state stores. Im
 
 Exit condition: an interrupted full download resumes after reload and a complete dataset works with the browser
 network disabled.
+
+Implemented:
+
+- Dataset records persist catalog, partial, and complete state, verified asset hashes, byte totals, and active
+  identity.
+- Full installs use three concurrent downloads, SHA-256 verification, three attempts, cancellation, and resume.
+- The manager checks quota, requests persistent storage, reports byte/chunk progress, switches only after catalog
+  validation, and explicitly deletes unshared local assets.
+- Installed icon sheets resolve from IndexedDB object URLs; catalogs and recipe shards already use verified local
+  blobs.
+- Deterministic tests cover retries, cancellation, resume, quota decisions, corruption, two-version activation,
+  and shared-asset-safe deletion using a local IndexedDB implementation.
+
+Remaining acceptance check: run an interrupted install/reload/resume and a network-disabled complete dataset in
+current Chromium, Firefox, and WebKit on desktop and mobile-sized viewports.
 
 ## Phase 7 — Publish safely
 
@@ -177,6 +196,5 @@ Never update `versions.json` until all assets are remotely readable and their do
 
 ## Immediate next milestone
 
-Phase 6 offline dataset management is the next feature milestone. Implement explicit catalog/partial/complete
-states, resumable verified full downloads, storage persistence and quota handling, byte accounting, deletion, and
-two-version switching without changing the recipe or icon asset formats.
+Complete the Phase 6 cross-browser offline acceptance run, then proceed to Phase 7 release publishing and
+deployed-origin fetch/persist verification. No recipe, icon, or catalog format change is required.

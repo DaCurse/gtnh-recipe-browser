@@ -13,7 +13,8 @@ Build and test with `npm run build`, `npm run check`, and `npm test`.
 
 The application loads the real GTNH dataset indexed by `public/versions.json`. Catalog, recipe, and icon assets
 are immutable and content-hashed. The client verifies them before caching catalogs and on-demand recipe shards in
-IndexedDB. Dataset loading failures are shown explicitly instead of substituting placeholder entries.
+IndexedDB. The dataset manager can install every immutable chunk with resumable progress, switch retained versions,
+and explicitly delete local copies. Dataset loading failures are shown instead of substituting placeholder entries.
 
 ## Data pipeline
 
