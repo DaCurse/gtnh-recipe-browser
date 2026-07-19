@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { registerSW } from 'virtual:pwa-register';
   import CatalogTooltip from './lib/CatalogTooltip.svelte';
+  import FloatingCatalogTooltip from './lib/FloatingCatalogTooltip.svelte';
   import ItemIcon from './lib/ItemIcon.svelte';
   import MinecraftText from './lib/MinecraftText.svelte';
   import { oreCycle } from './lib/oreCycle';
@@ -49,6 +50,9 @@
   let sidebarWidth = $state(410);
   let sidebarResizing = $state(false);
   let searchInput = $state<HTMLInputElement>();
+  let itemTooltipEntry = $state<CatalogEntry>();
+  let itemTooltipX = $state(0);
+  let itemTooltipY = $state(0);
 
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
   const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
@@ -120,6 +124,30 @@
       recipe.note,
       ...ingredientText
     ].filter(Boolean).join(' '));
+  }
+
+  function showItemPointerTooltip(event: PointerEvent, entry: CatalogEntry) {
+    if (event.pointerType === 'touch') return;
+    itemTooltipEntry = entry;
+    itemTooltipX = event.clientX;
+    itemTooltipY = event.clientY;
+  }
+
+  function moveItemPointerTooltip(event: PointerEvent) {
+    if (!itemTooltipEntry || event.pointerType === 'touch') return;
+    itemTooltipX = event.clientX;
+    itemTooltipY = event.clientY;
+  }
+
+  function showItemFocusTooltip(event: FocusEvent, entry: CatalogEntry) {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    itemTooltipEntry = entry;
+    itemTooltipX = rect.right;
+    itemTooltipY = rect.bottom;
+  }
+
+  function hideItemTooltip() {
+    itemTooltipEntry = undefined;
   }
 
   function recipeSearchDocumentCached(recipe: Recipe): string {
@@ -499,7 +527,20 @@
           <div class="empty search-loading"><span class="spinner" aria-hidden="true"></span><b>Preparing item list…</b></div>
         {:else}
           {#each visibleEntries as entry (entry.id)}
-            <button class:active={selected.id === entry.id} class="item-tile" onclick={() => select(entry.id)} title={entry.name}>
+            <button
+              class:active={selected.id === entry.id}
+              class="item-tile"
+              aria-label={entry.name}
+              onpointerenter={(event) => showItemPointerTooltip(event, entry)}
+              onpointermove={moveItemPointerTooltip}
+              onpointerleave={hideItemTooltip}
+              onfocus={(event) => showItemFocusTooltip(event, entry)}
+              onblur={hideItemTooltip}
+              onclick={() => {
+                hideItemTooltip();
+                select(entry.id);
+              }}
+            >
               <ItemIcon {entry} size={56} selected={selected.id === entry.id} />
               <span class="item-summary">
                 <strong>{entry.name}</strong>
@@ -535,6 +576,10 @@
         onkeydown={resizeSidebarWithKeyboard}
       ><span></span></button>
     </aside>
+
+    {#if itemTooltipEntry}
+      <FloatingCatalogTooltip entry={itemTooltipEntry} x={itemTooltipX} y={itemTooltipY} />
+    {/if}
 
     <section class:mobile-visible={detailsOpen} class="detail">
       <button class="back" onclick={() => showItemList()}>

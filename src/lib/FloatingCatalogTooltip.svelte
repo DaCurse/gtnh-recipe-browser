@@ -11,7 +11,7 @@
     entry: CatalogEntry;
     x: number;
     y: number;
-    action: string;
+    action?: string;
   } = $props();
 
   let element: HTMLDivElement;
