@@ -1,7 +1,9 @@
 <script lang="ts">
   import type { CatalogEntry, Recipe } from './types';
+  import ItemIcon from './ItemIcon.svelte';
   import RecipeGrid from './RecipeGrid.svelte';
-  let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string) => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
+  let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string, view: 'recipes' | 'usages') => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
+  const crafter = $derived(recipe.crafterId ? resolve(recipe.crafterId) : undefined);
 
   const itemInputs = $derived(recipe.inputs.filter((ingredient) =>
     ingredient.kind !== 'fluid' && resolve(ingredient.id)?.kind !== 'fluid'));
@@ -21,7 +23,9 @@
 <article class="card">
   <div class="card-head">
     <div>
-      <span class="machine-mark">⚙</span>
+      <span class="machine-mark">
+        {#if crafter}<ItemIcon entry={crafter} size={28} />{:else}⚙{/if}
+      </span>
       <strong>{recipe.type}</strong>
     </div>
     <button class="more" aria-label="Recipe actions">•••</button>
@@ -49,7 +53,7 @@
 <style>
   .card { background: linear-gradient(145deg,#292b2f,#202225); border:1px solid #414449; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px #0003; }
   .card-head { min-height:48px; padding:0 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #3a3d41; color:#e2e4e6; }
-  .machine-mark { display:inline-grid; place-items:center; width:27px; height:27px; margin-right:8px; background:#3a3d41; border-radius:5px; color:#b4b8bc; }
+  .machine-mark { display:inline-grid; place-items:center; width:30px; height:30px; margin-right:8px; background:#3a3d41; border-radius:5px; color:#b4b8bc; vertical-align:middle; }
   .more { background:none; border:0; color:#898e93; min-width:44px; min-height:44px; cursor:pointer; }
   .recipe-stage { min-height:132px; overflow-x:auto; scrollbar-width:thin; scrollbar-color:#4b4f54 transparent; }
   .recipe-flow { min-width:max-content; min-height:132px; display:grid; grid-template-columns:max-content 66px max-content; justify-content:center; align-items:center; gap:8px; padding:14px; }

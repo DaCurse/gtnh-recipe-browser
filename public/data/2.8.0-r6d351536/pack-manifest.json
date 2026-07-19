@@ -12,9 +12,9 @@
   "catalogAssets": [
     {
       "id": "catalog",
-      "url": "./assets/catalog.e52267fdf833fc45.mpk",
-      "bytes": 2563693,
-      "sha256": "e52267fdf833fc45412b96f81ae06b23fa7dcffcb3fa3f14fdc763ad3e5ff387",
+      "url": "./assets/catalog.c7610531f5de37a3.mpk",
+      "bytes": 2620608,
+      "sha256": "c7610531f5de37a37a6ad837e0a72a82c74128462a3f5e4939a44af90b8c21ed",
       "encoding": "gzip",
       "mediaType": "application/msgpack",
       "kind": "catalog"
@@ -2579,6 +2579,6 @@
     "searchableEntries": 42633,
     "recipes": 190080,
     "assets": 194,
-    "offlineBytes": 28214590
+    "offlineBytes": 28271505
   }
 }

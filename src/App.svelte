@@ -17,7 +17,7 @@
   let query = $state('');
   let selectedId = $state(defaultId);
   let mode = $state<'recipes' | 'usages'>('recipes');
-  let type = $state('All');
+  let type = $state('');
   let detailsOpen = $state(false);
   let versionOpen = $state(false);
   let updateReady = $state(false);
@@ -31,8 +31,8 @@
   const related = $derived(allRecipes.filter((recipe) => mode === 'recipes'
     ? recipe.outputs.some((x) => x.id === selected.id)
     : recipe.inputs.some((x) => x.id === selected.id)));
-  const types = $derived(['All', ...new Set(related.map((x) => x.type))]);
-  const visibleRecipes = $derived(type === 'All' ? related : related.filter((x) => x.type === type));
+  const types = $derived([...new Set(related.map((x) => x.type))]);
+  const visibleRecipes = $derived(type ? related.filter((x) => x.type === type) : []);
 
   async function refreshRecipes() {
     if (!repository) return;
@@ -40,17 +40,21 @@
     allRecipes = [];
     try {
       const loaded = await repository.recipesFor(selectedId, mode);
-      if (request === recipeRequest) allRecipes = loaded;
+      if (request === recipeRequest) {
+        allRecipes = loaded;
+        type = loaded[0]?.type ?? '';
+      }
     } catch (error) {
       console.error('Unable to load recipes', error);
       if (request === recipeRequest) allRecipes = [];
     }
   }
 
-  function select(id: string, push = true) {
+  function select(id: string, push = true, nextMode: 'recipes' | 'usages' = 'recipes') {
+    mode = nextMode;
     selectedId = id;
     detailsOpen = true;
-    type = 'All';
+    type = '';
     void refreshRecipes();
     if (push) {
       const url = new URL(location.href);
@@ -62,7 +66,7 @@
 
   function setMode(next: 'recipes' | 'usages') {
     mode = next;
-    type = 'All';
+    type = '';
     void refreshRecipes();
     const url = new URL(location.href);
     url.searchParams.set('view', mode);
@@ -76,7 +80,8 @@
     if (params.get('view') === 'usages') mode = 'usages';
     const handlePopState = () => {
       const id = new URLSearchParams(location.search).get('item');
-      if (id && entryById.has(id)) select(id, false);
+      const linkedView = new URLSearchParams(location.search).get('view') === 'usages' ? 'usages' : 'recipes';
+      if (id && entryById.has(id)) select(id, false, linkedView);
       else detailsOpen = false;
     };
     const handleShortcut = (event: KeyboardEvent) => {
@@ -97,7 +102,7 @@
       selectedId = linkedId && loaded.entries.some((entry) => entry.id === linkedId)
         ? linkedId
         : loaded.entries.find((entry) => entry.searchable !== false)?.id ?? loaded.entries[0].id;
-      type = 'All';
+      type = '';
       void refreshRecipes();
     }).catch((error) => {
       console.error('Using demonstration catalog because the real dataset could not be loaded', error);
@@ -136,14 +141,14 @@
         {#if query}<button onclick={() => query = ''} aria-label="Clear search">×</button>{/if}
         <kbd>Ctrl K</kbd>
       </div>
-      <div class="result-bar"><span>{results.length.toLocaleString()} ITEMS & FLUIDS</span><span class="view-label">{results.length > visibleEntries.length ? `FIRST ${visibleEntries.length}` : 'TOOLTIP LIST'}</span></div>
+      <div class="result-bar"><span>{results.length.toLocaleString()} ITEMS & FLUIDS</span></div>
       <div class="item-grid">
         {#each visibleEntries as entry (entry.id)}
           <button class:active={selected.id === entry.id} class="item-tile" onclick={() => select(entry.id)} title={entry.name}>
             <ItemIcon {entry} size={56} selected={selected.id === entry.id} />
             <span class="item-summary">
               <strong>{entry.name}</strong>
-              <small>{entry.mod} · {entry.kind}</small>
+              <small><span class="mod-name">{entry.mod}</span> · {entry.kind}</small>
               <span class="tooltip-preview">
                 {#if entry.formula}<b>{entry.formula}</b>{/if}
                 {entry.tooltip.join(' · ')}
@@ -163,7 +168,7 @@
       <div class="item-head">
         <ItemIcon entry={selected} size={88} selected />
         <div>
-          <p>{selected.kind === 'fluid' ? 'FLUID' : 'ITEM'} · {selected.mod}</p>
+          <p>{selected.kind === 'fluid' ? 'FLUID' : 'ITEM'} · <span class="mod-name">{selected.mod}</span></p>
           <h1>{selected.name}</h1>
           <div class="ident">{selected.id}</div>
         </div>
@@ -174,17 +179,21 @@
       </div>
 
       <nav class="view-tabs" aria-label="Item views">
-        <button class:active={mode === 'recipes'} onclick={() => setMode('recipes')}>Recipes <span>{mode === 'recipes' ? related.length : '—'}</span></button>
-        <button class:active={mode === 'usages'} onclick={() => setMode('usages')}>Usages <span>{mode === 'usages' ? related.length : '—'}</span></button>
+        <button class:active={mode === 'recipes'} onclick={() => setMode('recipes')}>Recipes <span>{selected.productionCount ?? related.length}</span></button>
+        <button class:active={mode === 'usages'} onclick={() => setMode('usages')}>Usages <span>{selected.usageCount ?? related.length}</span></button>
       </nav>
       <div class="type-row">
         {#each types as tab}
-          <button class:active={type === tab} onclick={() => type = tab}>{tab}{#if tab !== 'All'} <span>{related.filter(x => x.type === tab).length}</span>{/if}</button>
+          {@const tabRecipe = related.find((recipe) => recipe.type === tab)}
+          {@const tabCrafter = tabRecipe?.crafterId ? entryById.get(tabRecipe.crafterId) : undefined}
+          <button class:active={type === tab} onclick={() => type = tab} title={tab} aria-label={tab}>
+            {#if tabCrafter}<ItemIcon entry={tabCrafter} size={34} />{:else}<span class="machine-fallback">⚙</span>{/if}
+          </button>
         {/each}
       </div>
       <div class="recipe-list">
         {#each visibleRecipes as recipe (recipe.id)}
-          <RecipeCard {recipe} navigate={select} resolve={(id) => entryById.get(id)} />
+          <RecipeCard {recipe} navigate={(id, view) => select(id, true, view)} resolve={(id) => entryById.get(id)} />
         {:else}
           <div class="no-recipes"><span>⌁</span><b>No {mode} found</b><p>This item has no known {mode} in the active dataset.</p></div>
         {/each}

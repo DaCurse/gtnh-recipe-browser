@@ -186,7 +186,9 @@ function buildCatalog(repository: DecodedRepository, datasetId: string, shardByR
       ...catalogEntry,
       icon: iconReference(entry.iconId),
       productionShards: uniqueShards(productionRecipeIds, shardByRecipeId, `${entry.id} production`),
-      usageShards: uniqueShards(usageRecipeIds, shardByRecipeId, `${entry.id} usage`)
+      usageShards: uniqueShards(usageRecipeIds, shardByRecipeId, `${entry.id} usage`),
+      productionCount: productionRecipeIds.length,
+      usageCount: usageRecipeIds.length
     };
   });
   return {

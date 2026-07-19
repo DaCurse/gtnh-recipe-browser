@@ -51,6 +51,8 @@ interface PackedGoods {
   icon: { sheetId: string; index: number } | null;
   productionShards: string[];
   usageShards: string[];
+  productionCount: number;
+  usageCount: number;
 }
 
 interface PackedRecipeType {
@@ -59,6 +61,9 @@ interface PackedRecipeType {
   order: number;
   shapeless: boolean;
   dimensions: RecipeLayout;
+  defaultCrafter: { id: string } | null;
+  singleblocks: Array<{ id: string }>;
+  multiblocks: Array<{ id: string }>;
 }
 
 interface PackedOreDictionary {
@@ -181,7 +186,9 @@ export class DatasetRepository {
           columns: sheet.columns
         } : undefined,
         productionShards: goods.productionShards,
-        usageShards: goods.usageShards
+        usageShards: goods.usageShards,
+        productionCount: goods.productionCount,
+        usageCount: goods.usageCount
       };
     });
   }
@@ -244,7 +251,8 @@ export class DatasetRepository {
         layout: { ...type.dimensions, shapeless: type.shapeless },
         duration: recipe.gt ? duration(recipe.gt.durationTicks) : undefined,
         voltage: recipe.gt ? voltageTiers[recipe.gt.voltageTier] ?? `T${recipe.gt.voltageTier}` : undefined,
-        eu: recipe.gt ? amount(recipe.gt.voltage * recipe.gt.amperage * recipe.gt.durationTicks) : undefined
+        eu: recipe.gt ? amount(recipe.gt.voltage * recipe.gt.amperage * recipe.gt.durationTicks) : undefined,
+        crafterId: type.defaultCrafter?.id ?? type.singleblocks[0]?.id ?? type.multiblocks[0]?.id
       };
     });
   }

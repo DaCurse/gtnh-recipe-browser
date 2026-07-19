@@ -11,7 +11,7 @@
   }: {
     dimensions: GridDimensions;
     ingredients: Ingredient[];
-    navigate: (id: string) => void;
+    navigate: (id: string, view: 'recipes' | 'usages') => void;
     resolve: (id: string) => CatalogEntry | undefined;
     label?: string;
   } = $props();
@@ -31,7 +31,15 @@
         {@const ingredient = ingredients.find((candidate) => (candidate.slot ?? 0) === slot)}
         {@const entry = ingredient ? resolve(ingredient.id) : undefined}
         {#if ingredient && entry}
-          <button class="ingredient" title={entry.name} onclick={() => navigate(entry.id)}>
+          <button
+            class="ingredient"
+            title={`${entry.name}\nLeft-click: recipes · Right-click: usages`}
+            onclick={() => navigate(entry.id, 'recipes')}
+            oncontextmenu={(event) => {
+              event.preventDefault();
+              navigate(entry.id, 'usages');
+            }}
+          >
             <ItemIcon {entry} size={44} />
             {#if ingredient.amount !== undefined && (ingredient.amount !== 1 || entry.kind === 'fluid')}
               <span class="amount">{ingredient.amount}{entry.kind === 'fluid' ? 'L' : ''}</span>

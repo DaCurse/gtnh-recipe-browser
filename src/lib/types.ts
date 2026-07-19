@@ -17,6 +17,8 @@ export interface CatalogEntry {
   };
   productionShards?: string[];
   usageShards?: string[];
+  productionCount?: number;
+  usageCount?: number;
   searchable?: boolean;
 }
 
@@ -56,6 +58,7 @@ export interface Recipe {
   voltage?: string;
   eu?: string;
   note?: string;
+  crafterId?: string;
 }
 
 export interface AssetDescriptor {
