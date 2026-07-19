@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "2.9.0-beta-2-r0ba2f2c5584c",
+  "gtnhVersion": "2.9.0-beta-2",
+  "revision": "0ba2f2c5584c",
+  "generatedAt": "2026-07-19T18:20:47.074Z",
+  "sourceArchive": {
+    "path": "/root/src/gtnh-recipe-browser/GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip",
+    "bytes": 680333339,
+    "sha256": "adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee"
+  },
+  "exporter": {
+    "repository": "https://github.com/ShadowTheAge/nesql-exporter",
+    "commit": "b9279b39f2f439da78eebd70fab272b028947371",
+    "patchSha256": "ef0ed956f98edbc4955baf0c75b950e616633889c0afb7d94ddb1d57618d5b37",
+    "mainJar": "NESQL-Exporter-0.5.7-ShadowTheAge.jar",
+    "mainJarSha256": "411bfe3af85af85091380291a4fe1b63586d571168f82254e8e851d6c1615058",
+    "dependenciesJar": "NESQL-Exporter-0.5.7-ShadowTheAge-deps.jar",
+    "dependenciesJarSha256": "f1f3eac317c4107a951227e81cfa39956c68ad169908f3b8fb93a580fe618a81"
+  },
+  "processor": {
+    "repository": "https://github.com/ShadowTheAge/gtnh",
+    "commit": "124da0eb2367e84f6d285ed0a927fa0490a93767",
+    "patchSha256": "28d8f9552880a9b556458fe7c09e3ecc1a166bdc52ef0f6e61d12116cd524451"
+  },
+  "toolchains": {
+    "java": "openjdk 21.0.11 2026-04-21",
+    "dotnetSdk": "8.0.129"
+  },
+  "previousData": {
+    "path": "tests/fixtures/shadowtheage-v5-2.8.0/data.bin",
+    "sha256": "b0ff8d63f3104e979628c64e650cab17bf0b442e01bdb00c1d8f54c458a3eccc"
+  },
+  "processed": {
+    "dataBin": {
+      "bytes": 17405053,
+      "sha256": "e158aecdc19656cd3c6b2b5b8792770b223b0e8653652ee07b2a3d4366b8389b"
+    },
+    "atlasWebp": {
+      "bytes": 25218348,
+      "sha256": "7e84339698e8770a502c62aded3682e64a7590651316b5039be30f21b1b961aa"
+    }
+  },
+  "deterministicPackSha256": "c7fd1a305487f487829ce2488d07e9211f9ae0617b8600d376576284302f8985",
+  "verification": {
+    "assets": 223,
+    "bytes": 40169454,
+    "recipes": 221760,
+    "goods": 52298,
+    "spriteSamples": 100
+  }
+}

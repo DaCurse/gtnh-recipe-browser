@@ -199,9 +199,12 @@ Implemented:
 - Preparation verifies the official GTNH archive and creates a separate Prism export instance with BugTorch disabled.
 - Processing validates tooltip compatibility, builds twice, compares deterministic digests, and verifies every asset.
 - Publishing stages the immutable pack before atomically prepending its version entry while retaining older datasets.
+- GTNH 2.9.0-beta-2 is published locally as `2.9.0-beta-2-r0ba2f2c5584c`: 52,298 goods, 221,760 recipes, 223
+  immutable assets, and 40,169,454 offline bytes. Its processor provenance, source archive digest, deterministic pack
+  digest, and 100 sampled sprite comparisons are recorded with the pack.
 
 ## Immediate next milestone
 
-Finish the manual NESQL export for GTNH 2.9.0-beta-2, process and publish its verified immutable pack, then run the
-Netlify deployed-origin fetch/persist smoke test. Follow with the remaining Phase 6 cross-browser offline acceptance
-run. No recipe, icon, or catalog format change is required.
+Deploy the new immutable pack and version index to Netlify, then run the deployed-origin fetch/persist smoke test.
+Follow with the remaining Phase 6 interrupted-install and network-disabled acceptance runs in current Chromium,
+Firefox, and WebKit. No recipe, icon, or catalog format change is required.

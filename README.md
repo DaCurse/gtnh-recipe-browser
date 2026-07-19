@@ -55,7 +55,8 @@ The source NESQL export remains private. Processed compatibility fixtures are im
 add a sibling fixture when supporting a new upstream shape.
 
 `tests/fixtures/shadowtheage-v5-2.8.0/` is the pinned, network-independent compatibility source for decoder and
-recipe-parity tests. `public/data/2.8.0-r6d351536/` is the generated pack consumed by the development build.
+recipe-parity tests. `public/data/2.9.0-beta-2-r0ba2f2c5584c/` is the current default generated pack; the immutable
+2.8.0 pack remains available for version switching.
 
 ## Assets and attribution
 
