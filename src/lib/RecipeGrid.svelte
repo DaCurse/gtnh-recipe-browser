@@ -1,17 +1,18 @@
 <script lang="ts">
   import ItemIcon from './ItemIcon.svelte';
-  import { byId } from './demo';
-  import type { GridDimensions, Ingredient } from './types';
+  import type { CatalogEntry, GridDimensions, Ingredient } from './types';
 
   let {
     dimensions,
     ingredients,
     navigate,
+    resolve,
     label
   }: {
     dimensions: GridDimensions;
     ingredients: Ingredient[];
     navigate: (id: string) => void;
+    resolve: (id: string) => CatalogEntry | undefined;
     label?: string;
   } = $props();
 
@@ -28,7 +29,7 @@
     >
       {#each Array(cellCount) as _, slot}
         {@const ingredient = ingredients.find((candidate) => (candidate.slot ?? 0) === slot)}
-        {@const entry = ingredient ? byId.get(ingredient.id) : undefined}
+        {@const entry = ingredient ? resolve(ingredient.id) : undefined}
         {#if ingredient && entry}
           <button class="ingredient" title={entry.name} onclick={() => navigate(entry.id)}>
             <ItemIcon {entry} size={44} />

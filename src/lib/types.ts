@@ -10,6 +10,14 @@ export interface CatalogEntry {
   color: string;
   glyph: string;
   recipeTypes: string[];
+  icon?: {
+    url: string;
+    index: number;
+    columns: number;
+  };
+  productionShards?: string[];
+  usageShards?: string[];
+  searchable?: boolean;
 }
 
 export interface Ingredient {

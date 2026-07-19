@@ -1,17 +1,16 @@
 <script lang="ts">
-  import type { Recipe } from './types';
-  import { byId } from './demo';
+  import type { CatalogEntry, Recipe } from './types';
   import RecipeGrid from './RecipeGrid.svelte';
-  let { recipe, navigate }: { recipe: Recipe; navigate: (id: string) => void } = $props();
+  let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string) => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
 
   const itemInputs = $derived(recipe.inputs.filter((ingredient) =>
-    ingredient.kind !== 'fluid' && byId.get(ingredient.id)?.kind !== 'fluid'));
+    ingredient.kind !== 'fluid' && resolve(ingredient.id)?.kind !== 'fluid'));
   const fluidInputs = $derived(recipe.inputs.filter((ingredient) =>
-    ingredient.kind === 'fluid' || byId.get(ingredient.id)?.kind === 'fluid'));
+    ingredient.kind === 'fluid' || resolve(ingredient.id)?.kind === 'fluid'));
   const itemOutputs = $derived(recipe.outputs.filter((ingredient) =>
-    ingredient.kind !== 'fluid' && byId.get(ingredient.id)?.kind !== 'fluid'));
+    ingredient.kind !== 'fluid' && resolve(ingredient.id)?.kind !== 'fluid'));
   const fluidOutputs = $derived(recipe.outputs.filter((ingredient) =>
-    ingredient.kind === 'fluid' || byId.get(ingredient.id)?.kind === 'fluid'));
+    ingredient.kind === 'fluid' || resolve(ingredient.id)?.kind === 'fluid'));
   const itemInputLabel = $derived(recipe.layout.shapeless
     ? 'Shapeless'
     : recipe.type === 'Crafting'
@@ -30,13 +29,13 @@
   <div class="recipe-stage">
     <div class="recipe-flow">
       <div class="io-side">
-        <RecipeGrid dimensions={recipe.layout.itemInputs} ingredients={itemInputs} {navigate} label={itemInputLabel} />
-        <RecipeGrid dimensions={recipe.layout.fluidInputs} ingredients={fluidInputs} {navigate} label="Fluids" />
+        <RecipeGrid dimensions={recipe.layout.itemInputs} ingredients={itemInputs} {navigate} {resolve} label={itemInputLabel} />
+        <RecipeGrid dimensions={recipe.layout.fluidInputs} ingredients={fluidInputs} {navigate} {resolve} label="Fluids" />
       </div>
       <div class="arrow"><span>→</span><small>{recipe.duration}</small></div>
       <div class="io-side">
-        <RecipeGrid dimensions={recipe.layout.itemOutputs} ingredients={itemOutputs} {navigate} label="Output" />
-        <RecipeGrid dimensions={recipe.layout.fluidOutputs} ingredients={fluidOutputs} {navigate} label="Fluid output" />
+        <RecipeGrid dimensions={recipe.layout.itemOutputs} ingredients={itemOutputs} {navigate} {resolve} label="Output" />
+        <RecipeGrid dimensions={recipe.layout.fluidOutputs} ingredients={fluidOutputs} {navigate} {resolve} label="Fluid output" />
       </div>
     </div>
   </div>

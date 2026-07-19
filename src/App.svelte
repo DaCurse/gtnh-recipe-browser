@@ -3,11 +3,17 @@
   import { registerSW } from 'virtual:pwa-register';
   import ItemIcon from './lib/ItemIcon.svelte';
   import RecipeCard from './lib/RecipeCard.svelte';
-  import { byId, entries, recipes } from './lib/demo';
+  import { entries as demoEntries, recipes as demoRecipes } from './lib/demo';
+  import { DatasetRepository } from './lib/dataset';
   import { searchCatalog } from './lib/search';
   import type { CatalogEntry } from './lib/types';
 
-  const defaultId = entries[0].id;
+  const defaultId = demoEntries[0].id;
+  let catalog = $state<CatalogEntry[]>(demoEntries);
+  let allRecipes = $state(demoRecipes);
+  let repository = $state<DatasetRepository | null>(null);
+  let datasetVersion = $state('Demo');
+  let recipeRequest = 0;
   let query = $state('');
   let selectedId = $state(defaultId);
   let mode = $state<'recipes' | 'usages'>('recipes');
@@ -17,18 +23,35 @@
   let updateReady = $state(false);
   let searchInput: HTMLInputElement;
 
-  const results = $derived(searchCatalog(entries, query));
-  const selected = $derived(byId.get(selectedId) ?? entries[0]);
-  const related = $derived(recipes.filter((recipe) => mode === 'recipes'
+  const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
+  const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
+  const results = $derived(searchCatalog(searchableCatalog, query));
+  const visibleEntries = $derived(results.slice(0, 300));
+  const selected = $derived(entryById.get(selectedId) ?? catalog[0]);
+  const related = $derived(allRecipes.filter((recipe) => mode === 'recipes'
     ? recipe.outputs.some((x) => x.id === selected.id)
     : recipe.inputs.some((x) => x.id === selected.id)));
   const types = $derived(['All', ...new Set(related.map((x) => x.type))]);
   const visibleRecipes = $derived(type === 'All' ? related : related.filter((x) => x.type === type));
 
+  async function refreshRecipes() {
+    if (!repository) return;
+    const request = ++recipeRequest;
+    allRecipes = [];
+    try {
+      const loaded = await repository.recipesFor(selectedId, mode);
+      if (request === recipeRequest) allRecipes = loaded;
+    } catch (error) {
+      console.error('Unable to load recipes', error);
+      if (request === recipeRequest) allRecipes = [];
+    }
+  }
+
   function select(id: string, push = true) {
     selectedId = id;
     detailsOpen = true;
     type = 'All';
+    void refreshRecipes();
     if (push) {
       const url = new URL(location.href);
       url.searchParams.set('item', id);
@@ -40,6 +63,7 @@
   function setMode(next: 'recipes' | 'usages') {
     mode = next;
     type = 'All';
+    void refreshRecipes();
     const url = new URL(location.href);
     url.searchParams.set('view', mode);
     history.replaceState({ id: selectedId }, '', url);
@@ -48,11 +72,11 @@
   onMount(() => {
     const params = new URLSearchParams(location.search);
     const requested = params.get('item');
-    if (requested && byId.has(requested)) select(requested, false);
+    if (requested && entryById.has(requested)) select(requested, false);
     if (params.get('view') === 'usages') mode = 'usages';
     const handlePopState = () => {
       const id = new URLSearchParams(location.search).get('item');
-      if (id && byId.has(id)) select(id, false);
+      if (id && entryById.has(id)) select(id, false);
       else detailsOpen = false;
     };
     const handleShortcut = (event: KeyboardEvent) => {
@@ -65,6 +89,19 @@
     addEventListener('popstate', handlePopState);
     addEventListener('keydown', handleShortcut);
     registerSW({ onNeedRefresh: () => updateReady = true });
+    void DatasetRepository.loadLatest().then((loaded) => {
+      repository = loaded;
+      catalog = loaded.entries;
+      datasetVersion = loaded.gtnhVersion;
+      const linkedId = new URLSearchParams(location.search).get('item');
+      selectedId = linkedId && loaded.entries.some((entry) => entry.id === linkedId)
+        ? linkedId
+        : loaded.entries.find((entry) => entry.searchable !== false)?.id ?? loaded.entries[0].id;
+      type = 'All';
+      void refreshRecipes();
+    }).catch((error) => {
+      console.error('Using demonstration catalog because the real dataset could not be loaded', error);
+    });
     return () => {
       removeEventListener('popstate', handlePopState);
       removeEventListener('keydown', handleShortcut);
@@ -81,7 +118,7 @@
       <span><b>GTNH</b><small>RECIPE BROWSER</small></span>
     </a>
     <button class="version" onclick={() => versionOpen = true}>
-      <span><i></i> GTNH 2.7.3</span><small>Latest stable</small><b>⌄</b>
+      <span><i></i> GTNH {datasetVersion}</span><small>Latest stable</small><b>⌄</b>
     </button>
     <button class="install" onclick={() => versionOpen = true}>⇩ <span>Offline data</span></button>
   </header>
@@ -99,9 +136,9 @@
         {#if query}<button onclick={() => query = ''} aria-label="Clear search">×</button>{/if}
         <kbd>Ctrl K</kbd>
       </div>
-      <div class="result-bar"><span>{results.length} ITEMS & FLUIDS</span><span class="view-label">TOOLTIP LIST</span></div>
+      <div class="result-bar"><span>{results.length.toLocaleString()} ITEMS & FLUIDS</span><span class="view-label">{results.length > visibleEntries.length ? `FIRST ${visibleEntries.length}` : 'TOOLTIP LIST'}</span></div>
       <div class="item-grid">
-        {#each results as entry (entry.id)}
+        {#each visibleEntries as entry (entry.id)}
           <button class:active={selected.id === entry.id} class="item-tile" onclick={() => select(entry.id)} title={entry.name}>
             <ItemIcon {entry} size={56} selected={selected.id === entry.id} />
             <span class="item-summary">
@@ -118,7 +155,7 @@
           <div class="empty"><b>No matches</b><span>Try fewer terms or another @mod filter.</span></div>
         {/each}
       </div>
-      <footer><span><i></i> Catalog ready offline</span><span>{entries.length} demo entries</span></footer>
+      <footer><span><i></i> Catalog ready</span><span>{searchableCatalog.length.toLocaleString()} entries</span></footer>
     </aside>
 
     <section class:mobile-visible={detailsOpen} class="detail">
@@ -137,8 +174,8 @@
       </div>
 
       <nav class="view-tabs" aria-label="Item views">
-        <button class:active={mode === 'recipes'} onclick={() => setMode('recipes')}>Recipes <span>{recipes.filter(r => r.outputs.some(x => x.id === selected.id)).length}</span></button>
-        <button class:active={mode === 'usages'} onclick={() => setMode('usages')}>Usages <span>{recipes.filter(r => r.inputs.some(x => x.id === selected.id)).length}</span></button>
+        <button class:active={mode === 'recipes'} onclick={() => setMode('recipes')}>Recipes <span>{mode === 'recipes' ? related.length : '—'}</span></button>
+        <button class:active={mode === 'usages'} onclick={() => setMode('usages')}>Usages <span>{mode === 'usages' ? related.length : '—'}</span></button>
       </nav>
       <div class="type-row">
         {#each types as tab}
@@ -147,9 +184,9 @@
       </div>
       <div class="recipe-list">
         {#each visibleRecipes as recipe (recipe.id)}
-          <RecipeCard {recipe} navigate={select} />
+          <RecipeCard {recipe} navigate={select} resolve={(id) => entryById.get(id)} />
         {:else}
-          <div class="no-recipes"><span>⌁</span><b>No {mode} found</b><p>This item has no known {mode} in the demonstration catalog.</p></div>
+          <div class="no-recipes"><span>⌁</span><b>No {mode} found</b><p>This item has no known {mode} in the active dataset.</p></div>
         {/each}
       </div>
     </section>
@@ -162,7 +199,7 @@
       <button class="close" onclick={() => versionOpen = false}>×</button>
       <p class="eyebrow">DATASET MANAGER</p><h2>Your GTNH versions</h2>
       <p>Catalogs are stored on this device. Recipe and icon chunks load as you browse.</p>
-      <div class="dataset"><span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span><div><b>GTNH 2.7.3</b><small><i></i> ACTIVE · CATALOG READY</small></div><strong>Demo</strong></div>
+      <div class="dataset"><span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span><div><b>GTNH {datasetVersion}</b><small><i></i> ACTIVE · CATALOG READY</small></div><strong>{repository ? 'Real data' : 'Demo'}</strong></div>
       <button class="download" onclick={() => versionOpen = false}>⇩ Download for offline use</button>
       <small class="storage">The complete production dataset will be available when its pack is published.</small>
     </div>

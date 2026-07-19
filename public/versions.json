@@ -1,5 +1,15 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-19T00:00:00Z",
-  "versions": []
+  "generatedAt": "2026-07-19T01:25:00Z",
+  "versions": [
+    {
+      "datasetId": "2.8.0-r6d351536",
+      "gtnhVersion": "2.8.0",
+      "revision": "6d351536",
+      "publishedAt": "2026-07-19T01:25:00Z",
+      "packManifestUrl": "./data/2.8.0-r6d351536/pack-manifest.json",
+      "catalogBytes": 2563693,
+      "offlineBytes": 28214590
+    }
+  ]
 }

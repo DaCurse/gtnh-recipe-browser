@@ -4,9 +4,18 @@
 </script>
 
 <div class:selected class="slot" style:width={`${size}px`} style:height={`${size}px`} aria-hidden="true">
-  <div class:fluid={entry.kind === 'fluid'} class="sprite" style:--item-color={entry.color}>
-    <span>{entry.glyph}</span>
-  </div>
+  {#if entry.icon}
+    <div
+      class="atlas-sprite"
+      style:background-image={`url("${entry.icon.url}")`}
+      style:background-size={`${entry.icon.columns * 100}% ${entry.icon.columns * 100}%`}
+      style:background-position={`${(entry.icon.index % entry.icon.columns) * 100 / (entry.icon.columns - 1)}% ${Math.floor(entry.icon.index / entry.icon.columns) * 100 / (entry.icon.columns - 1)}%`}
+    ></div>
+  {:else}
+    <div class:fluid={entry.kind === 'fluid'} class="sprite" style:--item-color={entry.color}>
+      <span>{entry.glyph}</span>
+    </div>
+  {/if}
 </div>
 
 <style>
@@ -34,5 +43,6 @@
     text-shadow: -1px -1px #fff5, 1px 1px #000c;
     filter: drop-shadow(1px 2px 0 #0008);
   }
+  .atlas-sprite { width:61%; height:61%; background-repeat:no-repeat; image-rendering:pixelated; filter:drop-shadow(1px 2px 0 #0008); }
   .fluid { border-radius: 6px 6px 12px 12px; background: color-mix(in srgb, var(--item-color) 65%, #34383d); color: #f0f2f4; }
 </style>
