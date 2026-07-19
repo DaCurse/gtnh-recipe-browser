@@ -57,6 +57,10 @@ patch recognizes aspect icon items from both the legacy `thaumcraftneiplugin` an
 providers and retains every icon referenced by the exported `ASPECT` table. Apply this patch only to the copy; never
 edit `gtnh@ShadowTheAge/`.
 
+The compatibility patch also releases the processor's parsed SQL tables immediately after repository conversion.
+This is required for current full exports: retaining both object graphs through recipe remapping can exhaust a 16 GiB
+WSL environment. It does not skip records, recipe remaps, or icon generation.
+
 ## Manual checkpoint
 
 After preparation, inspect the instance name, both exporter jars, disabled BugTorch jar, absence of staging

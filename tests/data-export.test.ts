@@ -84,6 +84,8 @@ describe('data export tooling', () => {
     expect(patch).toContain('x.internalName == "aspect"');
     expect(patch).toContain('items.TryGetValue(aspectModel.IconId');
     expect(patch).toContain('aspectIcon.touched = true');
+    expect(patch).toContain('dbParser = null');
+    expect(patch).toContain('GC.WaitForPendingFinalizers()');
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });
 

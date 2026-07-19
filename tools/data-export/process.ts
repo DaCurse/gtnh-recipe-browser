@@ -60,10 +60,12 @@ run('patch', ['--dry-run', '--batch', '-p1', '-i', processorPatch], processorDir
 run('patch', ['--batch', '-p1', '-i', processorPatch], processorDirectory);
 const patchedProcessor = await readFile(join(processorDirectory, 'PackPreProcessor.cs'), 'utf8');
 const patchedConverter = await readFile(join(processorDirectory, 'PackConverter.cs'), 'utf8');
+const patchedGenerator = await readFile(join(processorDirectory, 'PackGenerator.cs'), 'utf8');
 if (
   !patchedProcessor.includes('x.mod == "thaumcraftneiplugin"') ||
   !patchedProcessor.includes('x.mod == "aspectrecipeindex"') ||
-  !patchedConverter.includes('items.TryGetValue(aspectModel.IconId')
+  !patchedConverter.includes('items.TryGetValue(aspectModel.IconId') ||
+  !patchedGenerator.includes('dbParser = null')
 ) {
   throw new Error('Processor compatibility patch did not produce the expected source');
 }

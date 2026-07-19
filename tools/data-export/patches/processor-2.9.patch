@@ -23,3 +23,13 @@ index 68f9fc0..2d40c65 100644
 +                    x => x.mod == "thaumcraftneiplugin"
 +                        ? x.name.Substring("Aspect: ".Length)
 +                        : x.name);
+diff --git a/PackGenerator.cs b/PackGenerator.cs
+index 503b7eb..f4438ec 100644
+--- a/PackGenerator.cs
++++ b/PackGenerator.cs
+@@ -14,0 +15,5 @@ namespace Source
++            dbParser = null;
++            GC.Collect();
++            GC.WaitForPendingFinalizers();
++            GC.Collect();
++
