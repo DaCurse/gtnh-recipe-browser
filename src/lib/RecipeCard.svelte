@@ -1,10 +1,10 @@
 <script lang="ts">
-  import type { CatalogEntry, Recipe } from './types';
+  import type { CatalogEntry, Recipe, RecipeView } from './types';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import RecipeGrid from './RecipeGrid.svelte';
   import { recipeItemInputLabel } from './recipePresentation';
-  let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string, view: 'recipes' | 'usages') => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
+  let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string, view: RecipeView) => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
   const crafter = $derived(recipe.crafterId ? resolve(recipe.crafterId) : undefined);
   let tooltipVisible = $state(false);
   let tooltipX = $state(0);
@@ -60,7 +60,7 @@
     crafterModalOpen = true;
   }
 
-  function inspectCrafter(id: string, view: 'recipes' | 'usages') {
+  function inspectCrafter(id: string, view: 'recipes' | 'machineUsages') {
     crafterModalOpen = false;
     navigate(id, view);
   }
@@ -87,7 +87,7 @@
           onclick={openCrafterModal}
           oncontextmenu={(event) => {
             event.preventDefault();
-            navigate(crafter.id, 'usages');
+            navigate(crafter.id, 'machineUsages');
           }}
         >
           <ItemIcon entry={crafter} size={40} crisp={false} />
@@ -154,7 +154,7 @@
             </div>
             <span>
               <button onclick={() => inspectCrafter(option.id, 'recipes')}>Recipes</button>
-              <button onclick={() => inspectCrafter(option.id, 'usages')}>Usages</button>
+              <button onclick={() => inspectCrafter(option.id, 'machineUsages')}>Machine Usages</button>
             </span>
           </section>
         {:else}
