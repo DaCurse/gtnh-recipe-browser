@@ -778,10 +778,6 @@
           : 'Online only'}</small>
       <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5"></path></svg>
     </button>
-    <button class="install" onclick={openVersionManager}>
-      <svg class="download-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"></path></svg>
-      <span>Offline data</span>
-    </button>
   </header>
 
   {#if updateReady}<button class="update-banner" onclick={() => location.reload()}>A new app version is ready · Refresh</button>{/if}
