@@ -1,0 +1,20 @@
+{
+  "description": "Immutable ShadowTheAge format-v5 fixture used for decoder and pack-builder compatibility tests.",
+  "gtnhVersion": "2.8.0",
+  "upstreamRepository": "https://github.com/ShadowTheAge/gtnh",
+  "upstreamCommit": "124da0eb2367e84f6d285ed0a927fa0490a93767",
+  "dataRepository": "https://github.com/ShadowTheAge/gtnh-data",
+  "dataCommit": "6d35153688de5ae8e02807b942099618de1d9276",
+  "formatVersion": 5,
+  "files": {
+    "data.bin": {
+      "bytes": 15379169,
+      "sha256": "b0ff8d63f3104e979628c64e650cab17bf0b442e01bdb00c1d8f54c458a3eccc"
+    },
+    "atlas.webp": {
+      "bytes": 14863596,
+      "sha256": "fa05550ce9657ce49d4512b4aab7fe76d684b70745b0bc7b744c9ae0d6eb6ef5"
+    }
+  },
+  "rightsNotice": "This fixture contains Minecraft, GTNH, and mod-authored names, tooltips, and icons. It is retained only for non-commercial interoperability and regression testing. No ownership is claimed."
+}

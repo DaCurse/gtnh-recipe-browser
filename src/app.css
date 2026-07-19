@@ -1,0 +1,85 @@
+@font-face { font-family:Minecraft; src:url('/assets/Minecraft.ttf') format('truetype'); font-display:swap; }
+:root { font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; color:#e7e9eb; background:#111214; font-synthesis:none; }
+* { box-sizing:border-box; }
+body { margin:0; min-width:320px; min-height:100vh; background:radial-gradient(circle at 70% 5%,#26292d 0,transparent 34%),#111214; }
+button,input { font:inherit; }
+button { color:inherit; }
+.app-shell { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
+header { height:68px; flex:none; display:flex; align-items:center; padding:0 24px; border-bottom:1px solid #34373b; background:#17181be8; backdrop-filter:blur(15px); z-index:5; }
+.brand { width:335px; display:flex; gap:11px; align-items:center; text-decoration:none; color:white; }
+.brand-cube,.dataset-icon { display:grid; place-items:center; width:42px; height:42px; flex:0 0 42px; }
+.brand-cube img,.dataset-icon img { display:block; width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 2px 4px #0009); }
+.brand span:last-child { display:flex; flex-direction:column; line-height:1; }
+.brand b { font:20px Minecraft; letter-spacing:2px; color:#eef0f2; }
+.brand small { margin-top:5px; color:#81858a; font:9px Minecraft; letter-spacing:1.2px; }
+.version { margin:auto; min-width:190px; min-height:48px; padding:6px 35px 6px 13px; position:relative; border:1px solid #3a3d42; border-radius:8px; background:#212327; text-align:left; cursor:pointer; }
+.version span,.version small { display:block; }
+.version span { font-size:13px; font-weight:700; }.version small { color:#85898e; font-size:11px; margin:3px 0 0 14px; }
+.version i,footer i,.dataset i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#b6bbc1; box-shadow:0 0 5px #969ba1; }
+.version>b { position:absolute; right:13px; top:12px; color:#85898e; }
+.install { min-height:44px; padding:0 15px; border:1px solid #4b4f54; border-radius:8px; background:#292c30; color:#d0d3d6; cursor:pointer; }
+.update-banner { border:0; padding:8px; background:#bfc3c7; color:#17191b; cursor:pointer; }
+main { min-height:0; display:grid; grid-template-columns:335px 1fr; flex:1; }
+aside { min-height:0; display:flex; flex-direction:column; background:#1a1b1e; border-right:1px solid #373a3e; }
+.search-wrap { margin:16px 14px 10px; height:44px; display:flex; align-items:center; gap:9px; padding:0 10px; border:1px solid #45494e; border-radius:8px; background:#121315; box-shadow:inset 0 1px 5px #0005; }
+.search-wrap:focus-within { border-color:#8c9298; box-shadow:0 0 0 2px #aab0b622; }
+.search-icon { width:19px; height:19px; flex:0 0 19px; fill:none; stroke:#90959a; stroke-width:1.8; stroke-linecap:round; }
+.search-wrap input { min-width:0; flex:1; align-self:stretch; border:0; outline:0; color:#eef0f2; background:transparent; font-size:14px; line-height:44px; }
+.search-wrap input::placeholder { color:#74787d; }
+.search-wrap button { border:0; background:none; cursor:pointer; color:#959a9f; }
+kbd { color:#777c81; border:1px solid #3d4044; border-radius:4px; padding:3px 6px; font:10px ui-monospace,monospace; white-space:nowrap; }
+.result-bar { display:flex; justify-content:space-between; align-items:center; min-height:38px; padding:0 17px; color:#8d9297; font-size:11px; font-weight:650; letter-spacing:.55px; border-bottom:1px solid #2d3033; }
+.view-label { color:#64686d; }
+.item-grid { overflow:auto; display:grid; grid-template-columns:repeat(3,1fr); align-content:start; padding:11px; gap:5px; scrollbar-color:#484c51 transparent; }
+.item-tile { min-width:0; min-height:108px; padding:8px 3px 5px; display:flex; flex-direction:column; align-items:center; gap:4px; border:1px solid transparent; border-radius:7px; background:transparent; cursor:pointer; overflow:hidden; text-align:center; }
+.item-tile:hover { background:#25272a; }.item-tile.active { border-color:#62676d; background:#2a2d31; }
+.item-summary { display:flex; width:100%; min-width:0; flex-direction:column; gap:3px; overflow:hidden; }
+.item-summary strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:#d9dcdf; font-weight:500; }
+.item-summary small { width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#81868b; font-size:10px; text-transform:capitalize; }
+.tooltip-preview,.row-arrow { display:none; }
+.empty { grid-column:1/-1; padding:60px 20px; text-align:center; color:#858a8f; }.empty b,.empty span { display:block; margin:8px; }
+aside footer { margin-top:auto; min-height:42px; padding:0 14px; border-top:1px solid #34373a; display:flex; align-items:center; justify-content:space-between; color:#8b9095; font-size:11px; }
+.detail { min-width:0; overflow:auto; padding:30px clamp(24px,5vw,74px) 60px; background:linear-gradient(90deg,#151619,#1c1e21 60%,#141518); }
+.back { display:none; min-height:44px; border:0; background:none; color:#c0c4c8; padding:0; cursor:pointer; }
+.item-head { display:flex; align-items:center; gap:20px; max-width:1020px; margin:auto; }
+.item-head>div:nth-child(2) { min-width:0; }
+.item-head p { margin:0 0 8px; color:#a5aaaf; font:15px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.06em; text-transform:uppercase; }
+.eyebrow { margin:0 0 8px; color:#a5aaaf; font:14px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; }
+h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-spacing:.3px; }
+.ident { overflow:hidden; color:#858a8f; font:11px monospace; text-overflow:ellipsis; white-space:nowrap; }
+.tooltip { max-width:1020px; margin:20px auto 0; display:flex; gap:8px; align-items:center; color:#a8adb2; font-size:13px; line-height:1.45; }
+.tooltip b { color:#e0e2e4; font:13px Minecraft; border:1px solid #484c51; background:#292c30; border-radius:4px; padding:5px 8px; }
+.tooltip span+span:before { content:'·'; margin-right:8px; color:#575b60; }
+.view-tabs { max-width:1020px; margin:29px auto 0; display:flex; border-bottom:1px solid #3a3d41; }
+.view-tabs button { min-height:47px; padding:0 22px; border:0;border-bottom:2px solid transparent;background:none;color:#8b9095;font-weight:700;font-size:12px;cursor:pointer; }
+.view-tabs button.active { color:#eef0f2;border-bottom-color:#aeb3b8; }.view-tabs span,.type-row span { padding:2px 6px;border-radius:8px;background:#383b40;font-size:10px; }
+.type-row { max-width:1020px;margin:14px auto;display:flex;gap:7px;overflow:auto;padding-bottom:3px; }
+.type-row button { flex:none; min-height:38px;padding:0 13px;border:1px solid #3b3e42;border-radius:6px;background:#1d1f22;color:#92979c;font-size:11px;cursor:pointer; }
+.type-row button.active { background:#383b3f;color:#f0f1f2;border-color:#666b70; }
+.recipe-list { max-width:1020px;margin:auto;display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:14px; }
+.no-recipes { grid-column:1/-1; display:grid; place-items:center; padding:70px; color:#7f8489; text-align:center; }.no-recipes>span { font-size:40px; }.no-recipes b { color:#b5b9bd; }
+.scrim { position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:18px;background:#050806c7;backdrop-filter:blur(7px); }
+.manager { position:relative;width:min(440px,100%);padding:30px;border:1px solid #4b4f54;border-radius:14px;background:#202226;box-shadow:0 30px 90px #000; }
+.manager h2 { font:23px Minecraft;margin:0 0 8px; }.manager>p:not(.eyebrow) { color:#a6abb0;font-size:14px;line-height:1.5; }
+.close { position:absolute;right:12px;top:10px;width:44px;height:44px;border:0;background:none;color:#989da2;font-size:25px;cursor:pointer; }
+.dataset { display:flex;align-items:center;gap:12px;margin:22px 0;padding:14px;border:1px solid #484c51;border-radius:9px;background:#292c30; }.dataset div { flex:1; }.dataset b,.dataset small { display:block; }.dataset small { margin-top:6px;color:#b0b4b8;font-size:10px; }.dataset strong { color:#9a9fa4;font-size:12px; }
+.download { width:100%;min-height:48px;border:1px solid #686d72;border-radius:8px;background:#484c51;color:#f0f1f2;font-weight:700;cursor:pointer; }.storage { display:block;margin-top:12px;text-align:center;color:#7c8186; }
+@media (max-width:800px) {
+  header { padding:0 12px;height:62px;position:sticky;top:0; }.brand { width:auto; }.brand span:last-child { display:none; }.version { min-width:0;margin-left:auto;margin-right:7px; }.install span { display:none; }
+  main { display:block;overflow:hidden; }.app-shell { height:100dvh; } aside { height:100%;border:0; }.detail { display:none;height:100%;padding:12px 14px 60px; }.detail.mobile-visible { display:block; }.mobile-hidden { display:none; }
+  .search-wrap { margin:12px; height:48px; flex:none; }
+  .result-bar { min-height:38px; padding:0 14px; }
+  .item-grid { display:flex; flex-direction:column; padding:0; gap:0; }
+  .item-tile { flex:none; min-height:91px; width:100%; padding:12px 12px; display:grid; grid-template-columns:58px minmax(0,1fr) 24px; align-items:center; gap:12px; border:0; border-bottom:1px solid #303337; border-radius:0; text-align:left; }
+  .item-tile:hover,.item-tile.active { background:#25272a; border-color:#303337; }
+  .item-summary { gap:4px; }
+  .item-summary strong { font-size:14px; font-weight:650; color:#eceef0; }
+  .item-summary small { font-size:10px; color:#858a8f; letter-spacing:.2px; }
+  .tooltip-preview { display:-webkit-box; margin-top:2px; overflow:hidden; color:#b3b7bb; font-size:11px; line-height:1.35; white-space:normal; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .tooltip-preview b { margin-right:5px; color:#e1e3e5; font:10px Minecraft; }
+  .row-arrow { display:block; color:#777c81; font-size:25px; }
+  .back { display:block; }.item-head { gap:12px; }.item-head h1 { font-size:21px; }.item-head p { margin-bottom:5px; }.tooltip { overflow:auto;white-space:nowrap;margin-top:14px; }
+  .view-tabs { margin-top:20px;position:sticky;top:-12px;z-index:3;background:#191b1e; }.type-row { position:sticky;top:35px;z-index:3;background:#191b1e;padding:10px 0;margin:0 auto 8px; }
+  .recipe-list { grid-template-columns:1fr; }.recipe-list article { max-width:600px;width:100%;margin:auto; }
+}
+@media (max-width:450px) { .brand-cube { width:38px;height:38px;flex-basis:38px; }.version { padding-right:27px; }.version small { display:none; }.install { padding:0 13px; } }

@@ -1,0 +1,8 @@
+node_modules/
+dist/
+.vite/
+.svelte-kit/
+coverage/
+*.log
+*:Zone.Identifier
+.pack-output/
