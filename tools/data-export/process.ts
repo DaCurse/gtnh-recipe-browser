@@ -17,8 +17,17 @@ import {
   validateCombinedTooltipSchema
 } from './lib';
 
-function run(command: string, args: string[], cwd?: string): void {
-  const result = spawnSync(command, args, { cwd, stdio: 'inherit' });
+function run(
+  command: string,
+  args: string[],
+  cwd?: string,
+  environment?: NodeJS.ProcessEnv
+): void {
+  const result = spawnSync(command, args, {
+    cwd,
+    stdio: 'inherit',
+    env: environment ? { ...process.env, ...environment } : process.env
+  });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} exited with status ${result.status}`);
 }
@@ -80,7 +89,11 @@ run('dotnet', [
   processedDirectory,
   '--previous',
   previousData
-], repositoryRoot);
+], repositoryRoot, {
+  // Keep transient hash/remap allocations from exhausting a 16 GiB WSL environment.
+  // .NET environment-variable percentages use hexadecimal notation: 0x32 = 50%.
+  DOTNET_GCHeapHardLimitPercent: '0x32'
+});
 
 const dataPath = join(processedDirectory, 'data.bin');
 const atlasPath = join(processedDirectory, 'atlas.webp');

@@ -61,6 +61,10 @@ The compatibility patch also releases the processor's parsed SQL tables immediat
 This is required for current full exports: retaining both object graphs through recipe remapping can exhaust a 16 GiB
 WSL environment. It does not skip records, recipe remaps, or icon generation.
 
+The processing command additionally caps the .NET managed heap at 50% of available physical memory. The remap
+algorithm creates many short-lived hashing allocations; the cap makes collection occur before WSL invokes its OOM
+killer while leaving the remap algorithm and output unchanged.
+
 ## Manual checkpoint
 
 After preparation, inspect the instance name, both exporter jars, disabled BugTorch jar, absence of staging

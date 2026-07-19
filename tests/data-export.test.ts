@@ -89,6 +89,16 @@ describe('data export tooling', () => {
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });
 
+  it('bounds processor GC heap growth during full recipe remapping', async () => {
+    const processSource = await readFile(
+      join(process.cwd(), 'tools/data-export/process.ts'),
+      'utf8'
+    );
+
+    expect(processSource).toContain("DOTNET_GCHeapHardLimitPercent: '0x32'");
+    expect(processSource).toContain('...process.env');
+  });
+
   it('publishes a new default without removing historical datasets', () => {
     const existing: VersionsIndex = {
       schemaVersion: 1,
