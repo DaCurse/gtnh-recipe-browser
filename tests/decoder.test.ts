@@ -12,6 +12,40 @@ function words(...values: number[]): Buffer {
   return buffer;
 }
 
+function repositoryWithNullableUnlocalizedName(): Buffer {
+  const values = [5, 8, 10, 10, 10, 10, 10, 10, 1, 11, 0];
+  const itemPointer = 11;
+  values.push(...Array.from({ length: 18 }, () => 0));
+
+  const pushString = (value: string): number => {
+    const pointer = values.length;
+    const bytes = Buffer.from(value, 'utf8');
+    values.push(bytes.byteLength);
+    const padded = Buffer.alloc(Math.ceil(bytes.byteLength / 4) * 4);
+    bytes.copy(padded);
+    for (let offset = 0; offset < padded.byteLength; offset += 4) {
+      values.push(padded.readInt32LE(offset));
+    }
+    return pointer;
+  };
+
+  values[itemPointer + 4] = pushString('i:test:nullable:0');
+  values[itemPointer + 5] = pushString('Nullable Name');
+  values[itemPointer + 6] = pushString('test');
+  values[itemPointer + 7] = pushString('nullable');
+  values[itemPointer + 8] = 1;
+  values[itemPointer + 9] = 0;
+  values[itemPointer + 10] = -1;
+  values[itemPointer + 11] = -1;
+  values[itemPointer + 12] = -1;
+  values[itemPointer + 13] = 10;
+  values[itemPointer + 14] = 10;
+  values[itemPointer + 15] = 64;
+  values[itemPointer + 16] = 0;
+  values[itemPointer + 17] = -1;
+  return gzipSync(words(...values));
+}
+
 describe('format-v5 decoder rejection', () => {
   it('rejects input which is not gzip data', () => {
     expect(() => decodeFormat5(Buffer.from('not gzip'))).toThrow(/decompress/i);
@@ -29,6 +63,12 @@ describe('format-v5 decoder rejection', () => {
 
   it('rejects invalid root pointers', () => {
     expect(() => decodeFormat5(gzipSync(words(5, 99, 99, 99, 99, 99, 99, 99)))).toThrow(/invalid pointer/i);
+  });
+
+  it('normalizes a null optional unlocalized name to an empty string', () => {
+    const repository = decodeFormat5(repositoryWithNullableUnlocalizedName());
+    expect(repository.items).toHaveLength(1);
+    expect(repository.items[0]?.unlocalizedName).toBe('');
   });
 });
 

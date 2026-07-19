@@ -293,7 +293,7 @@ export function decodeFormat5(compressed: Uint8Array): DecodedRepository {
     numericId: reader.int(pointer + 8, `${context} numeric id`),
     iconId: reader.int(pointer + 9, `${context} icon id`),
     tooltip: reader.stringAt(pointer + 10, `${context} tooltip`, true),
-    unlocalizedName: required(reader.stringAt(pointer + 11, `${context} unlocalized name`), `${context} unlocalized name`),
+    unlocalizedName: reader.stringAt(pointer + 11, `${context} unlocalized name`, true) ?? '',
     nbt: reader.stringAt(pointer + 12, `${context} nbt`, true),
     searchMask: [0, 1, 2, 3].map((word) => reader.uint(pointer + word, `${context} search mask`)),
     productionRecipeIds: resolveRecipePointers(pointer + 13, `${context} production recipes`),
