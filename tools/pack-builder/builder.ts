@@ -142,7 +142,7 @@ async function buildRecipeShards(
         assetsDirectory,
         baseUrl,
         id,
-        'mpk.gz',
+        'mpk',
         encodedPart.bytes,
         { encoding: 'gzip', mediaType: 'application/msgpack' }
       );
@@ -301,7 +301,7 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
     assetsDirectory,
     baseUrl,
     'catalog',
-    'mpk.gz',
+    'mpk',
     catalogBytes,
     { encoding: 'gzip', mediaType: 'application/msgpack' }
   );

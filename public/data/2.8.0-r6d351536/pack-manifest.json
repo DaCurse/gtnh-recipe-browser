@@ -12,7 +12,7 @@
   "catalogAssets": [
     {
       "id": "catalog",
-      "url": "./assets/catalog.e52267fdf833fc45.mpk.gz",
+      "url": "./assets/catalog.e52267fdf833fc45.mpk",
       "bytes": 2563693,
       "sha256": "e52267fdf833fc45412b96f81ae06b23fa7dcffcb3fa3f14fdc763ad3e5ff387",
       "encoding": "gzip",
@@ -23,7 +23,7 @@
   "recipeShards": [
     {
       "id": "recipes-000-000",
-      "url": "./assets/recipes-000-000.f319b2404b43e39b.mpk.gz",
+      "url": "./assets/recipes-000-000.f319b2404b43e39b.mpk",
       "bytes": 61233,
       "sha256": "f319b2404b43e39b6a53040848be59c716b5fee36c788f60c643284171eac23e",
       "encoding": "gzip",
@@ -36,7 +36,7 @@
     },
     {
       "id": "recipes-001-000",
-      "url": "./assets/recipes-001-000.55cdfe499271730f.mpk.gz",
+      "url": "./assets/recipes-001-000.55cdfe499271730f.mpk",
       "bytes": 31898,
       "sha256": "55cdfe499271730ff30dbfaeace02a696becf579a726ac62058ba4c63e1c955f",
       "encoding": "gzip",
@@ -49,7 +49,7 @@
     },
     {
       "id": "recipes-002-000",
-      "url": "./assets/recipes-002-000.8d4787e8d179e475.mpk.gz",
+      "url": "./assets/recipes-002-000.8d4787e8d179e475.mpk",
       "bytes": 1589,
       "sha256": "8d4787e8d179e4750730c0aaacb0ee0160b33b96a73b487cd03748d88d40e651",
       "encoding": "gzip",
@@ -62,7 +62,7 @@
     },
     {
       "id": "recipes-003-000",
-      "url": "./assets/recipes-003-000.6473c2010c703919.mpk.gz",
+      "url": "./assets/recipes-003-000.6473c2010c703919.mpk",
       "bytes": 966,
       "sha256": "6473c2010c703919e2c4c1fd4827966a0c4675111b81cd65234df87db68f36c9",
       "encoding": "gzip",
@@ -75,7 +75,7 @@
     },
     {
       "id": "recipes-004-000",
-      "url": "./assets/recipes-004-000.f199f2dfb4c56dfa.mpk.gz",
+      "url": "./assets/recipes-004-000.f199f2dfb4c56dfa.mpk",
       "bytes": 6276,
       "sha256": "f199f2dfb4c56dfa0f199ad63e7e52ea01a8f8c519115605ee0a8f28cae6d98e",
       "encoding": "gzip",
@@ -88,7 +88,7 @@
     },
     {
       "id": "recipes-005-000",
-      "url": "./assets/recipes-005-000.ba836c4b0f0b4434.mpk.gz",
+      "url": "./assets/recipes-005-000.ba836c4b0f0b4434.mpk",
       "bytes": 5483,
       "sha256": "ba836c4b0f0b4434caf3c587382edfe8439fc051f1daaab203f9ca569223a64b",
       "encoding": "gzip",
@@ -101,7 +101,7 @@
     },
     {
       "id": "recipes-006-000",
-      "url": "./assets/recipes-006-000.1f3e7f2aa0fa1140.mpk.gz",
+      "url": "./assets/recipes-006-000.1f3e7f2aa0fa1140.mpk",
       "bytes": 5124,
       "sha256": "1f3e7f2aa0fa11402600908d6af5cbea1f5c559194eb5d601c92ece125b79e63",
       "encoding": "gzip",
@@ -114,7 +114,7 @@
     },
     {
       "id": "recipes-007-000",
-      "url": "./assets/recipes-007-000.500b0075481eca3d.mpk.gz",
+      "url": "./assets/recipes-007-000.500b0075481eca3d.mpk",
       "bytes": 474,
       "sha256": "500b0075481eca3d8cfe4811ef074b832f30eeb0606051eeecd6517080e2f393",
       "encoding": "gzip",
@@ -127,7 +127,7 @@
     },
     {
       "id": "recipes-008-000",
-      "url": "./assets/recipes-008-000.b2352ff00072a15c.mpk.gz",
+      "url": "./assets/recipes-008-000.b2352ff00072a15c.mpk",
       "bytes": 4767,
       "sha256": "b2352ff00072a15c54c6464b9e5b241fc26d91d441b76360a1db64b95daf5955",
       "encoding": "gzip",
@@ -140,7 +140,7 @@
     },
     {
       "id": "recipes-009-000",
-      "url": "./assets/recipes-009-000.cda46505ba7fed30.mpk.gz",
+      "url": "./assets/recipes-009-000.cda46505ba7fed30.mpk",
       "bytes": 12203,
       "sha256": "cda46505ba7fed300fcc68eda66fcfbc40cb8e7a09f19fd44011830069ddd89f",
       "encoding": "gzip",
@@ -153,7 +153,7 @@
     },
     {
       "id": "recipes-010-000",
-      "url": "./assets/recipes-010-000.0637269b88b86da4.mpk.gz",
+      "url": "./assets/recipes-010-000.0637269b88b86da4.mpk",
       "bytes": 6955,
       "sha256": "0637269b88b86da422791a1a307b9518dc92c114d50f7646d1cc424da9ea4b6a",
       "encoding": "gzip",
@@ -166,7 +166,7 @@
     },
     {
       "id": "recipes-011-000",
-      "url": "./assets/recipes-011-000.3072ec379f8fee9c.mpk.gz",
+      "url": "./assets/recipes-011-000.3072ec379f8fee9c.mpk",
       "bytes": 1436,
       "sha256": "3072ec379f8fee9cc7d5536507d6139a3373952066aacec6190e71e6a1823de3",
       "encoding": "gzip",
@@ -179,7 +179,7 @@
     },
     {
       "id": "recipes-012-000",
-      "url": "./assets/recipes-012-000.cfa9898831d986a8.mpk.gz",
+      "url": "./assets/recipes-012-000.cfa9898831d986a8.mpk",
       "bytes": 873,
       "sha256": "cfa9898831d986a8c4b8fd58c3da751cd1cbd930c5326aab07e0c3593df525cb",
       "encoding": "gzip",
@@ -192,7 +192,7 @@
     },
     {
       "id": "recipes-013-000",
-      "url": "./assets/recipes-013-000.1a8cdb59ae19b076.mpk.gz",
+      "url": "./assets/recipes-013-000.1a8cdb59ae19b076.mpk",
       "bytes": 1503,
       "sha256": "1a8cdb59ae19b076c2b631a53ff8ac44176845a9439919d0524b72a1b699eebd",
       "encoding": "gzip",
@@ -205,7 +205,7 @@
     },
     {
       "id": "recipes-014-000",
-      "url": "./assets/recipes-014-000.07194c96f3f7b3ae.mpk.gz",
+      "url": "./assets/recipes-014-000.07194c96f3f7b3ae.mpk",
       "bytes": 2196,
       "sha256": "07194c96f3f7b3aee9ee21c3b8da03df69fe0e5a6383881ee89b19d3601e97a9",
       "encoding": "gzip",
@@ -218,7 +218,7 @@
     },
     {
       "id": "recipes-015-000",
-      "url": "./assets/recipes-015-000.116d64f51f04d8f6.mpk.gz",
+      "url": "./assets/recipes-015-000.116d64f51f04d8f6.mpk",
       "bytes": 2425,
       "sha256": "116d64f51f04d8f60977050c70cf81cc9461ebdfb91408d3022a3e35dd0ae409",
       "encoding": "gzip",
@@ -231,7 +231,7 @@
     },
     {
       "id": "recipes-016-000",
-      "url": "./assets/recipes-016-000.250215a5bb22b259.mpk.gz",
+      "url": "./assets/recipes-016-000.250215a5bb22b259.mpk",
       "bytes": 328091,
       "sha256": "250215a5bb22b259cb114e15b4ea533ce6404d596c3670de975cb715d61fc246",
       "encoding": "gzip",
@@ -244,7 +244,7 @@
     },
     {
       "id": "recipes-017-000",
-      "url": "./assets/recipes-017-000.4aa5f6022d96bc38.mpk.gz",
+      "url": "./assets/recipes-017-000.4aa5f6022d96bc38.mpk",
       "bytes": 454886,
       "sha256": "4aa5f6022d96bc3806474a643334529910956ab7e82d40d909a9038ceb045595",
       "encoding": "gzip",
@@ -257,7 +257,7 @@
     },
     {
       "id": "recipes-018-000",
-      "url": "./assets/recipes-018-000.12324bf1a45632a7.mpk.gz",
+      "url": "./assets/recipes-018-000.12324bf1a45632a7.mpk",
       "bytes": 943997,
       "sha256": "12324bf1a45632a7f9372e60de974a3a47cbb99b166228e3ce69f0b27a130382",
       "encoding": "gzip",
@@ -270,7 +270,7 @@
     },
     {
       "id": "recipes-019-000",
-      "url": "./assets/recipes-019-000.f05bca5ea4158c3b.mpk.gz",
+      "url": "./assets/recipes-019-000.f05bca5ea4158c3b.mpk",
       "bytes": 19427,
       "sha256": "f05bca5ea4158c3b1cb42120466b2c81649f783031cd8dcb4c1c93388a1f3e81",
       "encoding": "gzip",
@@ -283,7 +283,7 @@
     },
     {
       "id": "recipes-020-000",
-      "url": "./assets/recipes-020-000.018074967a47d2a6.mpk.gz",
+      "url": "./assets/recipes-020-000.018074967a47d2a6.mpk",
       "bytes": 79623,
       "sha256": "018074967a47d2a647aaad90565a467b8d96365d24b23a74cd8ee62e9f188a9d",
       "encoding": "gzip",
@@ -296,7 +296,7 @@
     },
     {
       "id": "recipes-021-000",
-      "url": "./assets/recipes-021-000.fe6a7fc5c27e5d7c.mpk.gz",
+      "url": "./assets/recipes-021-000.fe6a7fc5c27e5d7c.mpk",
       "bytes": 22832,
       "sha256": "fe6a7fc5c27e5d7ccee601e064cd71a6cdabe22dbe8b0054e0aaeea328f23a82",
       "encoding": "gzip",
@@ -309,7 +309,7 @@
     },
     {
       "id": "recipes-022-000",
-      "url": "./assets/recipes-022-000.b9022bde8306e4cf.mpk.gz",
+      "url": "./assets/recipes-022-000.b9022bde8306e4cf.mpk",
       "bytes": 45211,
       "sha256": "b9022bde8306e4cf19ff7b6c8b38fcfeb4dd37a9fe05b6e6c1a0a5daf874c110",
       "encoding": "gzip",
@@ -322,7 +322,7 @@
     },
     {
       "id": "recipes-023-000",
-      "url": "./assets/recipes-023-000.f0431a95873b31fe.mpk.gz",
+      "url": "./assets/recipes-023-000.f0431a95873b31fe.mpk",
       "bytes": 104036,
       "sha256": "f0431a95873b31fee9334bc5e5c6161ed1b18618d6fa8b72514a638baf568a9e",
       "encoding": "gzip",
@@ -335,7 +335,7 @@
     },
     {
       "id": "recipes-024-000",
-      "url": "./assets/recipes-024-000.73f96077ab42ac1a.mpk.gz",
+      "url": "./assets/recipes-024-000.73f96077ab42ac1a.mpk",
       "bytes": 47224,
       "sha256": "73f96077ab42ac1ab68fb933bf385598521ffcea685dcca4c99aa9b1aebc1fd7",
       "encoding": "gzip",
@@ -348,7 +348,7 @@
     },
     {
       "id": "recipes-025-000",
-      "url": "./assets/recipes-025-000.d5dc8587762c0cdc.mpk.gz",
+      "url": "./assets/recipes-025-000.d5dc8587762c0cdc.mpk",
       "bytes": 101529,
       "sha256": "d5dc8587762c0cdcc62dc1807a01782fcc8336567f699fdcd55a6182facc1256",
       "encoding": "gzip",
@@ -361,7 +361,7 @@
     },
     {
       "id": "recipes-026-000",
-      "url": "./assets/recipes-026-000.01f0b6dec0c84992.mpk.gz",
+      "url": "./assets/recipes-026-000.01f0b6dec0c84992.mpk",
       "bytes": 42059,
       "sha256": "01f0b6dec0c8499242d0e3590f0015bf3782c5aa199393f52d63ab8028c0c8b7",
       "encoding": "gzip",
@@ -374,7 +374,7 @@
     },
     {
       "id": "recipes-027-000",
-      "url": "./assets/recipes-027-000.cea3f449edd30704.mpk.gz",
+      "url": "./assets/recipes-027-000.cea3f449edd30704.mpk",
       "bytes": 4784,
       "sha256": "cea3f449edd30704a9fede064f16358836cfa640088ea96203468be5c4ea0adb",
       "encoding": "gzip",
@@ -387,7 +387,7 @@
     },
     {
       "id": "recipes-028-000",
-      "url": "./assets/recipes-028-000.3e56acec7629fae2.mpk.gz",
+      "url": "./assets/recipes-028-000.3e56acec7629fae2.mpk",
       "bytes": 462768,
       "sha256": "3e56acec7629fae2bafd8d4a705fbb03f3eb5af300a007b0a631a3258d26acb6",
       "encoding": "gzip",
@@ -400,7 +400,7 @@
     },
     {
       "id": "recipes-029-000",
-      "url": "./assets/recipes-029-000.16c4d59fe2617785.mpk.gz",
+      "url": "./assets/recipes-029-000.16c4d59fe2617785.mpk",
       "bytes": 1471,
       "sha256": "16c4d59fe26177855241345a0ce8eab5865788acf0c299ba1cafcc030379d7b2",
       "encoding": "gzip",
@@ -413,7 +413,7 @@
     },
     {
       "id": "recipes-030-000",
-      "url": "./assets/recipes-030-000.5c870c3c234dc602.mpk.gz",
+      "url": "./assets/recipes-030-000.5c870c3c234dc602.mpk",
       "bytes": 12436,
       "sha256": "5c870c3c234dc602bfdc7857918276853a2e0e00172d919fd1b5ef37808f76f2",
       "encoding": "gzip",
@@ -426,7 +426,7 @@
     },
     {
       "id": "recipes-031-000",
-      "url": "./assets/recipes-031-000.8a4b6d9acfce951c.mpk.gz",
+      "url": "./assets/recipes-031-000.8a4b6d9acfce951c.mpk",
       "bytes": 27418,
       "sha256": "8a4b6d9acfce951c0973bcb33b5d4a08e537b440588ccfcc83a6ca79ddbd3e4d",
       "encoding": "gzip",
@@ -439,7 +439,7 @@
     },
     {
       "id": "recipes-032-000",
-      "url": "./assets/recipes-032-000.d094d3ba3c1897ca.mpk.gz",
+      "url": "./assets/recipes-032-000.d094d3ba3c1897ca.mpk",
       "bytes": 16360,
       "sha256": "d094d3ba3c1897ca2948632a51b0b9f3d1ed95c3f4d3c7dbe42af9e619aa3ad2",
       "encoding": "gzip",
@@ -452,7 +452,7 @@
     },
     {
       "id": "recipes-033-000",
-      "url": "./assets/recipes-033-000.1f787a0f0143c82e.mpk.gz",
+      "url": "./assets/recipes-033-000.1f787a0f0143c82e.mpk",
       "bytes": 24696,
       "sha256": "1f787a0f0143c82ea8a9ca61e1d47742f0c967dc5979eaaab02e7b6ce639e027",
       "encoding": "gzip",
@@ -465,7 +465,7 @@
     },
     {
       "id": "recipes-034-000",
-      "url": "./assets/recipes-034-000.3bed581af4309a53.mpk.gz",
+      "url": "./assets/recipes-034-000.3bed581af4309a53.mpk",
       "bytes": 2518,
       "sha256": "3bed581af4309a53eabac3680b0be9835331885d0e0b10a66495abc945818c1f",
       "encoding": "gzip",
@@ -478,7 +478,7 @@
     },
     {
       "id": "recipes-036-000",
-      "url": "./assets/recipes-036-000.862cea2c8d3941bf.mpk.gz",
+      "url": "./assets/recipes-036-000.862cea2c8d3941bf.mpk",
       "bytes": 18192,
       "sha256": "862cea2c8d3941bfd62fbdc9a4bc0d63144afed734531194175e089a5292a550",
       "encoding": "gzip",
@@ -491,7 +491,7 @@
     },
     {
       "id": "recipes-037-000",
-      "url": "./assets/recipes-037-000.2223f19574696635.mpk.gz",
+      "url": "./assets/recipes-037-000.2223f19574696635.mpk",
       "bytes": 468,
       "sha256": "2223f195746966357dacd47f3f4c1b988fdc97910aaee5f996a993ad2f3c8f91",
       "encoding": "gzip",
@@ -504,7 +504,7 @@
     },
     {
       "id": "recipes-038-000",
-      "url": "./assets/recipes-038-000.4d8e0f63c15e6f15.mpk.gz",
+      "url": "./assets/recipes-038-000.4d8e0f63c15e6f15.mpk",
       "bytes": 512,
       "sha256": "4d8e0f63c15e6f156de37e4ef3b1bf7a4191c7cb82e283cebed4700445a84f5f",
       "encoding": "gzip",
@@ -517,7 +517,7 @@
     },
     {
       "id": "recipes-039-000",
-      "url": "./assets/recipes-039-000.9701ee3538c2d4d9.mpk.gz",
+      "url": "./assets/recipes-039-000.9701ee3538c2d4d9.mpk",
       "bytes": 202648,
       "sha256": "9701ee3538c2d4d9ee0d9592edf10d7d4e46a7cf6e732f9b02aef31fa7922547",
       "encoding": "gzip",
@@ -530,7 +530,7 @@
     },
     {
       "id": "recipes-040-000",
-      "url": "./assets/recipes-040-000.7e3e59843015edd4.mpk.gz",
+      "url": "./assets/recipes-040-000.7e3e59843015edd4.mpk",
       "bytes": 15051,
       "sha256": "7e3e59843015edd435710803fbc4fc8688b5c292d505540ec324747c85f7376a",
       "encoding": "gzip",
@@ -543,7 +543,7 @@
     },
     {
       "id": "recipes-041-000",
-      "url": "./assets/recipes-041-000.584d01e3b68d9838.mpk.gz",
+      "url": "./assets/recipes-041-000.584d01e3b68d9838.mpk",
       "bytes": 67250,
       "sha256": "584d01e3b68d9838c59111afc1ac72d2ce1416e1a45f0c302fbf14b94766387b",
       "encoding": "gzip",
@@ -556,7 +556,7 @@
     },
     {
       "id": "recipes-042-000",
-      "url": "./assets/recipes-042-000.6d0a874846908bf0.mpk.gz",
+      "url": "./assets/recipes-042-000.6d0a874846908bf0.mpk",
       "bytes": 592,
       "sha256": "6d0a874846908bf0c57e68675da6e9cd62419e77a3a9d4411126740dbbdd03ed",
       "encoding": "gzip",
@@ -569,7 +569,7 @@
     },
     {
       "id": "recipes-043-000",
-      "url": "./assets/recipes-043-000.5030887a24b7ae23.mpk.gz",
+      "url": "./assets/recipes-043-000.5030887a24b7ae23.mpk",
       "bytes": 2822,
       "sha256": "5030887a24b7ae2399cc42711faf06af4f04d7831dc35671dba753552357b27c",
       "encoding": "gzip",
@@ -582,7 +582,7 @@
     },
     {
       "id": "recipes-044-000",
-      "url": "./assets/recipes-044-000.44eeeff827fcedad.mpk.gz",
+      "url": "./assets/recipes-044-000.44eeeff827fcedad.mpk",
       "bytes": 256246,
       "sha256": "44eeeff827fcedad9566e1b678fceecd81bc1befd88b95a1b6e16e20014e6e41",
       "encoding": "gzip",
@@ -595,7 +595,7 @@
     },
     {
       "id": "recipes-045-000",
-      "url": "./assets/recipes-045-000.4c800c1357c04d16.mpk.gz",
+      "url": "./assets/recipes-045-000.4c800c1357c04d16.mpk",
       "bytes": 604458,
       "sha256": "4c800c1357c04d1608d5a2bea4aa98c09d9b1f4b73cd60cfba8a323cbc50a5c5",
       "encoding": "gzip",
@@ -608,7 +608,7 @@
     },
     {
       "id": "recipes-046-000",
-      "url": "./assets/recipes-046-000.1ceebcb7a1040054.mpk.gz",
+      "url": "./assets/recipes-046-000.1ceebcb7a1040054.mpk",
       "bytes": 1783,
       "sha256": "1ceebcb7a1040054fb812bdf8cdcd088d70e54f9d027a0fa8b5539319d92591a",
       "encoding": "gzip",
@@ -621,7 +621,7 @@
     },
     {
       "id": "recipes-047-000",
-      "url": "./assets/recipes-047-000.5e78a1b24dac82c9.mpk.gz",
+      "url": "./assets/recipes-047-000.5e78a1b24dac82c9.mpk",
       "bytes": 468,
       "sha256": "5e78a1b24dac82c901f9400f8be1559c66479accfba64b8a5fbafc4b0c5855d7",
       "encoding": "gzip",
@@ -634,7 +634,7 @@
     },
     {
       "id": "recipes-048-000",
-      "url": "./assets/recipes-048-000.5d61638b66bc7ff9.mpk.gz",
+      "url": "./assets/recipes-048-000.5d61638b66bc7ff9.mpk",
       "bytes": 280610,
       "sha256": "5d61638b66bc7ff9f9edfad28c23603db7bfa909e379a00579fec2e44833ac90",
       "encoding": "gzip",
@@ -647,7 +647,7 @@
     },
     {
       "id": "recipes-049-000",
-      "url": "./assets/recipes-049-000.85de9db1ccb8e18e.mpk.gz",
+      "url": "./assets/recipes-049-000.85de9db1ccb8e18e.mpk",
       "bytes": 505,
       "sha256": "85de9db1ccb8e18ee8d33f1c9a1b4b2705bb0646a4a018a14c58bbe0a38ed31f",
       "encoding": "gzip",
@@ -660,7 +660,7 @@
     },
     {
       "id": "recipes-050-000",
-      "url": "./assets/recipes-050-000.bc78aa178aa0d786.mpk.gz",
+      "url": "./assets/recipes-050-000.bc78aa178aa0d786.mpk",
       "bytes": 85539,
       "sha256": "bc78aa178aa0d786ce2b08b526c07da613575857f905a97ebd42e73a6d34b88e",
       "encoding": "gzip",
@@ -673,7 +673,7 @@
     },
     {
       "id": "recipes-051-000",
-      "url": "./assets/recipes-051-000.1c2938477a2cc278.mpk.gz",
+      "url": "./assets/recipes-051-000.1c2938477a2cc278.mpk",
       "bytes": 11391,
       "sha256": "1c2938477a2cc278e791456d24bcb7544b680c344e5a422a109d26576c3472ed",
       "encoding": "gzip",
@@ -686,7 +686,7 @@
     },
     {
       "id": "recipes-052-000",
-      "url": "./assets/recipes-052-000.7a846c9186f78212.mpk.gz",
+      "url": "./assets/recipes-052-000.7a846c9186f78212.mpk",
       "bytes": 298909,
       "sha256": "7a846c9186f78212398cd83784bec723e377ca5454fb22ed775e7c84964af7be",
       "encoding": "gzip",
@@ -699,7 +699,7 @@
     },
     {
       "id": "recipes-053-000",
-      "url": "./assets/recipes-053-000.697ba8dacc9adc7e.mpk.gz",
+      "url": "./assets/recipes-053-000.697ba8dacc9adc7e.mpk",
       "bytes": 5282,
       "sha256": "697ba8dacc9adc7ef0a9f84f7a20c4ef221d8aa6f76df9ed76158c6551d289e0",
       "encoding": "gzip",
@@ -712,7 +712,7 @@
     },
     {
       "id": "recipes-054-000",
-      "url": "./assets/recipes-054-000.aba7d06369f3b7d0.mpk.gz",
+      "url": "./assets/recipes-054-000.aba7d06369f3b7d0.mpk",
       "bytes": 1771,
       "sha256": "aba7d06369f3b7d0a0905c5bc56484bd2be8bf7c070606e4edc40d2eb59478ca",
       "encoding": "gzip",
@@ -725,7 +725,7 @@
     },
     {
       "id": "recipes-055-000",
-      "url": "./assets/recipes-055-000.41f9a7bc81289301.mpk.gz",
+      "url": "./assets/recipes-055-000.41f9a7bc81289301.mpk",
       "bytes": 230085,
       "sha256": "41f9a7bc81289301f676485d4becc6a54705825c6234dabbaf6cad231df38d2e",
       "encoding": "gzip",
@@ -738,7 +738,7 @@
     },
     {
       "id": "recipes-056-000",
-      "url": "./assets/recipes-056-000.66cbacc8e890e324.mpk.gz",
+      "url": "./assets/recipes-056-000.66cbacc8e890e324.mpk",
       "bytes": 463,
       "sha256": "66cbacc8e890e324b1eca9591ecad0ce770d264d16920df0e0de02adb97bb08b",
       "encoding": "gzip",
@@ -751,7 +751,7 @@
     },
     {
       "id": "recipes-057-000",
-      "url": "./assets/recipes-057-000.ded9ddbe6a0ea022.mpk.gz",
+      "url": "./assets/recipes-057-000.ded9ddbe6a0ea022.mpk",
       "bytes": 1811,
       "sha256": "ded9ddbe6a0ea022ba3694ae80aae820b9ab2d3dd1e1f35ebba374544f326631",
       "encoding": "gzip",
@@ -764,7 +764,7 @@
     },
     {
       "id": "recipes-058-000",
-      "url": "./assets/recipes-058-000.fc01e51e5ceefba9.mpk.gz",
+      "url": "./assets/recipes-058-000.fc01e51e5ceefba9.mpk",
       "bytes": 55940,
       "sha256": "fc01e51e5ceefba9f52c584f05e7bff644e82218beabb045907ba415f0cf88c7",
       "encoding": "gzip",
@@ -777,7 +777,7 @@
     },
     {
       "id": "recipes-059-000",
-      "url": "./assets/recipes-059-000.8123ca1cfdd41e39.mpk.gz",
+      "url": "./assets/recipes-059-000.8123ca1cfdd41e39.mpk",
       "bytes": 589,
       "sha256": "8123ca1cfdd41e3963060e7d7a4f7f3896ffe5cea072b7f4bef1681cc6fa4ab1",
       "encoding": "gzip",
@@ -790,7 +790,7 @@
     },
     {
       "id": "recipes-060-000",
-      "url": "./assets/recipes-060-000.19a74c6cd3423772.mpk.gz",
+      "url": "./assets/recipes-060-000.19a74c6cd3423772.mpk",
       "bytes": 3109,
       "sha256": "19a74c6cd3423772e272a7f025a4804a64c4aae4e4b71afd4ee700855a436a58",
       "encoding": "gzip",
@@ -803,7 +803,7 @@
     },
     {
       "id": "recipes-061-000",
-      "url": "./assets/recipes-061-000.ab9f518563f3ef14.mpk.gz",
+      "url": "./assets/recipes-061-000.ab9f518563f3ef14.mpk",
       "bytes": 103133,
       "sha256": "ab9f518563f3ef147715f6095e1ab6b9c2d914d6bab50c18fad6bd8895afefa8",
       "encoding": "gzip",
@@ -816,7 +816,7 @@
     },
     {
       "id": "recipes-062-000",
-      "url": "./assets/recipes-062-000.ce8749a958792966.mpk.gz",
+      "url": "./assets/recipes-062-000.ce8749a958792966.mpk",
       "bytes": 460,
       "sha256": "ce8749a9587929662c4e7651307f1ecf5e054a52fd44a0fb3a2639588490b889",
       "encoding": "gzip",
@@ -829,7 +829,7 @@
     },
     {
       "id": "recipes-063-000",
-      "url": "./assets/recipes-063-000.56cd3d38f6fc8dc8.mpk.gz",
+      "url": "./assets/recipes-063-000.56cd3d38f6fc8dc8.mpk",
       "bytes": 100932,
       "sha256": "56cd3d38f6fc8dc8f4e5c9a605ace4c215a515d150a58f87d98f97bdaae4e3d6",
       "encoding": "gzip",
@@ -842,7 +842,7 @@
     },
     {
       "id": "recipes-064-000",
-      "url": "./assets/recipes-064-000.4fde5b9d8c6e44e2.mpk.gz",
+      "url": "./assets/recipes-064-000.4fde5b9d8c6e44e2.mpk",
       "bytes": 79223,
       "sha256": "4fde5b9d8c6e44e21b5983b54f9af99cf933f8ab59490e2129974034ec6f48a8",
       "encoding": "gzip",
@@ -855,7 +855,7 @@
     },
     {
       "id": "recipes-065-000",
-      "url": "./assets/recipes-065-000.c2758afa0df59ffb.mpk.gz",
+      "url": "./assets/recipes-065-000.c2758afa0df59ffb.mpk",
       "bytes": 902146,
       "sha256": "c2758afa0df59ffb9e57425016280af13ae4baec4d71832fc012e592a850370f",
       "encoding": "gzip",
@@ -868,7 +868,7 @@
     },
     {
       "id": "recipes-066-000",
-      "url": "./assets/recipes-066-000.b061479ab3bd18d9.mpk.gz",
+      "url": "./assets/recipes-066-000.b061479ab3bd18d9.mpk",
       "bytes": 4926,
       "sha256": "b061479ab3bd18d9dd97cfaba7fabe8f62c3849d245b9a56564d1c0da43b4193",
       "encoding": "gzip",
@@ -881,7 +881,7 @@
     },
     {
       "id": "recipes-067-000",
-      "url": "./assets/recipes-067-000.59c709d39859df57.mpk.gz",
+      "url": "./assets/recipes-067-000.59c709d39859df57.mpk",
       "bytes": 447,
       "sha256": "59c709d39859df5757ceb90c7e1c1e4007f88c2dfaaea2d300751431026766d3",
       "encoding": "gzip",
@@ -894,7 +894,7 @@
     },
     {
       "id": "recipes-068-000",
-      "url": "./assets/recipes-068-000.7b9f8c797789f89a.mpk.gz",
+      "url": "./assets/recipes-068-000.7b9f8c797789f89a.mpk",
       "bytes": 172305,
       "sha256": "7b9f8c797789f89a56d67e3629dc488bf0a62c9ce7ef6c4ff4d18a5632b67e2d",
       "encoding": "gzip",
@@ -907,7 +907,7 @@
     },
     {
       "id": "recipes-069-000",
-      "url": "./assets/recipes-069-000.7c3b59bfd3c21ff1.mpk.gz",
+      "url": "./assets/recipes-069-000.7c3b59bfd3c21ff1.mpk",
       "bytes": 65921,
       "sha256": "7c3b59bfd3c21ff121f06b2f74f5e1bba12660db012a49338808723fe1b4abd6",
       "encoding": "gzip",
@@ -920,7 +920,7 @@
     },
     {
       "id": "recipes-070-000",
-      "url": "./assets/recipes-070-000.ecdae1491c4fe09f.mpk.gz",
+      "url": "./assets/recipes-070-000.ecdae1491c4fe09f.mpk",
       "bytes": 1801,
       "sha256": "ecdae1491c4fe09f717d3ab401a10b31358fd4ade7749bd13529d05586824033",
       "encoding": "gzip",
@@ -933,7 +933,7 @@
     },
     {
       "id": "recipes-071-000",
-      "url": "./assets/recipes-071-000.6489c15a58b3530a.mpk.gz",
+      "url": "./assets/recipes-071-000.6489c15a58b3530a.mpk",
       "bytes": 4379,
       "sha256": "6489c15a58b3530aa6ee6166b51354d5c0edd2f91ebcd0e26cd8ba072421998f",
       "encoding": "gzip",
@@ -946,7 +946,7 @@
     },
     {
       "id": "recipes-072-000",
-      "url": "./assets/recipes-072-000.ac66a8d96f1ce6e6.mpk.gz",
+      "url": "./assets/recipes-072-000.ac66a8d96f1ce6e6.mpk",
       "bytes": 32164,
       "sha256": "ac66a8d96f1ce6e609581dc8d97aea9d10dba0ec602486c57463d62f4350fd90",
       "encoding": "gzip",
@@ -959,7 +959,7 @@
     },
     {
       "id": "recipes-073-000",
-      "url": "./assets/recipes-073-000.a650b681463e7c39.mpk.gz",
+      "url": "./assets/recipes-073-000.a650b681463e7c39.mpk",
       "bytes": 103309,
       "sha256": "a650b681463e7c397e2e4308598726f3896db0a23ed1abdd5c0f8be61866b30d",
       "encoding": "gzip",
@@ -972,7 +972,7 @@
     },
     {
       "id": "recipes-074-000",
-      "url": "./assets/recipes-074-000.68e716e783b5b78d.mpk.gz",
+      "url": "./assets/recipes-074-000.68e716e783b5b78d.mpk",
       "bytes": 5843,
       "sha256": "68e716e783b5b78d5684336657cc0bee0c90d6834c92baa8c6efca49ff373df8",
       "encoding": "gzip",
@@ -985,7 +985,7 @@
     },
     {
       "id": "recipes-075-000",
-      "url": "./assets/recipes-075-000.225d2a1e4260160e.mpk.gz",
+      "url": "./assets/recipes-075-000.225d2a1e4260160e.mpk",
       "bytes": 5749,
       "sha256": "225d2a1e4260160ee367032ef5c50b72fbd247166323a455e93117130495c8c8",
       "encoding": "gzip",
@@ -998,7 +998,7 @@
     },
     {
       "id": "recipes-076-000",
-      "url": "./assets/recipes-076-000.9befb6f2f2ff55d4.mpk.gz",
+      "url": "./assets/recipes-076-000.9befb6f2f2ff55d4.mpk",
       "bytes": 8368,
       "sha256": "9befb6f2f2ff55d45be92185be8f7c673830bcf24298f07aca01129b67b0f26e",
       "encoding": "gzip",
@@ -1011,7 +1011,7 @@
     },
     {
       "id": "recipes-077-000",
-      "url": "./assets/recipes-077-000.0ac3306d64328c0f.mpk.gz",
+      "url": "./assets/recipes-077-000.0ac3306d64328c0f.mpk",
       "bytes": 6420,
       "sha256": "0ac3306d64328c0fa1f3e4fd53510752cd2099afefbbd1a8960519fff8da0ab2",
       "encoding": "gzip",
@@ -1024,7 +1024,7 @@
     },
     {
       "id": "recipes-078-000",
-      "url": "./assets/recipes-078-000.3525aaba40daf7c2.mpk.gz",
+      "url": "./assets/recipes-078-000.3525aaba40daf7c2.mpk",
       "bytes": 8067,
       "sha256": "3525aaba40daf7c2ed12a0eb19d0c789f9d4ae456f34c15a93953ea3f1b945c4",
       "encoding": "gzip",
@@ -1037,7 +1037,7 @@
     },
     {
       "id": "recipes-079-000",
-      "url": "./assets/recipes-079-000.35605fda21d67c4f.mpk.gz",
+      "url": "./assets/recipes-079-000.35605fda21d67c4f.mpk",
       "bytes": 21503,
       "sha256": "35605fda21d67c4f0685e099761042692a129dc273d1fbee86856afad19b4300",
       "encoding": "gzip",
@@ -1050,7 +1050,7 @@
     },
     {
       "id": "recipes-080-000",
-      "url": "./assets/recipes-080-000.294ce25ce322d372.mpk.gz",
+      "url": "./assets/recipes-080-000.294ce25ce322d372.mpk",
       "bytes": 17637,
       "sha256": "294ce25ce322d372ccaf671d7bca80fe946d4ef387f944eaa4daf69b0a216fea",
       "encoding": "gzip",
@@ -1063,7 +1063,7 @@
     },
     {
       "id": "recipes-081-000",
-      "url": "./assets/recipes-081-000.b602d9f1a1b5ca39.mpk.gz",
+      "url": "./assets/recipes-081-000.b602d9f1a1b5ca39.mpk",
       "bytes": 659,
       "sha256": "b602d9f1a1b5ca397fb52b392da0ad5b996c0f4392e6d7bbc3965beb47ce9547",
       "encoding": "gzip",
@@ -1076,7 +1076,7 @@
     },
     {
       "id": "recipes-082-000",
-      "url": "./assets/recipes-082-000.269cca0903784f78.mpk.gz",
+      "url": "./assets/recipes-082-000.269cca0903784f78.mpk",
       "bytes": 490,
       "sha256": "269cca0903784f783c4d544827825f9e476e083d0dbd937a51199389c12414eb",
       "encoding": "gzip",
@@ -1089,7 +1089,7 @@
     },
     {
       "id": "recipes-083-000",
-      "url": "./assets/recipes-083-000.5429eef02160752a.mpk.gz",
+      "url": "./assets/recipes-083-000.5429eef02160752a.mpk",
       "bytes": 370,
       "sha256": "5429eef02160752af3b5554886b198d76ac50fbd97cf9abae6fa4da08784c949",
       "encoding": "gzip",
@@ -1102,7 +1102,7 @@
     },
     {
       "id": "recipes-084-000",
-      "url": "./assets/recipes-084-000.576e20ac9aa42dcc.mpk.gz",
+      "url": "./assets/recipes-084-000.576e20ac9aa42dcc.mpk",
       "bytes": 467,
       "sha256": "576e20ac9aa42dcc169347d4fa9ee5479d31a84d2b814200cd044ba99faef016",
       "encoding": "gzip",
@@ -1115,7 +1115,7 @@
     },
     {
       "id": "recipes-085-000",
-      "url": "./assets/recipes-085-000.1e5327c22e29d35a.mpk.gz",
+      "url": "./assets/recipes-085-000.1e5327c22e29d35a.mpk",
       "bytes": 562,
       "sha256": "1e5327c22e29d35ac398123bbcf02a62809a6f485633b1d9bfba050bf8148fe2",
       "encoding": "gzip",
@@ -1128,7 +1128,7 @@
     },
     {
       "id": "recipes-086-000",
-      "url": "./assets/recipes-086-000.9696b039c788d6f9.mpk.gz",
+      "url": "./assets/recipes-086-000.9696b039c788d6f9.mpk",
       "bytes": 377,
       "sha256": "9696b039c788d6f97d29789eab7738f38e74908b569b1e32d4d1c1b9bd8ba398",
       "encoding": "gzip",
@@ -1141,7 +1141,7 @@
     },
     {
       "id": "recipes-087-000",
-      "url": "./assets/recipes-087-000.af591bf423f7b1dc.mpk.gz",
+      "url": "./assets/recipes-087-000.af591bf423f7b1dc.mpk",
       "bytes": 381,
       "sha256": "af591bf423f7b1dcac4ccfa079753c53996d6b7f558e2b57184d31b02e1aa726",
       "encoding": "gzip",
@@ -1154,7 +1154,7 @@
     },
     {
       "id": "recipes-088-000",
-      "url": "./assets/recipes-088-000.a9928fecb50eaf89.mpk.gz",
+      "url": "./assets/recipes-088-000.a9928fecb50eaf89.mpk",
       "bytes": 545,
       "sha256": "a9928fecb50eaf899bdfbbb9c1e3f4ad7643062618d30d9b8d211c89832c7298",
       "encoding": "gzip",
@@ -1167,7 +1167,7 @@
     },
     {
       "id": "recipes-089-000",
-      "url": "./assets/recipes-089-000.5360381939b2a12e.mpk.gz",
+      "url": "./assets/recipes-089-000.5360381939b2a12e.mpk",
       "bytes": 391,
       "sha256": "5360381939b2a12ef443ed892b789b012438679005c908fd78e006787bfb8e32",
       "encoding": "gzip",
@@ -1180,7 +1180,7 @@
     },
     {
       "id": "recipes-090-000",
-      "url": "./assets/recipes-090-000.6d7779c529b2a59b.mpk.gz",
+      "url": "./assets/recipes-090-000.6d7779c529b2a59b.mpk",
       "bytes": 66754,
       "sha256": "6d7779c529b2a59b6c17b122bb9b6374d585a3525d6148bf70c2d91049fcd330",
       "encoding": "gzip",
@@ -1193,7 +1193,7 @@
     },
     {
       "id": "recipes-091-000",
-      "url": "./assets/recipes-091-000.d568480c965d1e01.mpk.gz",
+      "url": "./assets/recipes-091-000.d568480c965d1e01.mpk",
       "bytes": 1566,
       "sha256": "d568480c965d1e01b2bc45d53f88f454d9e605ba32f97d4aeb03e9011f8873cd",
       "encoding": "gzip",
@@ -1206,7 +1206,7 @@
     },
     {
       "id": "recipes-092-000",
-      "url": "./assets/recipes-092-000.54c4bcddb0b3d64c.mpk.gz",
+      "url": "./assets/recipes-092-000.54c4bcddb0b3d64c.mpk",
       "bytes": 4763,
       "sha256": "54c4bcddb0b3d64c9ed3adf8071cd22231ccb9b7d6bb17e723ac373bb3fb694d",
       "encoding": "gzip",
@@ -1219,7 +1219,7 @@
     },
     {
       "id": "recipes-093-000",
-      "url": "./assets/recipes-093-000.9620c9567bb96a6b.mpk.gz",
+      "url": "./assets/recipes-093-000.9620c9567bb96a6b.mpk",
       "bytes": 18350,
       "sha256": "9620c9567bb96a6b6c80256a3e3280c514f401a1594ce5bdc2d185e5d9c91cdb",
       "encoding": "gzip",
@@ -1232,7 +1232,7 @@
     },
     {
       "id": "recipes-094-000",
-      "url": "./assets/recipes-094-000.f0acd24f3afdd9f7.mpk.gz",
+      "url": "./assets/recipes-094-000.f0acd24f3afdd9f7.mpk",
       "bytes": 826,
       "sha256": "f0acd24f3afdd9f79fbda294c0a2ea5c721c3c7744f75000ed7983bf4c02b9ef",
       "encoding": "gzip",
@@ -1245,7 +1245,7 @@
     },
     {
       "id": "recipes-095-000",
-      "url": "./assets/recipes-095-000.e7224698e0d696d0.mpk.gz",
+      "url": "./assets/recipes-095-000.e7224698e0d696d0.mpk",
       "bytes": 11499,
       "sha256": "e7224698e0d696d0e94b7d0fbda443c3de5a783bf481b00b837d15fdd0dfb474",
       "encoding": "gzip",
@@ -1258,7 +1258,7 @@
     },
     {
       "id": "recipes-096-000",
-      "url": "./assets/recipes-096-000.f399223840ffb303.mpk.gz",
+      "url": "./assets/recipes-096-000.f399223840ffb303.mpk",
       "bytes": 9887,
       "sha256": "f399223840ffb30379d25ad45ceeb423d0484150e6d83f63dad9b261b66a212d",
       "encoding": "gzip",
@@ -1271,7 +1271,7 @@
     },
     {
       "id": "recipes-097-000",
-      "url": "./assets/recipes-097-000.1cd1d47d2e8a5ee7.mpk.gz",
+      "url": "./assets/recipes-097-000.1cd1d47d2e8a5ee7.mpk",
       "bytes": 4291,
       "sha256": "1cd1d47d2e8a5ee7689580caa836631514defa3dccdd3cb5eae8780222ac2543",
       "encoding": "gzip",
@@ -1284,7 +1284,7 @@
     },
     {
       "id": "recipes-098-000",
-      "url": "./assets/recipes-098-000.acad33193086999e.mpk.gz",
+      "url": "./assets/recipes-098-000.acad33193086999e.mpk",
       "bytes": 455,
       "sha256": "acad33193086999efec7eefecc5b6ab9b82c27e25d95e85e0e03c4b29ffcb2ae",
       "encoding": "gzip",
@@ -1297,7 +1297,7 @@
     },
     {
       "id": "recipes-099-000",
-      "url": "./assets/recipes-099-000.5a03182934b859f7.mpk.gz",
+      "url": "./assets/recipes-099-000.5a03182934b859f7.mpk",
       "bytes": 4010,
       "sha256": "5a03182934b859f7ffa57fca28acd978caa09fc24bece64e383687eea4ede766",
       "encoding": "gzip",
@@ -1310,7 +1310,7 @@
     },
     {
       "id": "recipes-100-000",
-      "url": "./assets/recipes-100-000.af56f7bd86d9febc.mpk.gz",
+      "url": "./assets/recipes-100-000.af56f7bd86d9febc.mpk",
       "bytes": 3630,
       "sha256": "af56f7bd86d9febcced3626d73753619ad1a5b899b699527abdc042e2fb88587",
       "encoding": "gzip",
@@ -1323,7 +1323,7 @@
     },
     {
       "id": "recipes-103-000",
-      "url": "./assets/recipes-103-000.0e8fb7792e4fd425.mpk.gz",
+      "url": "./assets/recipes-103-000.0e8fb7792e4fd425.mpk",
       "bytes": 34471,
       "sha256": "0e8fb7792e4fd4259f61434ed5c6459922b980b5861a463f9c5620c248ce70d2",
       "encoding": "gzip",
@@ -1336,7 +1336,7 @@
     },
     {
       "id": "recipes-104-000",
-      "url": "./assets/recipes-104-000.ed5b14bfb805338f.mpk.gz",
+      "url": "./assets/recipes-104-000.ed5b14bfb805338f.mpk",
       "bytes": 623,
       "sha256": "ed5b14bfb805338fd6f523cf60a4ba6b21ccfa129e9b91a4b0e8e52d335a40d6",
       "encoding": "gzip",
@@ -1349,7 +1349,7 @@
     },
     {
       "id": "recipes-105-000",
-      "url": "./assets/recipes-105-000.8e59eee671b50a0f.mpk.gz",
+      "url": "./assets/recipes-105-000.8e59eee671b50a0f.mpk",
       "bytes": 1484,
       "sha256": "8e59eee671b50a0f0dcc41e7190d945bd83ebcdc6741332b2f6b2f3c9b5eb048",
       "encoding": "gzip",
@@ -1362,7 +1362,7 @@
     },
     {
       "id": "recipes-106-000",
-      "url": "./assets/recipes-106-000.43e1350e18d54e08.mpk.gz",
+      "url": "./assets/recipes-106-000.43e1350e18d54e08.mpk",
       "bytes": 15871,
       "sha256": "43e1350e18d54e08c9cff4c3945fc6d3010dd69508fe356730e28a710c81ff7c",
       "encoding": "gzip",
@@ -1375,7 +1375,7 @@
     },
     {
       "id": "recipes-107-000",
-      "url": "./assets/recipes-107-000.92ce269f3909194d.mpk.gz",
+      "url": "./assets/recipes-107-000.92ce269f3909194d.mpk",
       "bytes": 1361,
       "sha256": "92ce269f3909194d9513d05eff650cbaae5a9d191b4a90e7a547972b0102e978",
       "encoding": "gzip",
@@ -1388,7 +1388,7 @@
     },
     {
       "id": "recipes-108-000",
-      "url": "./assets/recipes-108-000.14fbff2c5cf41e4d.mpk.gz",
+      "url": "./assets/recipes-108-000.14fbff2c5cf41e4d.mpk",
       "bytes": 405,
       "sha256": "14fbff2c5cf41e4de259eabe742ad6cbd3972622578d9d3f32d9544b7b3ad1ac",
       "encoding": "gzip",
@@ -1401,7 +1401,7 @@
     },
     {
       "id": "recipes-109-000",
-      "url": "./assets/recipes-109-000.583fc067e724eb79.mpk.gz",
+      "url": "./assets/recipes-109-000.583fc067e724eb79.mpk",
       "bytes": 18620,
       "sha256": "583fc067e724eb7934e619922599d66c044180e5f8f6e7480bf59168e4be54ae",
       "encoding": "gzip",
@@ -1414,7 +1414,7 @@
     },
     {
       "id": "recipes-110-000",
-      "url": "./assets/recipes-110-000.ad718f9eb35e7e4a.mpk.gz",
+      "url": "./assets/recipes-110-000.ad718f9eb35e7e4a.mpk",
       "bytes": 63012,
       "sha256": "ad718f9eb35e7e4a1423eb4f60a619f4c30209daa4f6221875a375da8c5e01ee",
       "encoding": "gzip",
@@ -1427,7 +1427,7 @@
     },
     {
       "id": "recipes-111-000",
-      "url": "./assets/recipes-111-000.8bf42d227eb52ae9.mpk.gz",
+      "url": "./assets/recipes-111-000.8bf42d227eb52ae9.mpk",
       "bytes": 2055,
       "sha256": "8bf42d227eb52ae9e51f7abc362f890432b77fb5f275132099a42eff7873fc23",
       "encoding": "gzip",
@@ -1440,7 +1440,7 @@
     },
     {
       "id": "recipes-112-000",
-      "url": "./assets/recipes-112-000.460614730847a21a.mpk.gz",
+      "url": "./assets/recipes-112-000.460614730847a21a.mpk",
       "bytes": 2760,
       "sha256": "460614730847a21a1134871cd7b73cd1e1a95123a737007b9c145bd0df25c3b2",
       "encoding": "gzip",
@@ -1453,7 +1453,7 @@
     },
     {
       "id": "recipes-113-000",
-      "url": "./assets/recipes-113-000.792caabd61055dcb.mpk.gz",
+      "url": "./assets/recipes-113-000.792caabd61055dcb.mpk",
       "bytes": 572,
       "sha256": "792caabd61055dcba9a381187684347bf02b7f29421f81be88d1006a58cc287d",
       "encoding": "gzip",
@@ -1466,7 +1466,7 @@
     },
     {
       "id": "recipes-114-000",
-      "url": "./assets/recipes-114-000.aff2f2e90352053e.mpk.gz",
+      "url": "./assets/recipes-114-000.aff2f2e90352053e.mpk",
       "bytes": 5139,
       "sha256": "aff2f2e90352053ea1776838264607a286715f0c69b2178e24ef30413da22e59",
       "encoding": "gzip",
@@ -1479,7 +1479,7 @@
     },
     {
       "id": "recipes-115-000",
-      "url": "./assets/recipes-115-000.f980c28d728faf70.mpk.gz",
+      "url": "./assets/recipes-115-000.f980c28d728faf70.mpk",
       "bytes": 574,
       "sha256": "f980c28d728faf70324fb59409e514408b19dbe8879a6bfe249a7f4adaf55fea",
       "encoding": "gzip",
@@ -1492,7 +1492,7 @@
     },
     {
       "id": "recipes-116-000",
-      "url": "./assets/recipes-116-000.6eabc979ec8205e5.mpk.gz",
+      "url": "./assets/recipes-116-000.6eabc979ec8205e5.mpk",
       "bytes": 23718,
       "sha256": "6eabc979ec8205e5edb4ff39ea7001adcc92cf398ceb5f52e6c91f9b1dd65639",
       "encoding": "gzip",
@@ -1505,7 +1505,7 @@
     },
     {
       "id": "recipes-117-000",
-      "url": "./assets/recipes-117-000.87e8a6efd641e9ab.mpk.gz",
+      "url": "./assets/recipes-117-000.87e8a6efd641e9ab.mpk",
       "bytes": 8214,
       "sha256": "87e8a6efd641e9ab0bb9f8d525f1315daf23a7205a29c05eecab17eb807c299a",
       "encoding": "gzip",
@@ -1518,7 +1518,7 @@
     },
     {
       "id": "recipes-118-000",
-      "url": "./assets/recipes-118-000.b1103cd1a91230d2.mpk.gz",
+      "url": "./assets/recipes-118-000.b1103cd1a91230d2.mpk",
       "bytes": 67887,
       "sha256": "b1103cd1a91230d2c566fb35ee35be2075fde84c3c53fe07ca9613e04e372fd9",
       "encoding": "gzip",
@@ -1531,7 +1531,7 @@
     },
     {
       "id": "recipes-119-000",
-      "url": "./assets/recipes-119-000.0c695323961c3ee7.mpk.gz",
+      "url": "./assets/recipes-119-000.0c695323961c3ee7.mpk",
       "bytes": 650,
       "sha256": "0c695323961c3ee757bb88da8625b70b3cc40798455a14c0025fc93050e806d5",
       "encoding": "gzip",
@@ -1544,7 +1544,7 @@
     },
     {
       "id": "recipes-120-000",
-      "url": "./assets/recipes-120-000.1a82a5773a2ff145.mpk.gz",
+      "url": "./assets/recipes-120-000.1a82a5773a2ff145.mpk",
       "bytes": 16516,
       "sha256": "1a82a5773a2ff14554e96e5a36509cfee290d4d66ddba31558f9cbe50befd231",
       "encoding": "gzip",
@@ -1557,7 +1557,7 @@
     },
     {
       "id": "recipes-121-000",
-      "url": "./assets/recipes-121-000.f9fff3b044746c94.mpk.gz",
+      "url": "./assets/recipes-121-000.f9fff3b044746c94.mpk",
       "bytes": 2307,
       "sha256": "f9fff3b044746c94ff740c77476cd72a9811b79c7a508fdcdea499cd65506a3f",
       "encoding": "gzip",
@@ -1570,7 +1570,7 @@
     },
     {
       "id": "recipes-122-000",
-      "url": "./assets/recipes-122-000.0a5e84439db43485.mpk.gz",
+      "url": "./assets/recipes-122-000.0a5e84439db43485.mpk",
       "bytes": 1097,
       "sha256": "0a5e84439db43485c51c38b46bcb65a7a8f25b22253bf838505af0c4a275af09",
       "encoding": "gzip",
@@ -1583,7 +1583,7 @@
     },
     {
       "id": "recipes-123-000",
-      "url": "./assets/recipes-123-000.315512ccd9bbbdfd.mpk.gz",
+      "url": "./assets/recipes-123-000.315512ccd9bbbdfd.mpk",
       "bytes": 742,
       "sha256": "315512ccd9bbbdfd91a1e2a95541df49930b39e4d715fe2dcd557013f1c64434",
       "encoding": "gzip",
@@ -1596,7 +1596,7 @@
     },
     {
       "id": "recipes-124-000",
-      "url": "./assets/recipes-124-000.bb01a8882bc75f70.mpk.gz",
+      "url": "./assets/recipes-124-000.bb01a8882bc75f70.mpk",
       "bytes": 1301,
       "sha256": "bb01a8882bc75f707d744435781058e2a74e8ea20c85b59b6d73db56a5543586",
       "encoding": "gzip",
@@ -1609,7 +1609,7 @@
     },
     {
       "id": "recipes-125-000",
-      "url": "./assets/recipes-125-000.d730b1aa686d1708.mpk.gz",
+      "url": "./assets/recipes-125-000.d730b1aa686d1708.mpk",
       "bytes": 16504,
       "sha256": "d730b1aa686d1708c81e158e49a78bd21c84b808171cc82f0cb62377a51e8e55",
       "encoding": "gzip",
@@ -1622,7 +1622,7 @@
     },
     {
       "id": "recipes-126-000",
-      "url": "./assets/recipes-126-000.f6129aeb103f6e21.mpk.gz",
+      "url": "./assets/recipes-126-000.f6129aeb103f6e21.mpk",
       "bytes": 749,
       "sha256": "f6129aeb103f6e21378238d7904fd6fecdd5e05b7d1529df3c9833ead664c808",
       "encoding": "gzip",
@@ -1635,7 +1635,7 @@
     },
     {
       "id": "recipes-127-000",
-      "url": "./assets/recipes-127-000.b888c42e14a38075.mpk.gz",
+      "url": "./assets/recipes-127-000.b888c42e14a38075.mpk",
       "bytes": 618,
       "sha256": "b888c42e14a380757d1d7f290b1f0bbb9481cd8f9ea6d8caf004b3fc89f57dae",
       "encoding": "gzip",
@@ -1648,7 +1648,7 @@
     },
     {
       "id": "recipes-128-000",
-      "url": "./assets/recipes-128-000.6ec857e3a39c99b4.mpk.gz",
+      "url": "./assets/recipes-128-000.6ec857e3a39c99b4.mpk",
       "bytes": 683,
       "sha256": "6ec857e3a39c99b450f88e908a5cd8ded935331009e497de6b32a7caada476a0",
       "encoding": "gzip",
@@ -1661,7 +1661,7 @@
     },
     {
       "id": "recipes-129-000",
-      "url": "./assets/recipes-129-000.82d5c437987db0fe.mpk.gz",
+      "url": "./assets/recipes-129-000.82d5c437987db0fe.mpk",
       "bytes": 1351,
       "sha256": "82d5c437987db0fe2301615057c216a4f9b305ed2973836bf9af70288f17e011",
       "encoding": "gzip",
@@ -1674,7 +1674,7 @@
     },
     {
       "id": "recipes-130-000",
-      "url": "./assets/recipes-130-000.a0fe32e37796528c.mpk.gz",
+      "url": "./assets/recipes-130-000.a0fe32e37796528c.mpk",
       "bytes": 104286,
       "sha256": "a0fe32e37796528cab38910af84e8350d5675389dca05c34ec5567184edb5f99",
       "encoding": "gzip",
@@ -1687,7 +1687,7 @@
     },
     {
       "id": "recipes-131-000",
-      "url": "./assets/recipes-131-000.89831a937ba31b8f.mpk.gz",
+      "url": "./assets/recipes-131-000.89831a937ba31b8f.mpk",
       "bytes": 8292,
       "sha256": "89831a937ba31b8fb68b5c1e0800be2d9bffac23c0a7af7e44d37c7c01ac7013",
       "encoding": "gzip",
@@ -1700,7 +1700,7 @@
     },
     {
       "id": "recipes-132-000",
-      "url": "./assets/recipes-132-000.c039f5e94362293d.mpk.gz",
+      "url": "./assets/recipes-132-000.c039f5e94362293d.mpk",
       "bytes": 23989,
       "sha256": "c039f5e94362293d5c094a1b7038a85f7ca0a381865a20c9d54eeefbfd8133ff",
       "encoding": "gzip",
@@ -1713,7 +1713,7 @@
     },
     {
       "id": "recipes-133-000",
-      "url": "./assets/recipes-133-000.05fc3b7758971dbf.mpk.gz",
+      "url": "./assets/recipes-133-000.05fc3b7758971dbf.mpk",
       "bytes": 67436,
       "sha256": "05fc3b7758971dbf58815855cc348bdfcacc9397f4f24164a3931271912d3823",
       "encoding": "gzip",
@@ -1726,7 +1726,7 @@
     },
     {
       "id": "recipes-134-000",
-      "url": "./assets/recipes-134-000.374c938a4e26b8af.mpk.gz",
+      "url": "./assets/recipes-134-000.374c938a4e26b8af.mpk",
       "bytes": 1240,
       "sha256": "374c938a4e26b8afdee9d786a1612a76647f233e6c7e56c5df9d9256e0a58600",
       "encoding": "gzip",
@@ -1739,7 +1739,7 @@
     },
     {
       "id": "recipes-135-000",
-      "url": "./assets/recipes-135-000.0f5c24f55317f46c.mpk.gz",
+      "url": "./assets/recipes-135-000.0f5c24f55317f46c.mpk",
       "bytes": 7209,
       "sha256": "0f5c24f55317f46c848617db64934991c71485099df53e786b3e697dc21c0c0e",
       "encoding": "gzip",
@@ -1752,7 +1752,7 @@
     },
     {
       "id": "recipes-136-000",
-      "url": "./assets/recipes-136-000.ea9094694bd0ec58.mpk.gz",
+      "url": "./assets/recipes-136-000.ea9094694bd0ec58.mpk",
       "bytes": 3766,
       "sha256": "ea9094694bd0ec588e784de365ad6981eb665d540f522fcd7f8807ec67d68507",
       "encoding": "gzip",
@@ -1765,7 +1765,7 @@
     },
     {
       "id": "recipes-137-000",
-      "url": "./assets/recipes-137-000.7f58e548b05853bc.mpk.gz",
+      "url": "./assets/recipes-137-000.7f58e548b05853bc.mpk",
       "bytes": 1078,
       "sha256": "7f58e548b05853bc3c2f7307e33477f2cc41d9b20be03446cebe192cb79807ec",
       "encoding": "gzip",
@@ -1778,7 +1778,7 @@
     },
     {
       "id": "recipes-138-000",
-      "url": "./assets/recipes-138-000.a56a4ef20d745286.mpk.gz",
+      "url": "./assets/recipes-138-000.a56a4ef20d745286.mpk",
       "bytes": 510,
       "sha256": "a56a4ef20d745286ce4af01d60a7a8fa4be6ea4b78d98c89730cd16f39c30dbc",
       "encoding": "gzip",
@@ -1791,7 +1791,7 @@
     },
     {
       "id": "recipes-139-000",
-      "url": "./assets/recipes-139-000.cc7b95ae3b3837a9.mpk.gz",
+      "url": "./assets/recipes-139-000.cc7b95ae3b3837a9.mpk",
       "bytes": 1440,
       "sha256": "cc7b95ae3b3837a91e5b99cbaac7fbb2de366fe0f22e729ba2d7ec535cd97190",
       "encoding": "gzip",
@@ -1804,7 +1804,7 @@
     },
     {
       "id": "recipes-140-000",
-      "url": "./assets/recipes-140-000.42b58bb9d9cc2c4d.mpk.gz",
+      "url": "./assets/recipes-140-000.42b58bb9d9cc2c4d.mpk",
       "bytes": 36180,
       "sha256": "42b58bb9d9cc2c4d9dabc7031628ece704a919698919373d5481b937c035c84c",
       "encoding": "gzip",
@@ -1817,7 +1817,7 @@
     },
     {
       "id": "recipes-141-000",
-      "url": "./assets/recipes-141-000.5c39690689777b29.mpk.gz",
+      "url": "./assets/recipes-141-000.5c39690689777b29.mpk",
       "bytes": 347,
       "sha256": "5c39690689777b29db219a76936bdf55e760176b69e875c916b8a41c9888bc36",
       "encoding": "gzip",
@@ -1830,7 +1830,7 @@
     },
     {
       "id": "recipes-142-000",
-      "url": "./assets/recipes-142-000.2535c6898b5db396.mpk.gz",
+      "url": "./assets/recipes-142-000.2535c6898b5db396.mpk",
       "bytes": 804,
       "sha256": "2535c6898b5db3963211332c6bf6299135e0fb39a0c24a86b020642adf7515cc",
       "encoding": "gzip",
@@ -1843,7 +1843,7 @@
     },
     {
       "id": "recipes-143-000",
-      "url": "./assets/recipes-143-000.4a45672d9971400a.mpk.gz",
+      "url": "./assets/recipes-143-000.4a45672d9971400a.mpk",
       "bytes": 23389,
       "sha256": "4a45672d9971400ad6f8b685bb8eaa08bd85c1d0874f59ab791040a9d56f83e6",
       "encoding": "gzip",
@@ -1856,7 +1856,7 @@
     },
     {
       "id": "recipes-144-000",
-      "url": "./assets/recipes-144-000.369f1bfcab83ddac.mpk.gz",
+      "url": "./assets/recipes-144-000.369f1bfcab83ddac.mpk",
       "bytes": 2158,
       "sha256": "369f1bfcab83ddac58818c95b02d100c726667a6c9394240e475dc2a99c28a64",
       "encoding": "gzip",
@@ -1869,7 +1869,7 @@
     },
     {
       "id": "recipes-146-000",
-      "url": "./assets/recipes-146-000.ea7f5b0fe4ab608d.mpk.gz",
+      "url": "./assets/recipes-146-000.ea7f5b0fe4ab608d.mpk",
       "bytes": 1937,
       "sha256": "ea7f5b0fe4ab608d4a6cac0dbc6519e899e884707064e6345b4ee6ba2c95ec53",
       "encoding": "gzip",
@@ -1882,7 +1882,7 @@
     },
     {
       "id": "recipes-147-000",
-      "url": "./assets/recipes-147-000.d15b8ea3c06f201b.mpk.gz",
+      "url": "./assets/recipes-147-000.d15b8ea3c06f201b.mpk",
       "bytes": 1128937,
       "sha256": "d15b8ea3c06f201bf0c8a1e311322140298bbf4fc490f8fe2cda292af927ca3d",
       "encoding": "gzip",
@@ -1895,7 +1895,7 @@
     },
     {
       "id": "recipes-147-001",
-      "url": "./assets/recipes-147-001.353551c6e1604546.mpk.gz",
+      "url": "./assets/recipes-147-001.353551c6e1604546.mpk",
       "bytes": 1136412,
       "sha256": "353551c6e1604546ebdb2c93ffdcd1e8c68f607edc165dc5013c1a40da3f1493",
       "encoding": "gzip",
@@ -1908,7 +1908,7 @@
     },
     {
       "id": "recipes-148-000",
-      "url": "./assets/recipes-148-000.b19d8093c2ae7b33.mpk.gz",
+      "url": "./assets/recipes-148-000.b19d8093c2ae7b33.mpk",
       "bytes": 358651,
       "sha256": "b19d8093c2ae7b33871011f3076ed1adc11270cd19f2416df219f4df058bc4d2",
       "encoding": "gzip",
@@ -1921,7 +1921,7 @@
     },
     {
       "id": "recipes-149-000",
-      "url": "./assets/recipes-149-000.ab628cc272f6fd1f.mpk.gz",
+      "url": "./assets/recipes-149-000.ab628cc272f6fd1f.mpk",
       "bytes": 110507,
       "sha256": "ab628cc272f6fd1f5a6a286a5fd05be788fd71ca8954bb4cacb15caab3521ad5",
       "encoding": "gzip",
@@ -1934,7 +1934,7 @@
     },
     {
       "id": "recipes-150-000",
-      "url": "./assets/recipes-150-000.ec336cd85c8a9ea1.mpk.gz",
+      "url": "./assets/recipes-150-000.ec336cd85c8a9ea1.mpk",
       "bytes": 263417,
       "sha256": "ec336cd85c8a9ea108ce4e45f5390c935fe2a3404e0ed3f827603be375aa0a35",
       "encoding": "gzip",
@@ -1947,7 +1947,7 @@
     },
     {
       "id": "recipes-151-000",
-      "url": "./assets/recipes-151-000.0fa9e94f59a48764.mpk.gz",
+      "url": "./assets/recipes-151-000.0fa9e94f59a48764.mpk",
       "bytes": 3771,
       "sha256": "0fa9e94f59a487642d173dc74fad5433d85a1ab8da40764993e59efbd81550e9",
       "encoding": "gzip",
@@ -1960,7 +1960,7 @@
     },
     {
       "id": "recipes-152-000",
-      "url": "./assets/recipes-152-000.8d309accc4213e7a.mpk.gz",
+      "url": "./assets/recipes-152-000.8d309accc4213e7a.mpk",
       "bytes": 105182,
       "sha256": "8d309accc4213e7a5e6f9c6dac4fefb71edc3d28f485c8710c43fe5c3df62b8e",
       "encoding": "gzip",
@@ -1973,7 +1973,7 @@
     },
     {
       "id": "recipes-153-000",
-      "url": "./assets/recipes-153-000.67f3f2ee72ee9ca5.mpk.gz",
+      "url": "./assets/recipes-153-000.67f3f2ee72ee9ca5.mpk",
       "bytes": 1019286,
       "sha256": "67f3f2ee72ee9ca51df620059da47129db5c58649599dbe98bd10baad1685bf8",
       "encoding": "gzip",

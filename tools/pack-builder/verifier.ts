@@ -61,6 +61,9 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
   for (const asset of assets) {
     if (seenIds.has(asset.id)) throw new Error(`Duplicate asset ID ${asset.id}`);
     seenIds.add(asset.id);
+    if (asset.encoding === 'gzip' && localFilename(asset).endsWith('.gz')) {
+      throw new Error(`${asset.id}: gzip payload must not use a .gz suffix because HTTP servers may transparently decode it`);
+    }
     const bytes = await readFile(join(options.packDirectory, 'assets', localFilename(asset)));
     if (bytes.byteLength !== asset.bytes) {
       throw new Error(`${asset.id}: expected ${asset.bytes} bytes, read ${bytes.byteLength}`);
