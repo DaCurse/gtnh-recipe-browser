@@ -1,11 +1,12 @@
 <script lang="ts">
   import type { CatalogEntry } from './types';
-  let { entry, size = 48, selected = false }: { entry: CatalogEntry; size?: number; selected?: boolean } = $props();
+  let { entry, size = 48, selected = false, crisp = true }: { entry: CatalogEntry; size?: number; selected?: boolean; crisp?: boolean } = $props();
 </script>
 
 <div class:selected class="slot" style:width={`${size}px`} style:height={`${size}px`} aria-hidden="true">
   {#if entry.icon}
     <div
+      class:smooth={!crisp}
       class="atlas-sprite"
       style:background-image={`url("${entry.icon.url}")`}
       style:background-size={`${entry.icon.columns * 100}% ${entry.icon.columns * 100}%`}
@@ -44,5 +45,6 @@
     filter: drop-shadow(1px 2px 0 #0008);
   }
   .atlas-sprite { width:61%; height:61%; background-repeat:no-repeat; image-rendering:pixelated; filter:drop-shadow(1px 2px 0 #0008); }
+  .atlas-sprite.smooth { image-rendering:auto; }
   .fluid { border-radius: 6px 6px 12px 12px; background: color-mix(in srgb, var(--item-color) 65%, #34383d); color: #f0f2f4; }
 </style>

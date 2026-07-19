@@ -24,7 +24,7 @@
   <div class="card-head">
     <div>
       <span class="machine-mark">
-        {#if crafter}<ItemIcon entry={crafter} size={40} />{:else}⚙{/if}
+        {#if crafter}<ItemIcon entry={crafter} size={40} crisp={false} />{:else}⚙{/if}
       </span>
       <strong>{recipe.type}</strong>
     </div>

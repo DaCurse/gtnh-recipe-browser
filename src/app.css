@@ -47,14 +47,14 @@ aside footer { margin-top:auto; min-height:42px; padding:0 14px; border-top:1px 
 .eyebrow { margin:0 0 8px; color:#a5aaaf; font:14px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342C34; }
 h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-spacing:.3px; text-shadow:2px 2px #342C34; }
 .ident { overflow:hidden; color:#858a8f; font:11px monospace; text-overflow:ellipsis; white-space:nowrap; }
-.tooltip { max-width:1020px; margin:20px auto 0; display:flex; gap:8px; align-items:center; color:#fff; font:15px/1.45 Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342C34; }
-.tooltip b { color:#fff; font:15px Minecraft; border:1px solid #484c51; background:#292c30; border-radius:4px; padding:5px 8px; text-shadow:2px 2px #342C34; }
+.tooltip { max-width:1020px; margin:20px auto 0; display:flex; gap:8px; align-items:center; color:#fff; font:15px/1.45 Minecraft,ui-monospace,monospace; text-shadow:1px 1px #342C34; }
+.tooltip b { color:#fff; font:15px Minecraft; border:1px solid #484c51; background:#292c30; border-radius:4px; padding:5px 8px; text-shadow:1px 1px #342C34; }
 .tooltip span+span:before { content:'·'; margin-right:8px; color:#575b60; }
 .view-tabs { max-width:1020px; margin:29px auto 0; display:flex; border-bottom:1px solid #3a3d41; }
 .view-tabs button { min-height:47px; padding:0 22px; border:0;border-bottom:2px solid transparent;background:none;color:#8b9095;font-weight:700;font-size:12px;cursor:pointer; }
 .view-tabs button.active { color:#eef0f2;border-bottom-color:#aeb3b8; }.view-tabs span,.type-row span { padding:2px 6px;border-radius:8px;background:#383b40;font-size:10px; }
 .type-row { max-width:1020px;margin:14px auto;display:flex;gap:8px;overflow:auto;padding:5px 2px 8px; }
-.type-row button { flex:0 0 78px; width:78px; height:78px; padding:0; display:grid; place-items:center; border:0;background:transparent;color:#92979c;font-size:28px;cursor:pointer; }
+.type-row button { flex:0 0 62px; width:62px; height:62px; padding:0; display:grid; place-items:center; border:0;background:transparent;color:#92979c;font-size:24px;cursor:pointer; }
 .type-row button.active { color:#f0f1f2; }
 .machine-fallback { line-height:1; }
 .recipe-list { max-width:1020px;margin:auto;display:grid;grid-template-columns:repeat(2,minmax(300px,1fr));gap:14px; }
@@ -76,8 +76,8 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
   .item-summary { gap:4px; }
   .item-summary strong { font-size:14px; font-weight:650; color:#eceef0; }
   .item-summary small { font-size:10px; color:#858a8f; letter-spacing:.2px; }
-  .tooltip-preview { display:-webkit-box; margin-top:2px; overflow:hidden; color:#fff; font:14px/1.35 Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342C34; white-space:normal; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
-  .tooltip-preview b { margin-right:5px; color:#e1e3e5; font:14px Minecraft; text-shadow:2px 2px #342C34; }
+  .tooltip-preview { display:-webkit-box; margin-top:2px; overflow:hidden; color:#fff; font:14px/1.35 Minecraft,ui-monospace,monospace; text-shadow:1px 1px #342C34; white-space:normal; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .tooltip-preview b { margin-right:5px; color:#e1e3e5; font:14px Minecraft; text-shadow:1px 1px #342C34; }
   .row-arrow { display:block; color:#777c81; font-size:25px; }
   .back { display:block; }.item-head { gap:12px; }.item-head h1 { font-size:21px; }.item-head p { margin-bottom:5px; }.tooltip { overflow:auto;white-space:nowrap;margin-top:14px; }
   .view-tabs { margin-top:20px;position:sticky;top:-12px;z-index:3;background:#191b1e; }.type-row { position:sticky;top:35px;z-index:3;background:#191b1e;padding:10px 0;margin:0 auto 8px; }

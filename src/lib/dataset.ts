@@ -1,4 +1,6 @@
 import { decode } from '@msgpack/msgpack';
+import { sha256 as nobleSha256 } from '@noble/hashes/sha2.js';
+import { bytesToHex } from '@noble/hashes/utils.js';
 import type { CatalogEntry, Ingredient, Recipe, RecipeLayout } from './types';
 
 interface VersionRecord {
@@ -114,8 +116,7 @@ function plainText(html: string | null): string {
 }
 
 async function sha256(bytes: Uint8Array): Promise<string> {
-  const digest = await crypto.subtle.digest('SHA-256', Uint8Array.from(bytes).buffer);
-  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
+  return bytesToHex(nobleSha256(bytes));
 }
 
 async function fetchVerified(asset: Asset, manifestUrl: string): Promise<Uint8Array> {

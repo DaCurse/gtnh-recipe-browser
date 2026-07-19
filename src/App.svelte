@@ -187,7 +187,7 @@
           {@const tabRecipe = related.find((recipe) => recipe.type === tab)}
           {@const tabCrafter = tabRecipe?.crafterId ? entryById.get(tabRecipe.crafterId) : undefined}
           <button class:active={type === tab} onclick={() => type = tab} title={tab} aria-label={tab}>
-            {#if tabCrafter}<ItemIcon entry={tabCrafter} size={76} selected={type === tab} />{:else}<span class="machine-fallback">⚙</span>{/if}
+            {#if tabCrafter}<ItemIcon entry={tabCrafter} size={60} selected={type === tab} crisp={false} />{:else}<span class="machine-fallback">⚙</span>{/if}
           </button>
         {/each}
       </div>
