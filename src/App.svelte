@@ -272,7 +272,7 @@
       <span><b>GTNH</b><small>RECIPE BROWSER</small></span>
     </a>
     <button class="version" onclick={() => versionOpen = true}>
-      <span><i></i> GTNH {datasetVersion}</span><small>Latest stable</small>
+      <span><i></i> {datasetVersion}</span><small>Latest stable</small>
       <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5"></path></svg>
     </button>
     <button class="install" onclick={() => versionOpen = true}>
@@ -446,7 +446,7 @@
       <button class="close" onclick={() => versionOpen = false}>×</button>
       <p class="eyebrow">DATASET MANAGER</p><h2>Your GTNH versions</h2>
       <p>Catalogs are stored on this device. Recipe and icon chunks load as you browse.</p>
-      <div class="dataset"><span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span><div><b>GTNH {datasetVersion}</b><small><i></i> {datasetStatus === 'ready' ? 'ACTIVE · CATALOG READY' : datasetStatus.toUpperCase()}</small></div><strong>{datasetStatus === 'ready' ? 'Real data' : 'Unavailable'}</strong></div>
+      <div class="dataset"><span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span><div><b>{datasetVersion}</b><small><i></i> {datasetStatus === 'ready' ? 'ACTIVE · CATALOG READY' : datasetStatus.toUpperCase()}</small></div><strong>{datasetStatus === 'ready' ? 'Real data' : 'Unavailable'}</strong></div>
       <button class="download" disabled={datasetStatus !== 'ready'} onclick={() => versionOpen = false}>
         <svg class="download-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"></path></svg>
         Download for offline use
