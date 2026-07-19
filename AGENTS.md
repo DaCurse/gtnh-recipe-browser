@@ -32,6 +32,10 @@ No automatic formatter or linter is configured. Match surrounding style, use sem
 
 Vitest is the unit-test framework. Add focused tests for decoder validation, search behavior, recipe slot layouts, hashes, and deterministic output. Preserve existing format fixtures when introducing a new upstream shape; add a new versioned fixture directory instead of replacing one.
 
+## Dataset Export Work
+
+Before preparing or publishing a GTNH dataset, read `docs/agent-data-export-runbook.md`. Keep both ShadowTheAge submodules read-only, use native WSL dependencies, and stop at the documented manual Prism checkpoint rather than touching an existing player instance.
+
 ## Commit & Pull Request Guidelines
 
 History follows Conventional Commit-style subjects, primarily `feat:` and `fix:`. Keep commits scoped and imperative, for example `fix: preserve shaped recipe slots`.

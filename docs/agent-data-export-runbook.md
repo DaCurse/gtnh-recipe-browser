@@ -1,0 +1,71 @@
+# Agent Runbook: GTNH Dataset Exports
+
+Use this runbook when producing a dataset from a new GTNH release. The operator guide is
+[`exporting-current-data.md`](exporting-current-data.md); this document records agent-specific invariants and
+failure lessons.
+
+## Non-negotiable invariants
+
+- Treat `gtnh@ShadowTheAge/` and `nesql-exporter@ShadowTheAge/` as pinned, read-only submodules.
+- Never use or modify an existing player instance. Prepare a clearly named disposable Prism instance.
+- Use native WSL tools. Do not discover or invoke Java, .NET, Gradle, or Node installations from Windows.
+- Keep raw NESQL output private and generated work under ignored `.export-work/`.
+- Never bypass archive, schema, hash, determinism, sprite, or size validation to make an export pass.
+- Preserve old published datasets and immutable local fixtures. A new upstream shape gets a new fixture.
+
+## Toolchain and preparation
+
+Initialize recursively and verify the working tree before changing anything:
+
+```sh
+git submodule update --init --recursive
+git status --short
+```
+
+RetroFuturaGradle requires JDK 8 for its launcher compiler, JDK 17 for Fernflower, and JDK 21 for the normal build.
+Install all three side by side; leave Java 21 as the default. The processor currently requires the .NET 8 SDK.
+The exporter uses `./gradlew`, so system Gradle is not required.
+
+Run `npm run export:prepare` with the official archive and a new Prism instance path. The preparation profile pins
+the archive byte size and SHA-256. For a later GTNH release, deliberately update that profile after independently
+verifying the official download—never weaken the check.
+
+The committed compatibility patch is applied only to `.export-work/<version>/nesql-exporter`. It currently:
+
+- upgrades the unavailable RetroFuturaGradle 1.3.35 plugin to the compatible 1.4.9 release;
+- combines ordered tooltip lines into the single format-v5 `TOOLTIP` column expected by the pinned processor;
+- retains exporter failures as tooltip text for parity with the prior representation.
+
+Use `patch --dry-run -p1` followed by `patch -p1`. Do not substitute `git apply` inside the ignored temporary copy:
+Git discovers the parent repository and interprets paths from the wrong root.
+
+The official Windows ZIP contains BetterQuesting paths differing only by case. Extraction to NTFS must use
+`unzip -o` so the last ZIP entry wins deterministically without an interactive prompt. Install the unclassified
+production exporter jar and `-deps.jar`; never install the `-dev.jar`. Move BugTorch only within the disposable
+instance.
+
+## Manual checkpoint
+
+After preparation, inspect the instance name, both exporter jars, disabled BugTorch jar, absence of staging
+directories, and `export-session.json`. Then stop and ask the user to perform the Prism steps. The user must create
+a fresh creative world, populate NEI, read a Creative Thaumonomicon, clear all three warp kinds, run the named
+`/nesql` export, and wait for its explicit completion message. Do not process a partial database.
+
+## Processing and release
+
+Once the user confirms completion:
+
+1. Run `npm run export:process -- --session <export-session.json>`.
+2. Investigate any schema or sanity failure generally; never special-case an item or recipe.
+3. Confirm the pack was built twice with identical digests and passed asset plus sprite verification.
+4. Inspect representative crafting, GT machine, multiblock, fluid-container, ore-dictionary, tooltip-color, and
+   large-recipe entries before publication.
+5. Run `npm run export:publish -- --pack <verified-pack>`. This stages immutable assets before updating
+   `public/versions.json` and retains historical versions.
+6. Run `npm run check`, `npm test`, and `npm run build`, then commit incrementally with Conventional Commit subjects.
+7. Deploy and run `npm run smoke:deploy -- https://<site>.netlify.app/`. Do not call the dataset released before the
+   deployed-origin verification succeeds.
+
+If preparation fails, inspect the exact generated work and staging paths before removing only those paths. Never
+delete broadly under Prism’s `instances/` directory. Keep the pinned format-v5 fixture network-independent even
+after newer production data is published.
