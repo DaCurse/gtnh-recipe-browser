@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeFormat5 } from '../tools/pack-builder/decoder';
 import { fluidRecipeScope } from '../src/lib/fluidContainers';
+import { parseMinecraftHtml } from '../src/lib/minecraftText';
 import { formatCircuitConflicts, formatGtMetadata, voltageTierName } from '../src/lib/recipeMetadata';
 import {
   boundedPage,
@@ -151,5 +152,22 @@ describe.skipIf(!existsSync(fixturePath))('pinned ShadowTheAge recipe parity', (
     expect(recipes).toHaveLength(2_254);
     expect(boundedPage(recipes, 0, 20)).toHaveLength(20);
     expect(boundedPage(recipes, 112, 20)).toHaveLength(14);
+  });
+
+  it('retains multiline and colored tooltip formatting from the pinned exporter', () => {
+    const bloodPack = repository.items.find(
+      (item) => item.id === 'i:AWWayofTime:itemBloodPack:0'
+    )!;
+    const boundPickaxe = repository.items.find(
+      (item) => item.id === 'i:AWWayofTime:boundPickaxe:0'
+    )!;
+
+    expect(parseMinecraftHtml(bloodPack.tooltip).lines).toEqual([
+      { segments: [{ text: 'This pack really chafes...', formats: [] }] },
+      { segments: [{ text: 'Provides electrical protection.', formats: ['d'] }] },
+      { segments: [{ text: 'Protection: 5', formats: [] }] }
+    ]);
+    expect(parseMinecraftHtml(boundPickaxe.tooltip).plainText)
+      .toBe('The Souls of the Damned\ndo not like stone...\n\n+10 Attack Damage');
   });
 });

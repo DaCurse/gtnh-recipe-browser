@@ -68,7 +68,6 @@ kbd { color:#777c81; border:1px solid #3d4044; border-radius:4px; padding:3px 6p
 .item-summary { display:flex; width:100%; min-width:0; flex-direction:column; gap:3px; overflow:hidden; }
 .item-summary strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:#d9dcdf; font-weight:500; }
 .item-summary small { width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#81868b; font-size:10px; text-transform:capitalize; }
-.mod-name { color:#5457FA; text-shadow:2px 2px #342C34; }
 .tooltip-preview,.row-arrow { display:none; }
 .empty { grid-column:1/-1; padding:60px 20px; text-align:center; color:#858a8f; }.empty b,.empty span { display:block; margin:8px; }
 .search-loading .spinner { width:30px; height:30px; margin:0 auto 14px; }
@@ -77,15 +76,25 @@ aside footer { margin-top:auto; min-height:42px; padding:0 14px; border-top:1px 
 .detail { min-width:0; overflow:auto; padding:30px clamp(24px,5vw,74px) 60px; background:linear-gradient(90deg,#151619,#1c1e21 60%,#141518); }
 .back { display:none; min-height:44px; align-items:center; gap:4px; border:0; background:none; color:#c0c4c8; padding:0; cursor:pointer; }
 .back svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-.item-head { display:flex; align-items:center; gap:20px; max-width:1020px; margin:auto; }
-.item-head>div:nth-child(2) { min-width:0; }
-.item-head p { margin:0 0 8px; color:#a5aaaf; font:15px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.06em; text-transform:uppercase; text-shadow:2px 2px #342C34; }
+.item-head { display:flex; align-items:flex-start; gap:20px; max-width:1020px; margin:auto; }
+.item-overview { width:min(720px,calc(100% - 108px)); min-width:0; }
 .eyebrow { margin:0 0 8px; color:#a5aaaf; font:14px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342C34; }
 h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-spacing:.3px; text-shadow:2px 2px #342C34; }
-.ident { overflow:hidden; color:#858a8f; font:11px monospace; text-overflow:ellipsis; white-space:nowrap; }
-.tooltip { max-width:1020px; margin:20px auto 0; display:flex; gap:8px; align-items:center; color:#f2f3f4; font:400 17px/1.5 Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342C34; }
-.tooltip b { color:#f2f3f4; font:400 17px Minecraft; border:1px solid #484c51; background:#292c30; border-radius:4px; padding:5px 8px; text-shadow:2px 2px #342C34; }
-.tooltip span+span:before { content:'·'; margin-right:8px; color:#575b60; }
+.minecraft-tooltip { width:100%; max-height:min(52vh,560px); overflow-y:auto; padding:6px 12px 8px; border:2px solid #100010; border-radius:2px; background:#100010; box-shadow:inset 0 0 0 2px #4300d650,0 7px 20px #0005; font:400 16px/1.42 Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342c34; scrollbar-color:#51455b #100010; }
+.tooltip-header { color:#fff; font-size:19px; }
+.tooltip-debug { margin-top:1px; color:#ffffff69; font-size:10px; line-height:16px; overflow-wrap:anywhere; word-spacing:1px; text-shadow:1px 1px #342c34; user-select:text; }
+.tooltip-text { margin-top:1px; color:#aca1ab; }
+.tooltip-formula { display:inline-block; margin-right:7px; color:#fff; }
+.tooltip-mod { margin-top:2px; color:#5457fa; line-height:1.2; }
+.minecraft-text,.minecraft-line { display:block; }
+.minecraft-line { min-height:1.42em; white-space:pre-wrap; overflow-wrap:anywhere; }
+.tooltip-preview .minecraft-line.empty { display:none; }
+.fmt-0 { color:#000; }.fmt-1 { color:#0000aa; }.fmt-2 { color:#00aa00; }.fmt-3 { color:#00aaaa; }
+.fmt-4 { color:#aa0000; }.fmt-5 { color:#aa00aa; }.fmt-6 { color:#ffaa00; }.fmt-7 { color:#aaa; }
+.fmt-8 { color:#555; }.fmt-9 { color:#5555ff; }.fmt-a { color:#55ff55; }.fmt-b { color:#55ffff; }
+.fmt-c { color:#ff5555; }.fmt-d { color:#ff55ff; }.fmt-e { color:#ffff55; }.fmt-f { color:#fff; }
+.fmt-l { font-weight:700; }.fmt-m { text-decoration:line-through; text-decoration-thickness:2px; }
+.fmt-n { text-decoration:underline; text-decoration-thickness:2px; }.fmt-o { font-style:italic; }
 .ore-members { max-width:1020px; margin:17px auto 0; }
 .ore-members>p { margin:0 0 7px; color:#8d9297; font-size:10px; font-weight:700; letter-spacing:.65px; }
 .ore-members>div { display:flex; gap:3px; overflow-x:auto; padding:2px 0 8px; scrollbar-color:#484c51 transparent; }
@@ -138,10 +147,11 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
   .item-summary { gap:4px; }
   .item-summary strong { font-size:14px; font-weight:650; color:#eceef0; }
   .item-summary small { font-size:10px; color:#858a8f; letter-spacing:.2px; }
-  .tooltip-preview { display:-webkit-box; margin-top:2px; overflow:hidden; color:#fff; font:400 15px/1.4 Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342C34; white-space:normal; -webkit-box-orient:vertical; -webkit-line-clamp:2; }
+  .tooltip-preview { display:block; max-height:2.8em; margin-top:2px; overflow:hidden; color:#aca1ab; font:400 15px/1.4 Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342C34; white-space:normal; }
+  .tooltip-preview .minecraft-line { min-height:1.4em; }
   .tooltip-preview b { margin-right:5px; color:#fff; font:400 15px Minecraft; text-shadow:2px 2px #342C34; }
   .row-arrow { display:block; color:#777c81; font-size:25px; }
-  .back { display:flex; }.item-head { gap:12px; }.item-head h1 { font-size:21px; }.item-head p { margin-bottom:5px; }.tooltip { overflow:auto;white-space:nowrap;margin-top:14px;font-size:16px; }.tooltip b { font-size:16px; }
+  .back { display:flex; }.item-head { gap:12px; }.item-overview { width:calc(100% - 100px); }.minecraft-tooltip { max-height:none; padding:6px 10px 8px; font-size:15px; }.tooltip-header { font-size:17px; }.tooltip-debug { font-size:9px; }
   .view-tabs { margin-top:20px;position:sticky;top:-12px;z-index:3;background:#191b1e; }.type-row { position:sticky;top:35px;z-index:3;background:#191b1e;padding:10px 0;margin:0 auto 8px; }
   .recipe-list { grid-template-columns:1fr; }.recipe-list article { max-width:600px;width:100%;margin:auto; }
   .no-recipes,.recipe-loading { padding:42px 12px; }

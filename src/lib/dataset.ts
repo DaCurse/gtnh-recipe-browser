@@ -7,7 +7,7 @@ import {
   productionFallbackDictionary
 } from './oreDictionary';
 import { fluidRecipeScope } from './fluidContainers';
-import { parseMinecraftHtml, plainMinecraftText } from './minecraftText';
+import { parseMinecraftHtml } from './minecraftText';
 import {
   formatCircuitConflicts,
   formatGtMetadata,
@@ -284,10 +284,8 @@ export class DatasetRepository {
       const sheet = goods.icon ? sheets.get(goods.icon.sheetId) : undefined;
       const formattedName = parseMinecraftHtml(goods.name);
       const parsedTooltip = parseMinecraftHtml(goods.tooltip);
-      const formattedTooltip = parsedTooltip.plainText
-        ? parsedTooltip
-        : plainMinecraftText(goods.unlocalizedName);
-      const tooltip = formattedTooltip.lines
+      const formattedTooltip = goods.tooltip ? parsedTooltip.lines : [];
+      const tooltip = formattedTooltip
         .map((line) => line.segments.map((segment) => segment.text).join('').trim())
         .filter(Boolean);
       const productionFallback = this.productionFallbacks.get(goods.id);
@@ -306,9 +304,9 @@ export class DatasetRepository {
         name: formattedName.plainText.trim(),
         mod: goods.mod,
         kind: goods.kind,
-        tooltip: tooltip.length ? tooltip : [goods.unlocalizedName],
+        tooltip,
         formattedName: formattedName.lines,
-        formattedTooltip: formattedTooltip.lines,
+        formattedTooltip,
         color: '#aeb3b8',
         glyph: goods.kind === 'fluid' ? '≈' : '□',
         recipeTypes: [],

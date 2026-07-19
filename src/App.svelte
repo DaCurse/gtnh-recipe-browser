@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { registerSW } from 'virtual:pwa-register';
   import ItemIcon from './lib/ItemIcon.svelte';
+  import MinecraftText from './lib/MinecraftText.svelte';
   import { oreCycle } from './lib/oreCycle';
   import RecipeCard from './lib/RecipeCard.svelte';
   import { DatasetRepository } from './lib/dataset';
@@ -501,10 +502,10 @@
               <ItemIcon {entry} size={56} selected={selected.id === entry.id} />
               <span class="item-summary">
                 <strong>{entry.name}</strong>
-                <small><span class="mod-name">{entry.mod}</span> · {entry.kind}</small>
+                <small>{entry.kind}</small>
                 <span class="tooltip-preview">
                   {#if entry.formula}<b>{entry.formula}</b>{/if}
-                  {entry.tooltip.join(' · ')}
+                  <MinecraftText lines={entry.formattedTooltip} fallback={entry.tooltip} />
                 </span>
               </span>
               <span class="row-arrow">›</span>
@@ -541,15 +542,21 @@
       </button>
       <div class="item-head">
         <ItemIcon entry={selectedIconEntry ?? selected} size={88} selected />
-        <div>
-          <p>{selected.kind === 'fluid' ? 'FLUID' : selected.kind === 'oreDict' ? 'ORE DICTIONARY' : 'ITEM'} · <span class="mod-name">{selected.mod}</span></p>
-          <h1>{selected.name}</h1>
-          <div class="ident">{selected.id}</div>
+        <div class="item-overview">
+          <div class="minecraft-tooltip" role="group" aria-label={`${selected.name} tooltip`}>
+            <div class="tooltip-header">
+              <MinecraftText lines={selected.formattedName} fallback={selected.name} />
+            </div>
+            <div class="tooltip-debug">{selected.id}</div>
+            {#if selected.formula || selected.formattedTooltip?.length || selected.tooltip.length}
+              <div class="tooltip-text">
+                {#if selected.formula}<span class="tooltip-formula">{selected.formula}</span>{/if}
+                <MinecraftText lines={selected.formattedTooltip} fallback={selected.tooltip} />
+              </div>
+            {/if}
+            <div class="tooltip-mod">{selected.mod}</div>
+          </div>
         </div>
-      </div>
-      <div class="tooltip">
-        {#if selected.formula}<b>{selected.formula}</b>{/if}
-        {#each selected.tooltip as line}<span>{line}</span>{/each}
       </div>
       {#if selected.kind === 'oreDict' && selected.members}
         <div class="ore-members" aria-label="Interchangeable ore dictionary members">
