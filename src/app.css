@@ -21,10 +21,18 @@ header { height:68px; flex:none; display:flex; align-items:center; padding:0 24p
 .download-icon { width:23px; height:23px; flex:0 0 23px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .update-banner { border:0; padding:8px; background:#bfc3c7; color:#17191b; cursor:pointer; }
 main { min-height:0; display:grid; grid-template-columns:335px 1fr; flex:1; }
+.home-view { grid-template-columns:1fr; }
+.home-view aside { border-right:0; }
+.home-view .detail { display:none; }
+.home-view .item-grid { grid-template-columns:repeat(auto-fill,minmax(110px,1fr)); }
 .state-main { grid-template-columns:1fr; place-items:center; overflow:auto; padding:28px; }
 .app-state { width:min(620px,100%); display:flex; flex-direction:column; align-items:center; padding:52px 34px; border:1px solid #3c4044; border-radius:14px; background:#1b1d20; box-shadow:0 24px 80px #0007; text-align:center; }
 .app-state h1 { margin:22px 0 8px; font-size:27px; }
 .app-state p { margin:0; color:#9da2a7; line-height:1.5; }
+.app-state>small { margin-top:8px; color:#8e9398; font:12px ui-monospace,monospace; }
+.load-progress { width:min(360px,100%); height:8px; overflow:hidden; margin-top:20px; border-radius:999px; background:#34383c; box-shadow:inset 0 1px 3px #0008; }
+.load-progress>span { display:block; height:100%; border-radius:inherit; background:#c4c8cc; transition:width .16s ease-out; }
+.load-progress.compact { width:min(280px,80vw); height:6px; margin-top:13px; }
 .spinner,.mini-spinner { display:inline-block; border-radius:50%; border:3px solid #42464b; border-top-color:#d6d9dc; animation:spin .8s linear infinite; }
 .spinner { width:38px; height:38px; }
 .mini-spinner { width:16px; height:16px; border-width:2px; }
@@ -67,6 +75,11 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .tooltip { max-width:1020px; margin:20px auto 0; display:flex; gap:8px; align-items:center; color:#fff; font:15px/1.45 Minecraft,ui-monospace,monospace; text-shadow:1px 1px #342C34; }
 .tooltip b { color:#fff; font:15px Minecraft; border:1px solid #484c51; background:#292c30; border-radius:4px; padding:5px 8px; text-shadow:1px 1px #342C34; }
 .tooltip span+span:before { content:'·'; margin-right:8px; color:#575b60; }
+.ore-members { max-width:1020px; margin:17px auto 0; }
+.ore-members>p { margin:0 0 7px; color:#8d9297; font-size:10px; font-weight:700; letter-spacing:.65px; }
+.ore-members>div { display:flex; gap:3px; overflow-x:auto; padding:2px 0 8px; scrollbar-color:#484c51 transparent; }
+.ore-members button { width:52px; height:52px; flex:0 0 52px; padding:0; border:0; background:none; cursor:pointer; }
+.ore-members button:hover { filter:brightness(1.14); }
 .view-tabs { max-width:1020px; margin:29px auto 0; display:flex; border-bottom:1px solid #3a3d41; }
 .view-tabs button { min-height:47px; padding:0 22px; border:0;border-bottom:2px solid transparent;background:none;color:#8b9095;font-weight:700;font-size:12px;cursor:pointer; }
 .view-tabs button.active { color:#eef0f2;border-bottom-color:#aeb3b8; }.view-tabs span,.type-row span { padding:2px 6px;border-radius:8px;background:#383b40;font-size:10px; }
@@ -78,6 +91,8 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .no-recipes,.recipe-loading { grid-column:1/-1; display:grid; place-items:center; padding:70px; color:#7f8489; text-align:center; }.no-recipes>span { font-size:40px; }.no-recipes b,.recipe-loading b { margin-top:10px; color:#b5b9bd; }.no-recipes p,.recipe-loading p { margin:8px 0 0; }
 .recipe-loading .spinner { width:32px; height:32px; }
 .recipe-error p { max-width:620px; overflow-wrap:anywhere; }
+.recipe-error button { min-width:120px; min-height:44px; margin-top:14px; border:1px solid #53585e; border-radius:7px; background:#2a2d31; color:#d7dade; cursor:pointer; }
+.recipe-more { grid-column:1/-1; width:min(420px,100%); min-height:46px; margin:10px auto 0; border:1px solid #50555a; border-radius:8px; background:#292c30; color:#c9cdd1; cursor:pointer; }
 .scrim { position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:18px;background:#050806c7;backdrop-filter:blur(7px); }
 .manager { position:relative;width:min(440px,100%);padding:30px;border:1px solid #4b4f54;border-radius:14px;background:#202226;box-shadow:0 30px 90px #000; }
 .manager h2 { font:23px Minecraft;margin:0 0 8px;text-shadow:2px 2px #342C34; }.manager>p:not(.eyebrow) { color:#a6abb0;font-size:14px;line-height:1.5; }

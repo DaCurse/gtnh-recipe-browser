@@ -1,4 +1,4 @@
-export type Kind = 'item' | 'fluid';
+export type Kind = 'item' | 'fluid' | 'oreDict';
 
 export interface CatalogEntry {
   id: string;
@@ -20,6 +20,8 @@ export interface CatalogEntry {
   productionCount?: number;
   usageCount?: number;
   searchable?: boolean;
+  /** Stable item IDs accepted by a synthetic ore-dictionary entry. */
+  members?: string[];
 }
 
 export interface Ingredient {
@@ -29,6 +31,10 @@ export interface Ingredient {
   /** Zero-based position in the matching NEI item/fluid grid. */
   slot?: number;
   kind?: 'item' | 'fluid' | 'oreDict';
+  /** Stable ore-dictionary ID retained instead of flattening the ingredient to one item. */
+  oreDictionaryId?: string;
+  /** Every interchangeable item accepted by an ore-dictionary ingredient. */
+  alternatives?: string[];
 }
 
 export interface GridDimensions {

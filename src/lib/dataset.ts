@@ -1,8 +1,16 @@
 import { decode } from '@msgpack/msgpack';
 import { sha256 as nobleSha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
+import { ingredientMatchesEntry, materializeIngredient } from './oreDictionary';
 import { formatGtMetadata } from './recipeMetadata';
-import type { CatalogEntry, Ingredient, Recipe, RecipeLayout } from './types';
+import {
+  cacheAsset,
+  cacheMetadata,
+  getCachedAsset,
+  getCachedMetadata,
+  removeCachedAsset
+} from './storage';
+import type { CatalogEntry, Recipe, RecipeLayout } from './types';
 
 interface VersionRecord {
   datasetId: string;
@@ -108,6 +116,17 @@ interface PackedShard {
   recipes: PackedRecipe[];
 }
 
+export interface DatasetLoadProgress {
+  percent: number;
+  stage: string;
+}
+
+interface AssetLoadProgress {
+  loaded: number;
+  total: number;
+  cached: boolean;
+}
+
 const voltageTiers = ['ULV','LV','MV','HV','EV','IV','LuV','ZPM','UV','UHV','UEV','UIV','UMV','UXV','MAX'];
 
 function plainText(html: string | null): string {
@@ -120,13 +139,60 @@ async function sha256(bytes: Uint8Array): Promise<string> {
   return bytesToHex(nobleSha256(bytes));
 }
 
-async function fetchVerified(asset: Asset, manifestUrl: string): Promise<Uint8Array> {
+async function fetchVerified(
+  asset: Asset,
+  manifestUrl: string,
+  onProgress?: (progress: AssetLoadProgress) => void
+): Promise<Uint8Array> {
+  const cached = await getCachedAsset(asset.sha256);
+  if (cached) {
+    onProgress?.({ loaded: cached.byteLength, total: asset.bytes, cached: true });
+    if (cached.byteLength === asset.bytes && await sha256(cached) === asset.sha256) return cached;
+    await removeCachedAsset(asset.sha256);
+  }
+
   const response = await fetch(new URL(asset.url, manifestUrl));
   if (!response.ok) throw new Error(`Unable to download ${asset.id}: HTTP ${response.status}`);
-  const bytes = new Uint8Array(await response.arrayBuffer());
+  let bytes: Uint8Array;
+  if (response.body) {
+    const reader = response.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let loaded = 0;
+    while (true) {
+      const result = await reader.read();
+      if (result.done) break;
+      chunks.push(result.value);
+      loaded += result.value.byteLength;
+      onProgress?.({ loaded, total: asset.bytes, cached: false });
+    }
+    bytes = new Uint8Array(loaded);
+    let offset = 0;
+    for (const chunk of chunks) {
+      bytes.set(chunk, offset);
+      offset += chunk.byteLength;
+    }
+  } else {
+    bytes = new Uint8Array(await response.arrayBuffer());
+    onProgress?.({ loaded: bytes.byteLength, total: asset.bytes, cached: false });
+  }
   if (bytes.byteLength !== asset.bytes) throw new Error(`${asset.id}: size mismatch`);
   if (await sha256(bytes) !== asset.sha256) throw new Error(`${asset.id}: integrity check failed`);
+  await cacheAsset(asset.sha256, bytes);
   return bytes;
+}
+
+async function fetchJsonNetworkFirst<T>(url: string, cacheKey: string): Promise<{ url: string; value: T }> {
+  try {
+    const response = await fetch(url, { cache: 'no-cache' });
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const value = await response.json() as T;
+    await cacheMetadata(cacheKey, response.url, value);
+    return { url: response.url, value };
+  } catch (networkError) {
+    const cached = await getCachedMetadata<T>(cacheKey);
+    if (cached) return cached;
+    throw networkError;
+  }
 }
 
 async function decompress(bytes: Uint8Array): Promise<Uint8Array> {
@@ -173,7 +239,7 @@ export class DatasetRepository {
     for (const goods of catalog.goods) this.packedGoods.set(goods.id, goods);
     for (const type of catalog.recipeTypes) this.types.set(type.id, type);
     for (const ore of catalog.oreDictionaries) this.ores.set(ore.id, ore);
-    this.entries = catalog.goods.map((goods) => {
+    const goodsEntries = catalog.goods.map((goods): CatalogEntry => {
       const sheet = goods.icon ? sheets.get(goods.icon.sheetId) : undefined;
       const tooltip = plainText(goods.tooltip).split(/\n+/).map((line) => line.trim()).filter(Boolean);
       return {
@@ -197,23 +263,70 @@ export class DatasetRepository {
         usageCount: goods.usageCount
       };
     });
+    const goodsEntriesById = new Map(goodsEntries.map((entry) => [entry.id, entry]));
+    const oreEntries = catalog.oreDictionaries.map((ore): CatalogEntry => {
+      const members = ore.itemIds.map((id) => goodsEntriesById.get(id)).filter((entry) => entry !== undefined);
+      const representative = members[0];
+      const productionShards = new Set<string>();
+      const usageShards = new Set<string>();
+      for (const memberId of ore.itemIds) {
+        const member = this.packedGoods.get(memberId);
+        member?.productionShards.forEach((id) => productionShards.add(id));
+        member?.usageShards.forEach((id) => usageShards.add(id));
+      }
+      const dictionaryName = ore.id.startsWith('o:') ? ore.id.slice(2) : ore.id;
+      return {
+        id: ore.id,
+        name: `Ore dictionary: ${dictionaryName}`,
+        mod: 'Ore Dictionary',
+        kind: 'oreDict',
+        tooltip: [
+          `${ore.itemIds.length.toLocaleString('en-US')} interchangeable item${ore.itemIds.length === 1 ? '' : 's'}`,
+          'All listed members are valid recipe ingredients.'
+        ],
+        color: '#aeb3b8',
+        glyph: '◇',
+        recipeTypes: [],
+        searchable: false,
+        icon: representative?.icon,
+        productionShards: [...productionShards].sort(),
+        usageShards: [...usageShards].sort(),
+        members: ore.itemIds
+      };
+    });
+    this.entries = [...goodsEntries, ...oreEntries];
   }
 
-  static async loadLatest(): Promise<DatasetRepository> {
-    const versionsResponse = await fetch(new URL('./versions.json', document.baseURI), { cache: 'no-cache' });
-    if (!versionsResponse.ok) throw new Error(`Unable to load versions: HTTP ${versionsResponse.status}`);
-    const versions = await versionsResponse.json() as VersionsIndex;
+  static async loadLatest(onProgress?: (progress: DatasetLoadProgress) => void): Promise<DatasetRepository> {
+    const report = (percent: number, stage: string) => onProgress?.({ percent, stage });
+    const versionsUrl = new URL('./versions.json', document.baseURI).href;
+    report(3, 'Checking available GTNH versions');
+    const versionsResult = await fetchJsonNetworkFirst<VersionsIndex>(versionsUrl, `versions:${versionsUrl}`);
+    const versions = versionsResult.value;
     const selected = versions.versions[0];
     if (!selected) throw new Error('No published GTNH datasets are available');
-    const manifestUrl = new URL(selected.packManifestUrl, versionsResponse.url).href;
-    const manifestResponse = await fetch(manifestUrl);
-    if (!manifestResponse.ok) throw new Error(`Unable to load pack manifest: HTTP ${manifestResponse.status}`);
-    const manifest = await manifestResponse.json() as Manifest;
+    const manifestUrl = new URL(selected.packManifestUrl, versionsResult.url).href;
+    report(8, 'Loading dataset manifest');
+    const manifest = (await fetchJsonNetworkFirst<Manifest>(
+      manifestUrl,
+      `manifest:${manifestUrl}`
+    )).value;
     const catalogAsset = manifest.catalogAssets[0];
     if (!catalogAsset) throw new Error('Pack manifest has no catalog asset');
-    const catalog = decode(await decompress(await fetchVerified(catalogAsset, manifestUrl))) as PackedCatalog;
+    report(12, 'Loading catalog');
+    const catalogBytes = await fetchVerified(catalogAsset, manifestUrl, ({ loaded, total, cached }) => {
+      const ratio = total > 0 ? Math.min(1, loaded / total) : 0;
+      report(12 + Math.round(ratio * 58), cached ? 'Reading verified catalog cache' : 'Downloading catalog');
+    });
+    report(76, 'Decompressing catalog');
+    const decompressed = await decompress(catalogBytes);
+    report(86, 'Decoding catalog');
+    const catalog = decode(decompressed) as PackedCatalog;
     if (catalog.datasetId !== manifest.datasetId) throw new Error('Catalog dataset identity mismatch');
-    return new DatasetRepository(manifest, manifestUrl, catalog);
+    report(93, 'Preparing items and ore dictionaries');
+    const repository = new DatasetRepository(manifest, manifestUrl, catalog);
+    report(100, 'Catalog ready');
+    return repository;
   }
 
   private loadShard(id: string): Promise<PackedRecipe[]> {
@@ -227,28 +340,40 @@ export class DatasetRepository {
       return shard.recipes;
     })();
     this.shards.set(id, pending);
+    void pending.catch(() => this.shards.delete(id));
     return pending;
   }
 
-  async recipesFor(entryId: string, view: 'recipes' | 'usages'): Promise<Recipe[]> {
+  async recipesFor(
+    entryId: string,
+    view: 'recipes' | 'usages',
+    onProgress?: (loadedShards: number, totalShards: number) => void
+  ): Promise<Recipe[]> {
     const goods = this.packedGoods.get(entryId);
-    if (!goods) return [];
-    const shardIds = view === 'recipes' ? goods.productionShards : goods.usageShards;
-    const packed = (await Promise.all(shardIds.map((id) => this.loadShard(id)))).flat()
+    const selectedOre = this.ores.get(entryId);
+    if (!goods && !selectedOre) return [];
+    const shardIds = selectedOre
+      ? view === 'recipes'
+        ? this.entries.find((entry) => entry.id === entryId)?.productionShards ?? []
+        : this.entries.find((entry) => entry.id === entryId)?.usageShards ?? []
+      : view === 'recipes'
+        ? goods!.productionShards
+        : goods!.usageShards;
+    const selectedMembers = selectedOre ? new Set(selectedOre.itemIds) : null;
+    let loadedShards = 0;
+    onProgress?.(0, shardIds.length);
+    const packed = (await Promise.all(shardIds.map(async (id) => {
+      const recipes = await this.loadShard(id);
+      onProgress?.(++loadedShards, shardIds.length);
+      return recipes;
+    }))).flat()
       .filter((recipe) => (view === 'recipes' ? recipe.outputs : recipe.inputs).some((io) => {
-        if (io.goodsId === entryId) return true;
-        return io.kind === 'oreDict' && this.ores.get(io.goodsId)?.itemIds.includes(entryId);
+        return ingredientMatchesEntry(io, entryId, selectedMembers, this.ores);
       }));
     return packed.map((recipe) => {
       const type = this.types.get(recipe.recipeTypeId);
       if (!type) throw new Error(`Unknown recipe type ${recipe.recipeTypeId}`);
-      const convert = (io: PackedIo): Ingredient => ({
-        id: io.kind === 'oreDict' ? this.ores.get(io.goodsId)?.itemIds[0] ?? io.goodsId : io.goodsId,
-        amount: io.amount,
-        chance: io.probability,
-        slot: io.slot,
-        kind: io.kind
-      });
+      const convert = (io: PackedIo) => materializeIngredient(io, this.ores);
       const totalEu = recipe.gt ? recipe.gt.voltage * recipe.gt.amperage * recipe.gt.durationTicks : undefined;
       const euPerTick = recipe.gt ? recipe.gt.voltage * recipe.gt.amperage : undefined;
       return {

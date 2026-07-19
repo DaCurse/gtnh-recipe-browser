@@ -115,17 +115,16 @@ Catalog entries carry production/usage recipe-shard references. On item selectio
 Exit condition: crafting is fixed at 3×3, shaped gaps survive, shapeless is labeled, and sampled GT machine cards
 match ShadowTheAge's slot placement and values.
 
-### Ore-dictionary compatibility TODO
+### Ore-dictionary compatibility
 
-The current client resolves an ore-dictionary input to its first item only. Before treating that as complete,
-compare against `gtnh@ShadowTheAge/src/nei.ts` and preserve these upstream semantics:
+The client retains ore-dictionary IDs, slots, and complete member lists. Recipe icons use a shared, slower cycle
+for readability. Tapping one opens a mobile-friendly chooser for the displayed item or the complete dictionary,
+with Recipes and Usages available for either. Dictionary views load the deduplicated union of member shards, and
+item usage matching recognizes ore-dictionary membership. Tests cover member matching and overlapping/disjoint
+dictionaries.
 
-- An ore-dictionary ingredient represents every member as an interchangeable recipe input, while retaining the
-  ore-dictionary ID and slot rather than replacing it with one item ID.
-- Recipe and usage lookup for an ore dictionary is the deduplicated union of every member's recipes.
-- Search matching checks member items; selecting or cycling an alternative must not change the underlying recipe.
-- Verify empty dictionaries, items in multiple dictionaries, duplicate recipes, selected alternatives, and the
-  interaction between ore-dictionary matching and fluid-container expansion.
+Remaining compatibility work: exercise empty dictionaries from a future fixture and combine dictionary expansion
+with the still-pending fluid-container recipe/usage behavior.
 
 ## Phase 6 — Complete offline dataset management
 

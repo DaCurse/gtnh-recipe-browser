@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import { registerSW } from 'virtual:pwa-register';
   import ItemIcon from './lib/ItemIcon.svelte';
+  import { oreCycle } from './lib/oreCycle';
   import RecipeCard from './lib/RecipeCard.svelte';
   import { DatasetRepository } from './lib/dataset';
   import type { CatalogEntry, Recipe } from './lib/types';
@@ -12,9 +13,15 @@
   let datasetVersion = $state('…');
   let datasetStatus = $state<'loading' | 'ready' | 'error'>('loading');
   let datasetError = $state('');
+  let datasetProgress = $state(0);
+  let datasetStage = $state('Starting');
   let errorCopied = $state(false);
   let recipeLoading = $state(false);
   let recipeError = $state('');
+  let recipeLoadedShards = $state(0);
+  let recipeTotalShards = $state(0);
+  let recipeLimit = $state(30);
+  let loadedRecipeCounts = $state<Record<string, number>>({});
   let searchIds = $state<string[]>([]);
   let searchTotal = $state(0);
   let searchPending = $state(true);
@@ -36,11 +43,13 @@
     .map((id) => entryById.get(id))
     .filter((entry): entry is CatalogEntry => entry !== undefined));
   const selected = $derived(entryById.get(selectedId));
-  const related = $derived(selected ? allRecipes.filter((recipe) => mode === 'recipes'
-    ? recipe.outputs.some((x) => x.id === selected.id)
-    : recipe.inputs.some((x) => x.id === selected.id)) : []);
+  const selectedIconEntry = $derived(selected?.kind === 'oreDict' && selected.members?.length
+    ? entryById.get(selected.members[$oreCycle % selected.members.length]) ?? selected
+    : selected);
+  const related = $derived(allRecipes);
   const types = $derived([...new Set(related.map((x) => x.type))]);
-  const visibleRecipes = $derived(type ? related.filter((x) => x.type === type) : []);
+  const matchingRecipes = $derived(type ? related.filter((x) => x.type === type) : []);
+  const visibleRecipes = $derived(matchingRecipes.slice(0, recipeLimit));
 
   $effect(() => {
     const nextQuery = query;
@@ -53,6 +62,13 @@
     return () => window.clearTimeout(timeout);
   });
 
+  $effect(() => {
+    selectedId;
+    mode;
+    type;
+    recipeLimit = 30;
+  });
+
   async function refreshRecipes() {
     if (!repository || !selectedId) return;
     const request = ++recipeRequest;
@@ -61,10 +77,17 @@
     allRecipes = [];
     recipeError = '';
     recipeLoading = true;
+    recipeLoadedShards = 0;
+    recipeTotalShards = 0;
     try {
-      const loaded = await repository.recipesFor(entryId, view);
+      const loaded = await repository.recipesFor(entryId, view, (loadedShards, totalShards) => {
+        if (request !== recipeRequest) return;
+        recipeLoadedShards = loadedShards;
+        recipeTotalShards = totalShards;
+      });
       if (request === recipeRequest) {
         allRecipes = loaded;
+        loadedRecipeCounts = { ...loadedRecipeCounts, [`${entryId}:${view}`]: loaded.length };
         type = loaded[0]?.type ?? '';
       }
     } catch (error) {
@@ -76,6 +99,17 @@
     } finally {
       if (request === recipeRequest) recipeLoading = false;
     }
+  }
+
+  function loadMoreRecipes(node: HTMLElement) {
+    if (!('IntersectionObserver' in window)) return;
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) {
+        recipeLimit = Math.min(recipeLimit + 30, matchingRecipes.length);
+      }
+    }, { rootMargin: '500px 0px' });
+    observer.observe(node);
+    return { destroy: () => observer.disconnect() };
   }
 
   function select(id: string, push = true, nextMode: 'recipes' | 'usages' = 'recipes') {
@@ -99,6 +133,12 @@
     const url = new URL(location.href);
     url.searchParams.set('view', mode);
     history.replaceState({ id: selectedId }, '', url);
+  }
+
+  function recipeCount(view: 'recipes' | 'usages'): number | undefined {
+    if (!selected) return undefined;
+    const declared = view === 'recipes' ? selected.productionCount : selected.usageCount;
+    return declared ?? loadedRecipeCounts[`${selected.id}:${view}`];
   }
 
   function diagnostic(error: unknown): string {
@@ -130,6 +170,8 @@
   async function loadDataset() {
     datasetStatus = 'loading';
     datasetError = '';
+    datasetProgress = 0;
+    datasetStage = 'Starting';
     errorCopied = false;
     repository = null;
     catalog = [];
@@ -141,7 +183,10 @@
     selectedId = '';
     datasetVersion = '…';
     try {
-      const loaded = await DatasetRepository.loadLatest();
+      const loaded = await DatasetRepository.loadLatest(({ percent, stage }) => {
+        datasetProgress = percent;
+        datasetStage = stage;
+      });
       if (!loaded.entries.some((entry) => entry.searchable !== false)) {
         throw new Error('The verified catalog does not contain any searchable items or fluids');
       }
@@ -214,7 +259,15 @@
 
 <div class="app-shell">
   <header>
-    <a class="brand" href="./" aria-label="GTNH Recipe Browser home">
+    <a class="brand" href="./" aria-label="GTNH Recipe Browser home" onclick={(event) => {
+      event.preventDefault();
+      detailsOpen = false;
+      query = '';
+      const url = new URL(location.href);
+      url.searchParams.delete('item');
+      url.searchParams.delete('view');
+      history.pushState({}, '', url);
+    }}>
       <span class="brand-cube"><img src="./assets/gtnh-logo.png" alt="" /></span>
       <span><b>GTNH</b><small>RECIPE BROWSER</small></span>
     </a>
@@ -235,7 +288,11 @@
       <section class="app-state" aria-live="polite">
         <span class="spinner" aria-hidden="true"></span>
         <h1>Loading GTNH catalog</h1>
-        <p>Verifying the latest dataset and preparing item search…</p>
+        <p>{datasetStage}</p>
+        <div class="load-progress" aria-label={`Catalog loading ${datasetProgress}%`}>
+          <span style:width={`${datasetProgress}%`}></span>
+        </div>
+        <small>{datasetProgress}%</small>
       </section>
     </main>
   {:else if datasetStatus === 'error'}
@@ -252,7 +309,7 @@
       </section>
     </main>
   {:else if selected}
-  <main>
+  <main class:home-view={!detailsOpen}>
     <aside class:mobile-hidden={detailsOpen}>
       <div class="search-wrap">
         <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
@@ -299,9 +356,9 @@
     <section class:mobile-visible={detailsOpen} class="detail">
       <button class="back" onclick={() => { detailsOpen = false; history.back(); }}>‹ Back to items</button>
       <div class="item-head">
-        <ItemIcon entry={selected} size={88} selected />
+        <ItemIcon entry={selectedIconEntry ?? selected} size={88} selected />
         <div>
-          <p>{selected.kind === 'fluid' ? 'FLUID' : 'ITEM'} · <span class="mod-name">{selected.mod}</span></p>
+          <p>{selected.kind === 'fluid' ? 'FLUID' : selected.kind === 'oreDict' ? 'ORE DICTIONARY' : 'ITEM'} · <span class="mod-name">{selected.mod}</span></p>
           <h1>{selected.name}</h1>
           <div class="ident">{selected.id}</div>
         </div>
@@ -310,10 +367,34 @@
         {#if selected.formula}<b>{selected.formula}</b>{/if}
         {#each selected.tooltip as line}<span>{line}</span>{/each}
       </div>
+      {#if selected.kind === 'oreDict' && selected.members}
+        <div class="ore-members" aria-label="Interchangeable ore dictionary members">
+          <p>{selected.members.length.toLocaleString()} ACCEPTED ITEMS</p>
+          <div>
+            {#each selected.members as memberId}
+              {@const member = entryById.get(memberId)}
+              {#if member}
+                <button
+                  title={`${member.name}\nLeft-click: recipes · Right-click: usages`}
+                  onclick={() => select(member.id, true, 'recipes')}
+                  oncontextmenu={(event) => {
+                    event.preventDefault();
+                    select(member.id, true, 'usages');
+                  }}
+                ><ItemIcon entry={member} size={52} /></button>
+              {/if}
+            {/each}
+          </div>
+        </div>
+      {/if}
 
       <nav class="view-tabs" aria-label="Item views">
-        <button class:active={mode === 'recipes'} onclick={() => setMode('recipes')}>Recipes <span>{selected.productionCount ?? related.length}</span></button>
-        <button class:active={mode === 'usages'} onclick={() => setMode('usages')}>Usages <span>{selected.usageCount ?? related.length}</span></button>
+        <button class:active={mode === 'recipes'} onclick={() => setMode('recipes')}>
+          Recipes {#if recipeCount('recipes') !== undefined}<span>{recipeCount('recipes')}</span>{/if}
+        </button>
+        <button class:active={mode === 'usages'} onclick={() => setMode('usages')}>
+          Usages {#if recipeCount('usages') !== undefined}<span>{recipeCount('usages')}</span>{/if}
+        </button>
       </nav>
       <div class="type-row">
         {#each types as tab}
@@ -326,15 +407,32 @@
       </div>
       <div class="recipe-list">
         {#if recipeLoading}
-          <div class="recipe-loading" aria-live="polite"><span class="spinner" aria-hidden="true"></span><b>Loading {mode}…</b><p>Fetching the recipe data needed for this item.</p></div>
+          <div class="recipe-loading" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <b>Loading {mode}…</b>
+            <p>{recipeTotalShards > 0
+              ? `${recipeLoadedShards} of ${recipeTotalShards} recipe chunks`
+              : 'Finding the recipe data needed for this item.'}</p>
+            {#if recipeTotalShards > 0}
+              <div class="load-progress compact"><span style:width={`${recipeLoadedShards / recipeTotalShards * 100}%`}></span></div>
+            {/if}
+          </div>
         {:else if recipeError}
-          <div class="no-recipes recipe-error"><span>!</span><b>Could not load {mode}</b><p>{recipeError}</p></div>
+          <div class="no-recipes recipe-error">
+            <span>!</span><b>Could not load {mode}</b><p>{recipeError}</p>
+            <button onclick={refreshRecipes}>Try again</button>
+          </div>
         {:else}
           {#each visibleRecipes as recipe (recipe.id)}
             <RecipeCard {recipe} navigate={(id, view) => select(id, true, view)} resolve={(id) => entryById.get(id)} />
           {:else}
             <div class="no-recipes"><span>⌁</span><b>No {mode} found</b><p>This item has no known {mode} in the active dataset.</p></div>
           {/each}
+          {#if visibleRecipes.length < matchingRecipes.length}
+            <button class="recipe-more" use:loadMoreRecipes onclick={() => recipeLimit += 30}>
+              Showing {visibleRecipes.length.toLocaleString()} of {matchingRecipes.length.toLocaleString()} · Load more
+            </button>
+          {/if}
         {/if}
       </div>
     </section>
@@ -353,7 +451,7 @@
         <svg class="download-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"></path></svg>
         Download for offline use
       </button>
-      <small class="storage">The complete production dataset will be available when its pack is published.</small>
+      <small class="storage">Verified catalogs and recipe chunks are cached on this device and reused after reload.</small>
     </div>
   </div>
 {/if}

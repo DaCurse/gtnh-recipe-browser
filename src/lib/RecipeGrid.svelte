@@ -1,5 +1,6 @@
 <script lang="ts">
   import ItemIcon from './ItemIcon.svelte';
+  import { oreCycle } from './oreCycle';
   import type { CatalogEntry, GridDimensions, Ingredient } from './types';
 
   let {
@@ -17,6 +18,22 @@
   } = $props();
 
   const cellCount = $derived(dimensions.columns * dimensions.rows);
+  let chooserOpen = $state(false);
+  let chosenItemId = $state('');
+  let chosenOreId = $state('');
+  const chosenItem = $derived(chosenItemId ? resolve(chosenItemId) : undefined);
+  const chosenOre = $derived(chosenOreId ? resolve(chosenOreId) : undefined);
+
+  function openOreChooser(itemId: string, oreId: string) {
+    chosenItemId = itemId;
+    chosenOreId = oreId;
+    chooserOpen = true;
+  }
+
+  function choose(id: string, view: 'recipes' | 'usages') {
+    chooserOpen = false;
+    navigate(id, view);
+  }
 
   function displayAmount(value: number, fluid: boolean): string {
     const suffix = fluid ? 'L' : '';
@@ -37,18 +54,32 @@
     >
       {#each Array(cellCount) as _, slot}
         {@const ingredient = ingredients.find((candidate) => (candidate.slot ?? 0) === slot)}
-        {@const entry = ingredient ? resolve(ingredient.id) : undefined}
+        {@const alternatives = ingredient?.alternatives ?? []}
+        {@const alternativeIndex = alternatives.length > 0 ? $oreCycle % alternatives.length : 0}
+        {@const displayId = alternatives[alternativeIndex] ?? ingredient?.id}
+        {@const entry = displayId ? resolve(displayId) : undefined}
         {#if ingredient && entry}
           <button
             class="ingredient"
-            title={`${entry.name}\nLeft-click: recipes · Right-click: usages`}
-            onclick={() => navigate(entry.id, 'recipes')}
+            title={ingredient.oreDictionaryId
+              ? `${entry.name}\n${ingredient.oreDictionaryId} · Alternative ${alternativeIndex + 1} of ${alternatives.length}\nEvery member is valid here.\nTap to choose the item or complete dictionary.`
+              : `${entry.name}\nLeft-click: recipes · Right-click: usages`}
+            aria-label={ingredient.oreDictionaryId
+              ? `${ingredient.oreDictionaryId}, showing ${entry.name}, alternative ${alternativeIndex + 1} of ${alternatives.length}`
+              : entry.name}
+            onclick={() => ingredient.oreDictionaryId
+              ? openOreChooser(entry.id, ingredient.oreDictionaryId)
+              : navigate(ingredient.id, 'recipes')}
             oncontextmenu={(event) => {
               event.preventDefault();
-              navigate(entry.id, 'usages');
+              if (ingredient.oreDictionaryId) openOreChooser(entry.id, ingredient.oreDictionaryId);
+              else navigate(ingredient.id, 'usages');
             }}
           >
             <ItemIcon {entry} size={56} />
+            {#if ingredient.oreDictionaryId}
+              <span class="ore-count">ORE ×{alternatives.length}</span>
+            {/if}
             {#if ingredient.amount !== undefined && (ingredient.amount !== 1 || entry.kind === 'fluid')}
               <span class="amount" title={`${ingredient.amount.toLocaleString()}${entry.kind === 'fluid' ? ' L' : ''}`}>
                 {displayAmount(ingredient.amount, entry.kind === 'fluid')}
@@ -66,6 +97,40 @@
   </div>
 {/if}
 
+<svelte:window onkeydown={(event) => {
+  if (chooserOpen && event.key === 'Escape') chooserOpen = false;
+}} />
+
+{#if chooserOpen && chosenItem && chosenOre}
+  <div class="ore-choice-scrim" role="presentation" onclick={(event) => {
+    if (event.currentTarget === event.target) chooserOpen = false;
+  }}>
+    <div class="ore-choice" role="dialog" aria-modal="true" aria-label="Choose ore dictionary destination" tabindex="-1">
+      <button class="choice-close" onclick={() => chooserOpen = false} aria-label="Close">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
+      </button>
+      <p class="choice-eyebrow">INTERCHANGEABLE INGREDIENT</p>
+      <h2>What do you want to inspect?</h2>
+      <div class="choice-option">
+        <ItemIcon entry={chosenItem} size={56} />
+        <div><b>{chosenItem.name}</b><small>Only this specific item</small></div>
+        <span class="choice-actions">
+          <button onclick={() => choose(chosenItem.id, 'recipes')}>Recipes</button>
+          <button onclick={() => choose(chosenItem.id, 'usages')}>Usages</button>
+        </span>
+      </div>
+      <div class="choice-option">
+        <ItemIcon entry={chosenItem} size={56} />
+        <div><b>{chosenOre.name}</b><small>All {chosenOre.members?.length ?? 0} valid alternatives</small></div>
+        <span class="choice-actions">
+          <button onclick={() => choose(chosenOre.id, 'recipes')}>Recipes</button>
+          <button onclick={() => choose(chosenOre.id, 'usages')}>Usages</button>
+        </span>
+      </div>
+    </div>
+  </div>
+{/if}
+
 <style>
   .grid-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
   .grid-label { color:#8d9297; font-size:10px; letter-spacing:.65px; text-transform:uppercase; }
@@ -75,4 +140,27 @@
   .empty-slot { width:56px; height:56px; background:url('/assets/inventory-slot.webp') center/cover no-repeat; image-rendering:pixelated; opacity:.46; }
   .amount { position:absolute; right:8px; bottom:8px; z-index:2; max-width:42px; overflow:hidden; padding:2px 3px 1px; border-radius:3px; background:#111d; color:#fff; font:750 13px/1 ui-sans-serif,system-ui,sans-serif; letter-spacing:-.04em; text-overflow:clip; white-space:nowrap; box-shadow:0 0 0 1px #ffffff18; text-shadow:1px 1px #000; }
   .chance { position:absolute; left:3px; top:3px; z-index:2; padding:2px 3px; border-radius:2px; background:#17181bd9; color:#eef0f2; font:11px Minecraft,monospace; text-shadow:2px 2px #342C34; }
+  .ore-count { position:absolute; left:3px; top:3px; z-index:2; max-width:50px; overflow:hidden; padding:2px 3px; border-radius:2px; background:#17181be8; color:#dfe2e5; font:700 8px/1 ui-sans-serif,system-ui,sans-serif; letter-spacing:-.02em; white-space:nowrap; text-shadow:1px 1px #000; }
+  .ore-choice-scrim { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }
+  .ore-choice { position:relative; width:min(560px,100%); padding:28px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; text-align:left; }
+  .choice-eyebrow { margin:0 42px 7px 0; color:#a5aaaf; font:12px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342c34; }
+  .ore-choice h2 { margin:0 42px 20px 0; color:#f0f1f2; font:20px/1.25 Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
+  .choice-close { position:absolute; right:10px; top:10px; width:44px; height:44px; display:grid; place-items:center; padding:0; border:0; background:none; color:#aeb3b8; cursor:pointer; }
+  .choice-close svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; }
+  .choice-option { display:grid; grid-template-columns:56px minmax(0,1fr) auto; align-items:center; gap:12px; padding:13px; border:1px solid #464a4f; border-radius:9px; background:#292c30; }
+  .choice-option+.choice-option { margin-top:10px; }
+  .choice-option>div { min-width:0; }
+  .choice-option b,.choice-option small { display:block; }
+  .choice-option b { overflow:hidden; color:#e5e7e9; font-size:14px; text-overflow:ellipsis; white-space:nowrap; }
+  .choice-option small { margin-top:5px; color:#989da2; font-size:11px; }
+  .choice-actions { display:flex; gap:7px; }
+  .choice-actions button { min-width:82px; min-height:44px; padding:0 11px; border:1px solid #5a5f65; border-radius:7px; background:#35393d; color:#e3e5e7; font-weight:700; cursor:pointer; }
+  .choice-actions button:first-child { background:#d1d4d7; color:#17191b; border-color:#d1d4d7; }
+  @media (max-width:600px) {
+    .ore-choice-scrim { align-items:end; padding:0; }
+    .ore-choice { width:100%; padding:24px 16px max(18px,env(safe-area-inset-bottom)); border-width:1px 0 0; border-radius:16px 16px 0 0; }
+    .choice-option { grid-template-columns:56px minmax(0,1fr); }
+    .choice-actions { grid-column:1/-1; }
+    .choice-actions button { flex:1; }
+  }
 </style>

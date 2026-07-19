@@ -74,4 +74,15 @@ describe.skipIf(!existsSync(realDataPath))('pinned real format-v5 dataset', () =
       recipe.inputs.some((input) => input.goodsId === creosote?.id));
     expect(fuelRecipe?.gt?.metadata).toContainEqual({ key: 'fuel_value', value: 48 });
   });
+
+  it('retains ore-dictionary members and indexes their interchangeable usages', () => {
+    const dustIron = repository.oreDictionaries.find((ore) => ore.id === 'o:dustIron');
+    const oreRecipe = repository.recipes.find((recipe) =>
+      recipe.inputs.some((input) => input.kind === 'oreDict' && input.goodsId === dustIron?.id));
+    expect(dustIron?.itemIds.length).toBeGreaterThan(1);
+    expect(oreRecipe).toBeDefined();
+    for (const memberId of dustIron!.itemIds) {
+      expect(repository.items.find((item) => item.id === memberId)?.usageRecipeIds).toContain(oreRecipe!.id);
+    }
+  });
 });
