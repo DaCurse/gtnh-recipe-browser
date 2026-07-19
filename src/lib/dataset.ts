@@ -145,6 +145,10 @@ function amount(value: number): string {
   return `${value} EU`;
 }
 
+function power(value: number): string {
+  return amount(value).replace(/ EU$/, ' EU/t');
+}
+
 export class DatasetRepository {
   readonly entries: CatalogEntry[];
   readonly datasetId: string;
@@ -243,6 +247,8 @@ export class DatasetRepository {
         slot: io.slot,
         kind: io.kind
       });
+      const totalEu = recipe.gt ? recipe.gt.voltage * recipe.gt.amperage * recipe.gt.durationTicks : undefined;
+      const euPerTick = recipe.gt ? recipe.gt.voltage * recipe.gt.amperage : undefined;
       return {
         id: recipe.id,
         type: type.name,
@@ -251,7 +257,10 @@ export class DatasetRepository {
         layout: { ...type.dimensions, shapeless: type.shapeless },
         duration: recipe.gt ? duration(recipe.gt.durationTicks) : undefined,
         voltage: recipe.gt ? voltageTiers[recipe.gt.voltageTier] ?? `T${recipe.gt.voltageTier}` : undefined,
-        eu: recipe.gt ? amount(recipe.gt.voltage * recipe.gt.amperage * recipe.gt.durationTicks) : undefined,
+        eu: totalEu === undefined ? undefined : amount(totalEu),
+        euExact: totalEu === undefined ? undefined : `${totalEu.toLocaleString('en-US')} EU`,
+        euPerTick: euPerTick === undefined ? undefined : power(euPerTick),
+        euPerTickExact: euPerTick === undefined ? undefined : `${euPerTick.toLocaleString('en-US')} EU/t`,
         crafterId: type.defaultCrafter?.id ?? type.singleblocks[0]?.id ?? type.multiblocks[0]?.id
       };
     });

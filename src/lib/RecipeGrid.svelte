@@ -24,7 +24,7 @@
     {#if label}<span class="grid-label">{label}</span>{/if}
     <div
       class="slot-grid"
-      style:grid-template-columns={`repeat(${dimensions.columns}, 44px)`}
+      style:grid-template-columns={`repeat(${dimensions.columns}, 56px)`}
       aria-label={label}
     >
       {#each Array(cellCount) as _, slot}
@@ -40,7 +40,7 @@
               navigate(entry.id, 'usages');
             }}
           >
-            <ItemIcon {entry} size={44} />
+            <ItemIcon {entry} size={56} />
             {#if ingredient.amount !== undefined && (ingredient.amount !== 1 || entry.kind === 'fluid')}
               <span class="amount">{ingredient.amount}{entry.kind === 'fluid' ? 'L' : ''}</span>
             {/if}
@@ -59,10 +59,10 @@
 <style>
   .grid-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
   .grid-label { color:#8d9297; font-size:10px; letter-spacing:.65px; text-transform:uppercase; }
-  .slot-grid { display:grid; grid-auto-rows:44px; }
-  .ingredient { position:relative; width:44px; height:44px; padding:0; border:0; background:none; cursor:pointer; }
+  .slot-grid { display:grid; grid-auto-rows:56px; }
+  .ingredient { position:relative; width:56px; height:56px; padding:0; border:0; background:none; cursor:pointer; }
   .ingredient:hover { filter:brightness(1.14); z-index:1; }
-  .empty-slot { width:44px; height:44px; background:url('/assets/inventory-slot.webp') center/cover no-repeat; image-rendering:pixelated; opacity:.46; }
-  .amount { position:absolute; right:3px; bottom:2px; z-index:2; color:white; font:12px Minecraft,monospace; text-shadow:2px 2px #111; }
-  .chance { position:absolute; left:2px; top:2px; z-index:2; padding:1px 2px; border-radius:2px; background:#17181bd9; color:#eef0f2; font-size:7px; }
+  .empty-slot { width:56px; height:56px; background:url('/assets/inventory-slot.webp') center/cover no-repeat; image-rendering:pixelated; opacity:.46; }
+  .amount { position:absolute; right:4px; bottom:3px; z-index:2; color:white; font:17px Minecraft,monospace; text-shadow:2px 2px #342C34; }
+  .chance { position:absolute; left:3px; top:3px; z-index:2; padding:2px 3px; border-radius:2px; background:#17181bd9; color:#eef0f2; font:11px Minecraft,monospace; text-shadow:2px 2px #342C34; }
 </style>

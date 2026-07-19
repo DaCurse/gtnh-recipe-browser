@@ -57,6 +57,9 @@ export interface Recipe {
   duration?: string;
   voltage?: string;
   eu?: string;
+  euExact?: string;
+  euPerTick?: string;
+  euPerTickExact?: string;
   note?: string;
   crafterId?: string;
 }
