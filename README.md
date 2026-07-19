@@ -31,8 +31,12 @@ npm run smoke:deploy -- https://<site>.netlify.app/
 
 ## Data pipeline
 
-`gtnh@ShadowTheAge` is a read-only MIT-licensed upstream submodule. Its exporter must first create format-v5
-`data.bin` and `atlas.webp` from an NESQL export. Build and verify a deterministic chunked pack with:
+`gtnh@ShadowTheAge` and `nesql-exporter@ShadowTheAge` are read-only MIT-licensed upstream submodules. The
+reproducible release workflow prepares a disposable Prism instance, processes its private NESQL output twice,
+verifies deterministic format-v5 assets, and publishes them without removing historical datasets. See
+[`docs/exporting-current-data.md`](docs/exporting-current-data.md).
+
+Build and verify an already processed deterministic chunked pack with:
 
 ```sh
 npm run pack -- \

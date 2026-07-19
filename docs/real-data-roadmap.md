@@ -193,7 +193,15 @@ Add two publishing safeguards:
 
 Never update `versions.json` until all assets are remotely readable and their downloaded digests match.
 
+Implemented:
+
+- The pinned NESQL exporter is built from a patched disposable copy; both upstream submodules remain read-only.
+- Preparation verifies the official GTNH archive and creates a separate Prism export instance with BugTorch disabled.
+- Processing validates tooltip compatibility, builds twice, compares deterministic digests, and verifies every asset.
+- Publishing stages the immutable pack before atomically prepending its version entry while retaining older datasets.
+
 ## Immediate next milestone
 
-Complete the Phase 6 cross-browser offline acceptance run, then proceed to Phase 7 release publishing and
-deployed-origin fetch/persist verification. No recipe, icon, or catalog format change is required.
+Finish the manual NESQL export for GTNH 2.9.0-beta-2, process and publish its verified immutable pack, then run the
+Netlify deployed-origin fetch/persist smoke test. Follow with the remaining Phase 6 cross-browser offline acceptance
+run. No recipe, icon, or catalog format change is required.
