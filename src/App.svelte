@@ -6,6 +6,7 @@
   import RecipeCard from './lib/RecipeCard.svelte';
   import { DatasetRepository } from './lib/dataset';
   import { itemListUrl } from './lib/navigation';
+  import { boundedPage } from './lib/recipePresentation';
   import { normalize } from './lib/search';
   import type { CatalogEntry, Recipe } from './lib/types';
 
@@ -22,7 +23,7 @@
   let recipeError = $state('');
   let recipeLoadedShards = $state(0);
   let recipeTotalShards = $state(0);
-  let recipeLimit = $state(30);
+  let recipePage = $state(0);
   let loadedRecipeCounts = $state<Record<string, number>>({});
   let recipeQuery = $state('');
   let recipeFilter = $state('');
@@ -32,6 +33,8 @@
   let searchPending = $state(true);
   let searchLoadingMore = $state(false);
   let searchWorker: Worker | null = null;
+  let recipeAbortController: AbortController | null = null;
+  let recipeDocumentCache = new Map<string, string>();
   let searchRequest = 0;
   let recipeRequest = 0;
   let query = $state('');
@@ -57,11 +60,12 @@
   const related = $derived(allRecipes);
   const types = $derived([...new Set(related.map((x) => x.type))]);
   const recipeTerms = $derived(normalize(recipeFilter).split(/\s+/).filter(Boolean));
-  const recipeDocuments = $derived(new Map(related.map((recipe) => [recipe.id, recipeSearchDocument(recipe)])));
   const matchingRecipes = $derived(type ? related.filter((recipe) =>
     recipe.type === type &&
-    recipeTerms.every((term) => recipeDocuments.get(recipe.id)?.includes(term))) : []);
-  const visibleRecipes = $derived(matchingRecipes.slice(0, recipeLimit));
+    recipeTerms.every((term) => recipeSearchDocumentCached(recipe).includes(term))) : []);
+  const recipePageSize = 20;
+  const recipePageCount = $derived(Math.max(1, Math.ceil(matchingRecipes.length / recipePageSize)));
+  const visibleRecipes = $derived(boundedPage(matchingRecipes, recipePage, recipePageSize));
 
   $effect(() => {
     const nextQuery = query;
@@ -80,7 +84,7 @@
     mode;
     type;
     recipeFilter;
-    recipeLimit = 30;
+    recipePage = 0;
   });
 
   $effect(() => {
@@ -116,28 +120,59 @@
     ].filter(Boolean).join(' '));
   }
 
+  function recipeSearchDocumentCached(recipe: Recipe): string {
+    if (recipeTerms.length === 0) return '';
+    let document = recipeDocumentCache.get(recipe.id);
+    if (document === undefined) {
+      document = recipeSearchDocument(recipe);
+      recipeDocumentCache.set(recipe.id, document);
+    }
+    return document;
+  }
+
   async function refreshRecipes() {
     if (!repository || !selectedId) return;
+    recipeAbortController?.abort();
+    const controller = new AbortController();
+    recipeAbortController = controller;
     const request = ++recipeRequest;
     const entryId = selectedId;
     const view = mode;
     allRecipes = [];
+    type = '';
+    recipePage = 0;
+    recipeDocumentCache = new Map();
     recipeError = '';
     recipeLoading = true;
     recipeLoadedShards = 0;
     recipeTotalShards = 0;
     try {
-      const loaded = await repository.recipesFor(entryId, view, (loadedShards, totalShards) => {
+      const loaded = await repository.recipesFor(entryId, view, ({
+        loadedShards,
+        totalShards,
+        batch
+      }) => {
         if (request !== recipeRequest) return;
         recipeLoadedShards = loadedShards;
         recipeTotalShards = totalShards;
-      });
+        if (batch.length > 0) {
+          const next = [...allRecipes, ...batch]
+            .sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
+          allRecipes = next;
+          loadedRecipeCounts = {
+            ...loadedRecipeCounts,
+            [`${entryId}:${view}`]: next.length
+          };
+          if (!type) type = next[0]?.type ?? '';
+        }
+      }, controller.signal);
       if (request === recipeRequest) {
         allRecipes = loaded;
         loadedRecipeCounts = { ...loadedRecipeCounts, [`${entryId}:${view}`]: loaded.length };
-        type = loaded[0]?.type ?? '';
+        if (!type) type = loaded[0]?.type ?? '';
       }
     } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
       console.error('Unable to load recipes', error);
       if (request === recipeRequest) {
         allRecipes = [];
@@ -148,15 +183,14 @@
     }
   }
 
-  function loadMoreRecipes(node: HTMLElement) {
-    if (!('IntersectionObserver' in window)) return;
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) {
-        recipeLimit = Math.min(recipeLimit + 30, matchingRecipes.length);
-      }
-    }, { rootMargin: '500px 0px' });
-    observer.observe(node);
-    return { destroy: () => observer.disconnect() };
+  function setRecipePage(nextPage: number) {
+    recipePage = Math.max(0, Math.min(nextPage, recipePageCount - 1));
+    requestAnimationFrame(() => {
+      document.querySelector('.recipe-search-block, .recipe-list')?.scrollIntoView({
+        block: 'start',
+        behavior: 'smooth'
+      });
+    });
   }
 
   function requestMoreItems() {
@@ -248,6 +282,8 @@
   }
 
   function showItemList(clearSearch = false) {
+    recipeAbortController?.abort();
+    recipeAbortController = null;
     ++recipeRequest;
     detailsOpen = false;
     recipeLoading = false;
@@ -382,6 +418,8 @@
       removeEventListener('keydown', handleShortcut);
       searchWorker?.terminate();
       searchWorker = null;
+      recipeAbortController?.abort();
+      recipeAbortController = null;
     };
   });
 </script>
@@ -559,7 +597,7 @@
           </button>
         {/each}
       </div>
-      {#if !recipeLoading && related.length > 0}
+      {#if related.length > 0}
         <div class="recipe-search-block">
           <div class="recipe-search-wrap">
             <svg viewBox="0 0 24 24" aria-hidden="true">
@@ -584,7 +622,7 @@
       {/if}
       <div class="recipe-list">
         {#if recipeLoading}
-          <div class="recipe-loading" aria-live="polite">
+          <div class:partial={related.length > 0} class="recipe-loading" aria-live="polite">
             <span class="spinner" aria-hidden="true"></span>
             <b>Loading {mode}…</b>
             <p>{recipeTotalShards > 0
@@ -594,27 +632,39 @@
               <div class="load-progress compact"><span style:width={`${recipeLoadedShards / recipeTotalShards * 100}%`}></span></div>
             {/if}
           </div>
-        {:else if recipeError}
+        {/if}
+        {#if recipeError}
           <div class="no-recipes recipe-error">
             <span>!</span><b>Could not load {mode}</b><p>{recipeError}</p>
             <button onclick={refreshRecipes}>Try again</button>
           </div>
+        {:else if !recipeLoading && visibleRecipes.length === 0}
+          <div class="no-recipes">
+            <span>⌁</span>
+            <b>{recipeFilter ? `No matching ${mode}` : `No ${mode} found`}</b>
+            <p>{recipeFilter
+              ? 'Try fewer terms or clear the recipe filter.'
+              : `This item has no known ${mode} in the active dataset.`}</p>
+          </div>
         {:else}
           {#each visibleRecipes as recipe (recipe.id)}
             <RecipeCard {recipe} navigate={(id, view) => select(id, true, view)} resolve={(id) => entryById.get(id)} />
-          {:else}
-            <div class="no-recipes">
-              <span>⌁</span>
-              <b>{recipeFilter ? `No matching ${mode}` : `No ${mode} found`}</b>
-              <p>{recipeFilter
-                ? 'Try fewer terms or clear the recipe filter.'
-                : `This item has no known ${mode} in the active dataset.`}</p>
-            </div>
           {/each}
-          {#if visibleRecipes.length < matchingRecipes.length}
-            <button class="recipe-more" use:loadMoreRecipes onclick={() => recipeLimit += 30}>
-              Showing {visibleRecipes.length.toLocaleString()} of {matchingRecipes.length.toLocaleString()} · Load more
-            </button>
+          {#if matchingRecipes.length > recipePageSize}
+            <nav class="recipe-pagination" aria-label="Recipe pages">
+              <button
+                disabled={recipePage === 0}
+                onclick={() => setRecipePage(recipePage - 1)}
+              >Previous</button>
+              <span>
+                {recipePage * recipePageSize + 1}–{Math.min((recipePage + 1) * recipePageSize, matchingRecipes.length)}
+                of {matchingRecipes.length.toLocaleString()}
+              </span>
+              <button
+                disabled={recipePage >= recipePageCount - 1}
+                onclick={() => setRecipePage(recipePage + 1)}
+              >Next</button>
+            </nav>
           {/if}
         {/if}
       </div>

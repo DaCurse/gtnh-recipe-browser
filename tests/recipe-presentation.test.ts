@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  boundedPage,
   ingredientsByGridSlot,
   recipeCrafterId,
   recipeItemInputLabel,
@@ -37,5 +38,11 @@ describe('recipe presentation parity', () => {
       [0, { id: 'first', slot: 0 }],
       [2, { id: 'gap-after', slot: 2 }]
     ]);
+  });
+
+  it('keeps a 2,000-recipe result bounded to one mounted page', () => {
+    const recipes = Array.from({ length: 2_254 }, (_, index) => ({ id: `recipe-${index}` }));
+    expect(boundedPage(recipes, 0, 20)).toHaveLength(20);
+    expect(boundedPage(recipes, 112, 20)).toHaveLength(14);
   });
 });

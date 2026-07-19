@@ -14,6 +14,7 @@ import {
   voltageTierName
 } from './recipeMetadata';
 import { recipeCrafterId, recipeTypeIconId } from './recipePresentation';
+import { mapProgressively } from './progressive';
 import {
   cacheAsset,
   cacheMetadata,
@@ -140,6 +141,12 @@ export interface DatasetLoadProgress {
   stage: string;
 }
 
+export interface RecipeLoadProgress {
+  loadedShards: number;
+  totalShards: number;
+  batch: Recipe[];
+}
+
 interface AssetLoadProgress {
   loaded: number;
   total: number;
@@ -215,6 +222,10 @@ async function fetchJsonNetworkFirst<T>(url: string, cacheKey: string): Promise<
 async function decompress(bytes: Uint8Array): Promise<Uint8Array> {
   const stream = new Blob([Uint8Array.from(bytes).buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
   return new Uint8Array(await new Response(stream).arrayBuffer());
+}
+
+async function yieldToBrowser(): Promise<void> {
+  await new Promise<void>((resolve) => setTimeout(resolve, 0));
 }
 
 function duration(ticks: number): string {
@@ -384,7 +395,9 @@ export class DatasetRepository {
     pending = (async () => {
       const descriptor = this.manifest.recipeShards.find((shard) => shard.id === id);
       if (!descriptor) throw new Error(`Unknown recipe shard ${id}`);
-      const shard = decode(await decompress(await fetchVerified(descriptor, this.manifestUrl))) as PackedShard;
+      const decompressed = await decompress(await fetchVerified(descriptor, this.manifestUrl));
+      await yieldToBrowser();
+      const shard = decode(decompressed) as PackedShard;
       if (shard.datasetId !== this.datasetId) throw new Error(`${id}: dataset identity mismatch`);
       return shard.recipes;
     })();
@@ -396,7 +409,8 @@ export class DatasetRepository {
   async recipesFor(
     entryId: string,
     view: 'recipes' | 'usages',
-    onProgress?: (loadedShards: number, totalShards: number) => void
+    onProgress?: (progress: RecipeLoadProgress) => void,
+    signal?: AbortSignal
   ): Promise<Recipe[]> {
     const goods = this.packedGoods.get(entryId);
     const selectedOre = this.ores.get(entryId);
@@ -416,18 +430,12 @@ export class DatasetRepository {
       : view === 'recipes' && productionFallback
         ? new Set(productionFallback.itemIds)
         : null;
-    let loadedShards = 0;
-    onProgress?.(0, shardIds.length);
-    const packed = (await Promise.all(shardIds.map(async (id) => {
-      const recipes = await this.loadShard(id);
-      onProgress?.(++loadedShards, shardIds.length);
-      return recipes;
-    }))).flat()
-      .filter((recipe) => (view === 'recipes' ? recipe.outputs : recipe.inputs).some((io) => {
+    const matches = (recipe: PackedRecipe) =>
+      (view === 'recipes' ? recipe.outputs : recipe.inputs).some((io) => {
         if (fluidScope) return fluidScope.memberIds.has(io.goodsId);
         return ingredientMatchesEntry(io, entryId, selectedMembers, this.ores);
-      }));
-    return packed.map((recipe) => {
+      });
+    const convertRecipe = (recipe: PackedRecipe, order: number): Recipe => {
       const type = this.types.get(recipe.recipeTypeId);
       if (!type) throw new Error(`Unknown recipe type ${recipe.recipeTypeId}`);
       const convert = (io: PackedIo) => materializeIngredient(io, this.ores);
@@ -460,8 +468,27 @@ export class DatasetRepository {
         circuitConflicts: gt && gt.circuitConflicts !== 0
           ? formatCircuitConflicts(gt.circuitConflicts)
           : undefined,
-        specialValue: gt?.specialValue
+        specialValue: gt?.specialValue,
+        order
       };
-    });
+    };
+    onProgress?.({ loadedShards: 0, totalShards: shardIds.length, batch: [] });
+    const batches = await mapProgressively(
+      shardIds,
+      2,
+      async (shardId, shardIndex) => {
+        const recipes = await this.loadShard(shardId);
+        const batch = recipes
+          .filter(matches)
+          .map((recipe, recipeIndex) => convertRecipe(recipe, shardIndex * 1_000_000 + recipeIndex));
+        await yieldToBrowser();
+        return batch;
+      },
+      ({ completed, total, value }) => {
+        onProgress?.({ loadedShards: completed, totalShards: total, batch: value });
+      },
+      signal
+    );
+    return batches.flat().sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
   }
 }

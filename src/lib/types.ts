@@ -82,6 +82,8 @@ export interface Recipe {
   typeIconId?: string;
   circuitConflicts?: string;
   specialValue?: number;
+  /** Stable client-side order derived from exporter recipe-type and shard order. */
+  order?: number;
 }
 
 export interface AssetDescriptor {

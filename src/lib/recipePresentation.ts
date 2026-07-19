@@ -45,3 +45,15 @@ export function ingredientsByGridSlot<T extends { slot?: number }>(
   }
   return slots;
 }
+
+export function boundedPage<T>(
+  values: readonly T[],
+  page: number,
+  pageSize: number
+): T[] {
+  if (!Number.isInteger(pageSize) || pageSize < 1) {
+    throw new RangeError('Page size must be a positive integer');
+  }
+  const safePage = Math.max(0, Math.floor(page));
+  return values.slice(safePage * pageSize, (safePage + 1) * pageSize);
+}
