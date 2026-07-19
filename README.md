@@ -11,9 +11,9 @@ npm run dev
 
 Build and test with `npm run build`, `npm run check`, and `npm test`.
 
-The app currently includes a small demonstration catalog. Production datasets follow the contracts in
-`src/lib/types.ts`; catalogs and immutable recipe/icon chunks will be published separately and indexed by
-`public/versions.json`.
+The application loads the real GTNH dataset indexed by `public/versions.json`. Catalog, recipe, and icon assets
+are immutable and content-hashed. The client verifies them before caching catalogs and on-demand recipe shards in
+IndexedDB. Dataset loading failures are shown explicitly instead of substituting placeholder entries.
 
 ## Data pipeline
 
@@ -35,6 +35,9 @@ npm run verify-pack -- \
 
 The source NESQL export remains private. Processed compatibility fixtures are immutable and versioned separately;
 add a sibling fixture when supporting a new upstream shape.
+
+`tests/fixtures/shadowtheage-v5-2.8.0/` is the pinned, network-independent compatibility source for decoder and
+recipe-parity tests. `public/data/2.8.0-r6d351536/` is the generated pack consumed by the development build.
 
 ## Assets and attribution
 

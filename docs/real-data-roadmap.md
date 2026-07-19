@@ -1,7 +1,8 @@
 # Real data and icon roadmap
 
-This is the implementation sequence for replacing `src/lib/demo.ts` with immutable GTNH datasets. Each phase has
-an independently testable exit condition; client work should not depend on unpublished release assets.
+This tracks the immutable GTNH data implementation. Phases 1–4 are complete; Phase 5 is substantially implemented
+and covered by the pinned format-v5 fixture. Client work must remain independent of mutable upstream revisions and
+unpublished release assets.
 
 ## Source contract
 
@@ -16,7 +17,7 @@ ShadowTheAge's exporter is the source of truth and remains a read-only submodule
 
 The root builder must reject any input whose first decoded integer is not `5`.
 
-## Phase 1 — Obtain and freeze a real fixture
+## Phase 1 — Obtain and freeze a real fixture (complete)
 
 1. Build `ShadowTheAge/nesql-exporter` against the selected GTNH release.
 2. Run it from a real installation to produce the `.minecraft/nesql` directory.
@@ -36,7 +37,9 @@ The root builder must reject any input whose first decoded integer is not `5`.
 Exit condition: `data.bin` opens in ShadowTheAge's browser and the fixture includes crafting, an ore-dictionary
 input, fluids, a GT machine with metadata, and an item with multiple usages.
 
-## Phase 2 — Implement the format-v5 decoder
+Completed in `tests/fixtures/shadowtheage-v5-2.8.0/`, including provenance and immutable source hashes.
+
+## Phase 2 — Implement the format-v5 decoder (complete)
 
 Create `tools/pack-builder/` as a Node TypeScript CLI. Decode the gzip payload using the same offsets documented
 by `gtnh@ShadowTheAge/src/repository.ts`; do not import or mutate upstream browser code.
@@ -52,7 +55,10 @@ Decoder output should use stable string IDs immediately. It must preserve:
 Exit condition: decoder tests cover malformed gzip, unsupported format, invalid pointers, truncated slices, and
 representative equality checks against ShadowTheAge.
 
-## Phase 3 — Build deterministic packs and real sprites
+The decoder preserves reachable hidden goods, containers, ore dictionaries, all recipe grids and slots, GT
+metadata, crafters, search masks, and obsolete recipe remaps.
+
+## Phase 3 — Build deterministic packs and real sprites (complete)
 
 Add a CLI resembling:
 
@@ -82,25 +88,29 @@ small .NET companion is materially faster.
 Exit condition: two builds from the same input are byte-identical; every digest verifies; no recipe shard
 exceeds the agreed cap except a documented single-recipe exception; sampled sprites match the upstream atlas.
 
-## Phase 4 — Connect the client to a real catalog
+The published local pack uses verified MessagePack recipe shards and lossless 1,024-icon WebP sheets with
+content-hashed filenames.
+
+## Phase 4 — Connect the client to a real catalog (complete)
 
 Replace direct imports from `demo.ts` with a dataset repository interface:
 
 1. Fetch `versions.json` network-first with a cached fallback.
 2. Fetch a selected pack manifest and catalog assets.
 3. Verify SHA-256 before one IndexedDB transaction marks the catalog usable.
-4. Initialize the search worker with the decoded catalog and its four 32-bit search-mask words.
+4. Initialize the cancellable search worker with normalized catalog records.
 5. Return stable entry IDs to the UI; discard worker results carrying an old dataset/request generation.
 6. Resolve sprite URLs through a sheet cache. Render sheets with CSS background coordinates and
    `image-rendering: pixelated`; retain the current glyph only for an explicit missing-icon state.
-7. Render tooltip HTML through a narrowly allowlisted Minecraft-format parser, never raw `innerHTML`.
-
-Keep the demonstration dataset behind an explicit development flag so production cannot silently fall back to it.
+7. Convert upstream tooltip HTML to safe plain text; never render raw `innerHTML`.
 
 Exit condition: a real item can be searched, displays its actual sprite and complete tooltip, and deep links
 survive reload.
 
-## Phase 5 — Load recipes and usages on demand
+The production client now rejects catalog failures explicitly, keeps query-based deep links stable, and reuses
+verified IndexedDB assets across in-app navigation and reloads.
+
+## Phase 5 — Load recipes and usages on demand (in progress)
 
 Catalog entries carry production/usage recipe-shard references. On item selection:
 
@@ -110,10 +120,26 @@ Catalog entries carry production/usage recipe-shard references. On item selectio
 4. Feed the four declared NEI grids to the existing `RecipeGrid` renderer.
 5. Add ore-dictionary alternative cycling/inspection, fluid-container behavior, crafter icons, chances, and all GT
    metadata lines.
-6. Virtualize recipe cards after real-data profiling establishes the card-height strategy.
+6. Stream matching results after each shard with bounded decode concurrency and stale-request cancellation.
+7. Keep recipe rendering to a fixed 20-card page so large collections never accumulate an unbounded DOM.
 
 Exit condition: crafting is fixed at 3×3, shaped gaps survive, shapeless is labeled, and sampled GT machine cards
 match ShadowTheAge's slot placement and values.
+
+Current progress:
+
+- Recipes and usages load only referenced, verified shards and appear progressively with chunk progress.
+- Exporter-order NEI grids preserve crafting gaps, item/fluid directions, service-slot bounds, and output chances.
+- GT singleblocks select the recipe voltage tier; multiblocks and tabs retain default crafter icons.
+- Duration, voltage, amperage, EU, EU/t, fuel, heat, fusion, glass, and conflict metadata follow upstream semantics.
+- Fluid and filled-container selections union the same production/consumption lists as ShadowTheAge while retaining
+  empty-container and fluid-amount metadata.
+- Recipe filtering, machine tabs, ore-dictionary navigation, and cancellation remain available with bounded cards.
+- `tests/pinned-parity.test.ts` covers crafting, machines, multiblocks, fluids, containers, metadata, service slots,
+  chances, and the real 2,254-recipe Charcoal collection without network access.
+
+Remaining Phase 5 work is browser-level cross-engine/touch parity coverage and continued profiling on representative
+phones. Rich Minecraft tooltip formatting can be added without changing the immutable pack contract.
 
 ### Ore-dictionary compatibility
 
@@ -123,8 +149,7 @@ with Recipes and Usages available for either. Dictionary views load the deduplic
 item usage matching recognizes ore-dictionary membership. Tests cover member matching and overlapping/disjoint
 dictionaries.
 
-Remaining compatibility work: exercise empty dictionaries from a future fixture and combine dictionary expansion
-with the still-pending fluid-container recipe/usage behavior.
+Remaining compatibility work: exercise empty dictionaries when a future immutable fixture contains one.
 
 ## Phase 6 — Complete offline dataset management
 
@@ -152,7 +177,6 @@ Never update `versions.json` until all assets are remotely readable and their do
 
 ## Immediate next milestone
 
-Start with Phases 1–3 as one pull request. The recommended review artifact is a small fixture plus a generated pack,
-decoder tests, deterministic-build tests, and an HTML contact sheet comparing 50 source-atlas sprites with their
-repacked equivalents. That gives the client a trustworthy format before IndexedDB and download behavior grow around
-it.
+Phase 6 offline dataset management is the next feature milestone. Implement explicit catalog/partial/complete
+states, resumable verified full downloads, storage persistence and quota handling, byte accounting, deletion, and
+two-version switching without changing the recipe or icon asset formats.
