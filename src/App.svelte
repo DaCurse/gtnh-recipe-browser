@@ -10,8 +10,10 @@
   import { DatasetRepository } from './lib/dataset';
   import { itemListUrl } from './lib/navigation';
   import { storageShortfall } from './lib/offline';
-  import { boundedPage } from './lib/recipePresentation';
-  import { normalize } from './lib/search';
+  import {
+    toRecipeSearchCatalogEntry,
+    toRecipeSearchRecord
+  } from './lib/recipeSearch';
   import {
     estimateStorage,
     listDatasets,
@@ -50,16 +52,23 @@
   let loadedRecipeCounts = $state<Record<string, number>>({});
   let recipeQuery = $state('');
   let recipeFilter = $state('');
-  let recipeSearchPending = $state(false);
+  let recipeDebouncePending = $state(false);
+  let recipeWorkerPending = $state(false);
+  let recipeSearchIds = $state<string[]>([]);
+  let recipeSearchTotal = $state(0);
+  let recipeSearchGeneration = $state(0);
+  let recipeIndexRevision = $state(0);
+  let recipeSearchReady = $state(false);
   let searchIds = $state<string[]>([]);
   let searchTotal = $state(0);
   let searchPending = $state(true);
   let searchLoadingMore = $state(false);
   let searchWorker: Worker | null = null;
+  let recipeSearchWorker: Worker | null = null;
   let recipeAbortController: AbortController | null = null;
-  let recipeDocumentCache = new Map<string, string>();
   let searchRequest = 0;
   let recipeRequest = 0;
+  let recipeSearchRequest = 0;
   let query = $state('');
   let selectedId = $state('');
   let mode = $state<RecipeView>('recipes');
@@ -97,13 +106,13 @@
     : selected);
   const related = $derived(allRecipes);
   const types = $derived([...new Set(related.map((x) => x.type))]);
-  const recipeTerms = $derived(normalize(recipeFilter).split(/\s+/).filter(Boolean));
-  const matchingRecipes = $derived(type ? related.filter((recipe) =>
-    recipe.type === type &&
-    recipeTerms.every((term) => recipeSearchDocumentCached(recipe).includes(term))) : []);
+  const recipeById = $derived(new Map(related.map((recipe) => [recipe.id, recipe])));
+  const visibleRecipes = $derived(recipeSearchIds
+    .map((id) => recipeById.get(id))
+    .filter((recipe): recipe is Recipe => recipe !== undefined));
   const recipePageSize = 20;
-  const recipePageCount = $derived(Math.max(1, Math.ceil(matchingRecipes.length / recipePageSize)));
-  const visibleRecipes = $derived(boundedPage(matchingRecipes, recipePage, recipePageSize));
+  const recipePageCount = $derived(Math.max(1, Math.ceil(recipeSearchTotal / recipePageSize)));
+  const recipeSearchPending = $derived(recipeDebouncePending || recipeWorkerPending);
   const managedDatasets = $derived.by(() => {
     const versions = new Map(availableDatasets.map((version) => [version.datasetId, version]));
     for (const state of datasetRecords) {
@@ -147,35 +156,70 @@
 
   $effect(() => {
     const nextQuery = recipeQuery;
-    recipeSearchPending = nextQuery !== recipeFilter;
+    recipeDebouncePending = nextQuery !== recipeFilter;
     const timeout = window.setTimeout(() => {
       recipeFilter = nextQuery;
-      recipeSearchPending = false;
+      recipeDebouncePending = false;
     }, nextQuery ? 100 : 0);
     return () => window.clearTimeout(timeout);
   });
 
-  function recipeSearchDocument(recipe: Recipe): string {
-    const ingredientText = [...recipe.inputs, ...recipe.outputs].flatMap((ingredient) => {
-      const ids = [ingredient.id, ...(ingredient.alternatives ?? [])];
-      return ids.flatMap((id) => {
-        const entry = entryById.get(id);
-        return entry ? [id, entry.name, entry.mod, ...entry.tooltip] : [id];
-      });
+  $effect(() => {
+    const generation = recipeSearchGeneration;
+    recipeIndexRevision;
+    const query = recipeFilter;
+    const recipeType = type;
+    const page = recipePage;
+    if (!detailsOpen || !recipeSearchReady || !recipeSearchWorker || !recipeType) {
+      recipeWorkerPending = false;
+      return;
+    }
+    const request = ++recipeSearchRequest;
+    recipeWorkerPending = true;
+    recipeSearchWorker.postMessage({
+      type: 'search',
+      generation,
+      id: request,
+      query,
+      recipeType,
+      offset: page * recipePageSize,
+      limit: recipePageSize
     });
-    return normalize([
-      recipe.id,
-      recipe.type,
-      recipe.duration,
-      recipe.voltage,
-      recipe.eu,
-      recipe.euExact,
-      recipe.euPerTick,
-      recipe.euPerTickExact,
-      ...(recipe.metadata ?? []),
-      recipe.note,
-      ...ingredientText
-    ].filter(Boolean).join(' '));
+  });
+
+  function initializeRecipeSearch(nextCatalog: CatalogEntry[]) {
+    recipeSearchGeneration += 1;
+    recipeIndexRevision += 1;
+    recipeSearchIds = [];
+    recipeSearchTotal = 0;
+    recipeWorkerPending = false;
+    recipeSearchWorker?.postMessage({
+      type: 'init',
+      generation: recipeSearchGeneration,
+      catalog: nextCatalog.map(toRecipeSearchCatalogEntry)
+    });
+  }
+
+  function resetRecipeSearch() {
+    recipeSearchGeneration += 1;
+    recipeIndexRevision += 1;
+    recipeSearchIds = [];
+    recipeSearchTotal = 0;
+    recipeWorkerPending = false;
+    recipeSearchWorker?.postMessage({
+      type: 'reset',
+      generation: recipeSearchGeneration
+    });
+  }
+
+  function appendRecipeSearch(batch: Recipe[]) {
+    if (batch.length === 0) return;
+    recipeSearchWorker?.postMessage({
+      type: 'append',
+      generation: recipeSearchGeneration,
+      recipes: batch.map(toRecipeSearchRecord)
+    });
+    recipeIndexRevision += 1;
   }
 
   function showItemPointerTooltip(event: PointerEvent, entry: CatalogEntry, action?: string) {
@@ -205,16 +249,6 @@
     itemTooltipAction = undefined;
   }
 
-  function recipeSearchDocumentCached(recipe: Recipe): string {
-    if (recipeTerms.length === 0) return '';
-    let document = recipeDocumentCache.get(recipe.id);
-    if (document === undefined) {
-      document = recipeSearchDocument(recipe);
-      recipeDocumentCache.set(recipe.id, document);
-    }
-    return document;
-  }
-
   async function refreshRecipes() {
     if (!repository || !selectedId) return;
     recipeAbortController?.abort();
@@ -226,7 +260,7 @@
     allRecipes = [];
     type = '';
     recipePage = 0;
-    recipeDocumentCache = new Map();
+    resetRecipeSearch();
     recipeError = '';
     recipeLoading = true;
     recipeLoadedShards = 0;
@@ -244,6 +278,7 @@
           const next = [...allRecipes, ...batch]
             .sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
           allRecipes = next;
+          appendRecipeSearch(batch);
           loadedRecipeCounts = {
             ...loadedRecipeCounts,
             [`${entryId}:${view}`]: next.length
@@ -261,6 +296,7 @@
       console.error('Unable to load recipes', error);
       if (request === recipeRequest) {
         allRecipes = [];
+        resetRecipeSearch();
         recipeError = error instanceof Error ? error.message : String(error);
       }
     } finally {
@@ -477,9 +513,9 @@
     ++recipeRequest;
     allRecipes = [];
     loadedRecipeCounts = {};
-    recipeDocumentCache = new Map();
     repository = loaded;
     catalog = loaded.entries;
+    initializeRecipeSearch(loaded.entries);
     datasetVersion = loaded.gtnhVersion;
     const linkedId = new URLSearchParams(location.search).get('item');
     const preferredId = preserveSelection ? selectedId : linkedId;
@@ -664,6 +700,33 @@
       console.error('Catalog search worker failed', event);
       searchPending = false;
     };
+    recipeSearchWorker = new Worker(
+      new URL('./workers/recipeSearch.worker.ts', import.meta.url),
+      { type: 'module' }
+    );
+    recipeSearchReady = true;
+    recipeSearchWorker.onmessage = (event: MessageEvent<{
+      type: 'results';
+      generation: number;
+      id: number;
+      total: number;
+      ids: string[];
+    }>) => {
+      if (
+        event.data.type !== 'results'
+        || event.data.generation !== recipeSearchGeneration
+        || event.data.id !== recipeSearchRequest
+      ) return;
+      recipeSearchIds = event.data.ids;
+      recipeSearchTotal = event.data.total;
+      recipeWorkerPending = false;
+    };
+    recipeSearchWorker.onerror = (event) => {
+      console.error('Recipe search worker failed', event);
+      recipeSearchReady = false;
+      recipeWorkerPending = false;
+      recipeError = 'Recipe filtering could not start. Reload the page to retry.';
+    };
     const handlePopState = () => {
       const id = new URLSearchParams(location.search).get('item');
       const linkedView = viewFromUrl(new URLSearchParams(location.search).get('view'));
@@ -686,6 +749,9 @@
       removeEventListener('keydown', handleShortcut);
       searchWorker?.terminate();
       searchWorker = null;
+      recipeSearchWorker?.terminate();
+      recipeSearchWorker = null;
+      recipeSearchReady = false;
       recipeAbortController?.abort();
       recipeAbortController = null;
     };
@@ -929,7 +995,7 @@
           </div>
           <small>{recipeSearchPending
             ? 'Filtering…'
-            : `${matchingRecipes.length.toLocaleString()} matching ${modeLabel}`}</small>
+            : `${recipeSearchTotal.toLocaleString()} matching ${modeLabel}`}</small>
         </div>
       {/if}
       <div class="recipe-list">
@@ -950,6 +1016,11 @@
             <span>!</span><b>Could not load {modeLabel}</b><p>{recipeError}</p>
             <button onclick={refreshRecipes}>Try again</button>
           </div>
+        {:else if !recipeLoading && recipeSearchPending && visibleRecipes.length === 0}
+          <div class="recipe-loading partial" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <b>Filtering {modeLabel}…</b>
+          </div>
         {:else if !recipeLoading && visibleRecipes.length === 0}
           <div class="no-recipes">
             <span>⌁</span>
@@ -962,15 +1033,15 @@
           {#each visibleRecipes as recipe (recipe.id)}
             <RecipeCard {recipe} navigate={(id, view) => select(id, true, view)} resolve={(id) => entryById.get(id)} />
           {/each}
-          {#if matchingRecipes.length > recipePageSize}
+          {#if recipeSearchTotal > recipePageSize}
             <nav class="recipe-pagination" aria-label="Recipe pages">
               <button
                 disabled={recipePage === 0}
                 onclick={() => setRecipePage(recipePage - 1)}
               >Previous</button>
               <span>
-                {recipePage * recipePageSize + 1}–{Math.min((recipePage + 1) * recipePageSize, matchingRecipes.length)}
-                of {matchingRecipes.length.toLocaleString()}
+                {recipePage * recipePageSize + 1}–{Math.min((recipePage + 1) * recipePageSize, recipeSearchTotal)}
+                of {recipeSearchTotal.toLocaleString()}
               </span>
               <button
                 disabled={recipePage >= recipePageCount - 1}
