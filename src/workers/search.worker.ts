@@ -15,9 +15,11 @@ interface SearchDocument extends SearchEntry {
 
 type WorkerRequest =
   | { type: 'init'; catalog: SearchEntry[] }
-  | { type: 'search'; id: number; query: string };
+  | { type: 'search'; id: number; query: string; offset: number; limit: number };
 
 let catalog: SearchDocument[] = [];
+let lastQuery: string | null = null;
+let lastMatches: SearchDocument[] = [];
 
 function score(entry: SearchDocument, terms: string[]): number {
   if (!terms.length) return 0;
@@ -42,24 +44,30 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
         haystack: `${normalizedName} ${normalizedMod} ${normalizedId}`
       };
     });
+    lastQuery = null;
+    lastMatches = [];
     self.postMessage({ type: 'ready' });
     return;
   }
 
-  const tokens = normalize(request.query).split(/\s+/).filter(Boolean);
-  const modFilters = tokens.filter((token) => token.startsWith('@')).map((token) => token.slice(1));
-  const terms = tokens.filter((token) => !token.startsWith('@'));
-  const matches = tokens.length === 0
-    ? catalog
-    : catalog
-      .filter((entry) => modFilters.every((filter) => entry.normalizedMod.includes(filter)) &&
-        terms.every((term) => entry.haystack.includes(term)))
-      .sort((a, b) => score(b, terms) - score(a, terms) || a.name.localeCompare(b.name));
+  if (request.query !== lastQuery) {
+    const tokens = normalize(request.query).split(/\s+/).filter(Boolean);
+    const modFilters = tokens.filter((token) => token.startsWith('@')).map((token) => token.slice(1));
+    const terms = tokens.filter((token) => !token.startsWith('@'));
+    lastMatches = tokens.length === 0
+      ? catalog
+      : catalog
+        .filter((entry) => modFilters.every((filter) => entry.normalizedMod.includes(filter)) &&
+          terms.every((term) => entry.haystack.includes(term)))
+        .sort((a, b) => score(b, terms) - score(a, terms) || a.name.localeCompare(b.name));
+    lastQuery = request.query;
+  }
 
   self.postMessage({
     type: 'results',
     id: request.id,
-    total: matches.length,
-    ids: matches.slice(0, 300).map((entry) => entry.id)
+    offset: request.offset,
+    total: lastMatches.length,
+    ids: lastMatches.slice(request.offset, request.offset + request.limit).map((entry) => entry.id)
   });
 };

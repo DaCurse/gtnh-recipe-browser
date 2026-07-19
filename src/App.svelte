@@ -25,6 +25,7 @@
   let searchIds = $state<string[]>([]);
   let searchTotal = $state(0);
   let searchPending = $state(true);
+  let searchLoadingMore = $state(false);
   let searchWorker: Worker | null = null;
   let searchRequest = 0;
   let recipeRequest = 0;
@@ -56,8 +57,9 @@
     if (datasetStatus !== 'ready' || !searchWorker) return;
     searchPending = true;
     const request = ++searchRequest;
+    searchLoadingMore = false;
     const timeout = window.setTimeout(() => {
-      searchWorker?.postMessage({ type: 'search', id: request, query: nextQuery });
+      searchWorker?.postMessage({ type: 'search', id: request, query: nextQuery, offset: 0, limit: 300 });
     }, nextQuery ? 80 : 0);
     return () => window.clearTimeout(timeout);
   });
@@ -108,6 +110,28 @@
         recipeLimit = Math.min(recipeLimit + 30, matchingRecipes.length);
       }
     }, { rootMargin: '500px 0px' });
+    observer.observe(node);
+    return { destroy: () => observer.disconnect() };
+  }
+
+  function requestMoreItems() {
+    if (!searchWorker || searchPending || searchLoadingMore || searchIds.length >= searchTotal) return;
+    searchLoadingMore = true;
+    searchWorker.postMessage({
+      type: 'search',
+      id: searchRequest,
+      query,
+      offset: searchIds.length,
+      limit: 300
+    });
+  }
+
+  function loadMoreItems(node: HTMLElement) {
+    if (!('IntersectionObserver' in window)) return;
+    const root = node.closest('.item-grid');
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) requestMoreItems();
+    }, { root, rootMargin: '400px 0px' });
     observer.observe(node);
     return { destroy: () => observer.disconnect() };
   }
@@ -179,6 +203,7 @@
     searchIds = [];
     searchTotal = 0;
     searchPending = true;
+    searchLoadingMore = false;
     recipeLoading = false;
     selectedId = '';
     datasetVersion = '…';
@@ -218,12 +243,15 @@
     if (params.get('view') === 'usages') mode = 'usages';
     searchWorker = new Worker(new URL('./workers/search.worker.ts', import.meta.url), { type: 'module' });
     searchWorker.onmessage = (event: MessageEvent<
-      { type: 'ready' } | { type: 'results'; id: number; total: number; ids: string[] }
+      { type: 'ready' } | { type: 'results'; id: number; offset: number; total: number; ids: string[] }
     >) => {
       if (event.data.type !== 'results' || event.data.id !== searchRequest) return;
-      searchIds = event.data.ids;
+      searchIds = event.data.offset === 0
+        ? event.data.ids
+        : [...searchIds, ...event.data.ids];
       searchTotal = event.data.total;
       searchPending = false;
+      searchLoadingMore = false;
     };
     searchWorker.onerror = (event) => {
       console.error('Catalog search worker failed', event);
@@ -348,6 +376,13 @@
           {:else}
             <div class="empty"><b>No matches</b><span>Try fewer terms or another @mod filter.</span></div>
           {/each}
+          {#if visibleEntries.length < searchTotal}
+            <button class="item-more" use:loadMoreItems onclick={requestMoreItems}>
+              {searchLoadingMore
+                ? 'Loading more items…'
+                : `Showing ${visibleEntries.length.toLocaleString()} of ${searchTotal.toLocaleString()} · Load next 300`}
+            </button>
+          {/if}
         {/if}
       </div>
       <footer><span><i></i> Catalog ready</span><span>{searchableCatalog.length.toLocaleString()} entries</span></footer>

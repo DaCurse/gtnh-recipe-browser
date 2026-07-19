@@ -39,5 +39,6 @@ add a sibling fixture when supporting a new upstream shape.
 ## Assets and attribution
 
 - Upstream exporter/browser: ShadowTheAge, MIT; see `gtnh@ShadowTheAge/LICENSE`.
-- The supplied Minecraft-style font and inventory-slot artwork remain subject to their respective owners'
-  terms and are not covered by this repository's source-code license.
+- The bundled [Minecraft font](https://www.fontspace.com/minecraft-font-f28180) archive declares the font Public
+  Domain. The supplied inventory-slot artwork remains subject to its owner's terms and is not covered by this
+  repository's source-code license.
