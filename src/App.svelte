@@ -389,7 +389,10 @@
     </aside>
 
     <section class:mobile-visible={detailsOpen} class="detail">
-      <button class="back" onclick={() => { detailsOpen = false; history.back(); }}>‹ Back to items</button>
+      <button class="back" onclick={() => { detailsOpen = false; history.back(); }}>
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
+        Back to items
+      </button>
       <div class="item-head">
         <ItemIcon entry={selectedIconEntry ?? selected} size={88} selected />
         <div>
