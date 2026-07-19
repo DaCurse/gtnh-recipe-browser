@@ -260,7 +260,11 @@
           <path d="m15.5 15.5 4 4"></path>
         </svg>
         <input bind:this={searchInput} bind:value={query} placeholder="Search items, fluids, or @mod…" aria-label="Search catalog" />
-        {#if query}<button onclick={() => query = ''} aria-label="Clear search">×</button>{/if}
+        {#if query}
+          <button class="clear-search" onclick={() => query = ''} aria-label="Clear search">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
+          </button>
+        {/if}
         <kbd>Ctrl K</kbd>
       </div>
       <div class="result-bar">
