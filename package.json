@@ -11,6 +11,9 @@
     "test": "vitest run",
     "pack": "tsx tools/pack-builder/cli.ts",
     "verify-pack": "tsx tools/pack-builder/verify-cli.ts",
+    "export:prepare": "tsx tools/data-export/prepare.ts",
+    "export:process": "tsx tools/data-export/process.ts",
+    "export:publish": "tsx tools/data-export/publish.ts",
     "smoke:deploy": "node tools/deployment-smoke.mjs"
   },
   "dependencies": {

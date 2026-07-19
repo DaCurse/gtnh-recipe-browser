@@ -1,3 +1,6 @@
 [submodule "gtnh"]
 	path = gtnh@ShadowTheAge
 	url = https://github.com/ShadowTheAge/gtnh/
+[submodule "nesql-exporter@ShadowTheAge"]
+	path = nesql-exporter@ShadowTheAge
+	url = https://github.com/ShadowTheAge/nesql-exporter.git

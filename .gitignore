@@ -6,3 +6,5 @@ coverage/
 *.log
 *:Zone.Identifier
 .pack-output/
+.export-work/
+GT_New_Horizons_*_Java_17-25.zip
