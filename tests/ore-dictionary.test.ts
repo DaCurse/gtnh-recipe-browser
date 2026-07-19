@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ingredientMatchesEntry, materializeIngredient } from '../src/lib/oreDictionary';
+import {
+  ingredientMatchesEntry,
+  materializeIngredient,
+  productionFallbackDictionary
+} from '../src/lib/oreDictionary';
 
 const dictionaries = new Map([
   ['o:dustIron', { itemIds: ['i:gregtech:iron-dust', 'i:ic2:iron-dust'] }],
@@ -45,5 +49,36 @@ describe('ore-dictionary ingredients', () => {
       new Set(dictionaries.get('o:dustIron')!.itemIds),
       dictionaries
     )).toBe(false);
+  });
+
+  it('selects the narrowest producing dictionary for missing item outputs', () => {
+    const selected = productionFallbackDictionary(
+      'i:thaumic-tinkerer:ichorium',
+      [
+        {
+          id: 'o:ingotIchorium',
+          itemIds: ['i:thaumic-tinkerer:ichorium', 'i:gregtech:ichorium-ingot']
+        },
+        {
+          id: 'o:listAllMaterials',
+          itemIds: [
+            'i:thaumic-tinkerer:ichorium',
+            'i:gregtech:ichorium-ingot',
+            'i:gregtech:iron-ingot'
+          ]
+        }
+      ],
+      (id) => id === 'i:gregtech:ichorium-ingot' || id === 'i:gregtech:iron-ingot'
+    );
+
+    expect(selected?.id).toBe('o:ingotIchorium');
+  });
+
+  it('does not invent a fallback when no equivalent member has production', () => {
+    expect(productionFallbackDictionary(
+      'i:mod:unobtainable',
+      [{ id: 'o:unobtainable', itemIds: ['i:mod:unobtainable', 'i:other:unobtainable'] }],
+      () => false
+    )).toBeUndefined();
   });
 });

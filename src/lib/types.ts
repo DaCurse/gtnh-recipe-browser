@@ -19,6 +19,8 @@ export interface CatalogEntry {
   usageShards?: string[];
   productionCount?: number;
   usageCount?: number;
+  /** Ore dictionary used when this item has no direct production recipes. */
+  productionOreDictionaryId?: string;
   searchable?: boolean;
   /** Stable item IDs accepted by a synthetic ore-dictionary entry. */
   members?: string[];

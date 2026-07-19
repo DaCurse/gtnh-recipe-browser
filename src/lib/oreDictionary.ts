@@ -12,6 +12,28 @@ export interface OreDictionaryReference {
   itemIds: string[];
 }
 
+export interface OreDictionaryDefinition extends OreDictionaryReference {
+  id: string;
+}
+
+/**
+ * Selects the narrowest ore dictionary which can supply production recipes for
+ * an item with no direct outputs. Broad dictionaries remain available through
+ * their own entries, but do not eclipse a material-specific dictionary.
+ */
+export function productionFallbackDictionary(
+  entryId: string,
+  dictionaries: Iterable<OreDictionaryDefinition>,
+  hasProduction: (itemId: string) => boolean
+): OreDictionaryDefinition | undefined {
+  return [...dictionaries]
+    .filter((dictionary) =>
+      dictionary.itemIds.includes(entryId) &&
+      dictionary.itemIds.some((itemId) => itemId !== entryId && hasProduction(itemId)))
+    .sort((left, right) =>
+      left.itemIds.length - right.itemIds.length || left.id.localeCompare(right.id))[0];
+}
+
 export function ingredientMatchesEntry(
   ingredient: RecipeIngredientReference,
   entryId: string,

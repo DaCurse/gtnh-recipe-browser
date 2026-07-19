@@ -249,7 +249,7 @@
   function recipeCount(view: 'recipes' | 'usages'): number | undefined {
     if (!selected) return undefined;
     const declared = view === 'recipes' ? selected.productionCount : selected.usageCount;
-    return declared ?? loadedRecipeCounts[`${selected.id}:${view}`];
+    return loadedRecipeCounts[`${selected.id}:${view}`] ?? declared;
   }
 
   function diagnostic(error: unknown): string {
@@ -537,6 +537,14 @@
           Usages {#if recipeCount('usages') !== undefined}<span>{recipeCount('usages')}</span>{/if}
         </button>
       </nav>
+      {#if mode === 'recipes' && selected.productionOreDictionaryId}
+        <div class="ore-production-note">
+          No direct output exists for this exact item. Showing recipes which produce an
+          interchangeable <button onclick={() => select(selected.productionOreDictionaryId!, true, 'recipes')}>
+            {selected.productionOreDictionaryId}
+          </button> member.
+        </div>
+      {/if}
       <div class="type-row">
         {#each types as tab}
           {@const tabRecipe = related.find((recipe) => recipe.type === tab)}

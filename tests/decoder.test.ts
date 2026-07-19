@@ -3,6 +3,7 @@ import { gzipSync } from 'node:zlib';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeFormat5, PackDecodeError } from '../tools/pack-builder/decoder';
+import { productionFallbackDictionary } from '../src/lib/oreDictionary';
 
 function words(...values: number[]): Buffer {
   const buffer = Buffer.alloc(values.length * 4);
@@ -84,5 +85,33 @@ describe.skipIf(!existsSync(realDataPath))('pinned real format-v5 dataset', () =
     for (const memberId of dustIron!.itemIds) {
       expect(repository.items.find((item) => item.id === memberId)?.usageRecipeIds).toContain(oreRecipe!.id);
     }
+  });
+
+  it('preserves the Ichorium ore alias needed to recover indirect production', () => {
+    const thaumicIchorium = repository.items.find(
+      (item) => item.id === 'i:ThaumicTinkerer:kamiResource:2'
+    );
+    const gregTechIchorium = repository.items.find(
+      (item) => item.id === 'i:gregtech:gt.metaitem.01:11978'
+    );
+    const dictionary = repository.oreDictionaries.find((ore) => ore.id === 'o:ingotIchorium');
+
+    expect(thaumicIchorium?.productionRecipeIds).toHaveLength(0);
+    expect(dictionary?.itemIds).toEqual(expect.arrayContaining([
+      thaumicIchorium!.id,
+      gregTechIchorium!.id
+    ]));
+    expect(gregTechIchorium?.productionRecipeIds.length).toBeGreaterThan(0);
+
+    const fallback = productionFallbackDictionary(
+      thaumicIchorium!.id,
+      repository.oreDictionaries,
+      (itemId) =>
+        (repository.items.find((item) => item.id === itemId)?.productionRecipeIds.length ?? 0) > 0
+    );
+    const recoveredRecipes = new Set(fallback?.itemIds.flatMap((itemId) =>
+      repository.items.find((item) => item.id === itemId)?.productionRecipeIds ?? []));
+    expect(fallback?.id).toBe('o:ingotIchorium');
+    expect(recoveredRecipes.size).toBe(35);
   });
 });

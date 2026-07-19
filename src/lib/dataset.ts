@@ -1,7 +1,11 @@
 import { decode } from '@msgpack/msgpack';
 import { sha256 as nobleSha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
-import { ingredientMatchesEntry, materializeIngredient } from './oreDictionary';
+import {
+  ingredientMatchesEntry,
+  materializeIngredient,
+  productionFallbackDictionary
+} from './oreDictionary';
 import { formatGtMetadata, hasRelevantPower } from './recipeMetadata';
 import {
   cacheAsset,
@@ -227,6 +231,8 @@ export class DatasetRepository {
   private readonly packedGoods = new Map<string, PackedGoods>();
   private readonly types = new Map<string, PackedRecipeType>();
   private readonly ores = new Map<string, PackedOreDictionary>();
+  private readonly itemOres = new Map<string, PackedOreDictionary[]>();
+  private readonly productionFallbacks = new Map<string, PackedOreDictionary>();
   private readonly shards = new Map<string, Promise<PackedRecipe[]>>();
 
   private constructor(manifest: Manifest, manifestUrl: string, catalog: PackedCatalog) {
@@ -238,10 +244,31 @@ export class DatasetRepository {
     const sheets = new Map(manifest.iconSheets.map((sheet) => [sheet.id, sheet]));
     for (const goods of catalog.goods) this.packedGoods.set(goods.id, goods);
     for (const type of catalog.recipeTypes) this.types.set(type.id, type);
-    for (const ore of catalog.oreDictionaries) this.ores.set(ore.id, ore);
+    for (const ore of catalog.oreDictionaries) {
+      this.ores.set(ore.id, ore);
+      for (const itemId of ore.itemIds) {
+        const memberships = this.itemOres.get(itemId) ?? [];
+        memberships.push(ore);
+        this.itemOres.set(itemId, memberships);
+      }
+    }
+    for (const goods of catalog.goods) {
+      if (goods.kind !== 'item' || goods.productionCount !== 0) continue;
+      const fallback = productionFallbackDictionary(
+        goods.id,
+        this.itemOres.get(goods.id) ?? [],
+        (itemId) => (this.packedGoods.get(itemId)?.productionCount ?? 0) > 0
+      );
+      if (fallback) this.productionFallbacks.set(goods.id, fallback);
+    }
     const goodsEntries = catalog.goods.map((goods): CatalogEntry => {
       const sheet = goods.icon ? sheets.get(goods.icon.sheetId) : undefined;
       const tooltip = plainText(goods.tooltip).split(/\n+/).map((line) => line.trim()).filter(Boolean);
+      const productionFallback = this.productionFallbacks.get(goods.id);
+      const productionShards = productionFallback
+        ? [...new Set(productionFallback.itemIds.flatMap((itemId) =>
+            this.packedGoods.get(itemId)?.productionShards ?? []))].sort()
+        : goods.productionShards;
       return {
         id: goods.id,
         name: plainText(goods.name),
@@ -257,10 +284,11 @@ export class DatasetRepository {
           index: goods.icon.index,
           columns: sheet.columns
         } : undefined,
-        productionShards: goods.productionShards,
+        productionShards,
         usageShards: goods.usageShards,
-        productionCount: goods.productionCount,
-        usageCount: goods.usageCount
+        productionCount: productionFallback ? undefined : goods.productionCount,
+        usageCount: goods.usageCount,
+        productionOreDictionaryId: productionFallback?.id
       };
     });
     const goodsEntriesById = new Map(goodsEntries.map((entry) => [entry.id, entry]));
@@ -352,14 +380,20 @@ export class DatasetRepository {
     const goods = this.packedGoods.get(entryId);
     const selectedOre = this.ores.get(entryId);
     if (!goods && !selectedOre) return [];
+    const catalogEntry = this.entries.find((entry) => entry.id === entryId);
+    const productionFallback = this.productionFallbacks.get(entryId);
     const shardIds = selectedOre
       ? view === 'recipes'
-        ? this.entries.find((entry) => entry.id === entryId)?.productionShards ?? []
-        : this.entries.find((entry) => entry.id === entryId)?.usageShards ?? []
+        ? catalogEntry?.productionShards ?? []
+        : catalogEntry?.usageShards ?? []
       : view === 'recipes'
-        ? goods!.productionShards
+        ? catalogEntry?.productionShards ?? []
         : goods!.usageShards;
-    const selectedMembers = selectedOre ? new Set(selectedOre.itemIds) : null;
+    const selectedMembers = selectedOre
+      ? new Set(selectedOre.itemIds)
+      : view === 'recipes' && productionFallback
+        ? new Set(productionFallback.itemIds)
+        : null;
     let loadedShards = 0;
     onProgress?.(0, shardIds.length);
     const packed = (await Promise.all(shardIds.map(async (id) => {
