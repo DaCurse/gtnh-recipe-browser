@@ -73,6 +73,18 @@ describe('data export tooling', () => {
     expect(patch).not.toMatch(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/i);
   });
 
+  it('supports both upstream aspect icon providers without pinning an item ID', async () => {
+    const patch = await readFile(
+      join(process.cwd(), 'tools/data-export/patches/processor-2.9.patch'),
+      'utf8'
+    );
+
+    expect(patch).toContain('x.mod == "thaumcraftneiplugin"');
+    expect(patch).toContain('x.mod == "aspectrecipeindex"');
+    expect(patch).toContain('x.internalName == "aspect"');
+    expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
+  });
+
   it('publishes a new default without removing historical datasets', () => {
     const existing: VersionsIndex = {
       schemaVersion: 1,

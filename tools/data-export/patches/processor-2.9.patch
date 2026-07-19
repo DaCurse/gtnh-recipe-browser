@@ -1,0 +1,14 @@
+diff --git a/PackPreProcessor.cs b/PackPreProcessor.cs
+index 68f9fc0..2d40c65 100644
+--- a/PackPreProcessor.cs
++++ b/PackPreProcessor.cs
+@@ -111 +111,8 @@ namespace Source
+-            var aspects = repository.items.Where(x => x.mod == "thaumcraftneiplugin" && x.name.StartsWith("Aspect: ")).ToDictionary(x => x.name.Substring("Aspect: ".Length));
++            var aspects = repository.items
++                .Where(x =>
++                    (x.mod == "thaumcraftneiplugin" && x.name.StartsWith("Aspect: "))
++                    || (x.mod == "aspectrecipeindex" && x.internalName == "aspect"))
++                .ToDictionary(
++                    x => x.mod == "thaumcraftneiplugin"
++                        ? x.name.Substring("Aspect: ".Length)
++                        : x.name);

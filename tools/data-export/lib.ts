@@ -27,6 +27,7 @@ export interface ExportSession {
   processor: {
     repository: string;
     commit: string;
+    patchSha256: string;
   };
   toolchains: {
     java: string;

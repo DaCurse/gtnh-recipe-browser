@@ -155,7 +155,10 @@ const session: ExportSession = {
   },
   processor: {
     repository: 'https://github.com/ShadowTheAge/gtnh',
-    commit: output('git', ['rev-parse', 'HEAD'], join(repositoryRoot, 'gtnh@ShadowTheAge'))
+    commit: output('git', ['rev-parse', 'HEAD'], join(repositoryRoot, 'gtnh@ShadowTheAge')),
+    patchSha256: await sha256File(
+      join(repositoryRoot, 'tools/data-export/patches/processor-2.9.patch')
+    )
   },
   toolchains: {
     java: output('java', ['--version']).split('\n')[0]!,

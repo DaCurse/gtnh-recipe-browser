@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { spawnSync } from 'node:child_process';
-import { access, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { buildPack } from '../pack-builder/builder';
 import { decodeFormat5 } from '../pack-builder/decoder';
@@ -44,18 +44,32 @@ if ((await stat(imageZip)).size < 10_000_000) {
 await validateCombinedTooltipSchema(scripts[0]!, ['THAUMCRAFT']);
 
 const processedDirectory = join(session.workDirectory, 'processed');
+const processorDirectory = join(session.workDirectory, 'processor');
 const firstBuild = join(session.workDirectory, 'pack-a');
 const secondBuild = join(session.workDirectory, 'pack-b');
 const finalPack = join(session.workDirectory, 'pack');
-for (const path of [processedDirectory, firstBuild, secondBuild, finalPack]) {
+for (const path of [processedDirectory, processorDirectory, firstBuild, secondBuild, finalPack]) {
   await assertPathMissing(path, 'Process output');
 }
 await mkdir(processedDirectory, { recursive: true });
+await cp(join(repositoryRoot, 'gtnh@ShadowTheAge/export'), processorDirectory, {
+  recursive: true
+});
+const processorPatch = join(repositoryRoot, 'tools/data-export/patches/processor-2.9.patch');
+run('patch', ['--dry-run', '--batch', '-p1', '-i', processorPatch], processorDirectory);
+run('patch', ['--batch', '-p1', '-i', processorPatch], processorDirectory);
+const patchedProcessor = await readFile(join(processorDirectory, 'PackPreProcessor.cs'), 'utf8');
+if (
+  !patchedProcessor.includes('x.mod == "thaumcraftneiplugin"') ||
+  !patchedProcessor.includes('x.mod == "aspectrecipeindex"')
+) {
+  throw new Error('Processor compatibility patch did not produce the expected source');
+}
 const previousData = join(repositoryRoot, 'tests/fixtures/shadowtheage-v5-2.8.0/data.bin');
 run('dotnet', [
   'run',
   '--project',
-  join(repositoryRoot, 'gtnh@ShadowTheAge/export/export.csproj'),
+  join(processorDirectory, 'export.csproj'),
   '--',
   nesqlDirectory,
   '--output',
