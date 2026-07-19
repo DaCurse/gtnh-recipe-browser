@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { registerSW } from 'virtual:pwa-register';
+  import CatalogTooltip from './lib/CatalogTooltip.svelte';
   import ItemIcon from './lib/ItemIcon.svelte';
   import MinecraftText from './lib/MinecraftText.svelte';
   import { oreCycle } from './lib/oreCycle';
@@ -543,19 +544,7 @@
       <div class="item-head">
         <ItemIcon entry={selectedIconEntry ?? selected} size={88} selected />
         <div class="item-overview">
-          <div class="minecraft-tooltip" role="group" aria-label={`${selected.name} tooltip`}>
-            <div class="tooltip-header">
-              <MinecraftText lines={selected.formattedName} fallback={selected.name} />
-            </div>
-            <div class="tooltip-debug">{selected.id}</div>
-            {#if selected.formula || selected.formattedTooltip?.length || selected.tooltip.length}
-              <div class="tooltip-text">
-                {#if selected.formula}<span class="tooltip-formula">{selected.formula}</span>{/if}
-                <MinecraftText lines={selected.formattedTooltip} fallback={selected.tooltip} />
-              </div>
-            {/if}
-            <div class="tooltip-mod">{selected.mod}</div>
-          </div>
+          <CatalogTooltip entry={selected} />
         </div>
       </div>
       {#if selected.kind === 'oreDict' && selected.members}

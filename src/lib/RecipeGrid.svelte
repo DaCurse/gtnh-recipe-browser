@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import { oreCycle } from './oreCycle';
   import { ingredientsByGridSlot } from './recipePresentation';
@@ -25,6 +26,10 @@
   let chooserOpen = $state(false);
   let chosenItemId = $state('');
   let chosenOreId = $state('');
+  let tooltipEntry = $state<CatalogEntry>();
+  let tooltipOreId = $state('');
+  let tooltipX = $state(0);
+  let tooltipY = $state(0);
   const chosenItem = $derived(chosenItemId ? resolve(chosenItemId) : undefined);
   const chosenOre = $derived(chosenOreId ? resolve(chosenOreId) : undefined);
 
@@ -37,6 +42,33 @@
   function choose(id: string, view: 'recipes' | 'usages') {
     chooserOpen = false;
     navigate(id, view);
+  }
+
+  function showPointerTooltip(event: PointerEvent, entry: CatalogEntry, oreId?: string) {
+    if (event.pointerType === 'touch') return;
+    tooltipEntry = entry;
+    tooltipOreId = oreId ?? '';
+    tooltipX = event.clientX;
+    tooltipY = event.clientY;
+  }
+
+  function movePointerTooltip(event: PointerEvent) {
+    if (!tooltipEntry || event.pointerType === 'touch') return;
+    tooltipX = event.clientX;
+    tooltipY = event.clientY;
+  }
+
+  function showFocusTooltip(event: FocusEvent, entry: CatalogEntry, oreId?: string) {
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    tooltipEntry = entry;
+    tooltipOreId = oreId ?? '';
+    tooltipX = rect.right;
+    tooltipY = rect.bottom;
+  }
+
+  function hideTooltip() {
+    tooltipEntry = undefined;
+    tooltipOreId = '';
   }
 
   function displayAmount(value: number, fluid: boolean): string {
@@ -65,12 +97,14 @@
         {#if ingredient && entry}
           <button
             class="ingredient"
-            title={ingredient.oreDictionaryId
-              ? `${entry.name}\n${ingredient.oreDictionaryId} · Alternative ${alternativeIndex + 1} of ${alternatives.length}\nEvery member is valid here.\nTap to choose the item or complete dictionary.`
-              : `${entry.name}\nLeft-click: recipes · Right-click: usages`}
             aria-label={ingredient.oreDictionaryId
               ? `${ingredient.oreDictionaryId}, showing ${entry.name}, alternative ${alternativeIndex + 1} of ${alternatives.length}`
               : entry.name}
+            onpointerenter={(event) => showPointerTooltip(event, entry, ingredient.oreDictionaryId)}
+            onpointermove={movePointerTooltip}
+            onpointerleave={hideTooltip}
+            onfocus={(event) => showFocusTooltip(event, entry, ingredient.oreDictionaryId)}
+            onblur={hideTooltip}
             onclick={() => ingredient.oreDictionaryId
               ? openOreChooser(entry.id, ingredient.oreDictionaryId)
               : navigate(ingredient.id, 'recipes')}
@@ -85,7 +119,7 @@
               <span class="ore-count">ORE ×{alternatives.length}</span>
             {/if}
             {#if ingredient.amount !== undefined && (ingredient.amount !== 1 || entry.kind === 'fluid')}
-              <span class="amount" title={`${ingredient.amount.toLocaleString()}${entry.kind === 'fluid' ? ' L' : ''}`}>
+              <span class="amount">
                 {displayAmount(ingredient.amount, entry.kind === 'fluid')}
               </span>
             {/if}
@@ -99,6 +133,17 @@
       {/each}
     </div>
   </div>
+{/if}
+
+{#if tooltipEntry}
+  <FloatingCatalogTooltip
+    entry={tooltipEntry}
+    x={tooltipX}
+    y={tooltipY}
+    action={tooltipOreId
+      ? 'Left/right-click: choose item or ore dictionary · Then select Recipes or Usages'
+      : 'Left-click: Recipes · Right-click: Usages'}
+  />
 {/if}
 
 <svelte:window onkeydown={(event) => {
