@@ -8,6 +8,7 @@ import {
 } from './oreDictionary';
 import { fluidRecipeScope } from './fluidContainers';
 import { parseMinecraftHtml } from './minecraftText';
+import { installOfflineAssets } from './offline';
 import {
   formatCircuitConflicts,
   formatGtMetadata,
@@ -17,24 +18,30 @@ import {
 import { recipeCrafterId, recipeTypeIconId } from './recipePresentation';
 import { mapProgressively } from './progressive';
 import {
+  activateDataset,
   cacheAsset,
   cacheMetadata,
+  getDataset,
   getCachedAsset,
   getCachedMetadata,
-  removeCachedAsset
+  hasCachedAsset,
+  listDatasets,
+  removeCachedAsset,
+  saveDataset
 } from './storage';
-import type { CatalogEntry, Recipe, RecipeLayout } from './types';
-
-interface VersionRecord {
-  datasetId: string;
-  gtnhVersion: string;
-  revision: string;
-  packManifestUrl: string;
-}
+import type {
+  AssetDescriptor,
+  CatalogEntry,
+  DatasetState,
+  DatasetVersion,
+  OfflineInstallProgress,
+  Recipe,
+  RecipeLayout
+} from './types';
 
 interface VersionsIndex {
   schemaVersion: number;
-  versions: VersionRecord[];
+  versions: DatasetVersion[];
 }
 
 interface Asset {
@@ -54,12 +61,18 @@ interface IconSheetAsset extends Asset {
 }
 
 interface Manifest {
+  formatVersion: number;
   datasetId: string;
   gtnhVersion: string;
   revision: string;
+  displayName: string;
   catalogAssets: Asset[];
   recipeShards: RecipeShardAsset[];
   iconSheets: IconSheetAsset[];
+  totals?: {
+    assets: number;
+    offlineBytes: number;
+  };
 }
 
 interface PackedGoods {
@@ -161,8 +174,10 @@ async function sha256(bytes: Uint8Array): Promise<string> {
 async function fetchVerified(
   asset: Asset,
   manifestUrl: string,
-  onProgress?: (progress: AssetLoadProgress) => void
+  onProgress?: (progress: AssetLoadProgress) => void,
+  signal?: AbortSignal
 ): Promise<Uint8Array> {
+  if (signal?.aborted) throw new DOMException('Operation was cancelled', 'AbortError');
   const cached = await getCachedAsset(asset.sha256);
   if (cached) {
     onProgress?.({ loaded: cached.byteLength, total: asset.bytes, cached: true });
@@ -170,7 +185,7 @@ async function fetchVerified(
     await removeCachedAsset(asset.sha256);
   }
 
-  const response = await fetch(new URL(asset.url, manifestUrl));
+  const response = await fetch(new URL(asset.url, manifestUrl), { signal });
   if (!response.ok) throw new Error(`Unable to download ${asset.id}: HTTP ${response.status}`);
   let bytes: Uint8Array;
   if (response.body) {
@@ -178,6 +193,7 @@ async function fetchVerified(
     const chunks: Uint8Array[] = [];
     let loaded = 0;
     while (true) {
+      if (signal?.aborted) throw new DOMException('Operation was cancelled', 'AbortError');
       const result = await reader.read();
       if (result.done) break;
       chunks.push(result.value);
@@ -253,6 +269,18 @@ export class DatasetRepository {
   private readonly itemOres = new Map<string, PackedOreDictionary[]>();
   private readonly productionFallbacks = new Map<string, PackedOreDictionary>();
   private readonly shards = new Map<string, Promise<PackedRecipe[]>>();
+
+  private get assets(): Asset[] {
+    return [...this.manifest.catalogAssets, ...this.manifest.recipeShards, ...this.manifest.iconSheets];
+  }
+
+  get displayName(): string {
+    return this.manifest.displayName;
+  }
+
+  get offlineBytes(): number {
+    return this.assets.reduce((total, asset) => total + asset.bytes, 0);
+  }
 
   private constructor(manifest: Manifest, manifestUrl: string, catalog: PackedCatalog) {
     this.manifest = manifest;
@@ -359,20 +387,46 @@ export class DatasetRepository {
     this.entries = [...goodsEntries, ...oreEntries];
   }
 
-  static async loadLatest(onProgress?: (progress: DatasetLoadProgress) => void): Promise<DatasetRepository> {
+  static async availableVersions(): Promise<DatasetVersion[]> {
+    const versionsUrl = new URL('./versions.json', document.baseURI).href;
+    return (await fetchJsonNetworkFirst<VersionsIndex>(
+      versionsUrl,
+      `versions:${versionsUrl}`
+    )).value.versions;
+  }
+
+  static async load(
+    datasetId?: string,
+    onProgress?: (progress: DatasetLoadProgress) => void
+  ): Promise<DatasetRepository> {
     const report = (percent: number, stage: string) => onProgress?.({ percent, stage });
     const versionsUrl = new URL('./versions.json', document.baseURI).href;
     report(3, 'Checking available GTNH versions');
     const versionsResult = await fetchJsonNetworkFirst<VersionsIndex>(versionsUrl, `versions:${versionsUrl}`);
     const versions = versionsResult.value;
-    const selected = versions.versions[0];
+    const installed = await listDatasets();
+    const active = installed.find((dataset) => dataset.active);
+    const selectedId = datasetId ?? active?.datasetId ?? versions.versions[0]?.datasetId;
+    const published = versions.versions.find((version) => version.datasetId === selectedId);
+    const installedSelection = installed.find((dataset) => dataset.datasetId === selectedId);
+    const selected = published ?? (installedSelection ? {
+      datasetId: installedSelection.datasetId,
+      gtnhVersion: installedSelection.gtnhVersion,
+      revision: installedSelection.revision,
+      packManifestUrl: installedSelection.manifestUrl
+    } : undefined);
     if (!selected) throw new Error('No published GTNH datasets are available');
     const manifestUrl = new URL(selected.packManifestUrl, versionsResult.url).href;
     report(8, 'Loading dataset manifest');
-    const manifest = (await fetchJsonNetworkFirst<Manifest>(
+    const manifestResult = await fetchJsonNetworkFirst<Manifest>(
       manifestUrl,
       `manifest:${manifestUrl}`
-    )).value;
+    );
+    const manifest = manifestResult.value;
+    if (manifest.formatVersion !== 1) {
+      throw new Error(`Unsupported pack manifest format ${manifest.formatVersion}`);
+    }
+    if (manifest.datasetId !== selected.datasetId) throw new Error('Manifest dataset identity mismatch');
     const catalogAsset = manifest.catalogAssets[0];
     if (!catalogAsset) throw new Error('Pack manifest has no catalog asset');
     report(12, 'Loading catalog');
@@ -386,9 +440,105 @@ export class DatasetRepository {
     const catalog = decode(decompressed) as PackedCatalog;
     if (catalog.datasetId !== manifest.datasetId) throw new Error('Catalog dataset identity mismatch');
     report(93, 'Preparing items and ore dictionaries');
-    const repository = new DatasetRepository(manifest, manifestUrl, catalog);
+    const repository = new DatasetRepository(manifest, manifestResult.url, catalog);
+    const previous = await getDataset(manifest.datasetId);
+    const assetHashes = new Set(previous?.assetHashes ?? []);
+    assetHashes.add(catalogAsset.sha256);
+    const allAssets = repository.assets;
+    const storedBytes = allAssets.reduce(
+      (total, asset) => total + (assetHashes.has(asset.sha256) ? asset.bytes : 0),
+      0
+    );
+    const noActiveDataset = installed.every((dataset) => !dataset.active);
+    await saveDataset({
+      datasetId: manifest.datasetId,
+      gtnhVersion: manifest.gtnhVersion,
+      revision: manifest.revision,
+      displayName: manifest.displayName,
+      manifestUrl: manifestResult.url,
+      status: previous?.status === 'complete' ? 'complete' : assetHashes.size > 1 ? 'partial' : 'catalog',
+      storedBytes,
+      totalBytes: repository.offlineBytes,
+      active: previous?.active ?? noActiveDataset,
+      assetHashes: [...assetHashes],
+      updatedAt: Date.now()
+    });
     report(100, 'Catalog ready');
     return repository;
+  }
+
+  static loadLatest(onProgress?: (progress: DatasetLoadProgress) => void): Promise<DatasetRepository> {
+    return DatasetRepository.load(undefined, onProgress);
+  }
+
+  async activate(): Promise<void> {
+    await activateDataset(this.datasetId);
+  }
+
+  async installOffline(
+    onProgress?: (progress: OfflineInstallProgress) => void,
+    signal?: AbortSignal
+  ): Promise<DatasetState> {
+    const current = await getDataset(this.datasetId);
+    const completed = new Set<string>();
+    for (const asset of this.assets) {
+      if (current?.assetHashes?.includes(asset.sha256) && await hasCachedAsset(asset.sha256, asset.bytes)) {
+        completed.add(asset.sha256);
+      }
+    }
+    const persist = async (hashes: ReadonlySet<string>, complete: boolean) => {
+      const storedBytes = this.assets.reduce(
+        (total, asset) => total + (hashes.has(asset.sha256) ? asset.bytes : 0),
+        0
+      );
+      await saveDataset({
+        datasetId: this.datasetId,
+        gtnhVersion: this.gtnhVersion,
+        revision: this.revision,
+        displayName: this.displayName,
+        manifestUrl: this.manifestUrl,
+        status: complete ? 'complete' : storedBytes > this.manifest.catalogAssets[0]!.bytes
+          ? 'partial'
+          : 'catalog',
+        storedBytes,
+        totalBytes: this.offlineBytes,
+        active: current?.active ?? false,
+        assetHashes: [...hashes],
+        updatedAt: Date.now()
+      });
+    };
+    const hashes = await installOfflineAssets({
+      assets: this.assets as AssetDescriptor[],
+      completedHashes: completed,
+      concurrency: 3,
+      attempts: 3,
+      signal,
+      load: async (asset, progress, assetSignal) => {
+        await fetchVerified(asset, this.manifestUrl, ({ loaded }) => progress(loaded), assetSignal);
+      },
+      persist,
+      onProgress
+    });
+    await persist(hashes, true);
+    return (await getDataset(this.datasetId))!;
+  }
+
+  private async recordAsset(asset: Asset): Promise<void> {
+    const current = await getDataset(this.datasetId);
+    if (!current || current.assetHashes?.includes(asset.sha256)) return;
+    const hashes = new Set(current.assetHashes ?? []);
+    hashes.add(asset.sha256);
+    const storedBytes = this.assets.reduce(
+      (total, candidate) => total + (hashes.has(candidate.sha256) ? candidate.bytes : 0),
+      0
+    );
+    await saveDataset({
+      ...current,
+      status: hashes.size === this.assets.length ? 'complete' : 'partial',
+      storedBytes,
+      assetHashes: [...hashes],
+      updatedAt: Date.now()
+    });
   }
 
   private loadShard(id: string): Promise<PackedRecipe[]> {
@@ -397,7 +547,9 @@ export class DatasetRepository {
     pending = (async () => {
       const descriptor = this.manifest.recipeShards.find((shard) => shard.id === id);
       if (!descriptor) throw new Error(`Unknown recipe shard ${id}`);
-      const decompressed = await decompress(await fetchVerified(descriptor, this.manifestUrl));
+      const bytes = await fetchVerified(descriptor, this.manifestUrl);
+      await this.recordAsset(descriptor);
+      const decompressed = await decompress(bytes);
       await yieldToBrowser();
       const shard = decode(decompressed) as PackedShard;
       if (shard.datasetId !== this.datasetId) throw new Error(`${id}: dataset identity mismatch`);

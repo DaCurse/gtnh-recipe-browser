@@ -111,9 +111,33 @@ export interface PackManifest {
 
 export interface DatasetState {
   datasetId: string;
+  gtnhVersion: string;
+  revision: string;
   displayName: string;
+  manifestUrl: string;
   status: 'catalog' | 'partial' | 'complete';
   storedBytes: number;
   totalBytes: number;
   active: boolean;
+  assetHashes: string[];
+  updatedAt: number;
+}
+
+export interface DatasetVersion {
+  datasetId: string;
+  gtnhVersion: string;
+  revision: string;
+  publishedAt?: string;
+  packManifestUrl: string;
+  catalogBytes?: number;
+  offlineBytes?: number;
+}
+
+export interface OfflineInstallProgress {
+  loadedBytes: number;
+  totalBytes: number;
+  completedAssets: number;
+  totalAssets: number;
+  currentAsset?: string;
+  retry?: number;
 }

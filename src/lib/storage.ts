@@ -44,16 +44,60 @@ export async function listDatasets(): Promise<DatasetState[]> {
   return (await database()).getAll(DATASET_STORE);
 }
 
+export async function getDataset(datasetId: string): Promise<DatasetState | null> {
+  if (!('indexedDB' in globalThis)) return null;
+  return (await database()).get(DATASET_STORE, datasetId) ?? null;
+}
+
 export async function saveDataset(dataset: DatasetState): Promise<void> {
   await (await database()).put(DATASET_STORE, dataset);
 }
 
+export async function activateDataset(datasetId: string): Promise<void> {
+  const db = await database();
+  const transaction = db.transaction(DATASET_STORE, 'readwrite');
+  const store = transaction.objectStore(DATASET_STORE);
+  const datasets = await store.getAll() as DatasetState[];
+  for (const dataset of datasets) {
+    const active = dataset.datasetId === datasetId;
+    if (dataset.active !== active) await store.put({ ...dataset, active, updatedAt: Date.now() });
+  }
+  await transaction.done;
+}
+
 export async function removeDataset(datasetId: string): Promise<void> {
-  await (await database()).delete(DATASET_STORE, datasetId);
+  const db = await database();
+  const transaction = db.transaction([DATASET_STORE, ASSET_STORE], 'readwrite');
+  const datasets = await transaction.objectStore(DATASET_STORE).getAll() as DatasetState[];
+  const target = datasets.find((dataset) => dataset.datasetId === datasetId);
+  if (target) {
+    const retainedHashes = new Set(datasets
+      .filter((dataset) => dataset.datasetId !== datasetId)
+      .flatMap((dataset) => dataset.assetHashes ?? []));
+    for (const hash of target.assetHashes ?? []) {
+      if (!retainedHashes.has(hash)) await transaction.objectStore(ASSET_STORE).delete(hash);
+    }
+  }
+  await transaction.objectStore(DATASET_STORE).delete(datasetId);
+  await transaction.done;
 }
 
 export async function estimateStorage() {
   return navigator.storage?.estimate?.() ?? {};
+}
+
+export async function requestPersistentStorage(): Promise<boolean | undefined> {
+  return navigator.storage?.persist?.();
+}
+
+export async function hasCachedAsset(sha256: string, byteLength?: number): Promise<boolean> {
+  if (!('indexedDB' in globalThis)) return false;
+  try {
+    const record = await (await database()).get(ASSET_STORE, sha256) as CachedAsset | undefined;
+    return record !== undefined && (byteLength === undefined || record.byteLength === byteLength);
+  } catch {
+    return false;
+  }
 }
 
 export async function getCachedAsset(sha256: string): Promise<Uint8Array | null> {
@@ -67,18 +111,14 @@ export async function getCachedAsset(sha256: string): Promise<Uint8Array | null>
 }
 
 export async function cacheAsset(sha256: string, bytes: Uint8Array): Promise<void> {
-  if (!('indexedDB' in globalThis)) return;
-  try {
-    const stored = Uint8Array.from(bytes).buffer;
-    await (await database()).put(ASSET_STORE, {
-      sha256,
-      bytes: stored,
-      byteLength: bytes.byteLength,
-      cachedAt: Date.now()
-    } satisfies CachedAsset);
-  } catch (error) {
-    console.warn('Unable to persist verified dataset asset', error);
-  }
+  if (!('indexedDB' in globalThis)) throw new Error('IndexedDB is unavailable');
+  const stored = Uint8Array.from(bytes).buffer;
+  await (await database()).put(ASSET_STORE, {
+    sha256,
+    bytes: stored,
+    byteLength: bytes.byteLength,
+    cachedAt: Date.now()
+  } satisfies CachedAsset);
 }
 
 export async function removeCachedAsset(sha256: string): Promise<void> {
