@@ -34,7 +34,9 @@ The committed compatibility patch is applied only to `.export-work/<version>/nes
 
 - upgrades the unavailable RetroFuturaGradle 1.3.35 plugin to the compatible 1.4.9 release;
 - combines ordered tooltip lines into the single format-v5 `TOOLTIP` column expected by the pinned processor;
-- retains exporter failures as tooltip text for parity with the prior representation.
+- retains exporter failures as tooltip text for parity with the prior representation;
+- skips only dangling BetterQuesting prerequisite edges while warning with both quest IDs. GTNH packs can retain
+  references to removed quests; aborting the entire item and recipe export for an impossible edge is not useful.
 
 Use `patch --dry-run -p1` followed by `patch -p1`. Do not substitute `git apply` inside the ignored temporary copy:
 Git discovers the parent repository and interprets paths from the wrong root.
@@ -50,6 +52,10 @@ After preparation, inspect the instance name, both exporter jars, disabled BugTo
 directories, and `export-session.json`. Then stop and ask the user to perform the Prism steps. The user must create
 a fresh creative world, populate NEI, read a Creative Thaumonomicon, clear all three warp kinds, run the named
 `/nesql` export, and wait for its explicit completion message. Do not process a partial database.
+
+When an export fails, inspect output sizes to confirm whether the transaction committed. Fully exit Minecraft before
+replacing its locked jar. Preserve the failed jar outside `mods/` for audit, then retry the same repository name with
+`/nesqlf`; unlike `/nesql`, it explicitly deletes that failed named output first.
 
 ## Processing and release
 

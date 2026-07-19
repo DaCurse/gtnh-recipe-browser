@@ -84,9 +84,17 @@ const patchedItem = await readFile(
   join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/sql/base/item/Item.java'),
   'utf8'
 );
+const patchedQuestFactory = await readFile(
+  join(
+    patchedExporter,
+    'src/main/java/com/github/dcysteine/nesql/exporter/plugin/quest/factory/QuestFactory.java'
+  ),
+  'utf8'
+);
 if (
   !patchedBuild.includes('retrofuturagradle") version "1.4.9"') ||
-  !patchedItem.includes('private String tooltip;')
+  !patchedItem.includes('private String tooltip;') ||
+  !patchedQuestFactory.includes('Skipping missing required quest {} referenced by quest {}')
 ) {
   throw new Error('Exporter compatibility patch did not produce the expected source');
 }
@@ -140,7 +148,9 @@ const session: ExportSession = {
     commit: output('git', ['rev-parse', 'HEAD'], exporterRoot),
     patchSha256: await sha256File(patchPath),
     mainJar: basename(mainJar),
-    dependenciesJar: basename(dependenciesJar)
+    mainJarSha256: await sha256File(mainJar),
+    dependenciesJar: basename(dependenciesJar),
+    dependenciesJarSha256: await sha256File(dependenciesJar)
   },
   processor: {
     repository: 'https://github.com/ShadowTheAge/gtnh',

@@ -20,7 +20,9 @@ export interface ExportSession {
     commit: string;
     patchSha256: string;
     mainJar: string;
+    mainJarSha256: string;
     dependenciesJar: string;
+    dependenciesJarSha256: string;
   };
   processor: {
     repository: string;

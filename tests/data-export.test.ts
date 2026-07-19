@@ -1,4 +1,4 @@
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -51,6 +51,17 @@ describe('data export tooling', () => {
     } finally {
       await rm(directory, { recursive: true, force: true });
     }
+  });
+
+  it('handles dangling quest prerequisites without pinning an individual quest ID', async () => {
+    const patch = await readFile(
+      join(process.cwd(), 'tools/data-export/patches/combined-tooltips.patch'),
+      'utf8'
+    );
+
+    expect(patch).toContain('Skipping missing required quest {} referenced by quest {}');
+    expect(patch).toContain('findQuestOrNull(requiredQuestId)');
+    expect(patch).not.toMatch(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/i);
   });
 
   it('publishes a new default without removing historical datasets', () => {
