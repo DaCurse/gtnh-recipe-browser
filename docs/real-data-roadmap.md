@@ -2,7 +2,7 @@
 
 This tracks the immutable GTNH data implementation. Phases 1–5 are implemented and covered by the pinned
 format-v5 fixture. Phase 6 is implemented in the client and awaits its final browser-level offline acceptance run.
-Client work must remain independent of mutable upstream revisions and unpublished release assets.
+Client work must remain independent of mutable upstream revisions and unpublished remote assets.
 
 ## Source contract
 
@@ -185,12 +185,11 @@ current Chromium, Firefox, and WebKit on desktop and mobile-sized viewports.
 
 ## Phase 7 — Publish safely
 
-Add two workflows:
+Add two publishing safeguards:
 
-1. A manual pack workflow that builds, verifies, and uploads immutable assets to a GitHub Release.
-2. A Pages workflow that performs a deployed-origin fetch-and-persist smoke test before publishing the updated
-   `versions.json`. If Release CORS fails, mirror the exact hashed files in the Pages artifact and change only
-   manifest URLs.
+1. A manual pack workflow that builds and verifies immutable assets before adding them under `public/data/`.
+2. A Netlify deployed-origin fetch-and-persist smoke test before publishing the updated `versions.json`. Dataset
+   assets and their version index deploy atomically from the same site, avoiding cross-origin storage dependencies.
 
 Never update `versions.json` until all assets are remotely readable and their downloaded digests match.
 

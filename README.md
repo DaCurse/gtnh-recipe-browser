@@ -16,6 +16,19 @@ are immutable and content-hashed. The client verifies them before caching catalo
 IndexedDB. The dataset manager can install every immutable chunk with resumable progress, switch retained versions,
 and explicitly delete local copies. Dataset loading failures are shown instead of substituting placeholder entries.
 
+## Deployment
+
+Netlify deployment settings are committed in `netlify.toml`: the production branch is `master`, the repository root
+is the base directory, `npm run build` is the build command, and `dist` is the publish directory. Node.js 22 is
+pinned in the configuration and the application requires no secrets or runtime environment variables.
+
+After a production deploy, verify the live version index and representative catalog, recipe, and icon assets by byte
+size and SHA-256:
+
+```sh
+npm run smoke:deploy -- https://<site>.netlify.app/
+```
+
 ## Data pipeline
 
 `gtnh@ShadowTheAge` is a read-only MIT-licensed upstream submodule. Its exporter must first create format-v5
