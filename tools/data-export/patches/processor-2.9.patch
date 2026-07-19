@@ -29,6 +29,9 @@ index a37f878..d465c50 100644
 +                GC.Collect();
 +                Console.WriteLine($"Matched {matchedRecipeCount} historical recipes; managed heap: {GC.GetTotalMemory(false)} bytes");
 +            }
+@@ -135 +148 @@ public class OldRecipesGenerator
+-                var idFrom = ReadString(dataBin, intBuffer, intBuffer[remap]);
++                var idFrom = ReadString(dataBin, intBuffer, remap);
 diff --git a/PackPreProcessor.cs b/PackPreProcessor.cs
 index 68f9fc0..2d40c65 100644
 --- a/PackPreProcessor.cs

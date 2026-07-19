@@ -65,7 +65,9 @@ logs the live managed-heap size. It does not skip records, conflict data, recipe
 The processing command additionally caps the .NET managed heap at 50% of available physical memory. The remap
 algorithm creates many short-lived hashing allocations; the cap makes collection occur before WSL invokes its OOM
 killer. Remap indexing and matching perform bounded collection checkpoints and report their live heap every 10,000
-recipes. These controls leave the matching inputs and output unchanged.
+recipes. The patch also corrects the pinned processor's double dereference of legacy remap source-string pointers,
+matching the format-v5 decoder's single-dereference semantics. These controls leave matching inputs and output
+unchanged apart from making the previously broken carry-forward traversal usable.
 
 ## Manual checkpoint
 

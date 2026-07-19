@@ -89,6 +89,8 @@ describe('data export tooling', () => {
     expect(patch).toContain('Managed heap before recipe remaps');
     expect(patch).toContain('Indexed {indexedRecipeCount} current recipes');
     expect(patch).toContain('Matched {matchedRecipeCount} historical recipes');
+    expect(patch).toContain('+                var idFrom = ReadString(dataBin, intBuffer, remap)');
+    expect(patch).toContain('-                var idFrom = ReadString(dataBin, intBuffer, intBuffer[remap])');
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });
 
