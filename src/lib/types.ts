@@ -60,6 +60,7 @@ export interface Recipe {
   euExact?: string;
   euPerTick?: string;
   euPerTickExact?: string;
+  metadata?: string[];
   note?: string;
   crafterId?: string;
 }

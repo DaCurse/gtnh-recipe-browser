@@ -1,6 +1,7 @@
 import { decode } from '@msgpack/msgpack';
 import { sha256 as nobleSha256 } from '@noble/hashes/sha2.js';
 import { bytesToHex } from '@noble/hashes/utils.js';
+import { formatGtMetadata } from './recipeMetadata';
 import type { CatalogEntry, Ingredient, Recipe, RecipeLayout } from './types';
 
 interface VersionRecord {
@@ -262,6 +263,7 @@ export class DatasetRepository {
         euExact: totalEu === undefined ? undefined : `${totalEu.toLocaleString('en-US')} EU`,
         euPerTick: euPerTick === undefined ? undefined : power(euPerTick),
         euPerTickExact: euPerTick === undefined ? undefined : `${euPerTick.toLocaleString('en-US')} EU/t`,
+        metadata: recipe.gt?.metadata.map(formatGtMetadata).filter((line): line is string => line !== null),
         crafterId: type.defaultCrafter?.id ?? type.singleblocks[0]?.id ?? type.multiblocks[0]?.id
       };
     });

@@ -65,4 +65,13 @@ describe.skipIf(!existsSync(realDataPath))('pinned real format-v5 dataset', () =
     expect(hidden.length).toBeGreaterThan(0);
     expect(repository.recipeTypes.some((type) => type.defaultCrafter && hidden.some((item) => item.id === type.defaultCrafter?.id))).toBe(true);
   });
+
+  it('preserves Creosote Oil semi-fluid fuel metadata', () => {
+    const creosote = repository.fluids.find((fluid) => fluid.name === 'Creosote Oil');
+    const semiFluidType = repository.recipeTypes.find((type) => type.name === 'Semifluid Generator Fuels');
+    const fuelRecipe = repository.recipes.find((recipe) =>
+      recipe.recipeTypeId === semiFluidType?.id &&
+      recipe.inputs.some((input) => input.goodsId === creosote?.id));
+    expect(fuelRecipe?.gt?.metadata).toContainEqual({ key: 'fuel_value', value: 48 });
+  });
 });

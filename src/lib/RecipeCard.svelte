@@ -47,6 +47,7 @@
     {#if recipe.voltage}<span><b>⚡</b> {recipe.voltage}</span>{/if}
     {#if recipe.eu}<span title={recipe.euExact}>{recipe.eu}</span>{/if}
     {#if recipe.euPerTick}<span title={recipe.euPerTickExact}>{recipe.euPerTick}</span>{/if}
+    {#each recipe.metadata ?? [] as line}<span>{line}</span>{/each}
     {#if recipe.note}<span class="note">{recipe.note}</span>{/if}
   </div>
 </article>
@@ -62,7 +63,7 @@
   .arrow { color:#c5c9cd; text-align:center; }
   .arrow span { display:block; font:36px system-ui; line-height:1; }
   .arrow small { color:#969ba0; white-space:nowrap; }
-  .meta { display:flex; gap:8px; align-items:center; padding:10px 14px; min-height:31px; border-top:1px solid #3a3d41; color:#b0b4b8; font-size:12px; }
+  .meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px 14px; min-height:31px; border-top:1px solid #3a3d41; color:#b0b4b8; font-size:12px; }
   .meta span { padding:5px 8px; border-radius:5px; background:#34373b; }
   .meta span:not(.note) { font:13px/1.2 Minecraft,monospace; text-shadow:2px 2px #342C34; }
   .meta b { color:#d6d8da; }

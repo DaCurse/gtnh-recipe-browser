@@ -3,50 +3,78 @@
   import { registerSW } from 'virtual:pwa-register';
   import ItemIcon from './lib/ItemIcon.svelte';
   import RecipeCard from './lib/RecipeCard.svelte';
-  import { entries as demoEntries, recipes as demoRecipes } from './lib/demo';
   import { DatasetRepository } from './lib/dataset';
-  import { searchCatalog } from './lib/search';
-  import type { CatalogEntry } from './lib/types';
+  import type { CatalogEntry, Recipe } from './lib/types';
 
-  const defaultId = demoEntries[0].id;
-  let catalog = $state<CatalogEntry[]>(demoEntries);
-  let allRecipes = $state(demoRecipes);
+  let catalog = $state<CatalogEntry[]>([]);
+  let allRecipes = $state<Recipe[]>([]);
   let repository = $state<DatasetRepository | null>(null);
-  let datasetVersion = $state('Demo');
+  let datasetVersion = $state('…');
+  let datasetStatus = $state<'loading' | 'ready' | 'error'>('loading');
+  let datasetError = $state('');
+  let errorCopied = $state(false);
+  let recipeLoading = $state(false);
+  let recipeError = $state('');
+  let searchIds = $state<string[]>([]);
+  let searchTotal = $state(0);
+  let searchPending = $state(true);
+  let searchWorker: Worker | null = null;
+  let searchRequest = 0;
   let recipeRequest = 0;
   let query = $state('');
-  let selectedId = $state(defaultId);
+  let selectedId = $state('');
   let mode = $state<'recipes' | 'usages'>('recipes');
   let type = $state('');
   let detailsOpen = $state(false);
   let versionOpen = $state(false);
   let updateReady = $state(false);
-  let searchInput: HTMLInputElement;
+  let searchInput = $state<HTMLInputElement>();
 
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
   const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
-  const results = $derived(searchCatalog(searchableCatalog, query));
-  const visibleEntries = $derived(results.slice(0, 300));
-  const selected = $derived(entryById.get(selectedId) ?? catalog[0]);
-  const related = $derived(allRecipes.filter((recipe) => mode === 'recipes'
+  const visibleEntries = $derived(searchIds
+    .map((id) => entryById.get(id))
+    .filter((entry): entry is CatalogEntry => entry !== undefined));
+  const selected = $derived(entryById.get(selectedId));
+  const related = $derived(selected ? allRecipes.filter((recipe) => mode === 'recipes'
     ? recipe.outputs.some((x) => x.id === selected.id)
-    : recipe.inputs.some((x) => x.id === selected.id)));
+    : recipe.inputs.some((x) => x.id === selected.id)) : []);
   const types = $derived([...new Set(related.map((x) => x.type))]);
   const visibleRecipes = $derived(type ? related.filter((x) => x.type === type) : []);
 
+  $effect(() => {
+    const nextQuery = query;
+    if (datasetStatus !== 'ready' || !searchWorker) return;
+    searchPending = true;
+    const request = ++searchRequest;
+    const timeout = window.setTimeout(() => {
+      searchWorker?.postMessage({ type: 'search', id: request, query: nextQuery });
+    }, nextQuery ? 80 : 0);
+    return () => window.clearTimeout(timeout);
+  });
+
   async function refreshRecipes() {
-    if (!repository) return;
+    if (!repository || !selectedId) return;
     const request = ++recipeRequest;
+    const entryId = selectedId;
+    const view = mode;
     allRecipes = [];
+    recipeError = '';
+    recipeLoading = true;
     try {
-      const loaded = await repository.recipesFor(selectedId, mode);
+      const loaded = await repository.recipesFor(entryId, view);
       if (request === recipeRequest) {
         allRecipes = loaded;
         type = loaded[0]?.type ?? '';
       }
     } catch (error) {
       console.error('Unable to load recipes', error);
-      if (request === recipeRequest) allRecipes = [];
+      if (request === recipeRequest) {
+        allRecipes = [];
+        recipeError = error instanceof Error ? error.message : String(error);
+      }
+    } finally {
+      if (request === recipeRequest) recipeLoading = false;
     }
   }
 
@@ -73,11 +101,89 @@
     history.replaceState({ id: selectedId }, '', url);
   }
 
+  function diagnostic(error: unknown): string {
+    if (error instanceof Error) return error.stack || error.message;
+    return String(error);
+  }
+
+  async function copyError() {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(datasetError);
+      } else {
+        const field = document.createElement('textarea');
+        field.value = datasetError;
+        field.style.position = 'fixed';
+        field.style.opacity = '0';
+        document.body.append(field);
+        field.select();
+        document.execCommand('copy');
+        field.remove();
+      }
+      errorCopied = true;
+      window.setTimeout(() => errorCopied = false, 1800);
+    } catch {
+      errorCopied = false;
+    }
+  }
+
+  async function loadDataset() {
+    datasetStatus = 'loading';
+    datasetError = '';
+    errorCopied = false;
+    repository = null;
+    catalog = [];
+    allRecipes = [];
+    searchIds = [];
+    searchTotal = 0;
+    searchPending = true;
+    recipeLoading = false;
+    selectedId = '';
+    datasetVersion = '…';
+    try {
+      const loaded = await DatasetRepository.loadLatest();
+      if (!loaded.entries.some((entry) => entry.searchable !== false)) {
+        throw new Error('The verified catalog does not contain any searchable items or fluids');
+      }
+      repository = loaded;
+      catalog = loaded.entries;
+      datasetVersion = loaded.gtnhVersion;
+      const linkedId = new URLSearchParams(location.search).get('item');
+      selectedId = linkedId && loaded.entries.some((entry) => entry.id === linkedId)
+        ? linkedId
+        : loaded.entries.find((entry) => entry.searchable !== false)?.id ?? loaded.entries[0]?.id ?? '';
+      searchWorker?.postMessage({
+        type: 'init',
+        catalog: loaded.entries
+          .filter((entry) => entry.searchable !== false)
+          .map(({ id, name, mod }) => ({ id, name, mod }))
+      });
+      datasetStatus = 'ready';
+      type = '';
+      if (selectedId) await refreshRecipes();
+    } catch (error) {
+      console.error('Unable to load the GTNH dataset', error);
+      datasetError = diagnostic(error);
+      datasetStatus = 'error';
+    }
+  }
+
   onMount(() => {
     const params = new URLSearchParams(location.search);
-    const requested = params.get('item');
-    if (requested && entryById.has(requested)) select(requested, false);
     if (params.get('view') === 'usages') mode = 'usages';
+    searchWorker = new Worker(new URL('./workers/search.worker.ts', import.meta.url), { type: 'module' });
+    searchWorker.onmessage = (event: MessageEvent<
+      { type: 'ready' } | { type: 'results'; id: number; total: number; ids: string[] }
+    >) => {
+      if (event.data.type !== 'results' || event.data.id !== searchRequest) return;
+      searchIds = event.data.ids;
+      searchTotal = event.data.total;
+      searchPending = false;
+    };
+    searchWorker.onerror = (event) => {
+      console.error('Catalog search worker failed', event);
+      searchPending = false;
+    };
     const handlePopState = () => {
       const id = new URLSearchParams(location.search).get('item');
       const linkedView = new URLSearchParams(location.search).get('view') === 'usages' ? 'usages' : 'recipes';
@@ -88,33 +194,23 @@
       if (event.ctrlKey && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         detailsOpen = false;
-        searchInput.focus();
+        searchInput?.focus();
       }
     };
     addEventListener('popstate', handlePopState);
     addEventListener('keydown', handleShortcut);
     registerSW({ onNeedRefresh: () => updateReady = true });
-    void DatasetRepository.loadLatest().then((loaded) => {
-      repository = loaded;
-      catalog = loaded.entries;
-      datasetVersion = loaded.gtnhVersion;
-      const linkedId = new URLSearchParams(location.search).get('item');
-      selectedId = linkedId && loaded.entries.some((entry) => entry.id === linkedId)
-        ? linkedId
-        : loaded.entries.find((entry) => entry.searchable !== false)?.id ?? loaded.entries[0].id;
-      type = '';
-      void refreshRecipes();
-    }).catch((error) => {
-      console.error('Using demonstration catalog because the real dataset could not be loaded', error);
-    });
+    void loadDataset();
     return () => {
       removeEventListener('popstate', handlePopState);
       removeEventListener('keydown', handleShortcut);
+      searchWorker?.terminate();
+      searchWorker = null;
     };
   });
 </script>
 
-<svelte:head><title>{selected.name} · GTNH Recipe Browser</title></svelte:head>
+<svelte:head><title>{selected ? `${selected.name} · ` : ''}GTNH Recipe Browser</title></svelte:head>
 
 <div class="app-shell">
   <header>
@@ -123,13 +219,39 @@
       <span><b>GTNH</b><small>RECIPE BROWSER</small></span>
     </a>
     <button class="version" onclick={() => versionOpen = true}>
-      <span><i></i> GTNH {datasetVersion}</span><small>Latest stable</small><b>⌄</b>
+      <span><i></i> GTNH {datasetVersion}</span><small>Latest stable</small>
+      <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5"></path></svg>
     </button>
-    <button class="install" onclick={() => versionOpen = true}>⇩ <span>Offline data</span></button>
+    <button class="install" onclick={() => versionOpen = true}>
+      <svg class="download-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"></path></svg>
+      <span>Offline data</span>
+    </button>
   </header>
 
   {#if updateReady}<button class="update-banner" onclick={() => location.reload()}>A new app version is ready · Refresh</button>{/if}
 
+  {#if datasetStatus === 'loading'}
+    <main class="state-main">
+      <section class="app-state" aria-live="polite">
+        <span class="spinner" aria-hidden="true"></span>
+        <h1>Loading GTNH catalog</h1>
+        <p>Verifying the latest dataset and preparing item search…</p>
+      </section>
+    </main>
+  {:else if datasetStatus === 'error'}
+    <main class="state-main">
+      <section class="app-state app-error" aria-live="assertive">
+        <span class="error-mark" aria-hidden="true">!</span>
+        <h1>Catalog failed to load</h1>
+        <p>The browser could not verify or open the active GTNH dataset.</p>
+        <pre>{datasetError}</pre>
+        <div class="state-actions">
+          <button onclick={copyError}>{errorCopied ? 'Copied' : 'Copy error'}</button>
+          <button class="primary" onclick={loadDataset}>Try again</button>
+        </div>
+      </section>
+    </main>
+  {:else if selected}
   <main>
     <aside class:mobile-hidden={detailsOpen}>
       <div class="search-wrap">
@@ -141,24 +263,31 @@
         {#if query}<button onclick={() => query = ''} aria-label="Clear search">×</button>{/if}
         <kbd>Ctrl K</kbd>
       </div>
-      <div class="result-bar"><span>{results.length.toLocaleString()} ITEMS & FLUIDS</span></div>
+      <div class="result-bar">
+        <span>{searchPending && searchTotal === 0 ? 'PREPARING ITEMS & FLUIDS' : `${searchTotal.toLocaleString()} ITEMS & FLUIDS`}</span>
+        {#if searchPending}<span class="mini-spinner" aria-label="Searching"></span>{/if}
+      </div>
       <div class="item-grid">
-        {#each visibleEntries as entry (entry.id)}
-          <button class:active={selected.id === entry.id} class="item-tile" onclick={() => select(entry.id)} title={entry.name}>
-            <ItemIcon {entry} size={56} selected={selected.id === entry.id} />
-            <span class="item-summary">
-              <strong>{entry.name}</strong>
-              <small><span class="mod-name">{entry.mod}</span> · {entry.kind}</small>
-              <span class="tooltip-preview">
-                {#if entry.formula}<b>{entry.formula}</b>{/if}
-                {entry.tooltip.join(' · ')}
-              </span>
-            </span>
-            <span class="row-arrow">›</span>
-          </button>
+        {#if searchPending && visibleEntries.length === 0}
+          <div class="empty search-loading"><span class="spinner" aria-hidden="true"></span><b>Preparing item list…</b></div>
         {:else}
-          <div class="empty"><b>No matches</b><span>Try fewer terms or another @mod filter.</span></div>
-        {/each}
+          {#each visibleEntries as entry (entry.id)}
+            <button class:active={selected.id === entry.id} class="item-tile" onclick={() => select(entry.id)} title={entry.name}>
+              <ItemIcon {entry} size={56} selected={selected.id === entry.id} />
+              <span class="item-summary">
+                <strong>{entry.name}</strong>
+                <small><span class="mod-name">{entry.mod}</span> · {entry.kind}</small>
+                <span class="tooltip-preview">
+                  {#if entry.formula}<b>{entry.formula}</b>{/if}
+                  {entry.tooltip.join(' · ')}
+                </span>
+              </span>
+              <span class="row-arrow">›</span>
+            </button>
+          {:else}
+            <div class="empty"><b>No matches</b><span>Try fewer terms or another @mod filter.</span></div>
+          {/each}
+        {/if}
       </div>
       <footer><span><i></i> Catalog ready</span><span>{searchableCatalog.length.toLocaleString()} entries</span></footer>
     </aside>
@@ -192,14 +321,21 @@
         {/each}
       </div>
       <div class="recipe-list">
-        {#each visibleRecipes as recipe (recipe.id)}
-          <RecipeCard {recipe} navigate={(id, view) => select(id, true, view)} resolve={(id) => entryById.get(id)} />
+        {#if recipeLoading}
+          <div class="recipe-loading" aria-live="polite"><span class="spinner" aria-hidden="true"></span><b>Loading {mode}…</b><p>Fetching the recipe data needed for this item.</p></div>
+        {:else if recipeError}
+          <div class="no-recipes recipe-error"><span>!</span><b>Could not load {mode}</b><p>{recipeError}</p></div>
         {:else}
-          <div class="no-recipes"><span>⌁</span><b>No {mode} found</b><p>This item has no known {mode} in the active dataset.</p></div>
-        {/each}
+          {#each visibleRecipes as recipe (recipe.id)}
+            <RecipeCard {recipe} navigate={(id, view) => select(id, true, view)} resolve={(id) => entryById.get(id)} />
+          {:else}
+            <div class="no-recipes"><span>⌁</span><b>No {mode} found</b><p>This item has no known {mode} in the active dataset.</p></div>
+          {/each}
+        {/if}
       </div>
     </section>
   </main>
+  {/if}
 </div>
 
 {#if versionOpen}
@@ -208,8 +344,11 @@
       <button class="close" onclick={() => versionOpen = false}>×</button>
       <p class="eyebrow">DATASET MANAGER</p><h2>Your GTNH versions</h2>
       <p>Catalogs are stored on this device. Recipe and icon chunks load as you browse.</p>
-      <div class="dataset"><span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span><div><b>GTNH {datasetVersion}</b><small><i></i> ACTIVE · CATALOG READY</small></div><strong>{repository ? 'Real data' : 'Demo'}</strong></div>
-      <button class="download" onclick={() => versionOpen = false}>⇩ Download for offline use</button>
+      <div class="dataset"><span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span><div><b>GTNH {datasetVersion}</b><small><i></i> {datasetStatus === 'ready' ? 'ACTIVE · CATALOG READY' : datasetStatus.toUpperCase()}</small></div><strong>{datasetStatus === 'ready' ? 'Real data' : 'Unavailable'}</strong></div>
+      <button class="download" disabled={datasetStatus !== 'ready'} onclick={() => versionOpen = false}>
+        <svg class="download-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"></path></svg>
+        Download for offline use
+      </button>
       <small class="storage">The complete production dataset will be available when its pack is published.</small>
     </div>
   </div>
