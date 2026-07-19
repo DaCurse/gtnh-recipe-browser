@@ -24,6 +24,15 @@ function assertActive(signal?: AbortSignal): void {
   if (signal?.aborted) throw abortError();
 }
 
+export function storageShortfall(
+  requiredBytes: number,
+  usage?: number,
+  quota?: number
+): number | undefined {
+  if (usage === undefined || quota === undefined) return undefined;
+  return Math.max(0, requiredBytes - Math.max(0, quota - usage));
+}
+
 export async function installOfflineAssets({
   assets,
   completedHashes = new Set(),

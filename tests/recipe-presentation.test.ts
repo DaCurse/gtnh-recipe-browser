@@ -4,6 +4,7 @@ import {
   ingredientsByGridSlot,
   recipeCrafterId,
   recipeItemInputLabel,
+  recipeTypeCrafters,
   recipeTypeIconId
 } from '../src/lib/recipePresentation';
 
@@ -18,6 +19,20 @@ describe('recipe presentation parity', () => {
     expect(recipeCrafterId(type, 2)).toBe('machine:hv');
     expect(recipeCrafterId(type, 8)).toBe('machine:lv');
     expect(recipeTypeIconId(type)).toBe('machine:lv');
+  });
+
+  it('lists category crafters in exporter order without duplicate defaults', () => {
+    expect(recipeTypeCrafters(type)).toEqual([
+      { id: 'machine:lv', role: 'singleblock' },
+      { id: 'machine:mv', role: 'singleblock' },
+      { id: 'machine:hv', role: 'singleblock' },
+      { id: 'machine:large', role: 'multiblock' }
+    ]);
+    expect(recipeTypeCrafters({
+      singleblocks: [],
+      multiblocks: [],
+      defaultCrafter: { id: 'machine:fallback' }
+    })).toEqual([{ id: 'machine:fallback', role: 'default' }]);
   });
 
   it('only labels actual crafting types as shaped or shapeless', () => {

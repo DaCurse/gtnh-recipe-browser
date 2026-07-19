@@ -9,9 +9,28 @@
   import RecipeCard from './lib/RecipeCard.svelte';
   import { DatasetRepository } from './lib/dataset';
   import { itemListUrl } from './lib/navigation';
+  import { storageShortfall } from './lib/offline';
   import { boundedPage } from './lib/recipePresentation';
   import { normalize } from './lib/search';
-  import type { CatalogEntry, Recipe } from './lib/types';
+  import {
+    estimateStorage,
+    listDatasets,
+    removeDataset,
+    requestPersistentStorage,
+    storageIsPersistent
+  } from './lib/storage';
+  import type {
+    CatalogEntry,
+    DatasetState,
+    DatasetVersion,
+    OfflineInstallProgress,
+    Recipe
+  } from './lib/types';
+
+  interface ManagedDataset {
+    version: DatasetVersion;
+    state?: DatasetState;
+  }
 
   let catalog = $state<CatalogEntry[]>([]);
   let allRecipes = $state<Recipe[]>([]);
@@ -53,6 +72,18 @@
   let itemTooltipEntry = $state<CatalogEntry>();
   let itemTooltipX = $state(0);
   let itemTooltipY = $state(0);
+  let itemTooltipAction = $state<string>();
+  let availableDatasets = $state<DatasetVersion[]>([]);
+  let datasetRecords = $state<DatasetState[]>([]);
+  let managerLoading = $state(false);
+  let managerError = $state('');
+  let installingDatasetId = $state('');
+  let switchingDatasetId = $state('');
+  let installProgress = $state<OfflineInstallProgress>();
+  let installController: AbortController | null = null;
+  let storageUsage = $state<number>();
+  let storageQuota = $state<number>();
+  let persistentStorage = $state<boolean>();
 
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
   const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
@@ -72,6 +103,25 @@
   const recipePageSize = 20;
   const recipePageCount = $derived(Math.max(1, Math.ceil(matchingRecipes.length / recipePageSize)));
   const visibleRecipes = $derived(boundedPage(matchingRecipes, recipePage, recipePageSize));
+  const managedDatasets = $derived.by(() => {
+    const versions = new Map(availableDatasets.map((version) => [version.datasetId, version]));
+    for (const state of datasetRecords) {
+      if (!versions.has(state.datasetId)) {
+        versions.set(state.datasetId, {
+          datasetId: state.datasetId,
+          gtnhVersion: state.gtnhVersion,
+          revision: state.revision,
+          packManifestUrl: state.manifestUrl,
+          offlineBytes: state.totalBytes
+        });
+      }
+    }
+    return [...versions.values()].map((version): ManagedDataset => ({
+      version,
+      state: datasetRecords.find((state) => state.datasetId === version.datasetId)
+    }));
+  });
+  const activeDatasetState = $derived(datasetRecords.find((state) => state.active));
 
   $effect(() => {
     const nextQuery = query;
@@ -126,9 +176,10 @@
     ].filter(Boolean).join(' '));
   }
 
-  function showItemPointerTooltip(event: PointerEvent, entry: CatalogEntry) {
+  function showItemPointerTooltip(event: PointerEvent, entry: CatalogEntry, action?: string) {
     if (event.pointerType === 'touch') return;
     itemTooltipEntry = entry;
+    itemTooltipAction = action;
     itemTooltipX = event.clientX;
     itemTooltipY = event.clientY;
   }
@@ -139,15 +190,17 @@
     itemTooltipY = event.clientY;
   }
 
-  function showItemFocusTooltip(event: FocusEvent, entry: CatalogEntry) {
+  function showItemFocusTooltip(event: FocusEvent, entry: CatalogEntry, action?: string) {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     itemTooltipEntry = entry;
+    itemTooltipAction = action;
     itemTooltipX = rect.right;
     itemTooltipY = rect.bottom;
   }
 
   function hideItemTooltip() {
     itemTooltipEntry = undefined;
+    itemTooltipAction = undefined;
   }
 
   function recipeSearchDocumentCached(recipe: Recipe): string {
@@ -354,7 +407,89 @@
     }
   }
 
-  async function loadDataset() {
+  function formatBytes(bytes?: number): string {
+    if (bytes === undefined || !Number.isFinite(bytes)) return 'Unknown size';
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
+    return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
+  }
+
+  function datasetStateLabel(state?: DatasetState, current = false): string {
+    if (!state) return current ? 'ACTIVE · ONLINE ONLY' : 'AVAILABLE';
+    if (state.status === 'complete') return state.active ? 'ACTIVE · OFFLINE READY' : 'OFFLINE READY';
+    if (state.status === 'partial') return state.active ? 'ACTIVE · PARTIALLY CACHED' : 'PARTIALLY CACHED';
+    return state.active ? 'ACTIVE · CATALOG READY' : 'CATALOG READY';
+  }
+
+  async function refreshDatasetManager() {
+    managerLoading = true;
+    managerError = '';
+    try {
+      const [versions, records, storage, persisted] = await Promise.all([
+        DatasetRepository.availableVersions(),
+        listDatasets(),
+        estimateStorage(),
+        storageIsPersistent()
+      ]);
+      availableDatasets = versions;
+      datasetRecords = records;
+      storageUsage = storage.usage;
+      storageQuota = storage.quota;
+      persistentStorage = persisted;
+    } catch (error) {
+      managerError = diagnostic(error);
+      datasetRecords = await listDatasets();
+    } finally {
+      managerLoading = false;
+    }
+  }
+
+  function openVersionManager() {
+    versionOpen = true;
+    void refreshDatasetManager();
+  }
+
+  function validateRepository(loaded: DatasetRepository) {
+    if (!loaded.entries.some((entry) => entry.searchable !== false)) {
+      throw new Error('The verified catalog does not contain any searchable items or fluids');
+    }
+  }
+
+  async function applyRepository(loaded: DatasetRepository, preserveSelection: boolean) {
+    recipeAbortController?.abort();
+    recipeAbortController = null;
+    ++recipeRequest;
+    allRecipes = [];
+    loadedRecipeCounts = {};
+    recipeDocumentCache = new Map();
+    repository = loaded;
+    catalog = loaded.entries;
+    datasetVersion = loaded.gtnhVersion;
+    const linkedId = new URLSearchParams(location.search).get('item');
+    const preferredId = preserveSelection ? selectedId : linkedId;
+    selectedId = preferredId && loaded.entries.some((entry) => entry.id === preferredId)
+      ? preferredId
+      : loaded.entries.find((entry) => entry.searchable !== false)?.id ?? loaded.entries[0]?.id ?? '';
+    if (preserveSelection && preferredId !== selectedId) detailsOpen = false;
+    if (!preserveSelection) detailsOpen = Boolean(linkedId && linkedId === selectedId);
+    searchWorker?.postMessage({
+      type: 'init',
+      catalog: loaded.entries
+        .filter((entry) => entry.searchable !== false)
+        .map(({ id, name, mod }) => ({ id, name, mod }))
+    });
+    type = '';
+    const url = new URL(location.href);
+    url.searchParams.set('version', loaded.datasetId);
+    if (!detailsOpen) {
+      url.searchParams.delete('item');
+      url.searchParams.delete('view');
+    }
+    history.replaceState(detailsOpen ? { id: selectedId } : { route: 'items' }, '', url);
+    if (detailsOpen && selectedId) await refreshRecipes();
+  }
+
+  async function loadDataset(targetDatasetId?: string) {
     datasetStatus = 'loading';
     datasetError = '';
     datasetProgress = 0;
@@ -371,33 +506,109 @@
     selectedId = '';
     datasetVersion = '…';
     try {
-      const loaded = await DatasetRepository.loadLatest(({ percent, stage }) => {
+      const linkedDatasetId = targetDatasetId
+        ?? new URLSearchParams(location.search).get('version')
+        ?? undefined;
+      const loaded = await DatasetRepository.load(linkedDatasetId, ({ percent, stage }) => {
         datasetProgress = percent;
         datasetStage = stage;
       });
-      if (!loaded.entries.some((entry) => entry.searchable !== false)) {
-        throw new Error('The verified catalog does not contain any searchable items or fluids');
-      }
-      repository = loaded;
-      catalog = loaded.entries;
-      datasetVersion = loaded.gtnhVersion;
-      const linkedId = new URLSearchParams(location.search).get('item');
-      selectedId = linkedId && loaded.entries.some((entry) => entry.id === linkedId)
-        ? linkedId
-        : loaded.entries.find((entry) => entry.searchable !== false)?.id ?? loaded.entries[0]?.id ?? '';
-      searchWorker?.postMessage({
-        type: 'init',
-        catalog: loaded.entries
-          .filter((entry) => entry.searchable !== false)
-          .map(({ id, name, mod }) => ({ id, name, mod }))
-      });
+      validateRepository(loaded);
+      await loaded.activate();
+      await applyRepository(loaded, false);
       datasetStatus = 'ready';
-      type = '';
-      if (selectedId) await refreshRecipes();
+      datasetRecords = await listDatasets();
     } catch (error) {
       console.error('Unable to load the GTNH dataset', error);
       datasetError = diagnostic(error);
       datasetStatus = 'error';
+    }
+  }
+
+  async function installDataset(version: DatasetVersion) {
+    if (installingDatasetId) return;
+    managerError = '';
+    installProgress = undefined;
+    installingDatasetId = version.datasetId;
+    const controller = new AbortController();
+    installController = controller;
+    try {
+      const state = datasetRecords.find((record) => record.datasetId === version.datasetId);
+      const totalBytes = version.offlineBytes ?? state?.totalBytes;
+      const remainingBytes = totalBytes === undefined
+        ? undefined
+        : Math.max(0, totalBytes - (state?.storedBytes ?? 0));
+      const estimate = await estimateStorage();
+      storageUsage = estimate.usage;
+      storageQuota = estimate.quota;
+      const shortfall = remainingBytes === undefined
+        ? undefined
+        : storageShortfall(remainingBytes, estimate.usage, estimate.quota);
+      if (shortfall !== undefined && shortfall > 0) {
+        const availableBytes = Math.max(0, estimate.quota! - estimate.usage!);
+        throw new Error(
+          `Not enough browser storage. ${formatBytes(remainingBytes)} is still required, `
+          + `but only ${formatBytes(availableBytes)} is estimated available.`
+        );
+      }
+      const persisted = await requestPersistentStorage();
+      if (persisted !== undefined) persistentStorage = persisted;
+      const installer = repository?.datasetId === version.datasetId
+        ? repository
+        : await DatasetRepository.load(version.datasetId);
+      validateRepository(installer);
+      await installer.installOffline((progress) => {
+        if (installingDatasetId === version.datasetId) installProgress = progress;
+      }, controller.signal);
+      if (repository?.datasetId === version.datasetId) await installer.activate();
+      await refreshDatasetManager();
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        managerError = diagnostic(error);
+      }
+      datasetRecords = await listDatasets();
+    } finally {
+      if (installingDatasetId === version.datasetId) {
+        installingDatasetId = '';
+        installController = null;
+      }
+    }
+  }
+
+  function cancelInstall() {
+    installController?.abort();
+  }
+
+  async function switchDataset(version: DatasetVersion) {
+    if (switchingDatasetId || version.datasetId === repository?.datasetId) return;
+    switchingDatasetId = version.datasetId;
+    managerError = '';
+    try {
+      const loaded = await DatasetRepository.load(version.datasetId);
+      validateRepository(loaded);
+      await loaded.activate();
+      await applyRepository(loaded, true);
+      datasetStatus = 'ready';
+      await refreshDatasetManager();
+    } catch (error) {
+      managerError = diagnostic(error);
+    } finally {
+      switchingDatasetId = '';
+    }
+  }
+
+  async function deleteDataset(state: DatasetState) {
+    if (installingDatasetId === state.datasetId) return;
+    const currentNote = repository?.datasetId === state.datasetId
+      ? ' The currently open catalog will continue working until this page is reloaded.'
+      : '';
+    if (!confirm(`Delete locally stored data for GTNH ${state.gtnhVersion}?${currentNote}`)) return;
+    managerError = '';
+    try {
+      await removeDataset(state.datasetId);
+      await refreshDatasetManager();
+    } catch (error) {
+      managerError = diagnostic(error);
     }
   }
 
@@ -465,11 +676,16 @@
       <span class="brand-cube"><img src="./assets/gtnh-logo.png" alt="" /></span>
       <span><b>GTNH</b><small>RECIPE BROWSER</small></span>
     </a>
-    <button class="version" onclick={() => versionOpen = true}>
-      <span><i></i> {datasetVersion}</span><small>Latest stable</small>
+    <button class="version" onclick={openVersionManager}>
+      <span><i></i> {datasetVersion}</span>
+      <small>{activeDatasetState?.status === 'complete'
+        ? 'Offline ready'
+        : activeDatasetState
+          ? 'Catalog cached'
+          : 'Online only'}</small>
       <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5"></path></svg>
     </button>
-    <button class="install" onclick={() => versionOpen = true}>
+    <button class="install" onclick={openVersionManager}>
       <svg class="download-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"></path></svg>
       <span>Offline data</span>
     </button>
@@ -498,7 +714,7 @@
         <pre>{datasetError}</pre>
         <div class="state-actions">
           <button onclick={copyError}>{errorCopied ? 'Copied' : 'Copy error'}</button>
-          <button class="primary" onclick={loadDataset}>Try again</button>
+          <button class="primary" onclick={() => loadDataset()}>Try again</button>
         </div>
       </section>
     </main>
@@ -578,7 +794,12 @@
     </aside>
 
     {#if itemTooltipEntry}
-      <FloatingCatalogTooltip entry={itemTooltipEntry} x={itemTooltipX} y={itemTooltipY} />
+      <FloatingCatalogTooltip
+        entry={itemTooltipEntry}
+        x={itemTooltipX}
+        y={itemTooltipY}
+        action={itemTooltipAction}
+      />
     {/if}
 
     <section class:mobile-visible={detailsOpen} class="detail">
@@ -600,10 +821,27 @@
               {@const member = entryById.get(memberId)}
               {#if member}
                 <button
-                  title={`${member.name}\nLeft-click: recipes · Right-click: usages`}
-                  onclick={() => select(member.id, true, 'recipes')}
+                  aria-label={`${member.name}: left-click for recipes, right-click for usages`}
+                  onpointerenter={(event) => showItemPointerTooltip(
+                    event,
+                    member,
+                    'Left-click: Recipes · Right-click: Usages'
+                  )}
+                  onpointermove={moveItemPointerTooltip}
+                  onpointerleave={hideItemTooltip}
+                  onfocus={(event) => showItemFocusTooltip(
+                    event,
+                    member,
+                    'Left-click: Recipes · Right-click: Usages'
+                  )}
+                  onblur={hideItemTooltip}
+                  onclick={() => {
+                    hideItemTooltip();
+                    select(member.id, true, 'recipes');
+                  }}
                   oncontextmenu={(event) => {
                     event.preventDefault();
+                    hideItemTooltip();
                     select(member.id, true, 'usages');
                   }}
                 ><ItemIcon entry={member} size={52} /></button>
@@ -719,13 +957,90 @@
     <div class="manager" role="dialog" aria-modal="true" aria-label="Dataset manager">
       <button class="close" onclick={() => versionOpen = false}>×</button>
       <p class="eyebrow">DATASET MANAGER</p><h2>Your GTNH versions</h2>
-      <p>Catalogs are stored on this device. Recipe and icon chunks load as you browse.</p>
-      <div class="dataset"><span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span><div><b>{datasetVersion}</b><small><i></i> {datasetStatus === 'ready' ? 'ACTIVE · CATALOG READY' : datasetStatus.toUpperCase()}</small></div><strong>{datasetStatus === 'ready' ? 'Real data' : 'Unavailable'}</strong></div>
-      <button class="download" disabled={datasetStatus !== 'ready'} onclick={() => versionOpen = false}>
-        <svg class="download-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"></path></svg>
-        Download for offline use
-      </button>
-      <small class="storage">Verified catalogs and recipe chunks are cached on this device and reused after reload.</small>
+      <p>Catalogs stay available after loading. Install every recipe and icon chunk for complete offline use.</p>
+      {#if managerLoading && managedDatasets.length === 0}
+        <div class="manager-loading"><span class="mini-spinner"></span> Checking local datasets…</div>
+      {:else}
+        <div class="dataset-list">
+          {#each managedDatasets as managed (managed.version.datasetId)}
+            {@const state = managed.state}
+            {@const installing = installingDatasetId === managed.version.datasetId}
+            {@const switching = switchingDatasetId === managed.version.datasetId}
+            {@const current = repository?.datasetId === managed.version.datasetId}
+            <section class:active={current} class="dataset">
+              <div class="dataset-summary">
+                <span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span>
+                <div>
+                  <b>{managed.version.gtnhVersion}</b>
+                  <small><i></i> {datasetStateLabel(state, current)}</small>
+                </div>
+                <strong>
+                  {formatBytes(state?.storedBytes ?? 0)} / {formatBytes(
+                    state?.totalBytes ?? managed.version.offlineBytes
+                  )}
+                </strong>
+              </div>
+              {#if installing && installProgress}
+                <div
+                  class="dataset-progress"
+                  aria-label={`Offline download ${Math.round(installProgress.loadedBytes / Math.max(1, installProgress.totalBytes) * 100)}%`}
+                >
+                  <span style:width={`${installProgress.loadedBytes / Math.max(1, installProgress.totalBytes) * 100}%`}></span>
+                </div>
+                <small class="dataset-progress-text">
+                  {formatBytes(installProgress.loadedBytes)} of {formatBytes(installProgress.totalBytes)}
+                  · {installProgress.completedAssets}/{installProgress.totalAssets} chunks
+                  {#if installProgress.retry} · retry {installProgress.retry}/3{/if}
+                </small>
+              {/if}
+              <div class="dataset-actions">
+                {#if current}
+                  <span class="active-label">Active</span>
+                {:else}
+                  <button
+                    disabled={Boolean(switchingDatasetId || installingDatasetId)}
+                    onclick={() => switchDataset(managed.version)}
+                  >{switching ? 'Switching…' : 'Switch'}</button>
+                {/if}
+                {#if state?.status !== 'complete'}
+                  {#if installing}
+                    <button class="cancel" onclick={cancelInstall}>Cancel</button>
+                  {:else}
+                    <button
+                      class="primary"
+                      disabled={Boolean(installingDatasetId || switchingDatasetId)}
+                      onclick={() => installDataset(managed.version)}
+                    >
+                      <svg class="download-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"></path></svg>
+                      {state?.status === 'partial' ? 'Resume download' : 'Download offline'}
+                    </button>
+                  {/if}
+                {/if}
+                {#if state}
+                  <button
+                    class="delete"
+                    disabled={Boolean(installingDatasetId || switchingDatasetId)}
+                    onclick={() => deleteDataset(state)}
+                  >Delete</button>
+                {/if}
+              </div>
+            </section>
+          {:else}
+            <div class="manager-loading">No GTNH datasets are available.</div>
+          {/each}
+        </div>
+      {/if}
+      {#if managerError}<pre class="manager-error">{managerError}</pre>{/if}
+      <small class="storage">
+        {storageUsage !== undefined && storageQuota !== undefined
+          ? `${formatBytes(storageUsage)} used of ${formatBytes(storageQuota)} browser storage`
+          : 'Browser storage usage is unavailable'}
+        · {persistentStorage === true
+          ? 'persistent storage granted'
+          : persistentStorage === false
+            ? 'storage may be reclaimed by the browser'
+            : 'persistence support unavailable'}
+      </small>
     </div>
   </div>
 {/if}

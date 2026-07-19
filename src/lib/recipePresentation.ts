@@ -22,6 +22,23 @@ export function recipeTypeIconId(type: RecipeTypeCrafterReferences): string | un
   return type.defaultCrafter?.id ?? type.multiblocks[0]?.id ?? type.singleblocks[0]?.id;
 }
 
+export function recipeTypeCrafters(type: RecipeTypeCrafterReferences): Array<{
+  id: string;
+  role: 'singleblock' | 'multiblock' | 'default';
+}> {
+  const crafters: Array<{ id: string; role: 'singleblock' | 'multiblock' | 'default' }> = [];
+  const seen = new Set<string>();
+  const add = (id: string | undefined, role: 'singleblock' | 'multiblock' | 'default') => {
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    crafters.push({ id, role });
+  };
+  type.singleblocks.forEach((crafter) => add(crafter.id, 'singleblock'));
+  type.multiblocks.forEach((crafter) => add(crafter.id, 'multiblock'));
+  add(type.defaultCrafter?.id, 'default');
+  return crafters;
+}
+
 export function recipeItemInputLabel(
   typeName: string,
   shapeless: boolean | undefined,

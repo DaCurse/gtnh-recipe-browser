@@ -22,6 +22,30 @@ interface CachedMetadata {
 
 let databasePromise: ReturnType<typeof openDB> | undefined;
 
+export function activeDatasetSnapshot(
+  datasets: readonly DatasetState[],
+  datasetId: string,
+  updatedAt = Date.now()
+): DatasetState[] {
+  return datasets.map((dataset) => ({
+    ...dataset,
+    active: dataset.datasetId === datasetId,
+    updatedAt: dataset.active === (dataset.datasetId === datasetId) ? dataset.updatedAt : updatedAt
+  }));
+}
+
+export function unreferencedDatasetAssets(
+  datasets: readonly DatasetState[],
+  datasetId: string
+): string[] {
+  const target = datasets.find((dataset) => dataset.datasetId === datasetId);
+  if (!target) return [];
+  const retainedHashes = new Set(datasets
+    .filter((dataset) => dataset.datasetId !== datasetId)
+    .flatMap((dataset) => dataset.assetHashes ?? []));
+  return (target.assetHashes ?? []).filter((hash) => !retainedHashes.has(hash));
+}
+
 function database() {
   databasePromise ??= openDB(DB_NAME, 2, {
     upgrade(db) {
@@ -58,10 +82,7 @@ export async function activateDataset(datasetId: string): Promise<void> {
   const transaction = db.transaction(DATASET_STORE, 'readwrite');
   const store = transaction.objectStore(DATASET_STORE);
   const datasets = await store.getAll() as DatasetState[];
-  for (const dataset of datasets) {
-    const active = dataset.datasetId === datasetId;
-    if (dataset.active !== active) await store.put({ ...dataset, active, updatedAt: Date.now() });
-  }
+  for (const dataset of activeDatasetSnapshot(datasets, datasetId)) await store.put(dataset);
   await transaction.done;
 }
 
@@ -69,14 +90,8 @@ export async function removeDataset(datasetId: string): Promise<void> {
   const db = await database();
   const transaction = db.transaction([DATASET_STORE, ASSET_STORE], 'readwrite');
   const datasets = await transaction.objectStore(DATASET_STORE).getAll() as DatasetState[];
-  const target = datasets.find((dataset) => dataset.datasetId === datasetId);
-  if (target) {
-    const retainedHashes = new Set(datasets
-      .filter((dataset) => dataset.datasetId !== datasetId)
-      .flatMap((dataset) => dataset.assetHashes ?? []));
-    for (const hash of target.assetHashes ?? []) {
-      if (!retainedHashes.has(hash)) await transaction.objectStore(ASSET_STORE).delete(hash);
-    }
+  for (const hash of unreferencedDatasetAssets(datasets, datasetId)) {
+    await transaction.objectStore(ASSET_STORE).delete(hash);
   }
   await transaction.objectStore(DATASET_STORE).delete(datasetId);
   await transaction.done;
@@ -88,6 +103,10 @@ export async function estimateStorage() {
 
 export async function requestPersistentStorage(): Promise<boolean | undefined> {
   return navigator.storage?.persist?.();
+}
+
+export async function storageIsPersistent(): Promise<boolean | undefined> {
+  return navigator.storage?.persisted?.();
 }
 
 export async function hasCachedAsset(sha256: string, byteLength?: number): Promise<boolean> {

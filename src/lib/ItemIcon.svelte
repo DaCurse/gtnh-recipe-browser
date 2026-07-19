@@ -1,14 +1,29 @@
 <script lang="ts">
+  import { resolveIconSheetUrl } from './iconCache';
   import type { CatalogEntry } from './types';
   let { entry, size = 48, selected = false, crisp = true }: { entry: CatalogEntry; size?: number; selected?: boolean; crisp?: boolean } = $props();
+  let iconUrl = $state('');
+
+  $effect(() => {
+    const icon = entry.icon;
+    iconUrl = '';
+    if (!icon) return;
+    let active = true;
+    void resolveIconSheetUrl(icon).then((url) => {
+      if (active) iconUrl = url;
+    });
+    return () => {
+      active = false;
+    };
+  });
 </script>
 
 <div class:selected class="slot" style:width={`${size}px`} style:height={`${size}px`} aria-hidden="true">
-  {#if entry.icon}
+  {#if entry.icon && iconUrl}
     <div
       class:smooth={!crisp}
       class="atlas-sprite"
-      style:background-image={`url("${entry.icon.url}")`}
+      style:background-image={`url("${iconUrl}")`}
       style:background-size={`${entry.icon.columns * 100}% ${entry.icon.columns * 100}%`}
       style:background-position={`${(entry.icon.index % entry.icon.columns) * 100 / (entry.icon.columns - 1)}% ${Math.floor(entry.icon.index / entry.icon.columns) * 100 / (entry.icon.columns - 1)}%`}
     ></div>

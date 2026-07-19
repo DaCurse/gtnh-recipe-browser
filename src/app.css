@@ -131,11 +131,22 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .recipe-pagination button:disabled { opacity:.4; cursor:default; }
 .recipe-pagination span { color:#92979c; font-size:12px; text-align:center; white-space:nowrap; }
 .scrim { position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:18px;background:#050806c7;backdrop-filter:blur(7px); }
-.manager { position:relative;width:min(440px,100%);padding:30px;border:1px solid #4b4f54;border-radius:14px;background:#202226;box-shadow:0 30px 90px #000; }
+.manager { position:relative;width:min(620px,100%);max-height:min(88vh,760px);overflow:auto;padding:30px;border:1px solid #4b4f54;border-radius:14px;background:#202226;box-shadow:0 30px 90px #000; }
 .manager h2 { font:23px Minecraft;margin:0 0 8px;text-shadow:2px 2px #342C34; }.manager>p:not(.eyebrow) { color:#a6abb0;font-size:14px;line-height:1.5; }
 .close { position:absolute;right:12px;top:10px;width:44px;height:44px;border:0;background:none;color:#989da2;font-size:25px;cursor:pointer; }
-.dataset { display:flex;align-items:center;gap:12px;margin:22px 0;padding:14px;border:1px solid #484c51;border-radius:9px;background:#292c30; }.dataset div { flex:1; }.dataset b,.dataset small { display:block; }.dataset small { margin-top:6px;color:#b0b4b8;font-size:10px; }.dataset strong { color:#9a9fa4;font-size:12px; }
-.download { width:100%;min-height:48px;display:flex;align-items:center;justify-content:center;gap:10px;border:1px solid #686d72;border-radius:8px;background:#484c51;color:#f0f1f2;font-weight:700;cursor:pointer; }.download .download-icon { width:25px;height:25px;flex-basis:25px; }.download:disabled { opacity:.45;cursor:not-allowed; }.storage { display:block;margin-top:12px;text-align:center;color:#7c8186; }
+.dataset-list { display:flex;flex-direction:column;gap:10px;margin:20px 0; }
+.dataset { padding:14px;border:1px solid #484c51;border-radius:9px;background:#292c30; }.dataset.active { border-color:#737980;background:#2d3034; }
+.dataset-summary { display:flex;align-items:center;gap:12px; }.dataset-summary>div { min-width:0;flex:1; }.dataset b,.dataset small { display:block; }.dataset-summary small { margin-top:6px;color:#b0b4b8;font-size:10px; }.dataset-summary strong { color:#9a9fa4;font-size:12px;text-align:right;white-space:nowrap; }
+.dataset-actions { display:flex;align-items:center;justify-content:flex-end;gap:7px;margin-top:12px; }
+.dataset-actions button,.active-label { min-height:42px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:7px;border:1px solid #5b6066;border-radius:7px;background:#363a3f;color:#e1e4e7;font-size:12px;font-weight:700;cursor:pointer; }
+.dataset-actions button.primary { background:#d1d4d7;border-color:#d1d4d7;color:#17191b; }.dataset-actions button.delete { margin-left:auto;color:#c5a4a4;border-color:#654b4b;background:#382b2d; }.dataset-actions button.cancel { color:#d6c4a4; }
+.dataset-actions button:disabled { opacity:.42;cursor:not-allowed; }.dataset-actions .download-icon { width:20px;height:20px;flex-basis:20px; }
+.active-label { border-color:transparent;background:transparent;color:#b8bdc2; }
+.dataset-progress { height:7px;overflow:hidden;margin-top:13px;border-radius:999px;background:#17191b;box-shadow:inset 0 1px 3px #0008; }.dataset-progress span { display:block;height:100%;border-radius:inherit;background:#c9cdd1;transition:width .15s; }
+.dataset-progress-text { margin-top:7px!important;color:#999ea3!important;font:10px/1.4 ui-monospace,monospace; }
+.manager-loading { min-height:90px;display:flex;align-items:center;justify-content:center;gap:10px;color:#989da2; }
+.manager-error { max-height:130px;overflow:auto;margin:12px 0;padding:10px;border:1px solid #60484b;border-radius:7px;background:#191416;color:#d0b9bc;font:11px/1.45 ui-monospace,monospace;white-space:pre-wrap;overflow-wrap:anywhere;user-select:text; }
+.storage { display:block;margin-top:12px;text-align:center;color:#7c8186;line-height:1.5; }
 @media (max-width:800px) {
   header { padding:0 12px;height:62px;position:sticky;top:0; }.brand { width:auto;gap:8px; }.brand span:last-child { display:flex; }.brand b { display:none; }.brand small { margin:0;color:#c5c9cd;font-size:10px;letter-spacing:.9px;white-space:nowrap; }.version { min-width:0;margin-left:auto;margin-right:7px; }.install span { display:none; }
   main { display:block;overflow:hidden; }.app-shell { height:100dvh; } aside { height:100%;border:0; }.sidebar-resizer { display:none; }.detail { display:none;height:100%;padding:12px 14px 60px; }.detail.mobile-visible { display:block; }.mobile-hidden { display:none; }
@@ -159,6 +170,10 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
   .recipe-loading.partial { padding:16px 12px; }
   .recipe-pagination { grid-template-columns:1fr 1fr; }
   .recipe-pagination span { grid-column:1/-1; grid-row:1; }
+  .scrim { padding:12px; }
+  .manager { max-height:calc(100dvh - 24px);padding:25px 16px; }
+  .dataset-summary { align-items:flex-start; }.dataset-summary strong { max-width:120px;white-space:normal; }
+  .dataset-actions { flex-wrap:wrap;justify-content:stretch; }.dataset-actions button { flex:1; }.dataset-actions button.delete { flex:0 0 auto;margin-left:0; }
 }
 @media (max-width:450px) { .brand-cube { width:38px;height:38px;flex-basis:38px; }.version { padding-right:38px; }.version small { display:none; }.install { padding:0 13px; } }
 @media (prefers-reduced-motion:reduce) { .spinner,.mini-spinner { animation-duration:1.8s; } }

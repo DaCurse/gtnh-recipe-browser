@@ -1,6 +1,4 @@
 import { decode } from '@msgpack/msgpack';
-import { sha256 as nobleSha256 } from '@noble/hashes/sha2.js';
-import { bytesToHex } from '@noble/hashes/utils.js';
 import {
   ingredientMatchesEntry,
   materializeIngredient,
@@ -9,13 +7,14 @@ import {
 import { fluidRecipeScope } from './fluidContainers';
 import { parseMinecraftHtml } from './minecraftText';
 import { installOfflineAssets } from './offline';
+import { verifyAssetBytes } from './integrity';
 import {
   formatCircuitConflicts,
   formatGtMetadata,
   hasRelevantPower,
   voltageTierName
 } from './recipeMetadata';
-import { recipeCrafterId, recipeTypeIconId } from './recipePresentation';
+import { recipeCrafterId, recipeTypeCrafters, recipeTypeIconId } from './recipePresentation';
 import { mapProgressively } from './progressive';
 import {
   activateDataset,
@@ -167,10 +166,6 @@ interface AssetLoadProgress {
   cached: boolean;
 }
 
-async function sha256(bytes: Uint8Array): Promise<string> {
-  return bytesToHex(nobleSha256(bytes));
-}
-
 async function fetchVerified(
   asset: Asset,
   manifestUrl: string,
@@ -181,7 +176,12 @@ async function fetchVerified(
   const cached = await getCachedAsset(asset.sha256);
   if (cached) {
     onProgress?.({ loaded: cached.byteLength, total: asset.bytes, cached: true });
-    if (cached.byteLength === asset.bytes && await sha256(cached) === asset.sha256) return cached;
+    try {
+      verifyAssetBytes(asset, cached);
+      return cached;
+    } catch {
+      // Remove a stale or corrupt record before attempting a clean download.
+    }
     await removeCachedAsset(asset.sha256);
   }
 
@@ -210,8 +210,7 @@ async function fetchVerified(
     bytes = new Uint8Array(await response.arrayBuffer());
     onProgress?.({ loaded: bytes.byteLength, total: asset.bytes, cached: false });
   }
-  if (bytes.byteLength !== asset.bytes) throw new Error(`${asset.id}: size mismatch`);
-  if (await sha256(bytes) !== asset.sha256) throw new Error(`${asset.id}: integrity check failed`);
+  verifyAssetBytes(asset, bytes);
   await cacheAsset(asset.sha256, bytes);
   return bytes;
 }
@@ -342,7 +341,8 @@ export class DatasetRepository {
         icon: goods.icon && sheet ? {
           url: new URL(sheet.url, manifestUrl).href,
           index: goods.icon.index,
-          columns: sheet.columns
+          columns: sheet.columns,
+          sha256: sheet.sha256
         } : undefined,
         productionShards,
         usageShards,
@@ -618,6 +618,7 @@ export class DatasetRepository {
           }))
           .filter((line): line is string => line !== null),
         crafterId: recipeCrafterId(type, gt?.voltageTier),
+        crafters: recipeTypeCrafters(type),
         typeIconId: recipeTypeIconId(type),
         circuitConflicts: gt && gt.circuitConflicts !== 0
           ? formatCircuitConflicts(gt.circuitConflicts)

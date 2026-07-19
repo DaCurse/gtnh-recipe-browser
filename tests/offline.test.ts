@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { installOfflineAssets } from '../src/lib/offline';
+import { installOfflineAssets, storageShortfall } from '../src/lib/offline';
 import type { AssetDescriptor } from '../src/lib/types';
 
 const assets: AssetDescriptor[] = Array.from({ length: 5 }, (_, index) => ({
@@ -11,6 +11,12 @@ const assets: AssetDescriptor[] = Array.from({ length: 5 }, (_, index) => ({
 }));
 
 describe('offline asset installation', () => {
+  it('reports quota shortfalls while tolerating unavailable estimates', () => {
+    expect(storageShortfall(80, 50, 100)).toBe(30);
+    expect(storageShortfall(40, 50, 100)).toBe(0);
+    expect(storageShortfall(80, undefined, 100)).toBeUndefined();
+  });
+
   it('limits downloads to three and persists progressive completion', async () => {
     let active = 0;
     let maximum = 0;

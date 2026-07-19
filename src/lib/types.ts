@@ -18,6 +18,7 @@ export interface CatalogEntry {
     url: string;
     index: number;
     columns: number;
+    sha256?: string;
   };
   productionShards?: string[];
   usageShards?: string[];
@@ -83,6 +84,10 @@ export interface Recipe {
   metadata?: string[];
   note?: string;
   crafterId?: string;
+  crafters?: Array<{
+    id: string;
+    role: 'singleblock' | 'multiblock' | 'default';
+  }>;
   typeIconId?: string;
   circuitConflicts?: string;
   specialValue?: number;
