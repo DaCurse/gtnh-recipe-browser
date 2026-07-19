@@ -26,12 +26,18 @@
   let chooserOpen = $state(false);
   let chosenItemId = $state('');
   let chosenOreId = $state('');
-  let tooltipEntry = $state<CatalogEntry>();
-  let tooltipOreId = $state('');
+  let tooltipSlot = $state(-1);
   let tooltipX = $state(0);
   let tooltipY = $state(0);
   const chosenItem = $derived(chosenItemId ? resolve(chosenItemId) : undefined);
   const chosenOre = $derived(chosenOreId ? resolve(chosenOreId) : undefined);
+  const tooltipIngredient = $derived(tooltipSlot >= 0 ? slotIngredients.get(tooltipSlot) : undefined);
+  const tooltipAlternatives = $derived(tooltipIngredient?.alternatives ?? []);
+  const tooltipDisplayId = $derived(tooltipAlternatives.length > 0
+    ? tooltipAlternatives[$oreCycle % tooltipAlternatives.length]
+    : tooltipIngredient?.id);
+  const tooltipEntry = $derived(tooltipDisplayId ? resolve(tooltipDisplayId) : undefined);
+  const tooltipOreId = $derived(tooltipIngredient?.oreDictionaryId ?? '');
 
   function openOreChooser(itemId: string, oreId: string) {
     chosenItemId = itemId;
@@ -44,31 +50,28 @@
     navigate(id, view);
   }
 
-  function showPointerTooltip(event: PointerEvent, entry: CatalogEntry, oreId?: string) {
+  function showPointerTooltip(event: PointerEvent, slot: number) {
     if (event.pointerType === 'touch') return;
-    tooltipEntry = entry;
-    tooltipOreId = oreId ?? '';
+    tooltipSlot = slot;
     tooltipX = event.clientX;
     tooltipY = event.clientY;
   }
 
   function movePointerTooltip(event: PointerEvent) {
-    if (!tooltipEntry || event.pointerType === 'touch') return;
+    if (tooltipSlot < 0 || event.pointerType === 'touch') return;
     tooltipX = event.clientX;
     tooltipY = event.clientY;
   }
 
-  function showFocusTooltip(event: FocusEvent, entry: CatalogEntry, oreId?: string) {
+  function showFocusTooltip(event: FocusEvent, slot: number) {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    tooltipEntry = entry;
-    tooltipOreId = oreId ?? '';
+    tooltipSlot = slot;
     tooltipX = rect.right;
     tooltipY = rect.bottom;
   }
 
   function hideTooltip() {
-    tooltipEntry = undefined;
-    tooltipOreId = '';
+    tooltipSlot = -1;
   }
 
   function displayAmount(value: number, fluid: boolean): string {
@@ -100,10 +103,10 @@
             aria-label={ingredient.oreDictionaryId
               ? `${ingredient.oreDictionaryId}, showing ${entry.name}, alternative ${alternativeIndex + 1} of ${alternatives.length}`
               : entry.name}
-            onpointerenter={(event) => showPointerTooltip(event, entry, ingredient.oreDictionaryId)}
+            onpointerenter={(event) => showPointerTooltip(event, slot)}
             onpointermove={movePointerTooltip}
             onpointerleave={hideTooltip}
-            onfocus={(event) => showFocusTooltip(event, entry, ingredient.oreDictionaryId)}
+            onfocus={(event) => showFocusTooltip(event, slot)}
             onblur={hideTooltip}
             onclick={() => ingredient.oreDictionaryId
               ? openOreChooser(entry.id, ingredient.oreDictionaryId)
@@ -141,7 +144,7 @@
     x={tooltipX}
     y={tooltipY}
     action={tooltipOreId
-      ? 'Left/right-click: choose item or ore dictionary · Then select Recipes or Usages'
+      ? 'Click to choose current item or ore dictionary entry'
       : 'Left-click: Recipes · Right-click: Usages'}
   />
 {/if}
