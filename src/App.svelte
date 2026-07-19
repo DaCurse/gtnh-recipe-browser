@@ -759,7 +759,7 @@
   });
 </script>
 
-<svelte:head><title>{selected && detailsOpen ? `GTNH Recipe Browser - ${selected.name}` : 'GTNH Recipe Browser'}</title></svelte:head>
+<svelte:head><title>{selected && detailsOpen ? `${selected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser'}</title></svelte:head>
 
 <div class="app-shell">
   <header>
