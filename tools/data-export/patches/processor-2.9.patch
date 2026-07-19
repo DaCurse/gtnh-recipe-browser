@@ -1,3 +1,14 @@
+diff --git a/PackConverter.cs b/PackConverter.cs
+index b709151..052de58 100644
+--- a/PackConverter.cs
++++ b/PackConverter.cs
+@@ -347,0 +348,6 @@ namespace Source
++            foreach (var aspectModel in generator.GetTableContents(aspect))
++            {
++                if (items.TryGetValue(aspectModel.IconId, out var aspectIcon) && aspectIcon != null)
++                    aspectIcon.touched = true;
++            }
++
 diff --git a/PackPreProcessor.cs b/PackPreProcessor.cs
 index 68f9fc0..2d40c65 100644
 --- a/PackPreProcessor.cs

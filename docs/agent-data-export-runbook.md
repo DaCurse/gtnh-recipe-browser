@@ -54,7 +54,8 @@ Thaumcraft recipes while appearing otherwise complete.
 
 The pinned format-v5 processor is also copied to `.export-work/<version>/processor` before use. Its 2.9 compatibility
 patch recognizes aspect icon items from both the legacy `thaumcraftneiplugin` and current `aspectrecipeindex`
-providers. Apply this patch only to the copy; never edit `gtnh@ShadowTheAge/`.
+providers and retains every icon referenced by the exported `ASPECT` table. Apply this patch only to the copy; never
+edit `gtnh@ShadowTheAge/`.
 
 ## Manual checkpoint
 

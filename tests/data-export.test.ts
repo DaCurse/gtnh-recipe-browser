@@ -82,6 +82,8 @@ describe('data export tooling', () => {
     expect(patch).toContain('x.mod == "thaumcraftneiplugin"');
     expect(patch).toContain('x.mod == "aspectrecipeindex"');
     expect(patch).toContain('x.internalName == "aspect"');
+    expect(patch).toContain('items.TryGetValue(aspectModel.IconId');
+    expect(patch).toContain('aspectIcon.touched = true');
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });
 
