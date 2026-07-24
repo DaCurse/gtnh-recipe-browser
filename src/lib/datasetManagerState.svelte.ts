@@ -1,4 +1,5 @@
 import { DatasetRepository } from './dataset';
+import { hasRevisionUpdate, reconcileDatasetVersions } from './datasetVersions';
 import { storageShortfall } from './offline';
 import {
   estimateStorage,
@@ -50,28 +51,15 @@ export class DatasetManagerState {
   constructor(private readonly callbacks: DatasetManagerCallbacks) {}
 
   get datasets(): ManagedDataset[] {
-    const versions = new Map(
-      this.availableDatasets.map((version) => [version.datasetId, version])
-    );
-    for (const state of this.datasetRecords) {
-      if (!versions.has(state.datasetId)) {
-        versions.set(state.datasetId, {
-          datasetId: state.datasetId,
-          gtnhVersion: state.gtnhVersion,
-          revision: state.revision,
-          packManifestUrl: state.manifestUrl,
-          offlineBytes: state.totalBytes
-        });
-      }
-    }
-    return [...versions.values()].map((version): ManagedDataset => ({
-      version,
-      state: this.datasetRecords.find((state) => state.datasetId === version.datasetId)
-    }));
+    return reconcileDatasetVersions(this.availableDatasets, this.datasetRecords);
   }
 
   get activeDataset(): DatasetState | undefined {
     return this.datasetRecords.find((state) => state.active);
+  }
+
+  hasRevisionUpdate(datasetId?: string): boolean {
+    return hasRevisionUpdate(this.availableDatasets, this.datasetRecords, datasetId);
   }
 
   show() {
@@ -104,6 +92,20 @@ export class DatasetManagerState {
 
   async refreshRecords() {
     this.datasetRecords = await listDatasets();
+  }
+
+  async refreshAvailability() {
+    try {
+      const [versions, records] = await Promise.all([
+        DatasetRepository.availableVersions(),
+        listDatasets()
+      ]);
+      this.availableDatasets = versions;
+      this.datasetRecords = records;
+    } catch (error) {
+      console.warn('Unable to refresh available GTNH datasets', error);
+      this.datasetRecords = await listDatasets();
+    }
   }
 
   async install(version: DatasetVersion) {

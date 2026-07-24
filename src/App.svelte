@@ -142,7 +142,7 @@
       await loaded.activate();
       await applyRepository(loaded, false);
       datasetStatus = 'ready';
-      await datasetManager.refreshRecords();
+      await datasetManager.refreshAvailability();
     } catch (error) {
       console.error('Unable to load the GTNH dataset', error);
       datasetError = diagnostic(error);
@@ -168,6 +168,14 @@
     };
     addEventListener('popstate', handlePopState);
     addEventListener('keydown', handleShortcut);
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') void datasetManager.refreshAvailability();
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    const availabilityTimer = window.setInterval(
+      () => void datasetManager.refreshAvailability(),
+      15 * 60 * 1_000
+    );
     registerSW({
       onNeedRefresh: () => updateReady = true,
       onRegisterError: (error) => console.error('Service worker registration failed', error)
@@ -176,6 +184,8 @@
     return () => {
       removeEventListener('popstate', handlePopState);
       removeEventListener('keydown', handleShortcut);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.clearInterval(availabilityTimer);
     };
   });
 </script>
@@ -186,6 +196,7 @@
   <AppHeader
     {datasetVersion}
     activeDataset={datasetManager.activeDataset}
+    datasetUpdateAvailable={datasetManager.hasRevisionUpdate(repository?.datasetId)}
     {updateReady}
     showHome={() => showItemList(true)}
     openDatasetManager={() => datasetManager.show()}

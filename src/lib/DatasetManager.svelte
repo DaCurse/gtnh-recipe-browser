@@ -80,11 +80,24 @@
           {@const installing = installingDatasetId === managed.version.datasetId}
           {@const switching = switchingDatasetId === managed.version.datasetId}
           {@const current = currentDatasetId === managed.version.datasetId}
-          <section class:active={current} class="dataset">
+          <section
+            class:active={current}
+            class:stale={managed.stale}
+            class:update={managed.newRevisionAvailable}
+            class="dataset"
+          >
             <div class="dataset-summary">
               <span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span>
               <div>
-                <b>{managed.version.gtnhVersion}</b>
+                <div class="dataset-title">
+                  <b>{managed.version.gtnhVersion}</b>
+                  {#if managed.stale}
+                    <span class="status-chip stale-chip">Stale</span>
+                  {/if}
+                  {#if managed.newRevisionAvailable}
+                    <span class="status-chip update-chip"><span></span>New revision</span>
+                  {/if}
+                </div>
                 {#if hasMultipleRevisions(managed.version)}
                   <small class="dataset-revision">Revision {managed.version.revision.slice(0, 8)}</small>
                 {/if}
@@ -171,10 +184,17 @@
   .dataset-list { display:flex; flex-direction:column; gap:10px; margin:20px 0; }
   .dataset { padding:14px; border:1px solid #484c51; border-radius:9px; background:#292c30; }
   .dataset.active { border-color:#737980; background:#2d3034; }
+  .dataset.stale { border-color:#605a50; }
+  .dataset.update { border-color:#777052; box-shadow:0 0 0 1px #d6bd5526; }
   .dataset-icon { display:grid; place-items:center; width:42px; height:42px; flex:0 0 42px; }
   .dataset-icon img { display:block; width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 2px 4px #0009); }
   .dataset-summary { display:flex; align-items:center; gap:12px; }
   .dataset-summary>div { min-width:0; flex:1; }
+  .dataset-title { display:flex; align-items:center; flex-wrap:wrap; gap:7px; }
+  .status-chip { display:inline-flex; align-items:center; min-height:20px; padding:1px 7px; border:1px solid; border-radius:999px; font-size:9px; font-weight:800; line-height:1; letter-spacing:.04em; text-transform:uppercase; }
+  .stale-chip { border-color:#756d60; background:#3a3630; color:#c2b9aa; }
+  .update-chip { border-color:#8b7e42; background:#443e25; color:#eadc8b; }
+  .update-chip span { width:6px; height:6px; border-radius:50%; background:#f0d663; box-shadow:0 0 7px #e9ca43; }
   .dataset b,.dataset small { display:block; }
   .dataset-summary small { margin-top:6px; color:#b0b4b8; font-size:10px; }
   .dataset-summary .dataset-revision { color:#858a8f; font:10px ui-monospace,monospace; }
