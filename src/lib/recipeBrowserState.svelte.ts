@@ -1,13 +1,13 @@
-import { onMount } from 'svelte';
+import { onMount, untrack } from 'svelte';
 import { toRecipeSearchCatalogEntry, toRecipeSearchRecord } from './recipeSearch';
 import type { DatasetRepository } from './dataset';
 import type { CatalogEntry, Recipe, RecipeView } from './types';
 
 interface RecipeBrowserContext {
-  repository: DatasetRepository;
-  selected: CatalogEntry;
-  mode: RecipeView;
-  active: boolean;
+  repository: () => DatasetRepository;
+  selected: () => CatalogEntry;
+  mode: () => RecipeView;
+  active: () => boolean;
 }
 
 export class RecipeBrowserState {
@@ -35,9 +35,10 @@ export class RecipeBrowserState {
   private recipeRequest = 0;
   private recipeSearchRequest = 0;
 
-  constructor(private readonly context: () => RecipeBrowserContext) {
+  constructor(private readonly context: RecipeBrowserContext) {
     $effect(() => {
-      const { selected, mode } = this.context();
+      const selected = this.context.selected();
+      const mode = this.context.mode();
       void selected.id;
       void mode;
       void this.type;
@@ -61,7 +62,7 @@ export class RecipeBrowserState {
       const query = this.recipeFilter;
       const recipeType = this.type;
       const page = this.recipePage;
-      const { active } = this.context();
+      const active = this.context.active();
       if (!active || !this.recipeSearchReady || !this.recipeSearchWorker || !recipeType) {
         this.recipeWorkerPending = false;
         return;
@@ -80,14 +81,19 @@ export class RecipeBrowserState {
     });
 
     $effect(() => {
-      const { repository } = this.context();
+      const repository = this.context.repository();
       if (!this.recipeSearchReady) return;
-      this.loadedRecipeCounts = {};
-      this.initializeRecipeSearch(repository.entries);
+      untrack(() => {
+        this.loadedRecipeCounts = {};
+        this.initializeRecipeSearch(repository.entries);
+      });
     });
 
     $effect(() => {
-      const { repository, selected, mode, active } = this.context();
+      const repository = this.context.repository();
+      const selected = this.context.selected();
+      const mode = this.context.mode();
+      const active = this.context.active();
       if (!active || !this.recipeSearchReady) {
         this.recipeAbortController?.abort();
         return;
@@ -95,7 +101,7 @@ export class RecipeBrowserState {
       void repository;
       void selected.id;
       void mode;
-      void this.refresh();
+      untrack(() => void this.refresh());
     });
 
     onMount(() => this.mountWorker());
@@ -129,12 +135,12 @@ export class RecipeBrowserState {
   }
 
   get modeLabel(): string {
-    const { mode } = this.context();
+    const mode = this.context.mode();
     return mode === 'machineUsages' ? 'machine usages' : mode;
   }
 
   recipeCount(view: RecipeView): number | undefined {
-    const { selected } = this.context();
+    const selected = this.context.selected();
     const declared = view === 'recipes'
       ? selected.productionCount
       : view === 'usages'
@@ -154,7 +160,9 @@ export class RecipeBrowserState {
   }
 
   async refresh() {
-    const { repository, selected, mode } = this.context();
+    const repository = this.context.repository();
+    const selected = this.context.selected();
+    const mode = this.context.mode();
     this.recipeAbortController?.abort();
     const controller = new AbortController();
     this.recipeAbortController = controller;

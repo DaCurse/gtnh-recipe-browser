@@ -21,7 +21,12 @@
     navigate: (id: string, view: RecipeView) => void;
   } = $props();
 
-  const state = new RecipeBrowserState(() => ({ repository, selected, mode, active }));
+  const state = new RecipeBrowserState({
+    repository: () => repository,
+    selected: () => selected,
+    mode: () => mode,
+    active: () => active
+  });
   const entryById = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
   const related = $derived(state.related);
   const types = $derived(state.types);
