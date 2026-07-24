@@ -13,6 +13,12 @@ export interface DatasetAsset {
   encoding: 'gzip' | 'identity';
 }
 
+export interface CatalogAsset extends DatasetAsset {
+  role?: 'core' | 'goods';
+  part?: number;
+  goodsCount?: number;
+}
+
 interface RecipeShardAsset extends DatasetAsset {
   recipeTypeId: string;
 }
@@ -27,7 +33,7 @@ export interface DatasetManifest {
   gtnhVersion: string;
   revision: string;
   displayName: string;
-  catalogAssets: DatasetAsset[];
+  catalogAssets: CatalogAsset[];
   recipeShards: RecipeShardAsset[];
   iconSheets: IconSheetAsset[];
   totals?: {
@@ -45,6 +51,9 @@ export interface PackedGoods {
   internalName: string;
   unlocalizedName: string;
   nbt: string | null;
+  numericId: number;
+  damage?: number;
+  searchMask: number[];
   searchable: boolean;
   icon: { sheetId: string; index: number } | null;
   productionShards: string[];
@@ -80,6 +89,21 @@ export interface PackedCatalog {
   goods: PackedGoods[];
   recipeTypes: PackedRecipeType[];
   oreDictionaries: PackedOreDictionary[];
+  serviceItemIds?: string[];
+  obsoleteRecipeRemaps?: Record<string, string>;
+}
+
+export interface PackedCatalogCore extends Omit<PackedCatalog, 'goods'> {
+  schemaVersion: 2;
+  kind: 'core';
+}
+
+export interface PackedCatalogGoods {
+  schemaVersion: 2;
+  datasetId: string;
+  kind: 'goods';
+  part: number;
+  goods: PackedGoods[];
 }
 
 interface PackedIo {

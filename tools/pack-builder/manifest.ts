@@ -11,6 +11,9 @@ export interface ImmutableAsset {
 
 export interface CatalogAsset extends ImmutableAsset {
   kind: 'catalog';
+  role: 'core' | 'goods';
+  part: number;
+  goodsCount: number;
 }
 
 export interface RecipeShardAsset extends ImmutableAsset {
@@ -31,7 +34,7 @@ export interface IconSheetAsset extends ImmutableAsset {
 }
 
 export interface GeneratedPackManifest {
-  formatVersion: 1;
+  formatVersion: 2;
   datasetId: string;
   gtnhVersion: string;
   revision: string;

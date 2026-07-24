@@ -45,7 +45,7 @@ if (versionIndex.schemaVersion !== 1 || !Array.isArray(versionIndex.versions) ||
 const version = versionIndex.versions[0];
 const manifestUrl = new URL(version.packManifestUrl, versionsUrl);
 const manifest = await fetchJson(manifestUrl, 'pack manifest');
-if (manifest.formatVersion !== 1 || manifest.datasetId !== version.datasetId) {
+if (![1, 2].includes(manifest.formatVersion) || manifest.datasetId !== version.datasetId) {
   throw new Error('pack manifest: identity or format mismatch');
 }
 

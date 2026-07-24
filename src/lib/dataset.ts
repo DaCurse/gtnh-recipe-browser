@@ -10,6 +10,8 @@ import type {
   DatasetAsset,
   DatasetManifest,
   PackedCatalog,
+  PackedCatalogCore,
+  PackedCatalogGoods,
   PackedGoods,
   PackedOreDictionary,
   PackedRecipe,
@@ -49,6 +51,76 @@ export interface RecipeLoadProgress {
   loadedShards: number;
   totalShards: number;
   batch: Recipe[];
+}
+
+async function loadCatalog(
+  manifest: DatasetManifest,
+  manifestUrl: string,
+  report: (percent: number, stage: string) => void
+): Promise<{ catalog: PackedCatalog; hashes: string[] }> {
+  if (manifest.catalogAssets.length === 0) throw new Error('Pack manifest has no catalog assets');
+  if (manifest.formatVersion === 1) {
+    const asset = manifest.catalogAssets[0]!;
+    const bytes = await fetchVerified(asset, manifestUrl, ({ loaded, total, cached }) => {
+      const ratio = total > 0 ? Math.min(1, loaded / total) : 0;
+      report(12 + Math.round(ratio * 58), cached ? 'Reading verified catalog cache' : 'Downloading catalog');
+    });
+    report(76, 'Decompressing catalog');
+    const catalog = decode(await decompress(bytes)) as PackedCatalog;
+    if (catalog.datasetId !== manifest.datasetId) throw new Error('Catalog dataset identity mismatch');
+    return { catalog, hashes: [asset.sha256] };
+  }
+  if (manifest.formatVersion !== 2) {
+    throw new Error(`Unsupported pack manifest format ${manifest.formatVersion}`);
+  }
+
+  const loaded = new Array(manifest.catalogAssets.length).fill(0) as number[];
+  const totalBytes = manifest.catalogAssets.reduce((total, asset) => total + asset.bytes, 0);
+  const decoded = await mapProgressively(
+    manifest.catalogAssets,
+    3,
+    async (asset, index) => {
+      const bytes = await fetchVerified(asset, manifestUrl, ({ loaded: assetLoaded, cached }) => {
+        loaded[index] = assetLoaded;
+        const ratio = loaded.reduce((total, value) => total + value, 0) / Math.max(1, totalBytes);
+        report(
+          12 + Math.round(ratio * 50),
+          cached ? 'Reading verified catalog chunks' : 'Downloading catalog chunks'
+        );
+      });
+      const value = decode(await decompress(bytes)) as PackedCatalogCore | PackedCatalogGoods;
+      if (value.schemaVersion !== 2 || value.datasetId !== manifest.datasetId) {
+        throw new Error(`${asset.id}: catalog identity mismatch`);
+      }
+      return value;
+    },
+    ({ completed, total }) => report(
+      64 + Math.round(completed / total * 22),
+      `Decoding catalog chunk ${completed.toLocaleString()} of ${total.toLocaleString()}`
+    )
+  );
+  const coreAssets = decoded.filter((asset): asset is PackedCatalogCore => asset.kind === 'core');
+  const goodsAssets = decoded
+    .filter((asset): asset is PackedCatalogGoods => asset.kind === 'goods')
+    .sort((left, right) => left.part - right.part);
+  if (coreAssets.length !== 1 || goodsAssets.length === 0) {
+    throw new Error('Format-2 catalog requires one core and at least one goods chunk');
+  }
+  goodsAssets.forEach((asset, index) => {
+    if (asset.part !== index) throw new Error(`Catalog goods chunk ${asset.part} is out of order`);
+  });
+  const core = coreAssets[0]!;
+  return {
+    catalog: {
+      datasetId: core.datasetId,
+      goods: goodsAssets.flatMap((asset) => asset.goods),
+      recipeTypes: core.recipeTypes,
+      oreDictionaries: core.oreDictionaries,
+      serviceItemIds: core.serviceItemIds,
+      obsoleteRecipeRemaps: core.obsoleteRecipeRemaps
+    },
+    hashes: manifest.catalogAssets.map((asset) => asset.sha256)
+  };
 }
 
 export class DatasetRepository {
@@ -126,28 +198,19 @@ export class DatasetRepository {
       `manifest:${manifestUrl}`
     );
     const manifest = manifestResult.value;
-    if (manifest.formatVersion !== 1) {
+    if (manifest.formatVersion !== 1 && manifest.formatVersion !== 2) {
       throw new Error(`Unsupported pack manifest format ${manifest.formatVersion}`);
     }
     if (manifest.datasetId !== selected.datasetId) throw new Error('Manifest dataset identity mismatch');
-    const catalogAsset = manifest.catalogAssets[0];
-    if (!catalogAsset) throw new Error('Pack manifest has no catalog asset');
     report(12, 'Loading catalog');
-    const catalogBytes = await fetchVerified(catalogAsset, manifestUrl, ({ loaded, total, cached }) => {
-      const ratio = total > 0 ? Math.min(1, loaded / total) : 0;
-      report(12 + Math.round(ratio * 58), cached ? 'Reading verified catalog cache' : 'Downloading catalog');
-    });
-    report(76, 'Decompressing catalog');
-    const decompressed = await decompress(catalogBytes);
-    report(86, 'Decoding catalog');
-    const catalog = decode(decompressed) as PackedCatalog;
-    if (catalog.datasetId !== manifest.datasetId) throw new Error('Catalog dataset identity mismatch');
+    const loadedCatalog = await loadCatalog(manifest, manifestResult.url, report);
     report(93, 'Preparing items and ore dictionaries');
-    const repository = new DatasetRepository(manifest, manifestResult.url, catalog);
+    const repository = new DatasetRepository(manifest, manifestResult.url, loadedCatalog.catalog);
     const previous = await getDataset(manifest.datasetId);
     const assetHashes = new Set(previous?.assetHashes ?? []);
-    assetHashes.add(catalogAsset.sha256);
+    loadedCatalog.hashes.forEach((hash) => assetHashes.add(hash));
     const allAssets = repository.assets;
+    const catalogHashes = new Set(manifest.catalogAssets.map((asset) => asset.sha256));
     const storedBytes = allAssets.reduce(
       (total, asset) => total + (assetHashes.has(asset.sha256) ? asset.bytes : 0),
       0
@@ -159,7 +222,12 @@ export class DatasetRepository {
       revision: manifest.revision,
       displayName: manifest.displayName,
       manifestUrl: manifestResult.url,
-      status: previous?.status === 'complete' ? 'complete' : assetHashes.size > 1 ? 'partial' : 'catalog',
+      status: previous?.status === 'complete'
+        ? 'complete'
+        : allAssets.some((asset) =>
+          !catalogHashes.has(asset.sha256) && assetHashes.has(asset.sha256))
+          ? 'partial'
+          : 'catalog',
       storedBytes,
       totalBytes: repository.offlineBytes,
       active: previous?.active ?? noActiveDataset,
@@ -194,15 +262,19 @@ export class DatasetRepository {
         (total, asset) => total + (hashes.has(asset.sha256) ? asset.bytes : 0),
         0
       );
+      const catalogHashes = new Set(this.manifest.catalogAssets.map((asset) => asset.sha256));
       await saveDataset({
         datasetId: this.datasetId,
         gtnhVersion: this.gtnhVersion,
         revision: this.revision,
         displayName: this.displayName,
         manifestUrl: this.manifestUrl,
-        status: complete ? 'complete' : storedBytes > this.manifest.catalogAssets[0]!.bytes
-          ? 'partial'
-          : 'catalog',
+        status: complete
+          ? 'complete'
+          : this.assets.some((asset) =>
+            !catalogHashes.has(asset.sha256) && hashes.has(asset.sha256))
+            ? 'partial'
+            : 'catalog',
         storedBytes,
         totalBytes: this.offlineBytes,
         active: current?.active ?? false,

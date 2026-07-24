@@ -14,8 +14,9 @@ import type {
   RecipeShardAsset
 } from './manifest';
 
-const PACK_FORMAT_VERSION = 1;
+const PACK_FORMAT_VERSION = 2;
 const DEFAULT_MAX_SHARD_BYTES = 2 * 1024 * 1024;
+const DEFAULT_MAX_CATALOG_BYTES = 2 * 1024 * 1024;
 const ICONS_PER_SHEET = 1024;
 const SHEET_COLUMNS = 32;
 const SPRITE_SIZE = 32;
@@ -31,6 +32,7 @@ export interface BuildPackOptions {
   displayName?: string;
   baseUrl?: string;
   maxShardBytes?: number;
+  maxCatalogBytes?: number;
 }
 
 export interface BuildPackResult {
@@ -179,7 +181,7 @@ function iconReference(iconId: number) {
   };
 }
 
-function buildCatalog(repository: DecodedRepository, datasetId: string, shardByRecipeId: Map<string, string>) {
+function buildCatalog(repository: DecodedRepository, shardByRecipeId: Map<string, string>) {
   const goods = [...repository.items, ...repository.fluids].map((entry) => {
     const { productionRecipeIds, usageRecipeIds, ...catalogEntry } = entry;
     return {
@@ -192,8 +194,6 @@ function buildCatalog(repository: DecodedRepository, datasetId: string, shardByR
     };
   });
   return {
-    schemaVersion: PACK_FORMAT_VERSION,
-    datasetId,
     goods,
     oreDictionaries: repository.oreDictionaries,
     recipeTypes: repository.recipeTypes.map((recipeType) => ({
@@ -207,6 +207,88 @@ function buildCatalog(repository: DecodedRepository, datasetId: string, shardByR
     serviceItemIds: repository.serviceItemIds,
     obsoleteRecipeRemaps: repository.obsoleteRecipeRemaps
   };
+}
+
+function encodeCatalogGoods(datasetId: string, part: number, goods: unknown[]): Buffer {
+  return gzipMessagePack({
+    schemaVersion: PACK_FORMAT_VERSION,
+    datasetId,
+    kind: 'goods',
+    part,
+    goods
+  });
+}
+
+export function splitCatalogGoods(
+  datasetId: string,
+  goods: unknown[],
+  maxBytes: number
+): unknown[][] {
+  if (goods.length === 0) return [[]];
+  const bytes = encodeCatalogGoods(datasetId, 0, goods);
+  if (bytes.byteLength <= maxBytes || goods.length === 1) return [goods];
+  const middle = Math.ceil(goods.length / 2);
+  return [
+    ...splitCatalogGoods(datasetId, goods.slice(0, middle), maxBytes),
+    ...splitCatalogGoods(datasetId, goods.slice(middle), maxBytes)
+  ];
+}
+
+async function buildCatalogAssets(
+  repository: DecodedRepository,
+  datasetId: string,
+  shardByRecipeId: Map<string, string>,
+  assetsDirectory: string,
+  baseUrl: string,
+  maxBytes: number
+): Promise<CatalogAsset[]> {
+  const catalog = buildCatalog(repository, shardByRecipeId);
+  const { goods, ...core } = catalog;
+  const coreBytes = gzipMessagePack({
+    schemaVersion: PACK_FORMAT_VERSION,
+    datasetId,
+    kind: 'core',
+    ...core
+  });
+  const coreAsset = await writeImmutableAsset(
+    assetsDirectory,
+    baseUrl,
+    'catalog-core',
+    'mpk',
+    coreBytes,
+    { encoding: 'gzip', mediaType: 'application/msgpack' }
+  );
+  const assets: CatalogAsset[] = [{
+    ...coreAsset,
+    kind: 'catalog',
+    role: 'core',
+    part: 0,
+    goodsCount: 0
+  }];
+  const parts = splitCatalogGoods(datasetId, goods, maxBytes);
+  for (const [part, partGoods] of parts.entries()) {
+    const bytes = encodeCatalogGoods(datasetId, part, partGoods);
+    if (bytes.byteLength > maxBytes && partGoods.length !== 1) {
+      throw new Error(`Catalog goods part ${part} exceeds ${maxBytes} bytes`);
+    }
+    const id = `catalog-goods-${part.toString().padStart(3, '0')}`;
+    const immutable = await writeImmutableAsset(
+      assetsDirectory,
+      baseUrl,
+      id,
+      'mpk',
+      bytes,
+      { encoding: 'gzip', mediaType: 'application/msgpack' }
+    );
+    assets.push({
+      ...immutable,
+      kind: 'catalog',
+      role: 'goods',
+      part,
+      goodsCount: partGoods.length
+    });
+  }
+  return assets;
 }
 
 async function buildIconSheets(
@@ -298,16 +380,14 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
     options.maxShardBytes ?? DEFAULT_MAX_SHARD_BYTES
   );
 
-  const catalogBytes = gzipMessagePack(buildCatalog(repository, datasetId, shardByRecipeId));
-  const catalogImmutable = await writeImmutableAsset(
+  const catalogAssets = await buildCatalogAssets(
+    repository,
+    datasetId,
+    shardByRecipeId,
     assetsDirectory,
     baseUrl,
-    'catalog',
-    'mpk',
-    catalogBytes,
-    { encoding: 'gzip', mediaType: 'application/msgpack' }
+    options.maxCatalogBytes ?? DEFAULT_MAX_CATALOG_BYTES
   );
-  const catalogAssets: CatalogAsset[] = [{ ...catalogImmutable, kind: 'catalog' }];
 
   const iconIds = [
     ...repository.items.map((item) => item.iconId),

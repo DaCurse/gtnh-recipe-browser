@@ -4,7 +4,7 @@ import { basename, join } from 'node:path';
 import { gunzipSync } from 'node:zlib';
 import { decode } from '@msgpack/msgpack';
 import sharp from 'sharp';
-import type { GeneratedPackManifest, ImmutableAsset } from './manifest';
+import type { CatalogAsset, GeneratedPackManifest, ImmutableAsset } from './manifest';
 
 const DEFAULT_MAX_SHARD_BYTES = 2 * 1024 * 1024;
 
@@ -41,13 +41,22 @@ interface DecodedRecipeShard {
 interface DecodedCatalog {
   schemaVersion: number;
   datasetId: string;
-  goods: unknown[];
+  kind?: 'core' | 'goods';
+  part?: number;
+  goods?: unknown[];
 }
+
+type VerifiableManifest = Omit<GeneratedPackManifest, 'formatVersion' | 'catalogAssets'> & {
+  formatVersion: number;
+  catalogAssets: Array<ImmutableAsset & Partial<Pick<CatalogAsset, 'role' | 'part' | 'goodsCount'>>>;
+};
 
 export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPackResult> {
   const manifestBytes = await readFile(join(options.packDirectory, 'pack-manifest.json'));
-  const manifest = JSON.parse(manifestBytes.toString('utf8')) as GeneratedPackManifest;
-  if (manifest.formatVersion !== 1) throw new Error(`Unsupported generated pack format ${manifest.formatVersion}`);
+  const manifest = JSON.parse(manifestBytes.toString('utf8')) as VerifiableManifest;
+  if (manifest.formatVersion !== 1 && manifest.formatVersion !== 2) {
+    throw new Error(`Unsupported generated pack format ${manifest.formatVersion}`);
+  }
   const assets: ImmutableAsset[] = [
     ...manifest.catalogAssets,
     ...manifest.recipeShards,
@@ -105,13 +114,49 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
   }
 
   let goods = 0;
+  let coreAssets = 0;
+  let nextGoodsPart = 0;
   for (const descriptor of manifest.catalogAssets) {
     const compressed = await readFile(join(options.packDirectory, 'assets', localFilename(descriptor)));
     const catalog = decode(gunzipSync(compressed)) as DecodedCatalog;
     if (catalog.schemaVersion !== manifest.formatVersion || catalog.datasetId !== manifest.datasetId) {
       throw new Error(`${descriptor.id}: catalog identity does not match its manifest`);
     }
-    goods += catalog.goods.length;
+    if (manifest.formatVersion === 1) {
+      goods += catalog.goods?.length ?? 0;
+      continue;
+    }
+    if (catalog.kind !== descriptor.role) {
+      throw new Error(`${descriptor.id}: catalog role does not match its descriptor`);
+    }
+    if (descriptor.role === 'core') {
+      coreAssets++;
+      if (descriptor.goodsCount !== 0 || catalog.goods !== undefined) {
+        throw new Error(`${descriptor.id}: core catalog must not contain goods`);
+      }
+      continue;
+    }
+    if (
+      descriptor.role !== 'goods'
+      || descriptor.part === undefined
+      || descriptor.goodsCount === undefined
+    ) {
+      throw new Error(`${descriptor.id}: invalid format-2 catalog descriptor`);
+    }
+    if (descriptor.part !== nextGoodsPart || catalog.part !== descriptor.part) {
+      throw new Error(`${descriptor.id}: catalog goods parts are not contiguous`);
+    }
+    if (descriptor.bytes > maxShardBytes && descriptor.goodsCount !== 1) {
+      throw new Error(`${descriptor.id}: ${descriptor.bytes} bytes exceeds catalog shard cap ${maxShardBytes}`);
+    }
+    if (catalog.goods?.length !== descriptor.goodsCount) {
+      throw new Error(`${descriptor.id}: expected ${descriptor.goodsCount} goods, decoded ${catalog.goods?.length ?? 0}`);
+    }
+    goods += descriptor.goodsCount;
+    nextGoodsPart++;
+  }
+  if (manifest.formatVersion === 2 && (coreAssets !== 1 || nextGoodsPart === 0)) {
+    throw new Error('Format-2 pack requires one catalog core and at least one goods part');
   }
 
   for (const descriptor of manifest.iconSheets) {
