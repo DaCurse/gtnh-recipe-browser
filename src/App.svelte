@@ -1,13 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { registerSW } from 'virtual:pwa-register';
-  import CatalogTooltip from './lib/CatalogTooltip.svelte';
-  import FloatingCatalogTooltip from './lib/FloatingCatalogTooltip.svelte';
-  import ItemIcon from './lib/ItemIcon.svelte';
-  import MinecraftText from './lib/MinecraftText.svelte';
-  import { oreCycle } from './lib/oreCycle';
-  import ProjectLinks from './lib/ProjectLinks.svelte';
-  import RecipeCard from './lib/RecipeCard.svelte';
+  import AppHeader from './lib/AppHeader.svelte';
+  import ApplicationState from './lib/ApplicationState.svelte';
+  import CatalogPane from './lib/CatalogPane.svelte';
+  import DatasetManager from './lib/DatasetManager.svelte';
+  import ItemOverview from './lib/ItemOverview.svelte';
+  import RecipeBrowser from './lib/RecipeBrowser.svelte';
   import { DatasetRepository } from './lib/dataset';
   import { itemListUrl } from './lib/navigation';
   import { storageShortfall } from './lib/offline';
@@ -26,15 +25,11 @@
     CatalogEntry,
     DatasetState,
     DatasetVersion,
+    ManagedDataset,
     OfflineInstallProgress,
     Recipe,
     RecipeView
   } from './lib/types';
-
-  interface ManagedDataset {
-    version: DatasetVersion;
-    state?: DatasetState;
-  }
 
   let catalog = $state<CatalogEntry[]>([]);
   let allRecipes = $state<Recipe[]>([]);
@@ -80,10 +75,6 @@
   let sidebarWidth = $state(410);
   let sidebarResizing = $state(false);
   let searchInput = $state<HTMLInputElement>();
-  let itemTooltipEntry = $state<CatalogEntry>();
-  let itemTooltipX = $state(0);
-  let itemTooltipY = $state(0);
-  let itemTooltipAction = $state<string>();
   let availableDatasets = $state<DatasetVersion[]>([]);
   let datasetRecords = $state<DatasetState[]>([]);
   let managerLoading = $state(false);
@@ -102,9 +93,6 @@
     .map((id) => entryById.get(id))
     .filter((entry): entry is CatalogEntry => entry !== undefined));
   const selected = $derived(entryById.get(selectedId));
-  const selectedIconEntry = $derived(selected?.kind === 'oreDict' && selected.members?.length
-    ? entryById.get(selected.members[$oreCycle % selected.members.length]) ?? selected
-    : selected);
   const related = $derived(allRecipes);
   const types = $derived([...new Set(related.map((x) => x.type))]);
   const recipeById = $derived(new Map(related.map((recipe) => [recipe.id, recipe])));
@@ -221,33 +209,6 @@
       recipes: batch.map(toRecipeSearchRecord)
     });
     recipeIndexRevision += 1;
-  }
-
-  function showItemPointerTooltip(event: PointerEvent, entry: CatalogEntry, action?: string) {
-    if (event.pointerType === 'touch') return;
-    itemTooltipEntry = entry;
-    itemTooltipAction = action;
-    itemTooltipX = event.clientX;
-    itemTooltipY = event.clientY;
-  }
-
-  function moveItemPointerTooltip(event: PointerEvent) {
-    if (!itemTooltipEntry || event.pointerType === 'touch') return;
-    itemTooltipX = event.clientX;
-    itemTooltipY = event.clientY;
-  }
-
-  function showItemFocusTooltip(event: FocusEvent, entry: CatalogEntry, action?: string) {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    itemTooltipEntry = entry;
-    itemTooltipAction = action;
-    itemTooltipX = rect.right;
-    itemTooltipY = rect.bottom;
-  }
-
-  function hideItemTooltip() {
-    itemTooltipEntry = undefined;
-    itemTooltipAction = undefined;
   }
 
   async function refreshRecipes() {
@@ -465,13 +426,6 @@
     if (bytes < 1024) return `${bytes} B`;
     if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
     return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
-  }
-
-  function datasetStateLabel(state?: DatasetState, current = false): string {
-    if (!state) return current ? 'ACTIVE · ONLINE ONLY' : 'AVAILABLE';
-    if (state.status === 'complete') return state.active ? 'ACTIVE · OFFLINE READY' : 'OFFLINE READY';
-    if (state.status === 'partial') return state.active ? 'ACTIVE · PARTIALLY CACHED' : 'PARTIALLY CACHED';
-    return state.active ? 'ACTIVE · CATALOG READY' : 'CATALOG READY';
   }
 
   async function refreshDatasetManager() {
@@ -762,393 +716,102 @@
 <svelte:head><title>{selected && detailsOpen ? `${selected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser'}</title></svelte:head>
 
 <div class="app-shell">
-  <header>
-    <a class="brand" href="./" aria-label="GTNH Recipe Browser home" onclick={(event) => {
-      event.preventDefault();
-      showItemList(true);
-    }}>
-      <span class="brand-cube"><img src="./assets/gtnh-logo.png" alt="" /></span>
-      <span><b>GTNH</b><small>RECIPE BROWSER</small></span>
-    </a>
-    <button class="version" onclick={openVersionManager}>
-      <span><i></i> {datasetVersion}</span>
-      <small>{activeDatasetState?.status === 'complete'
-        ? 'Offline ready'
-        : activeDatasetState
-          ? 'Catalog cached'
-          : 'Online only'}</small>
-      <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="m7 9 5 5 5-5"></path></svg>
-    </button>
-    <ProjectLinks variant="header-links" />
-  </header>
+  <AppHeader
+    {datasetVersion}
+    activeDataset={activeDatasetState}
+    {updateReady}
+    showHome={() => showItemList(true)}
+    openDatasetManager={openVersionManager}
+  />
 
-  {#if updateReady}<button class="update-banner" onclick={() => location.reload()}>A new app version is ready · Refresh</button>{/if}
-
-  {#if datasetStatus === 'loading'}
-    <main class="state-main">
-      <section class="app-state" aria-live="polite">
-        <span class="spinner" aria-hidden="true"></span>
-        <h1>Loading GTNH catalog</h1>
-        <p>{datasetStage}</p>
-        <div class="load-progress" aria-label={`Catalog loading ${datasetProgress}%`}>
-          <span style:width={`${datasetProgress}%`}></span>
-        </div>
-        <small>{datasetProgress}%</small>
-      </section>
-    </main>
-  {:else if datasetStatus === 'error'}
-    <main class="state-main">
-      <section class="app-state app-error" aria-live="assertive">
-        <span class="error-mark" aria-hidden="true">!</span>
-        <h1>Catalog failed to load</h1>
-        <p>The browser could not verify or open the active GTNH dataset.</p>
-        <pre>{datasetError}</pre>
-        <div class="state-actions">
-          <button onclick={copyError}>{errorCopied ? 'Copied' : 'Copy error'}</button>
-          <button class="primary" onclick={() => loadDataset()}>Try again</button>
-        </div>
-      </section>
-    </main>
+  {#if datasetStatus !== 'ready'}
+    <ApplicationState
+      status={datasetStatus}
+      stage={datasetStage}
+      progress={datasetProgress}
+      error={datasetError}
+      {errorCopied}
+      retry={() => loadDataset()}
+      {copyError}
+    />
   {:else if selected}
   <main class:home-view={!detailsOpen} class:resizing={sidebarResizing} style:--sidebar-width={`${sidebarWidth}px`}>
-    <aside class:mobile-hidden={detailsOpen}>
-      <div class="search-wrap">
-        <svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="10.5" cy="10.5" r="6.5"></circle>
-          <path d="m15.5 15.5 4 4"></path>
-        </svg>
-        <input bind:this={searchInput} bind:value={query} placeholder="Search items, fluids, or @mod…" aria-label="Search catalog" />
-        {#if query}
-          <button class="clear-search" onclick={() => query = ''} aria-label="Clear search">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
-          </button>
-        {/if}
-        <kbd>Ctrl K</kbd>
-      </div>
-      <div class="result-bar">
-        <span>{searchPending && searchTotal === 0 ? 'PREPARING ITEMS & FLUIDS' : `${searchTotal.toLocaleString()} ITEMS & FLUIDS`}</span>
-        {#if searchPending}<span class="mini-spinner" aria-label="Searching"></span>{/if}
-      </div>
-      <div class="item-grid">
-        {#if searchPending && visibleEntries.length === 0}
-          <div class="empty search-loading"><span class="spinner" aria-hidden="true"></span><b>Preparing item list…</b></div>
-        {:else}
-          {#each visibleEntries as entry (entry.id)}
-            <button
-              class:active={selected.id === entry.id}
-              class="item-tile"
-              aria-label={entry.name}
-              onpointerenter={(event) => showItemPointerTooltip(event, entry)}
-              onpointermove={moveItemPointerTooltip}
-              onpointerleave={hideItemTooltip}
-              onfocus={(event) => showItemFocusTooltip(event, entry)}
-              onblur={hideItemTooltip}
-              onclick={() => {
-                hideItemTooltip();
-                select(entry.id);
-              }}
-            >
-              <ItemIcon {entry} size={56} selected={selected.id === entry.id} />
-              <span class="item-summary">
-                <strong>{entry.name}</strong>
-                <small>{entry.kind}</small>
-                <span class="tooltip-preview">
-                  {#if entry.formula}<b>{entry.formula}</b>{/if}
-                  <MinecraftText lines={entry.formattedTooltip} fallback={entry.tooltip} />
-                </span>
-              </span>
-              <span class="row-arrow">›</span>
-            </button>
-          {:else}
-            <div class="empty"><b>No matches</b><span>Try fewer terms or another @mod filter.</span></div>
-          {/each}
-          {#if visibleEntries.length < searchTotal}
-            <button class="item-more" use:loadMoreItems onclick={requestMoreItems}>
-              {searchLoadingMore
-                ? 'Loading more items…'
-                : `Showing ${visibleEntries.length.toLocaleString()} of ${searchTotal.toLocaleString()} · Load next 300`}
-            </button>
-          {/if}
-        {/if}
-      </div>
-      <footer>
-        <div class="sidebar-status">
-          <span><i></i> Catalog ready</span>
-          <span>{searchableCatalog.length.toLocaleString()} entries</span>
-        </div>
-        <ProjectLinks variant="mobile-sidebar-links" />
-      </footer>
-      <button
-        class="sidebar-resizer"
-        aria-label="Resize item sidebar"
-        title="Drag to resize item sidebar"
-        onpointerdown={startSidebarResize}
-        onpointermove={moveSidebarResize}
-        onpointerup={stopSidebarResize}
-        onpointercancel={stopSidebarResize}
-        onkeydown={resizeSidebarWithKeyboard}
-      ><span></span></button>
-    </aside>
-
-    {#if itemTooltipEntry}
-      <FloatingCatalogTooltip
-        entry={itemTooltipEntry}
-        x={itemTooltipX}
-        y={itemTooltipY}
-        action={itemTooltipAction}
-      />
-    {/if}
+    <CatalogPane
+      {selected}
+      {detailsOpen}
+      bind:query
+      bind:searchInput
+      {searchPending}
+      {searchTotal}
+      {visibleEntries}
+      {searchLoadingMore}
+      searchableCount={searchableCatalog.length}
+      select={(id) => select(id)}
+      {requestMoreItems}
+      {loadMoreItems}
+      startResize={startSidebarResize}
+      moveResize={moveSidebarResize}
+      stopResize={stopSidebarResize}
+      resizeWithKeyboard={resizeSidebarWithKeyboard}
+    />
 
     <section class:mobile-visible={detailsOpen} class="detail">
       <button class="back" onclick={() => showItemList()}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
         Back to items
       </button>
-      <div class="item-head">
-        <ItemIcon entry={selectedIconEntry ?? selected} size={88} selected />
-        <div class="item-overview">
-          <CatalogTooltip entry={selected} />
-        </div>
-      </div>
-      {#if selected.kind === 'oreDict' && selected.members}
-        <div class="ore-members" aria-label="Interchangeable ore dictionary members">
-          <p>{selected.members.length.toLocaleString()} ACCEPTED ITEMS</p>
-          <div>
-            {#each selected.members as memberId (memberId)}
-              {@const member = entryById.get(memberId)}
-              {#if member}
-                <button
-                  aria-label={`${member.name}: left-click for recipes, right-click for usages`}
-                  onpointerenter={(event) => showItemPointerTooltip(
-                    event,
-                    member,
-                    'Left-click: Recipes · Right-click: Usages'
-                  )}
-                  onpointermove={moveItemPointerTooltip}
-                  onpointerleave={hideItemTooltip}
-                  onfocus={(event) => showItemFocusTooltip(
-                    event,
-                    member,
-                    'Left-click: Recipes · Right-click: Usages'
-                  )}
-                  onblur={hideItemTooltip}
-                  onclick={() => {
-                    hideItemTooltip();
-                    select(member.id, true, 'recipes');
-                  }}
-                  oncontextmenu={(event) => {
-                    event.preventDefault();
-                    hideItemTooltip();
-                    select(member.id, true, 'usages');
-                  }}
-                ><ItemIcon entry={member} size={52} /></button>
-              {/if}
-            {/each}
-          </div>
-        </div>
-      {/if}
-
-      <nav class="view-tabs" aria-label="Item views">
-        <button class:active={mode === 'recipes'} onclick={() => setMode('recipes')}>
-          Recipes {#if recipeCount('recipes') !== undefined}<span>{recipeCount('recipes')}</span>{/if}
-        </button>
-        <button class:active={mode === 'usages'} onclick={() => setMode('usages')}>
-          Usages {#if recipeCount('usages') !== undefined}<span>{recipeCount('usages')}</span>{/if}
-        </button>
-        {#if selected.machineCapabilities?.length}
-          <button class:active={mode === 'machineUsages'} onclick={() => setMode('machineUsages')}>
-            Machine Usages
-            {#if recipeCount('machineUsages') !== undefined}<span>{recipeCount('machineUsages')}</span>{/if}
-          </button>
-        {/if}
-      </nav>
-      {#if mode === 'recipes' && selected.productionOreDictionaryId}
-        <div class="ore-production-note">
-          No direct output exists for this exact item. Showing recipes which produce an
-          interchangeable <button onclick={() => select(selected.productionOreDictionaryId!, true, 'recipes')}>
-            {selected.productionOreDictionaryId}
-          </button> member.
-        </div>
-      {/if}
-      <div class="type-row">
-        {#each types as tab (tab)}
-          {@const tabRecipe = related.find((recipe) => recipe.type === tab)}
-          {@const tabCrafter = tabRecipe?.typeIconId ? entryById.get(tabRecipe.typeIconId) : undefined}
-          <button class:active={type === tab} onclick={() => type = tab} title={tab} aria-label={tab}>
-            {#if tabCrafter}<ItemIcon entry={tabCrafter} size={60} selected={type === tab} crisp={false} />{:else}<span class="machine-fallback">⚙</span>{/if}
-          </button>
-        {/each}
-      </div>
-      {#if related.length > 0}
-        <div class="recipe-search-block">
-          <div class="recipe-search-wrap">
-            <svg viewBox="0 0 24 24" aria-hidden="true">
-              <circle cx="10.5" cy="10.5" r="6.5"></circle>
-              <path d="m15.5 15.5 4 4"></path>
-            </svg>
-            <input
-              bind:value={recipeQuery}
-              placeholder={`Filter ${modeLabel} by item, mod, or metadata…`}
-              aria-label={`Filter ${modeLabel}`}
-            />
-            {#if recipeQuery}
-              <button onclick={() => recipeQuery = ''} aria-label="Clear recipe filter">
-                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
-              </button>
-            {/if}
-          </div>
-          <small>{recipeSearchPending
-            ? 'Filtering…'
-            : `${recipeSearchTotal.toLocaleString()} matching ${modeLabel}`}</small>
-        </div>
-      {/if}
-      <div class="recipe-list">
-        {#if recipeLoading}
-          <div class:partial={related.length > 0} class="recipe-loading" aria-live="polite">
-            <span class="spinner" aria-hidden="true"></span>
-            <b>Loading {modeLabel}…</b>
-            <p>{recipeTotalShards > 0
-              ? `${recipeLoadedShards} of ${recipeTotalShards} recipe chunks`
-              : 'Finding the recipe data needed for this item.'}</p>
-            {#if recipeTotalShards > 0}
-              <div class="load-progress compact"><span style:width={`${recipeLoadedShards / recipeTotalShards * 100}%`}></span></div>
-            {/if}
-          </div>
-        {/if}
-        {#if recipeError}
-          <div class="no-recipes recipe-error">
-            <span>!</span><b>Could not load {modeLabel}</b><p>{recipeError}</p>
-            <button onclick={refreshRecipes}>Try again</button>
-          </div>
-        {:else if !recipeLoading && recipeSearchPending && visibleRecipes.length === 0}
-          <div class="recipe-loading partial" aria-live="polite">
-            <span class="spinner" aria-hidden="true"></span>
-            <b>Filtering {modeLabel}…</b>
-          </div>
-        {:else if !recipeLoading && visibleRecipes.length === 0}
-          <div class="no-recipes">
-            <span>⌁</span>
-            <b>{recipeFilter ? `No matching ${modeLabel}` : `No ${modeLabel} found`}</b>
-            <p>{recipeFilter
-              ? 'Try fewer terms or clear the recipe filter.'
-              : `This item has no known ${modeLabel} in the active dataset.`}</p>
-          </div>
-        {:else}
-          {#each visibleRecipes as recipe (recipe.id)}
-            <RecipeCard {recipe} navigate={(id, view) => select(id, true, view)} resolve={(id) => entryById.get(id)} />
-          {/each}
-          {#if recipeSearchTotal > recipePageSize}
-            <nav class="recipe-pagination" aria-label="Recipe pages">
-              <button
-                disabled={recipePage === 0}
-                onclick={() => setRecipePage(recipePage - 1)}
-              >Previous</button>
-              <span>
-                {recipePage * recipePageSize + 1}–{Math.min((recipePage + 1) * recipePageSize, recipeSearchTotal)}
-                of {recipeSearchTotal.toLocaleString()}
-              </span>
-              <button
-                disabled={recipePage >= recipePageCount - 1}
-                onclick={() => setRecipePage(recipePage + 1)}
-              >Next</button>
-            </nav>
-          {/if}
-        {/if}
-      </div>
+      <ItemOverview
+        {selected}
+        {entryById}
+        navigate={(id, view) => select(id, true, view)}
+      />
+      <RecipeBrowser
+        {selected}
+        {mode}
+        {modeLabel}
+        bind:type
+        {types}
+        {related}
+        {entryById}
+        bind:recipeQuery
+        {recipeFilter}
+        {recipeSearchPending}
+        {recipeSearchTotal}
+        {recipeLoading}
+        {recipeLoadedShards}
+        {recipeTotalShards}
+        {recipeError}
+        {visibleRecipes}
+        {recipePage}
+        {recipePageSize}
+        {recipePageCount}
+        {recipeCount}
+        {setMode}
+        navigate={(id, view) => select(id, true, view)}
+        retry={refreshRecipes}
+        {setRecipePage}
+      />
     </section>
   </main>
   {/if}
 </div>
 
 {#if versionOpen}
-  <div class="scrim" role="presentation" onclick={(e) => e.currentTarget === e.target && (versionOpen = false)}>
-    <div class="manager" role="dialog" aria-modal="true" aria-label="Dataset manager">
-      <button class="close" onclick={() => versionOpen = false}>×</button>
-      <p class="eyebrow">DATASET MANAGER</p><h2>Your GTNH versions</h2>
-      <p>Catalogs stay available after loading. Install every recipe and icon chunk for complete offline use.</p>
-      {#if managerLoading && managedDatasets.length === 0}
-        <div class="manager-loading"><span class="mini-spinner"></span> Checking local datasets…</div>
-      {:else}
-        <div class="dataset-list">
-          {#each managedDatasets as managed (managed.version.datasetId)}
-            {@const state = managed.state}
-            {@const installing = installingDatasetId === managed.version.datasetId}
-            {@const switching = switchingDatasetId === managed.version.datasetId}
-            {@const current = repository?.datasetId === managed.version.datasetId}
-            <section class:active={current} class="dataset">
-              <div class="dataset-summary">
-                <span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span>
-                <div>
-                  <b>{managed.version.gtnhVersion}</b>
-                  <small><i></i> {datasetStateLabel(state, current)}</small>
-                </div>
-                <strong>
-                  {formatBytes(state?.storedBytes ?? 0)} / {formatBytes(
-                    state?.totalBytes ?? managed.version.offlineBytes
-                  )}
-                </strong>
-              </div>
-              {#if installing && installProgress}
-                <div
-                  class="dataset-progress"
-                  aria-label={`Offline download ${Math.round(installProgress.loadedBytes / Math.max(1, installProgress.totalBytes) * 100)}%`}
-                >
-                  <span style:width={`${installProgress.loadedBytes / Math.max(1, installProgress.totalBytes) * 100}%`}></span>
-                </div>
-                <small class="dataset-progress-text">
-                  {formatBytes(installProgress.loadedBytes)} of {formatBytes(installProgress.totalBytes)}
-                  · {installProgress.completedAssets}/{installProgress.totalAssets} chunks
-                  {#if installProgress.retry} · retry {installProgress.retry}/3{/if}
-                </small>
-              {/if}
-              <div class="dataset-actions">
-                {#if current}
-                  <span class="active-label">Active</span>
-                {:else}
-                  <button
-                    disabled={Boolean(switchingDatasetId || installingDatasetId)}
-                    onclick={() => switchDataset(managed.version)}
-                  >{switching ? 'Switching…' : 'Switch'}</button>
-                {/if}
-                {#if state?.status !== 'complete'}
-                  {#if installing}
-                    <button class="cancel" onclick={cancelInstall}>Cancel</button>
-                  {:else}
-                    <button
-                      class="primary"
-                      disabled={Boolean(installingDatasetId || switchingDatasetId)}
-                      onclick={() => installDataset(managed.version)}
-                    >
-                      <svg class="download-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M5 20h14"></path></svg>
-                      {state?.status === 'partial' ? 'Resume download' : 'Download offline'}
-                    </button>
-                  {/if}
-                {/if}
-                {#if state}
-                  <button
-                    class="delete"
-                    disabled={Boolean(installingDatasetId || switchingDatasetId)}
-                    onclick={() => deleteDataset(state)}
-                  >Delete</button>
-                {/if}
-              </div>
-            </section>
-          {:else}
-            <div class="manager-loading">No GTNH datasets are available.</div>
-          {/each}
-        </div>
-      {/if}
-      {#if managerError}<pre class="manager-error">{managerError}</pre>{/if}
-      <small class="storage">
-        {storageUsage !== undefined && storageQuota !== undefined
-          ? `${formatBytes(storageUsage)} used of ${formatBytes(storageQuota)} browser storage`
-          : 'Browser storage usage is unavailable'}
-        · {persistentStorage === true
-          ? 'persistent storage granted'
-          : persistentStorage === false
-            ? 'storage may be reclaimed by the browser'
-            : 'persistence support unavailable'}
-      </small>
-    </div>
-  </div>
+  <DatasetManager
+    datasets={managedDatasets}
+    currentDatasetId={repository?.datasetId}
+    loading={managerLoading}
+    error={managerError}
+    {installingDatasetId}
+    {switchingDatasetId}
+    {installProgress}
+    {storageUsage}
+    {storageQuota}
+    {persistentStorage}
+    close={() => versionOpen = false}
+    install={installDataset}
+    {cancelInstall}
+    {switchDataset}
+    {deleteDataset}
+  />
 {/if}

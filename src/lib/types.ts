@@ -136,6 +136,11 @@ export interface DatasetVersion {
   offlineBytes?: number;
 }
 
+export interface ManagedDataset {
+  version: DatasetVersion;
+  state?: DatasetState;
+}
+
 export interface OfflineInstallProgress {
   loadedBytes: number;
   totalBytes: number;
