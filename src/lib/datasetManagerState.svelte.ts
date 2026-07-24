@@ -188,7 +188,10 @@ export class DatasetManagerState {
     const currentNote = repository?.datasetId === state.datasetId
       ? ' The currently open catalog will continue working until this page is reloaded.'
       : '';
-    if (!confirm(`Delete locally stored data for GTNH ${state.gtnhVersion}?${currentNote}`)) return;
+    if (!confirm(
+      `Delete locally stored data for GTNH ${state.gtnhVersion} `
+      + `(revision ${state.revision.slice(0, 8)})?${currentNote}`
+    )) return;
     this.error = '';
     try {
       await removeDataset(state.datasetId);
