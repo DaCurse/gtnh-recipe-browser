@@ -123,7 +123,8 @@
   .variant-row strong,.variant-row small,.variant-row em { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .variant-row strong { color:#f0f1f2; font:16px Minecraft,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
   .variant-row small { margin-top:2px; color:#5457fa; font:12px Minecraft,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
-  .variant-row em { margin-top:4px; color:#aca1ab; font:400 13px Minecraft,system-ui,sans-serif; font-style:normal; text-shadow:2px 2px #342c34; }
+  .variant-row em { max-height:4.2em; margin-top:4px; overflow:hidden; color:#aca1ab; font:400 13px/1.4 Minecraft,system-ui,sans-serif; font-style:normal; text-shadow:2px 2px #342c34; white-space:normal; }
+  .variant-row em :global(.minecraft-line) { min-height:1.4em; white-space:nowrap; }
   .variant-row>b { color:#858a8f; font-size:24px; }
   .variant-more { width:100%; min-height:48px; border:0; background:#292c30; color:#d4d7da; cursor:pointer; }
   .variant-empty { padding:50px 20px; color:#91969b; text-align:center; }
