@@ -40,8 +40,10 @@ npm run smoke:deploy -- https://<site>.netlify.app/
 
 `gtnh@ShadowTheAge` and `nesql-exporter@ShadowTheAge` are read-only MIT-licensed upstream submodules. The
 reproducible release workflow prepares a disposable Prism instance, processes its private NESQL output twice,
-verifies deterministic format-v5 assets, and publishes them without removing historical datasets. See
-[`docs/exporting-current-data.md`](docs/exporting-current-data.md).
+verifies the format-v5 source and deterministic chunked browser pack, and publishes it without removing historical
+datasets. The disposable processor applies the documented
+[`browser catalog retention policy`](docs/browser-catalog-policy.md) so valid tools and configurable variants
+filtered from the upstream production calculator remain browseable.
 
 Build and verify an already processed deterministic chunked pack with:
 
@@ -62,8 +64,9 @@ The source NESQL export remains private. Processed compatibility fixtures are im
 add a sibling fixture when supporting a new upstream shape.
 
 `tests/fixtures/shadowtheage-v5-2.8.0/` is the pinned, network-independent compatibility source for decoder and
-recipe-parity tests. `public/data/2.9.0-beta-2-r0ba2f2c5584c/` is the current default generated pack; the immutable
-2.8.0 pack remains available for version switching.
+recipe-parity tests. `tests/fixtures/gtnh-2.9.0-beta-2-browser-policy/` pins real GT tool variants and their recipes.
+`public/data/2.9.0-beta-2-r080719a85854/` is the current default format-v2 pack; the previous 2.9.0-beta-2 and
+2.8.0 packs remain available for version switching.
 
 ## Assets and attribution
 

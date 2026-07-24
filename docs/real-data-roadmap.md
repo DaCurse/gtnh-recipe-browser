@@ -88,8 +88,8 @@ small .NET companion is materially faster.
 Exit condition: two builds from the same input are byte-identical; every digest verifies; no recipe shard
 exceeds the agreed cap except a documented single-recipe exception; sampled sprites match the upstream atlas.
 
-The published local pack uses verified MessagePack recipe shards and lossless 1,024-icon WebP sheets with
-content-hashed filenames.
+The published format-v2 pack uses a small catalog core plus independently verified MessagePack goods chunks,
+recipe shards, and lossless 1,024-icon WebP sheets with content-hashed filenames.
 
 ## Phase 4 — Connect the client to a real catalog (complete)
 
@@ -197,14 +197,20 @@ Implemented:
 
 - The pinned NESQL exporter is built from a patched disposable copy; both upstream submodules remain read-only.
 - Preparation verifies the official GTNH archive and creates a separate Prism export instance with BugTorch disabled.
-- Processing validates tooltip compatibility, builds twice, compares deterministic digests, and verifies every asset.
+- Processing validates tooltip compatibility, restores recipe-connected catalog families excluded by the upstream
+  calculator policy, builds twice, compares deterministic digests, and verifies every asset.
 - Publishing stages the immutable pack before atomically prepending its version entry while retaining older datasets.
-- GTNH 2.9.0-beta-2 is published locally as `2.9.0-beta-2-r0ba2f2c5584c`: 52,298 goods, 221,760 recipes, 223
-  immutable assets, and 40,169,454 offline bytes. Its processor provenance, source archive digest, deterministic pack
-  digest, and 100 sampled sprite comparisons are recorded with the pack.
+- GTNH 2.9.0-beta-2 is published as `2.9.0-beta-2-r080719a85854`: 102,914 goods, 102,905 searchable entries,
+  306,831 recipes, 281 immutable assets, and 51,869,197 offline bytes. Its five catalog assets remain below the
+  2 MiB compressed cap.
+- The staged Netlify deployment passed byte-size and SHA-256 verification for all 281 immutable assets before
+  `versions.json` was updated.
+- A pinned network-independent fixture covers real Ichorium and Steel GT turbine variants, exact NBT identities,
+  high atlas coordinates, and their Assembler recipes.
 
 ## Immediate next milestone
 
-Deploy the new immutable pack and version index to Netlify, then run the deployed-origin fetch/persist smoke test.
-Follow with the remaining Phase 6 interrupted-install and network-disabled acceptance runs in current Chromium,
-Firefox, and WebKit. No recipe, icon, or catalog format change is required.
+Complete the remaining Phase 6 browser acceptance runs: interrupted install/reload/resume and a network-disabled
+complete dataset in current Chromium, Firefox, and WebKit at desktop and mobile widths. Continue profiling catalog
+startup and high-cardinality variant browsing on representative phones; no further pack-format change is currently
+required.
