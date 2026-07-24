@@ -47,6 +47,7 @@ import type {
 export interface DatasetLoadProgress {
   percent: number;
   stage: string;
+  gtnhVersion?: string;
 }
 
 export interface RecipeLoadProgress {
@@ -178,7 +179,12 @@ export class DatasetRepository {
     datasetId?: string,
     onProgress?: (progress: DatasetLoadProgress) => void
   ): Promise<DatasetRepository> {
-    const report = (percent: number, stage: string) => onProgress?.({ percent, stage });
+    const progressContext: { gtnhVersion?: string } = {};
+    const report = (percent: number, stage: string) => onProgress?.({
+      percent,
+      stage,
+      gtnhVersion: progressContext.gtnhVersion
+    });
     const versionsUrl = new URL('./versions.json', document.baseURI).href;
     report(3, 'Checking available GTNH versions');
     const versionsResult = await fetchJsonNetworkFirst<VersionsIndex>(versionsUrl, `versions:${versionsUrl}`);
@@ -195,6 +201,8 @@ export class DatasetRepository {
       packManifestUrl: installedSelection.manifestUrl
     } : undefined);
     if (!selected) throw new Error('No published GTNH datasets are available');
+    progressContext.gtnhVersion = selected.gtnhVersion;
+    report(5, 'Dataset selected');
     const manifestUrl = new URL(selected.packManifestUrl, versionsResult.url).href;
     report(8, 'Loading dataset manifest');
     const manifestResult = await fetchJsonNetworkFirst<DatasetManifest>(

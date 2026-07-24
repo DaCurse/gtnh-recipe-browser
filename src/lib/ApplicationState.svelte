@@ -3,6 +3,7 @@
     status,
     stage,
     progress,
+    loadingVersion,
     error,
     errorCopied,
     retry,
@@ -11,6 +12,7 @@
     status: 'loading' | 'error';
     stage: string;
     progress: number;
+    loadingVersion?: string;
     error: string;
     errorCopied: boolean;
     retry: () => void;
@@ -22,7 +24,9 @@
   {#if status === 'loading'}
     <section class="app-state" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
-      <h1>Loading GTNH catalog</h1>
+      <h1>{loadingVersion
+        ? `Loading GTNH ${loadingVersion} catalog`
+        : 'Loading GTNH catalog'}</h1>
       <p>{stage}</p>
       <div class="load-progress" aria-label={`Catalog loading ${progress}%`}>
         <span style:width={`${progress}%`}></span>

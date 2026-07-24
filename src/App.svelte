@@ -134,10 +134,14 @@
       const linkedDatasetId = targetDatasetId
         ?? new URLSearchParams(location.search).get('version')
         ?? undefined;
-      const loaded = await DatasetRepository.load(linkedDatasetId, ({ percent, stage }) => {
-        datasetProgress = percent;
-        datasetStage = stage;
-      });
+      const loaded = await DatasetRepository.load(
+        linkedDatasetId,
+        ({ percent, stage, gtnhVersion }) => {
+          if (gtnhVersion) datasetVersion = gtnhVersion;
+          datasetProgress = percent;
+          datasetStage = stage;
+        }
+      );
       validateRepository(loaded);
       await loaded.activate();
       await applyRepository(loaded, false);
@@ -207,6 +211,7 @@
       status={datasetStatus}
       stage={datasetStage}
       progress={datasetProgress}
+      loadingVersion={datasetVersion === '…' ? undefined : datasetVersion}
       error={datasetError}
       {errorCopied}
       retry={() => loadDataset()}
