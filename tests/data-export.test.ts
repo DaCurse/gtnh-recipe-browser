@@ -94,6 +94,18 @@ describe('data export tooling', () => {
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });
 
+  it('retains recipe-connected browser items without editing the upstream banlist', async () => {
+    const patch = await readFile(
+      join(process.cwd(), 'tools/data-export/patches/browser-catalog-policy.patch'),
+      'utf8'
+    );
+
+    expect(patch).toContain('BrowserCatalogPolicy.RetainRecipeConnectedItems');
+    expect(patch).toContain('return false;');
+    expect(patch).toContain("PackConverter's existing touched-item pass");
+    expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
+  });
+
   it('bounds processor GC heap growth during full recipe remapping', async () => {
     const processSource = await readFile(
       join(process.cwd(), 'tools/data-export/process.ts'),

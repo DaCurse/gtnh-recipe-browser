@@ -1,0 +1,30 @@
+diff --git a/BrowserCatalogPolicy.cs b/BrowserCatalogPolicy.cs
+new file mode 100644
+index 0000000..70659ad
+--- /dev/null
++++ b/BrowserCatalogPolicy.cs
+@@ -0,0 +1,10 @@
++namespace Source
++{
++    // ShadowTheAge's blacklist is appropriate for a production calculator, but this
++    // project retains every item reached by recipes, containers, or crafter metadata.
++    // PackConverter's existing touched-item pass still excludes unrelated NEI state.
++    public static class BrowserCatalogPolicy
++    {
++        public const bool RetainRecipeConnectedItems = true;
++    }
++}
+diff --git a/ItemBanlist.cs b/ItemBanlist.cs
+index 51cf4af..ab30e38 100644
+--- a/ItemBanlist.cs
++++ b/ItemBanlist.cs
+@@ -137,6 +137,9 @@
+         
+         public static bool IsItemBanned(string mod, string internalName, string localizedName, string nbt)
+         {
++            if (BrowserCatalogPolicy.RetainRecipeConnectedItems)
++                return false;
++
+             if (BanList.TryGetValue((mod, internalName), out var processor))
+                 return processor == null || processor(localizedName, nbt);
+             return false;

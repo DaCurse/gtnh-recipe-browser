@@ -36,6 +36,7 @@ const args = argumentsMap(process.argv.slice(2));
 const repositoryRoot = process.cwd();
 const sessionPath = resolve(requiredArgument(args, 'session'));
 const session = await readExportSession(sessionPath);
+const outputWorkDirectory = resolve(args.get('work-dir') ?? session.workDirectory);
 const nesqlRoot = join(session.instanceDirectory, '.minecraft/nesql');
 const scripts = await findFiles(nesqlRoot, 'nesql-db.script');
 if (scripts.length !== 1) {
@@ -52,11 +53,11 @@ if ((await stat(imageZip)).size < 10_000_000) {
 }
 await validateCombinedTooltipSchema(scripts[0]!, ['THAUMCRAFT']);
 
-const processedDirectory = join(session.workDirectory, 'processed');
-const processorDirectory = join(session.workDirectory, 'processor');
-const firstBuild = join(session.workDirectory, 'pack-a');
-const secondBuild = join(session.workDirectory, 'pack-b');
-const finalPack = join(session.workDirectory, 'pack');
+const processedDirectory = join(outputWorkDirectory, 'processed');
+const processorDirectory = join(outputWorkDirectory, 'processor');
+const firstBuild = join(outputWorkDirectory, 'pack-a');
+const secondBuild = join(outputWorkDirectory, 'pack-b');
+const finalPack = join(outputWorkDirectory, 'pack');
 for (const path of [processedDirectory, processorDirectory, firstBuild, secondBuild, finalPack]) {
   await assertPathMissing(path, 'Process output');
 }
@@ -67,14 +68,22 @@ await cp(join(repositoryRoot, 'gtnh@ShadowTheAge/export'), processorDirectory, {
 const processorPatch = join(repositoryRoot, 'tools/data-export/patches/processor-2.9.patch');
 run('patch', ['--dry-run', '--batch', '-p1', '-i', processorPatch], processorDirectory);
 run('patch', ['--batch', '-p1', '-i', processorPatch], processorDirectory);
+const browserPolicyPatch = join(
+  repositoryRoot,
+  'tools/data-export/patches/browser-catalog-policy.patch'
+);
+run('patch', ['--dry-run', '--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
+run('patch', ['--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
 const patchedProcessor = await readFile(join(processorDirectory, 'PackPreProcessor.cs'), 'utf8');
 const patchedConverter = await readFile(join(processorDirectory, 'PackConverter.cs'), 'utf8');
 const patchedGenerator = await readFile(join(processorDirectory, 'PackGenerator.cs'), 'utf8');
+const patchedItemPolicy = await readFile(join(processorDirectory, 'ItemBanlist.cs'), 'utf8');
 if (
   !patchedProcessor.includes('x.mod == "thaumcraftneiplugin"') ||
   !patchedProcessor.includes('x.mod == "aspectrecipeindex"') ||
   !patchedConverter.includes('items.TryGetValue(aspectModel.IconId') ||
-  !patchedGenerator.includes('dbParser = null')
+  !patchedGenerator.includes('dbParser = null') ||
+  !patchedItemPolicy.includes('BrowserCatalogPolicy.RetainRecipeConnectedItems')
 ) {
   throw new Error('Processor compatibility patch did not produce the expected source');
 }
@@ -157,6 +166,10 @@ const provenance = {
   sourceArchive: session.archive,
   exporter: session.exporter,
   processor: session.processor,
+  browserCatalogPolicy: {
+    mode: 'recipe-connected',
+    patchSha256: await sha256File(browserPolicyPatch)
+  },
   toolchains: session.toolchains,
   previousData: {
     path: 'tests/fixtures/shadowtheage-v5-2.8.0/data.bin',
@@ -174,7 +187,7 @@ await writeFile(
   `${JSON.stringify(provenance, null, 2)}\n`,
   { flag: 'wx' }
 );
-const resultPath = join(session.workDirectory, 'process-result.json');
+const resultPath = join(outputWorkDirectory, 'process-result.json');
 await writeFile(
   resultPath,
   `${JSON.stringify({ datasetId, revision, packDirectory: finalPack, verification }, null, 2)}\n`,
