@@ -102,8 +102,9 @@ Once the user confirms completion:
 3. Confirm the pack was built twice with identical digests and passed asset plus sprite verification.
 4. Inspect representative crafting, GT machine, multiblock, fluid-container, ore-dictionary, tooltip-color, and
    large-recipe entries before publication.
-5. Run `npm run export:publish -- --pack <verified-pack> --mode stage`. Deploy and smoke-test the immutable staged
-   assets, then run the same command with `--mode activate` to update `public/versions.json`. `--mode publish`
+5. Run `npm run export:publish -- --pack <verified-pack> --mode stage`. Deploy and verify every staged asset with
+   `npm run smoke:deploy -- <origin> --manifest <staged-manifest> --all-assets`, then run the publish command with
+   `--mode activate` to update `public/versions.json`. `--mode publish`
    performs both locally for compatibility, but must not be used for a remote release.
 6. Run `npm run check`, `npm test`, and `npm run build`, then commit incrementally with Conventional Commit subjects.
 7. Deploy and run `npm run smoke:deploy -- https://<site>.netlify.app/`. Do not call the dataset released before the

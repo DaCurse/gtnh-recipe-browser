@@ -13,7 +13,7 @@ export interface DatasetAsset {
   encoding: 'gzip' | 'identity';
 }
 
-export interface CatalogAsset extends DatasetAsset {
+interface CatalogAsset extends DatasetAsset {
   role?: 'core' | 'goods';
   part?: number;
   goodsCount?: number;

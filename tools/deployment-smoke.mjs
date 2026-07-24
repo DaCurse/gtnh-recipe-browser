@@ -2,8 +2,15 @@ import { createHash } from 'node:crypto';
 
 const baseUrl = process.argv[2];
 if (!baseUrl) {
-  throw new Error('Usage: node tools/deployment-smoke.mjs <deployed-base-url>');
+  throw new Error(
+    'Usage: node tools/deployment-smoke.mjs <deployed-base-url> '
+    + '[--manifest <relative-manifest-url>] [--all-assets]'
+  );
 }
+const manifestArgument = process.argv.indexOf('--manifest');
+const directManifest = manifestArgument >= 0 ? process.argv[manifestArgument + 1] : undefined;
+if (manifestArgument >= 0 && !directManifest) throw new Error('--manifest requires a URL');
+const verifyAllAssets = process.argv.includes('--all-assets');
 
 async function fetchOk(url, label) {
   const response = await fetch(url, { redirect: 'follow' });
@@ -36,27 +43,50 @@ if (!html.includes('GTNH Recipe Browser')) {
   throw new Error('application shell: expected title was not found');
 }
 
-const versionsUrl = new URL('versions.json', appUrl);
-const versionIndex = await fetchJson(versionsUrl, 'version index');
-if (versionIndex.schemaVersion !== 1 || !Array.isArray(versionIndex.versions) || !versionIndex.versions[0]) {
-  throw new Error('version index: no supported dataset is published');
+let expectedDatasetId;
+let manifestUrl;
+if (directManifest) {
+  manifestUrl = new URL(directManifest, appUrl);
+} else {
+  const versionsUrl = new URL('versions.json', appUrl);
+  const versionIndex = await fetchJson(versionsUrl, 'version index');
+  if (
+    versionIndex.schemaVersion !== 1
+    || !Array.isArray(versionIndex.versions)
+    || !versionIndex.versions[0]
+  ) {
+    throw new Error('version index: no supported dataset is published');
+  }
+  const version = versionIndex.versions[0];
+  expectedDatasetId = version.datasetId;
+  manifestUrl = new URL(version.packManifestUrl, versionsUrl);
 }
-
-const version = versionIndex.versions[0];
-const manifestUrl = new URL(version.packManifestUrl, versionsUrl);
 const manifest = await fetchJson(manifestUrl, 'pack manifest');
-if (![1, 2].includes(manifest.formatVersion) || manifest.datasetId !== version.datasetId) {
+if (
+  ![1, 2].includes(manifest.formatVersion)
+  || typeof manifest.datasetId !== 'string'
+  || (expectedDatasetId && manifest.datasetId !== expectedDatasetId)
+) {
   throw new Error('pack manifest: identity or format mismatch');
 }
 
-const samples = [
-  [manifest.catalogAssets?.[0], 'catalog asset'],
-  [manifest.recipeShards?.[0], 'recipe shard'],
-  [manifest.iconSheets?.[0], 'icon sheet']
+const listedAssets = [
+  ...(manifest.catalogAssets ?? []),
+  ...(manifest.recipeShards ?? []),
+  ...(manifest.iconSheets ?? [])
 ];
-for (const [asset, label] of samples) {
+const assets = verifyAllAssets
+  ? listedAssets.map((asset) => [asset, asset.id])
+  : [
+      [manifest.catalogAssets?.[0], 'catalog asset'],
+      [manifest.recipeShards?.[0], 'recipe shard'],
+      [manifest.iconSheets?.[0], 'icon sheet']
+    ];
+for (const [asset, label] of assets) {
   if (!asset) throw new Error(`pack manifest: missing ${label}`);
   await verifyAsset(asset, manifestUrl, label);
 }
 
-console.log(`Deployment smoke test passed: ${appUrl}`);
+console.log(
+  `Deployment smoke test passed: ${appUrl} (${verifyAllAssets ? listedAssets.length : 3} assets)`
+);
