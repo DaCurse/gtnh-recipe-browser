@@ -92,10 +92,16 @@
                 <div class="dataset-title">
                   <b>{managed.version.gtnhVersion}</b>
                   {#if managed.stale}
-                    <span class="status-chip stale-chip">Stale</span>
+                    <span
+                      class="status-chip stale-chip"
+                      title="Stored on this device, but no longer listed in the published dataset index."
+                    >Stale</span>
                   {/if}
                   {#if managed.newRevisionAvailable}
-                    <span class="status-chip update-chip"><span></span>New revision</span>
+                    <span
+                      class="status-chip update-chip"
+                      title="A newer published dataset revision is available for this GTNH version."
+                    ><span></span>New revision</span>
                   {/if}
                 </div>
                 {#if hasMultipleRevisions(managed.version)}
@@ -193,8 +199,8 @@
   .dataset-title { display:flex; align-items:center; flex-wrap:wrap; gap:7px; }
   .status-chip { display:inline-flex; align-items:center; min-height:20px; padding:1px 7px; border:1px solid; border-radius:999px; font-size:9px; font-weight:800; line-height:1; letter-spacing:.04em; text-transform:uppercase; }
   .stale-chip { border-color:#756d60; background:#3a3630; color:#c2b9aa; }
-  .update-chip { border-color:#8b7e42; background:#443e25; color:#eadc8b; }
-  .update-chip span { width:6px; height:6px; border-radius:50%; background:#f0d663; box-shadow:0 0 7px #e9ca43; }
+  .update-chip { gap:5px; border-color:#8b7e42; background:#443e25; color:#eadc8b; }
+  .update-chip span { width:6px; height:6px; flex:0 0 6px; border-radius:50%; background:#ffd84a; box-shadow:0 0 7px #f0c62f; }
   .dataset b,.dataset small { display:block; }
   .dataset-summary small { margin-top:6px; color:#b0b4b8; font-size:10px; }
   .dataset-summary .dataset-revision { color:#858a8f; font:10px ui-monospace,monospace; }

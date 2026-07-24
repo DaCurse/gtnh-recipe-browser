@@ -38,7 +38,10 @@
     <span class="version-title">
       <i></i> {datasetVersion}
       {#if datasetUpdateAvailable}
-        <span class="revision-blip" title="New dataset revision available"></span>
+        <span
+          class="revision-blip"
+          title="A newer published dataset revision is available for this GTNH version."
+        ></span>
       {/if}
     </span>
     <small>{datasetUpdateAvailable
@@ -76,7 +79,7 @@
   .version i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#b6bbc1; box-shadow:0 0 5px #969ba1; }
   .version.has-update { border-color:#746b3f; box-shadow:0 0 0 1px #d9c4591c; }
   .version.has-update small { color:#d8ca7c; }
-  .revision-blip { display:inline-block; width:8px; height:8px; flex:0 0 8px; border-radius:50%; background:#f0d663; box-shadow:0 0 8px #e9ca43; animation:revision-pulse 2.4s ease-in-out infinite; }
+  .revision-blip { display:inline-block; width:8px; height:8px; flex:0 0 8px; border:1px solid #fff0a3; border-radius:50%; background:#ffd84a; box-shadow:0 0 8px #f0c62f; animation:revision-pulse 2.4s ease-in-out infinite; }
   @keyframes revision-pulse {
     50% { opacity:.55; box-shadow:0 0 3px #e9ca43; }
   }
