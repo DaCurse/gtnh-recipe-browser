@@ -1,33 +1,33 @@
 import { decode } from '@msgpack/msgpack';
+import { materializeCatalog } from './catalogMaterialization';
 import {
-  ingredientMatchesEntry,
-  materializeIngredient,
-  productionFallbackDictionary
-} from './oreDictionary';
+  decompress,
+  fetchJsonNetworkFirst,
+  fetchVerified,
+  yieldToBrowser
+} from './datasetAssets';
+import type {
+  DatasetAsset,
+  DatasetManifest,
+  PackedCatalog,
+  PackedGoods,
+  PackedOreDictionary,
+  PackedRecipe,
+  PackedRecipeType,
+  PackedShard,
+  VersionsIndex
+} from './datasetSchema';
+import { ingredientMatchesEntry } from './oreDictionary';
 import { fluidRecipeScope } from './fluidContainers';
-import { parseMinecraftHtml } from './minecraftText';
 import { installOfflineAssets } from './offline';
-import { verifyAssetBytes } from './integrity';
-import { formatGtMetadata, hasRelevantPower, voltageTierName } from './recipeMetadata';
-import {
-  machineCanProcessVoltage,
-  propagateOreMachineCapabilities,
-  recipeCrafterId,
-  recipeTypeCrafters,
-  recipeTypeIconId,
-  recipeTypeMachineCapabilities
-} from './recipePresentation';
+import { materializeRecipe } from './recipeMaterialization';
+import { machineCanProcessVoltage } from './recipePresentation';
 import { mapProgressively } from './progressive';
 import {
   activateDataset,
-  cacheAsset,
-  cacheMetadata,
   getDataset,
-  getCachedAsset,
-  getCachedMetadata,
   hasCachedAsset,
   listDatasets,
-  removeCachedAsset,
   saveDataset
 } from './storage';
 import type {
@@ -37,120 +37,8 @@ import type {
   DatasetVersion,
   OfflineInstallProgress,
   Recipe,
-  RecipeLayout,
   RecipeView
 } from './types';
-
-interface VersionsIndex {
-  schemaVersion: number;
-  versions: DatasetVersion[];
-}
-
-interface Asset {
-  id: string;
-  url: string;
-  bytes: number;
-  sha256: string;
-  encoding: 'gzip' | 'identity';
-}
-
-interface RecipeShardAsset extends Asset {
-  recipeTypeId: string;
-}
-
-interface IconSheetAsset extends Asset {
-  columns: number;
-}
-
-interface Manifest {
-  formatVersion: number;
-  datasetId: string;
-  gtnhVersion: string;
-  revision: string;
-  displayName: string;
-  catalogAssets: Asset[];
-  recipeShards: RecipeShardAsset[];
-  iconSheets: IconSheetAsset[];
-  totals?: {
-    assets: number;
-    offlineBytes: number;
-  };
-}
-
-interface PackedGoods {
-  id: string;
-  name: string;
-  mod: string;
-  kind: 'item' | 'fluid';
-  tooltip: string | null;
-  internalName: string;
-  unlocalizedName: string;
-  nbt: string | null;
-  searchable: boolean;
-  icon: { sheetId: string; index: number } | null;
-  productionShards: string[];
-  usageShards: string[];
-  productionCount: number;
-  usageCount: number;
-  container?: {
-    fluidId: string;
-    amount: number;
-    emptyItemId: string | null;
-  } | null;
-  containerItemIds?: string[];
-}
-
-interface PackedRecipeType {
-  id: string;
-  name: string;
-  order: number;
-  shapeless: boolean;
-  dimensions: RecipeLayout;
-  defaultCrafter: { id: string } | null;
-  singleblocks: Array<{ id: string }>;
-  multiblocks: Array<{ id: string }>;
-}
-
-interface PackedOreDictionary {
-  id: string;
-  itemIds: string[];
-}
-
-interface PackedCatalog {
-  datasetId: string;
-  goods: PackedGoods[];
-  recipeTypes: PackedRecipeType[];
-  oreDictionaries: PackedOreDictionary[];
-}
-
-interface PackedIo {
-  kind: 'item' | 'fluid' | 'oreDict';
-  goodsId: string;
-  slot: number;
-  amount: number;
-  probability: number;
-}
-
-interface PackedRecipe {
-  id: string;
-  recipeTypeId: string;
-  inputs: PackedIo[];
-  outputs: PackedIo[];
-  gt: {
-    voltage: number;
-    durationTicks: number;
-    amperage: number;
-    voltageTier: number;
-    metadata: Array<{ key: string; value: number }>;
-    circuitConflicts: number;
-    specialValue: number;
-  } | null;
-}
-
-interface PackedShard {
-  datasetId: string;
-  recipes: PackedRecipe[];
-}
 
 export interface DatasetLoadProgress {
   percent: number;
@@ -163,116 +51,20 @@ export interface RecipeLoadProgress {
   batch: Recipe[];
 }
 
-interface AssetLoadProgress {
-  loaded: number;
-  total: number;
-  cached: boolean;
-}
-
-async function fetchVerified(
-  asset: Asset,
-  manifestUrl: string,
-  onProgress?: (progress: AssetLoadProgress) => void,
-  signal?: AbortSignal
-): Promise<Uint8Array> {
-  if (signal?.aborted) throw new DOMException('Operation was cancelled', 'AbortError');
-  const cached = await getCachedAsset(asset.sha256);
-  if (cached) {
-    onProgress?.({ loaded: cached.byteLength, total: asset.bytes, cached: true });
-    try {
-      verifyAssetBytes(asset, cached);
-      return cached;
-    } catch {
-      // Remove a stale or corrupt record before attempting a clean download.
-    }
-    await removeCachedAsset(asset.sha256);
-  }
-
-  const response = await fetch(new URL(asset.url, manifestUrl), { signal });
-  if (!response.ok) throw new Error(`Unable to download ${asset.id}: HTTP ${response.status}`);
-  let bytes: Uint8Array;
-  if (response.body) {
-    const reader = response.body.getReader();
-    const chunks: Uint8Array[] = [];
-    let loaded = 0;
-    while (true) {
-      if (signal?.aborted) throw new DOMException('Operation was cancelled', 'AbortError');
-      const result = await reader.read();
-      if (result.done) break;
-      chunks.push(result.value);
-      loaded += result.value.byteLength;
-      onProgress?.({ loaded, total: asset.bytes, cached: false });
-    }
-    bytes = new Uint8Array(loaded);
-    let offset = 0;
-    for (const chunk of chunks) {
-      bytes.set(chunk, offset);
-      offset += chunk.byteLength;
-    }
-  } else {
-    bytes = new Uint8Array(await response.arrayBuffer());
-    onProgress?.({ loaded: bytes.byteLength, total: asset.bytes, cached: false });
-  }
-  verifyAssetBytes(asset, bytes);
-  await cacheAsset(asset.sha256, bytes);
-  return bytes;
-}
-
-async function fetchJsonNetworkFirst<T>(url: string, cacheKey: string): Promise<{ url: string; value: T }> {
-  try {
-    const response = await fetch(url, { cache: 'no-cache' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const value = await response.json() as T;
-    await cacheMetadata(cacheKey, response.url, value);
-    return { url: response.url, value };
-  } catch (networkError) {
-    const cached = await getCachedMetadata<T>(cacheKey);
-    if (cached) return cached;
-    throw networkError;
-  }
-}
-
-async function decompress(bytes: Uint8Array): Promise<Uint8Array> {
-  const stream = new Blob([Uint8Array.from(bytes).buffer]).stream().pipeThrough(new DecompressionStream('gzip'));
-  return new Uint8Array(await new Response(stream).arrayBuffer());
-}
-
-async function yieldToBrowser(): Promise<void> {
-  await new Promise<void>((resolve) => setTimeout(resolve, 0));
-}
-
-function duration(ticks: number): string {
-  const seconds = ticks / 20;
-  if (seconds < 60) return `${Number(seconds.toFixed(2))} s`;
-  return `${Number((seconds / 60).toFixed(2))} m`;
-}
-
-function amount(value: number): string {
-  if (value >= 1_000_000_000) return `${Number((value / 1_000_000_000).toFixed(2))}B EU`;
-  if (value >= 1_000_000) return `${Number((value / 1_000_000).toFixed(2))}M EU`;
-  if (value >= 1_000) return `${Number((value / 1_000).toFixed(2))}k EU`;
-  return `${value} EU`;
-}
-
-function power(value: number): string {
-  return amount(value).replace(/ EU$/, ' EU/t');
-}
-
 export class DatasetRepository {
   readonly entries: CatalogEntry[];
   readonly datasetId: string;
   readonly gtnhVersion: string;
   readonly revision: string;
-  private readonly manifest: Manifest;
+  private readonly manifest: DatasetManifest;
   private readonly manifestUrl: string;
-  private readonly packedGoods = new Map<string, PackedGoods>();
-  private readonly types = new Map<string, PackedRecipeType>();
-  private readonly ores = new Map<string, PackedOreDictionary>();
-  private readonly itemOres = new Map<string, PackedOreDictionary[]>();
-  private readonly productionFallbacks = new Map<string, PackedOreDictionary>();
+  private readonly packedGoods: Map<string, PackedGoods>;
+  private readonly types: Map<string, PackedRecipeType>;
+  private readonly ores: Map<string, PackedOreDictionary>;
+  private readonly productionFallbacks: Map<string, PackedOreDictionary>;
   private readonly shards = new Map<string, Promise<PackedRecipe[]>>();
 
-  private get assets(): Asset[] {
+  private get assets(): DatasetAsset[] {
     return [...this.manifest.catalogAssets, ...this.manifest.recipeShards, ...this.manifest.iconSheets];
   }
 
@@ -284,133 +76,18 @@ export class DatasetRepository {
     return this.assets.reduce((total, asset) => total + asset.bytes, 0);
   }
 
-  private constructor(manifest: Manifest, manifestUrl: string, catalog: PackedCatalog) {
+  private constructor(manifest: DatasetManifest, manifestUrl: string, catalog: PackedCatalog) {
     this.manifest = manifest;
     this.manifestUrl = manifestUrl;
     this.datasetId = manifest.datasetId;
     this.gtnhVersion = manifest.gtnhVersion;
     this.revision = manifest.revision;
-    const sheets = new Map(manifest.iconSheets.map((sheet) => [sheet.id, sheet]));
-    for (const goods of catalog.goods) this.packedGoods.set(goods.id, goods);
-    for (const type of catalog.recipeTypes) this.types.set(type.id, type);
-    for (const ore of catalog.oreDictionaries) {
-      this.ores.set(ore.id, ore);
-      for (const itemId of ore.itemIds) {
-        const memberships = this.itemOres.get(itemId) ?? [];
-        memberships.push(ore);
-        this.itemOres.set(itemId, memberships);
-      }
-    }
-    for (const goods of catalog.goods) {
-      if (goods.kind !== 'item' || goods.productionCount !== 0) continue;
-      const fallback = productionFallbackDictionary(
-        goods.id,
-        this.itemOres.get(goods.id) ?? [],
-        (itemId) => (this.packedGoods.get(itemId)?.productionCount ?? 0) > 0
-      );
-      if (fallback) this.productionFallbacks.set(goods.id, fallback);
-    }
-    const shardsByRecipeType = new Map<string, string[]>();
-    for (const shard of manifest.recipeShards) {
-      const shardIds = shardsByRecipeType.get(shard.recipeTypeId) ?? [];
-      shardIds.push(shard.id);
-      shardsByRecipeType.set(shard.recipeTypeId, shardIds);
-    }
-    const directCapabilities = new Map<string, NonNullable<CatalogEntry['machineCapabilities']>>();
-    for (const type of catalog.recipeTypes) {
-      for (const machine of recipeTypeMachineCapabilities(type)) {
-        const capabilities = directCapabilities.get(machine.id) ?? [];
-        capabilities.push({
-          recipeTypeId: type.id,
-          recipeTypeName: type.name,
-          recipeShards: shardsByRecipeType.get(type.id) ?? [],
-          maxVoltageTier: machine.maxVoltageTier
-        });
-        directCapabilities.set(machine.id, capabilities);
-      }
-    }
-    const capabilitiesByMachine = propagateOreMachineCapabilities(
-      directCapabilities,
-      catalog.oreDictionaries
-    );
-    const goodsEntries = catalog.goods.map((goods): CatalogEntry => {
-      const sheet = goods.icon ? sheets.get(goods.icon.sheetId) : undefined;
-      const formattedName = parseMinecraftHtml(goods.name);
-      const parsedTooltip = parseMinecraftHtml(goods.tooltip);
-      const formattedTooltip = goods.tooltip ? parsedTooltip.lines : [];
-      const tooltip = formattedTooltip
-        .map((line) => line.segments.map((segment) => segment.text).join('').trim())
-        .filter(Boolean);
-      const productionFallback = this.productionFallbacks.get(goods.id);
-      const fluidScope = fluidRecipeScope(goods.id, this.packedGoods);
-      const recipeScopeIds = fluidScope?.memberIds ?? productionFallback?.itemIds;
-      const productionShards = recipeScopeIds
-        ? [...new Set([...recipeScopeIds].flatMap((itemId) =>
-            this.packedGoods.get(itemId)?.productionShards ?? []))].sort()
-        : goods.productionShards;
-      const usageShards = fluidScope
-        ? [...new Set([...fluidScope.memberIds].flatMap((itemId) =>
-            this.packedGoods.get(itemId)?.usageShards ?? []))].sort()
-        : goods.usageShards;
-      return {
-        id: goods.id,
-        name: formattedName.plainText.trim(),
-        mod: goods.mod,
-        kind: goods.kind,
-        tooltip,
-        formattedName: formattedName.lines,
-        formattedTooltip,
-        color: '#aeb3b8',
-        glyph: goods.kind === 'fluid' ? '≈' : '□',
-        searchable: goods.searchable,
-        icon: goods.icon && sheet ? {
-          url: new URL(sheet.url, manifestUrl).href,
-          index: goods.icon.index,
-          columns: sheet.columns,
-          sha256: sheet.sha256
-        } : undefined,
-        productionShards,
-        usageShards,
-        productionCount: recipeScopeIds ? undefined : goods.productionCount,
-        usageCount: fluidScope ? undefined : goods.usageCount,
-        productionOreDictionaryId: fluidScope ? undefined : productionFallback?.id,
-        container: goods.container,
-        containerItemIds: goods.containerItemIds,
-        machineCapabilities: capabilitiesByMachine.get(goods.id)
-      };
-    });
-    const goodsEntriesById = new Map(goodsEntries.map((entry) => [entry.id, entry]));
-    const oreEntries = catalog.oreDictionaries.map((ore): CatalogEntry => {
-      const members = ore.itemIds.map((id) => goodsEntriesById.get(id)).filter((entry) => entry !== undefined);
-      const representative = members[0];
-      const productionShards = new Set<string>();
-      const usageShards = new Set<string>();
-      for (const memberId of ore.itemIds) {
-        const member = this.packedGoods.get(memberId);
-        member?.productionShards.forEach((id) => productionShards.add(id));
-        member?.usageShards.forEach((id) => usageShards.add(id));
-      }
-      const dictionaryName = ore.id.startsWith('o:') ? ore.id.slice(2) : ore.id;
-      return {
-        id: ore.id,
-        name: `Ore dictionary: ${dictionaryName}`,
-        mod: 'Ore Dictionary',
-        kind: 'oreDict',
-        tooltip: [
-          `${ore.itemIds.length.toLocaleString('en-US')} interchangeable item${ore.itemIds.length === 1 ? '' : 's'}`,
-          'All listed members are valid recipe ingredients.'
-        ],
-        color: '#aeb3b8',
-        glyph: '◇',
-        searchable: false,
-        icon: representative?.icon,
-        productionShards: [...productionShards].sort(),
-        usageShards: [...usageShards].sort(),
-        members: ore.itemIds,
-        machineCapabilities: capabilitiesByMachine.get(ore.id)
-      };
-    });
-    this.entries = [...goodsEntries, ...oreEntries];
+    const materialized = materializeCatalog(manifest, manifestUrl, catalog);
+    this.entries = materialized.entries;
+    this.packedGoods = materialized.goods;
+    this.types = materialized.recipeTypes;
+    this.ores = materialized.oreDictionaries;
+    this.productionFallbacks = materialized.productionFallbacks;
   }
 
   static async availableVersions(): Promise<DatasetVersion[]> {
@@ -444,7 +121,7 @@ export class DatasetRepository {
     if (!selected) throw new Error('No published GTNH datasets are available');
     const manifestUrl = new URL(selected.packManifestUrl, versionsResult.url).href;
     report(8, 'Loading dataset manifest');
-    const manifestResult = await fetchJsonNetworkFirst<Manifest>(
+    const manifestResult = await fetchJsonNetworkFirst<DatasetManifest>(
       manifestUrl,
       `manifest:${manifestUrl}`
     );
@@ -549,7 +226,7 @@ export class DatasetRepository {
     return (await getDataset(this.datasetId))!;
   }
 
-  private async recordAsset(asset: Asset): Promise<void> {
+  private async recordAsset(asset: DatasetAsset): Promise<void> {
     const current = await getDataset(this.datasetId);
     if (!current || current.assetHashes?.includes(asset.sha256)) return;
     const hashes = new Set(current.assetHashes ?? []);
@@ -626,42 +303,6 @@ export class DatasetRepository {
         return ingredientMatchesEntry(io, entryId, selectedMembers, this.ores);
       });
     };
-    const convertRecipe = (recipe: PackedRecipe, order: number): Recipe => {
-      const type = this.types.get(recipe.recipeTypeId);
-      if (!type) throw new Error(`Unknown recipe type ${recipe.recipeTypeId}`);
-      const convert = (io: PackedIo) => materializeIngredient(io, this.ores);
-      const gt = recipe.gt;
-      const powerInfo = hasRelevantPower(gt) ? gt : null;
-      const totalEu = powerInfo ? powerInfo.voltage * powerInfo.amperage * powerInfo.durationTicks : undefined;
-      const euPerTick = powerInfo ? powerInfo.voltage * powerInfo.amperage : undefined;
-      return {
-        id: recipe.id,
-        type: type.name,
-        inputs: recipe.inputs.map(convert),
-        outputs: recipe.outputs.map(convert),
-        layout: { ...type.dimensions, shapeless: type.shapeless },
-        duration: powerInfo ? duration(powerInfo.durationTicks) : undefined,
-        voltage: powerInfo ? voltageTierName(powerInfo.voltageTier) : undefined,
-        voltageExact: powerInfo ? `${powerInfo.voltage.toLocaleString('en-US')} V` : undefined,
-        amperage: powerInfo && powerInfo.amperage !== 1 ? `${powerInfo.amperage} A` : undefined,
-        eu: totalEu === undefined ? undefined : amount(totalEu),
-        euExact: totalEu === undefined ? undefined : `${totalEu.toLocaleString('en-US')} EU`,
-        euPerTick: euPerTick === undefined ? undefined : power(euPerTick),
-        euPerTickExact: euPerTick === undefined ? undefined : `${euPerTick.toLocaleString('en-US')} EU/t`,
-        metadata: gt?.metadata
-          .map((metadata) => formatGtMetadata(metadata, {
-            recipeType: type.name,
-            voltageTier: gt.voltageTier
-          }))
-          .filter((line): line is string => line !== null),
-        crafterId: recipeCrafterId(type, gt?.voltageTier),
-        crafters: recipeTypeCrafters(type),
-        typeIconId: recipeTypeIconId(type),
-        circuitConflicts: gt?.circuitConflicts,
-        specialValue: gt?.specialValue,
-        order
-      };
-    };
     onProgress?.({ loadedShards: 0, totalShards: shardIds.length, batch: [] });
     const batches = await mapProgressively(
       shardIds,
@@ -670,7 +311,12 @@ export class DatasetRepository {
         const recipes = await this.loadShard(shardId);
         const batch = recipes
           .filter(matches)
-          .map((recipe, recipeIndex) => convertRecipe(recipe, shardIndex * 1_000_000 + recipeIndex));
+          .map((recipe, recipeIndex) => materializeRecipe(
+            recipe,
+            shardIndex * 1_000_000 + recipeIndex,
+            this.types,
+            this.ores
+          ));
         await yieldToBrowser();
         return batch;
       },
