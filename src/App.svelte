@@ -5,26 +5,12 @@
   import ApplicationState from './lib/ApplicationState.svelte';
   import CatalogPane from './lib/CatalogPane.svelte';
   import DatasetManager from './lib/DatasetManager.svelte';
+  import { DatasetManagerState } from './lib/datasetManagerState.svelte';
   import ItemOverview from './lib/ItemOverview.svelte';
   import RecipeBrowser from './lib/RecipeBrowser.svelte';
   import { DatasetRepository } from './lib/dataset';
   import { itemListUrl } from './lib/navigation';
-  import { storageShortfall } from './lib/offline';
-  import {
-    estimateStorage,
-    listDatasets,
-    removeDataset,
-    requestPersistentStorage,
-    storageIsPersistent
-  } from './lib/storage';
-  import type {
-    CatalogEntry,
-    DatasetState,
-    DatasetVersion,
-    ManagedDataset,
-    OfflineInstallProgress,
-    RecipeView
-  } from './lib/types';
+  import type { CatalogEntry, RecipeView } from './lib/types';
 
   let catalog = $state<CatalogEntry[]>([]);
   let repository = $state<DatasetRepository | null>(null);
@@ -38,44 +24,19 @@
   let selectedId = $state('');
   let mode = $state<RecipeView>('recipes');
   let detailsOpen = $state(false);
-  let versionOpen = $state(false);
   let updateReady = $state(false);
   let sidebarWidth = $state(410);
   let sidebarResizing = $state(false);
   let searchInput = $state<HTMLInputElement>();
-  let availableDatasets = $state<DatasetVersion[]>([]);
-  let datasetRecords = $state<DatasetState[]>([]);
-  let managerLoading = $state(false);
-  let managerError = $state('');
-  let installingDatasetId = $state('');
-  let switchingDatasetId = $state('');
-  let installProgress = $state<OfflineInstallProgress>();
-  let installController: AbortController | null = null;
-  let storageUsage = $state<number>();
-  let storageQuota = $state<number>();
-  let persistentStorage = $state<boolean>();
 
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
   const selected = $derived(entryById.get(selectedId));
-  const managedDatasets = $derived.by(() => {
-    const versions = new Map(availableDatasets.map((version) => [version.datasetId, version]));
-    for (const state of datasetRecords) {
-      if (!versions.has(state.datasetId)) {
-        versions.set(state.datasetId, {
-          datasetId: state.datasetId,
-          gtnhVersion: state.gtnhVersion,
-          revision: state.revision,
-          packManifestUrl: state.manifestUrl,
-          offlineBytes: state.totalBytes
-        });
-      }
-    }
-    return [...versions.values()].map((version): ManagedDataset => ({
-      version,
-      state: datasetRecords.find((state) => state.datasetId === version.datasetId)
-    }));
+  const datasetManager = new DatasetManagerState({
+    getRepository: () => repository,
+    validateRepository,
+    applyRepository,
+    markReady: () => datasetStatus = 'ready'
   });
-  const activeDatasetState = $derived(datasetRecords.find((state) => state.active));
   function viewUrlValue(view: RecipeView): string {
     return view === 'machineUsages' ? 'machine-usages' : view;
   }
@@ -137,41 +98,6 @@
     }
   }
 
-  function formatBytes(bytes?: number): string {
-    if (bytes === undefined || !Number.isFinite(bytes)) return 'Unknown size';
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
-    return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
-  }
-
-  async function refreshDatasetManager() {
-    managerLoading = true;
-    managerError = '';
-    try {
-      const [versions, records, storage, persisted] = await Promise.all([
-        DatasetRepository.availableVersions(),
-        listDatasets(),
-        estimateStorage(),
-        storageIsPersistent()
-      ]);
-      availableDatasets = versions;
-      datasetRecords = records;
-      storageUsage = storage.usage;
-      storageQuota = storage.quota;
-      persistentStorage = persisted;
-    } catch (error) {
-      managerError = diagnostic(error);
-      datasetRecords = await listDatasets();
-    } finally {
-      managerLoading = false;
-    }
-  }
-
-  function openVersionManager() {
-    versionOpen = true;
-    void refreshDatasetManager();
-  }
-
   function validateRepository(loaded: DatasetRepository) {
     if (!loaded.entries.some((entry) => entry.searchable !== false)) {
       throw new Error('The verified catalog does not contain any searchable items or fluids');
@@ -222,98 +148,11 @@
       await loaded.activate();
       await applyRepository(loaded, false);
       datasetStatus = 'ready';
-      datasetRecords = await listDatasets();
+      await datasetManager.refreshRecords();
     } catch (error) {
       console.error('Unable to load the GTNH dataset', error);
       datasetError = diagnostic(error);
       datasetStatus = 'error';
-    }
-  }
-
-  async function installDataset(version: DatasetVersion) {
-    if (installingDatasetId) return;
-    managerError = '';
-    installProgress = undefined;
-    installingDatasetId = version.datasetId;
-    const controller = new AbortController();
-    installController = controller;
-    try {
-      const state = datasetRecords.find((record) => record.datasetId === version.datasetId);
-      const totalBytes = version.offlineBytes ?? state?.totalBytes;
-      const remainingBytes = totalBytes === undefined
-        ? undefined
-        : Math.max(0, totalBytes - (state?.storedBytes ?? 0));
-      const estimate = await estimateStorage();
-      storageUsage = estimate.usage;
-      storageQuota = estimate.quota;
-      const shortfall = remainingBytes === undefined
-        ? undefined
-        : storageShortfall(remainingBytes, estimate.usage, estimate.quota);
-      if (shortfall !== undefined && shortfall > 0) {
-        const availableBytes = Math.max(0, estimate.quota! - estimate.usage!);
-        throw new Error(
-          `Not enough browser storage. ${formatBytes(remainingBytes)} is still required, `
-          + `but only ${formatBytes(availableBytes)} is estimated available.`
-        );
-      }
-      const persisted = await requestPersistentStorage();
-      if (persisted !== undefined) persistentStorage = persisted;
-      const installer = repository?.datasetId === version.datasetId
-        ? repository
-        : await DatasetRepository.load(version.datasetId);
-      validateRepository(installer);
-      await installer.installOffline((progress) => {
-        if (installingDatasetId === version.datasetId) installProgress = progress;
-      }, controller.signal);
-      if (repository?.datasetId === version.datasetId) await installer.activate();
-      await refreshDatasetManager();
-    } catch (error) {
-      if (!(error instanceof DOMException && error.name === 'AbortError')) {
-        managerError = diagnostic(error);
-      }
-      datasetRecords = await listDatasets();
-    } finally {
-      if (installingDatasetId === version.datasetId) {
-        installingDatasetId = '';
-        installController = null;
-      }
-    }
-  }
-
-  function cancelInstall() {
-    installController?.abort();
-  }
-
-  async function switchDataset(version: DatasetVersion) {
-    if (switchingDatasetId || version.datasetId === repository?.datasetId) return;
-    switchingDatasetId = version.datasetId;
-    managerError = '';
-    try {
-      const loaded = await DatasetRepository.load(version.datasetId);
-      validateRepository(loaded);
-      await loaded.activate();
-      await applyRepository(loaded, true);
-      datasetStatus = 'ready';
-      await refreshDatasetManager();
-    } catch (error) {
-      managerError = diagnostic(error);
-    } finally {
-      switchingDatasetId = '';
-    }
-  }
-
-  async function deleteDataset(state: DatasetState) {
-    if (installingDatasetId === state.datasetId) return;
-    const currentNote = repository?.datasetId === state.datasetId
-      ? ' The currently open catalog will continue working until this page is reloaded.'
-      : '';
-    if (!confirm(`Delete locally stored data for GTNH ${state.gtnhVersion}?${currentNote}`)) return;
-    managerError = '';
-    try {
-      await removeDataset(state.datasetId);
-      await refreshDatasetManager();
-    } catch (error) {
-      managerError = diagnostic(error);
     }
   }
 
@@ -349,10 +188,10 @@
 <div class="app-shell">
   <AppHeader
     {datasetVersion}
-    activeDataset={activeDatasetState}
+    activeDataset={datasetManager.activeDataset}
     {updateReady}
     showHome={() => showItemList(true)}
-    openDatasetManager={openVersionManager}
+    openDatasetManager={() => datasetManager.show()}
   />
 
   {#if datasetStatus !== 'ready'}
@@ -401,22 +240,22 @@
   {/if}
 </div>
 
-{#if versionOpen}
+{#if datasetManager.open}
   <DatasetManager
-    datasets={managedDatasets}
+    datasets={datasetManager.datasets}
     currentDatasetId={repository?.datasetId}
-    loading={managerLoading}
-    error={managerError}
-    {installingDatasetId}
-    {switchingDatasetId}
-    {installProgress}
-    {storageUsage}
-    {storageQuota}
-    {persistentStorage}
-    close={() => versionOpen = false}
-    install={installDataset}
-    {cancelInstall}
-    {switchDataset}
-    {deleteDataset}
+    loading={datasetManager.loading}
+    error={datasetManager.error}
+    installingDatasetId={datasetManager.installingDatasetId}
+    switchingDatasetId={datasetManager.switchingDatasetId}
+    installProgress={datasetManager.installProgress}
+    storageUsage={datasetManager.storageUsage}
+    storageQuota={datasetManager.storageQuota}
+    persistentStorage={datasetManager.persistentStorage}
+    close={() => datasetManager.open = false}
+    install={(version) => datasetManager.install(version)}
+    cancelInstall={() => datasetManager.cancelInstall()}
+    switchDataset={(version) => datasetManager.switchDataset(version)}
+    deleteDataset={(state) => datasetManager.deleteDataset(state)}
   />
 {/if}
