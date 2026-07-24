@@ -21,7 +21,6 @@ export interface CatalogEntry {
   formattedTooltip?: MinecraftTextLine[];
   color: string;
   glyph: string;
-  recipeTypes: string[];
   icon?: {
     url: string;
     index: number;
@@ -92,14 +91,14 @@ export interface Recipe {
   euPerTick?: string;
   euPerTickExact?: string;
   metadata?: string[];
-  note?: string;
   crafterId?: string;
   crafters?: Array<{
     id: string;
     role: 'singleblock' | 'multiblock' | 'default';
   }>;
   typeIconId?: string;
-  circuitConflicts?: string;
+  /** Raw GT circuit conflict mask retained for parity but not currently displayed. */
+  circuitConflicts?: number;
   specialValue?: number;
   /** Stable client-side order derived from exporter recipe-type and shard order. */
   order?: number;

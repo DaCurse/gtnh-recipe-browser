@@ -59,7 +59,6 @@ export function toRecipeSearchRecord(recipe: Recipe): RecipeSearchRecord {
       recipe.euPerTick ?? '',
       recipe.euPerTickExact ?? '',
       ...(recipe.metadata ?? []),
-      recipe.note ?? '',
       recipe.specialValue ?? ''
     ]
   };

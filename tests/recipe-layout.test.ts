@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recipes } from '../src/lib/demo';
+import { recipes } from './support/demo';
 
 describe('NEI recipe layouts', () => {
   it('preserves the complete format-v5 dimension contract', () => {

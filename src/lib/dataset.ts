@@ -8,12 +8,7 @@ import { fluidRecipeScope } from './fluidContainers';
 import { parseMinecraftHtml } from './minecraftText';
 import { installOfflineAssets } from './offline';
 import { verifyAssetBytes } from './integrity';
-import {
-  formatCircuitConflicts,
-  formatGtMetadata,
-  hasRelevantPower,
-  voltageTierName
-} from './recipeMetadata';
+import { formatGtMetadata, hasRelevantPower, voltageTierName } from './recipeMetadata';
 import {
   machineCanProcessVoltage,
   propagateOreMachineCapabilities,
@@ -367,7 +362,6 @@ export class DatasetRepository {
         formattedTooltip,
         color: '#aeb3b8',
         glyph: goods.kind === 'fluid' ? '≈' : '□',
-        recipeTypes: [],
         searchable: goods.searchable,
         icon: goods.icon && sheet ? {
           url: new URL(sheet.url, manifestUrl).href,
@@ -408,7 +402,6 @@ export class DatasetRepository {
         ],
         color: '#aeb3b8',
         glyph: '◇',
-        recipeTypes: [],
         searchable: false,
         icon: representative?.icon,
         productionShards: [...productionShards].sort(),
@@ -664,9 +657,7 @@ export class DatasetRepository {
         crafterId: recipeCrafterId(type, gt?.voltageTier),
         crafters: recipeTypeCrafters(type),
         typeIconId: recipeTypeIconId(type),
-        circuitConflicts: gt && gt.circuitConflicts !== 0
-          ? formatCircuitConflicts(gt.circuitConflicts)
-          : undefined,
+        circuitConflicts: gt?.circuitConflicts,
         specialValue: gt?.specialValue,
         order
       };

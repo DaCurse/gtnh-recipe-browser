@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { entries } from '../src/lib/demo';
+import { entries } from './support/demo';
 import { normalize, searchCatalog } from '../src/lib/search';
 
 describe('catalog search', () => {

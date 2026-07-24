@@ -117,7 +117,6 @@
     {#if recipe.eu}<span title={recipe.euExact}>{recipe.eu}</span>{/if}
     {#if recipe.euPerTick}<span title={recipe.euPerTickExact}>{recipe.euPerTick}</span>{/if}
     {#each recipe.metadata ?? [] as line, index (`${index}:${line}`)}<span>{line}</span>{/each}
-    {#if recipe.note}<span class="note">{recipe.note}</span>{/if}
   </div>
 </article>
 
@@ -179,9 +178,8 @@
   .arrow small { color:#969ba0; white-space:nowrap; }
   .meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px 14px; min-height:31px; border-top:1px solid #3a3d41; color:#b0b4b8; font-size:12px; }
   .meta span { padding:5px 8px; border-radius:5px; background:#34373b; }
-  .meta span:not(.note) { font:13px/1.2 Minecraft,monospace; text-shadow:2px 2px #342C34; }
+  .meta span { font:13px/1.2 Minecraft,monospace; text-shadow:2px 2px #342C34; }
   .meta b { color:#d6d8da; }
-  .meta .note { margin-left:auto; background:transparent; font-style:italic; }
   .crafter-scrim { position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }
   .crafter-modal { position:relative; width:min(620px,100%); max-height:min(82vh,720px); overflow:auto; padding:28px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; text-align:left; }
   .crafter-modal>p { margin:0 46px 7px 0; color:#a5aaaf; font:12px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342c34; }
