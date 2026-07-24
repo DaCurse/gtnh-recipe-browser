@@ -76,7 +76,7 @@
   .version-title,.version small { display:block; }
   .version .version-title { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; }
   .version small { color:#85898e; font-size:11px; margin:3px 0 0 14px; }
-  .version i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#b6bbc1; box-shadow:0 0 5px #969ba1; }
+  .version i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#63d17b; box-shadow:0 0 6px #39b85c; }
   .version.has-update { border-color:#746b3f; box-shadow:0 0 0 1px #d9c4591c; }
   .version.has-update small { color:#d8ca7c; }
   .revision-blip { display:inline-block; width:8px; height:8px; flex:0 0 8px; border:1px solid #fff0a3; border-radius:50%; background:#ffd84a; box-shadow:0 0 8px #f0c62f; animation:revision-pulse 2.4s ease-in-out infinite; }

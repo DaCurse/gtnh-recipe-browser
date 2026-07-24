@@ -8,7 +8,7 @@ body { margin:0; min-width:320px; min-height:100vh; background:radial-gradient(c
 button,input { font:inherit; }
 button { color:inherit; }
 .app-shell { height:100vh; display:flex; flex-direction:column; overflow:hidden; }
-footer i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#b6bbc1; box-shadow:0 0 5px #969ba1; }
+footer i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#63d17b; box-shadow:0 0 6px #39b85c; }
 main { min-height:0; display:grid; grid-template-columns:var(--sidebar-width,410px) 1fr; flex:1; }
 .home-view { grid-template-columns:1fr; }
 .home-view aside { border-right:0; }
