@@ -1,0 +1,56 @@
+{
+  "schemaVersion": 1,
+  "datasetId": "2.9.0-beta-2-r080719a85854",
+  "gtnhVersion": "2.9.0-beta-2",
+  "revision": "080719a85854",
+  "generatedAt": "2026-07-24T16:00:25.561Z",
+  "sourceArchive": {
+    "path": "/root/src/gtnh-recipe-browser/.export-work/2.9.0-beta-2/source/GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip",
+    "bytes": 680333339,
+    "sha256": "adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee"
+  },
+  "exporter": {
+    "repository": "https://github.com/ShadowTheAge/nesql-exporter",
+    "commit": "b9279b39f2f439da78eebd70fab272b028947371",
+    "patchSha256": "ef0ed956f98edbc4955baf0c75b950e616633889c0afb7d94ddb1d57618d5b37",
+    "mainJar": "NESQL-Exporter-0.5.7-ShadowTheAge.jar",
+    "mainJarSha256": "411bfe3af85af85091380291a4fe1b63586d571168f82254e8e851d6c1615058",
+    "dependenciesJar": "NESQL-Exporter-0.5.7-ShadowTheAge-deps.jar",
+    "dependenciesJarSha256": "f1f3eac317c4107a951227e81cfa39956c68ad169908f3b8fb93a580fe618a81"
+  },
+  "processor": {
+    "repository": "https://github.com/ShadowTheAge/gtnh",
+    "commit": "124da0eb2367e84f6d285ed0a927fa0490a93767",
+    "patchSha256": "28d8f9552880a9b556458fe7c09e3ecc1a166bdc52ef0f6e61d12116cd524451"
+  },
+  "browserCatalogPolicy": {
+    "mode": "recipe-connected",
+    "patchSha256": "0b9476118012f653ef349fee80b3675822e73651ba5022e2e2181aa8d07465d9"
+  },
+  "toolchains": {
+    "java": "openjdk 21.0.11 2026-04-21",
+    "dotnetSdk": "8.0.129"
+  },
+  "previousData": {
+    "path": "tests/fixtures/shadowtheage-v5-2.8.0/data.bin",
+    "sha256": "b0ff8d63f3104e979628c64e650cab17bf0b442e01bdb00c1d8f54c458a3eccc"
+  },
+  "processed": {
+    "dataBin": {
+      "bytes": 25954066,
+      "sha256": "1c2d4ed40b5641d358ab72aeb63b78fc30c6e5c2c0c335bc1e923e1c8ff16049"
+    },
+    "atlasWebp": {
+      "bytes": 27073896,
+      "sha256": "0036a520316df6256860b26eb82824f110e9daf4144fc35d13fb4f06d9956eb8"
+    }
+  },
+  "deterministicPackSha256": "5cd9e2b70e68a16cbee380eba353b55cfae42be935dfbf81d5d942d91ae7cb69",
+  "verification": {
+    "assets": 281,
+    "bytes": 51869197,
+    "recipes": 306831,
+    "goods": 102914,
+    "spriteSamples": 100
+  }
+}
