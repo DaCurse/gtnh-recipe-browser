@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import fixture from './fixtures/gtnh-2.9.0-beta-2-browser-policy/parity.json';
 import { buildCatalogBrowseEntries } from '../src/lib/catalogVariants';
+import { parseMinecraftHtml } from '../src/lib/minecraftText';
 import type { CatalogEntry } from '../src/lib/types';
 import type { DecodedItem } from '../tools/pack-builder/model';
 
@@ -78,5 +79,15 @@ describe('pinned browser catalog policy parity', () => {
     expect(small?.variantIds).toContain(fixture.turbines[0]!.id);
     expect(small?.variantIds).toContain(fixture.comparisonTurbine.id);
     expect(groups.filter((entry) => entry.damage !== 170)).toHaveLength(3);
+  });
+
+  it('preserves a colored potion effect when it is the final tooltip line', () => {
+    const parsed = parseMinecraftHtml(fixture.effectTooltipItem.tooltip);
+
+    expect(fixture.effectTooltipItem.nbt).toContain('CustomFlaskEffects');
+    expect(parsed.plainText).toBe('Swigs Left: 8/8\nFlight (7:06)');
+    expect(parsed.lines[1]?.segments).toEqual([
+      { text: 'Flight (7:06)', formats: ['7'] }
+    ]);
   });
 });

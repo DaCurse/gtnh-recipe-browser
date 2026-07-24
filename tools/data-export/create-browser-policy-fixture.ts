@@ -45,6 +45,16 @@ const comparisonTurbine = repository.items.find(
 );
 if (!comparisonTurbine) throw new Error('Could not find a second real small-turbine variant');
 
+const effectTooltipItem = repository.items.find(
+  (item) =>
+    item.internalName === 'alchemyFlask'
+    && item.nbt !== null
+    && (item.tooltip ?? '').includes('Flight (7:06)')
+);
+if (!effectTooltipItem) {
+  throw new Error('Could not find a representative item whose final tooltip line is a potion effect');
+}
+
 const recipeIds = new Set(turbines.flatMap((item) => item.productionRecipeIds));
 const recipes = repository.recipes.filter((recipe) => recipeIds.has(recipe.id));
 if (recipes.length < 4) {
@@ -72,6 +82,7 @@ const fixture = {
   ichoriumBlade,
   turbines,
   comparisonTurbine,
+  effectTooltipItem,
   recipes
 };
 await writeFile(outputPath, `${JSON.stringify(fixture, null, 2)}\n`, { flag: 'wx' });

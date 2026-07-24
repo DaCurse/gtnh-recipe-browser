@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "source": {
     "formatVersion": 5,
-    "dataSha256": "1c2d4ed40b5641d358ab72aeb63b78fc30c6e5c2c0c335bc1e923e1c8ff16049",
+    "dataSha256": "9b76edda06b9769701579a74073826232e91b5c8f4f77ec6cc3b2620c0f46b6f",
     "atlasSha256": "0036a520316df6256860b26eb82824f110e9daf4144fc35d13fb4f06d9956eb8"
   },
   "counts": {
@@ -18,14 +18,14 @@
     "internalName": "gt.metaitem.02",
     "numericId": 7639,
     "iconId": 74187,
-    "tooltip": "IcMa<br>",
+    "tooltip": "IcMa<br><span class=\"fmt-8 fmt-o\">Fabric of planar coalescence</span><br>",
     "unlocalizedName": "gt.metaitem.02.16978",
     "nbt": null,
     "searchMask": [
-      1287767080,
-      3222159876,
-      89276484,
-      111044544
+      3706320234,
+      3247393285,
+      223494604,
+      129920976
     ],
     "productionRecipeIds": [
       "r~7ksrPq42MPiCOZzln6SO6g==",
@@ -57,11 +57,11 @@
       "internalName": "gt.metatool.01",
       "numericId": 7648,
       "iconId": 90297,
-      "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">85,000,000 / 85,000,000</span><br><span class=\"fmt-7\">Ichorium:</span><span class=\"fmt-e\"> Tier 12</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">175%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">9,600</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">8,400</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">175%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">176,138</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">102,248</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">116%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">9,600</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">16,800</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">175%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">48,517</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">59,458</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">122%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">201,600</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">352,800</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">175%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">707,013</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">912,047</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">129%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">3</span><br>",
+      "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">85,000,000 / 85,000,000</span><br><span class=\"fmt-7\">Ichorium:</span><span class=\"fmt-e\"> Tier 12</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">175%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">9,600</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">8,400</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">175%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">176,138</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">102,248</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">116%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">9,600</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">16,800</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">175%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">48,517</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">59,458</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">122%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">201,600</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">352,800</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">175%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">707,013</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">912,047</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">129%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">3</span><br>Turbine Rotors for your power station<br>",
       "unlocalizedName": "gt.metatool.01.170",
       "nbt": "{GT.ToolStats:{PrimaryMaterial:\"Ichorium\",Mode:0b,SecondaryMaterial:\"Ichorium\",MaxDamage:85000000L}}",
       "searchMask": [
-        4294964991,
+        4294967039,
         4284440319,
         4292870143,
         2143191039
@@ -83,11 +83,11 @@
       "internalName": "gt.metatool.01",
       "numericId": 7648,
       "iconId": 90587,
-      "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">170,000,000 / 170,000,000</span><br><span class=\"fmt-7\">Ichorium:</span><span class=\"fmt-e\"> Tier 12</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">200%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">19,200</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">19,200</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">200%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">567,344</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">382,957</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">134%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">19,200</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">38,400</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">200%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">123,843</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">176,477</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">142%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">403,200</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">806,400</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">200%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">1,639,244</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">2,458,866</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">150%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">3</span><br>",
+      "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">170,000,000 / 170,000,000</span><br><span class=\"fmt-7\">Ichorium:</span><span class=\"fmt-e\"> Tier 12</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">200%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">19,200</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">19,200</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">200%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">567,344</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">382,957</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">134%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">19,200</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">38,400</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">200%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">123,843</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">176,477</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">142%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">403,200</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">806,400</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">200%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">1,639,244</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">2,458,866</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">150%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">3</span><br>Turbine Rotors for your power station<br>",
       "unlocalizedName": "gt.metatool.01.172",
       "nbt": "{GT.ToolStats:{PrimaryMaterial:\"Ichorium\",Mode:0b,SecondaryMaterial:\"Ichorium\",MaxDamage:170000000L}}",
       "searchMask": [
-        4294965247,
+        4294967295,
         4227760127,
         4294967295,
         2143191039
@@ -109,11 +109,11 @@
       "internalName": "gt.metatool.01",
       "numericId": 7648,
       "iconId": 90720,
-      "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">255,000,000 / 255,000,000</span><br><span class=\"fmt-7\">Ichorium:</span><span class=\"fmt-e\"> Tier 12</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">225%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">28,800</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">32,400</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">225%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">1,370,572</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">1,054,655</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">153%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">28,800</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">64,800</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">225%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">237,089</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">385,151</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">162%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">604,800</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">1,360,800</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">225%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">2,850,499</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">4,874,354</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">171%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">3</span><br>",
+      "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">255,000,000 / 255,000,000</span><br><span class=\"fmt-7\">Ichorium:</span><span class=\"fmt-e\"> Tier 12</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">225%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">28,800</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">32,400</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">225%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">1,370,572</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">1,054,655</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">153%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">28,800</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">64,800</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">225%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">237,089</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">385,151</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">162%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">604,800</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">1,360,800</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">225%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">2,850,499</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">4,874,354</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">171%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">3</span><br>Turbine Rotors for your power station<br>",
       "unlocalizedName": "gt.metatool.01.174",
       "nbt": "{GT.ToolStats:{PrimaryMaterial:\"Ichorium\",Mode:0b,SecondaryMaterial:\"Ichorium\",MaxDamage:255000000L}}",
       "searchMask": [
-        4026529791,
+        4294967295,
         4217266175,
         4292870143,
         2143191039
@@ -135,11 +135,11 @@
       "internalName": "gt.metatool.01",
       "numericId": 7648,
       "iconId": 90799,
-      "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">340,000,000 / 340,000,000</span><br><span class=\"fmt-7\">Ichorium:</span><span class=\"fmt-e\"> Tier 12</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">250%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">38,400</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">48,000</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">250%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">2,943,093</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">2,556,076</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">173%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">38,400</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">96,000</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">250%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">403,456</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">739,737</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">183%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">806,400</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">2,016,000</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">250%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">4,406,012</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">8,503,604</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">193%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">3</span><br>",
+      "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">340,000,000 / 340,000,000</span><br><span class=\"fmt-7\">Ichorium:</span><span class=\"fmt-e\"> Tier 12</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">250%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">38,400</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">48,000</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">250%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">2,943,093</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">2,556,076</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">173%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">38,400</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">96,000</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">250%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">403,456</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">739,737</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">183%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">806,400</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">2,016,000</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">250%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">4,406,012</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">8,503,604</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">193%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">3</span><br>Turbine Rotors for your power station<br>",
       "unlocalizedName": "gt.metatool.01.176",
       "nbt": "{GT.ToolStats:{PrimaryMaterial:\"Ichorium\",Mode:0b,SecondaryMaterial:\"Ichorium\",MaxDamage:340000000L}}",
       "searchMask": [
-        4026529791,
+        4294967295,
         4225662815,
         4292867583,
         2143191039
@@ -162,11 +162,11 @@
     "internalName": "gt.metatool.01",
     "numericId": 7648,
     "iconId": 90257,
-    "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">76,800 / 76,800</span><br><span class=\"fmt-7\">Black Steel:</span><span class=\"fmt-e\"> Tier 3</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">85%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">325</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">138</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">85%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">1,072</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">250</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">46%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">325</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">276</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">85%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">682</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">337</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">49%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">13,650</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">11,602</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">85%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">28,119</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">14,621</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">52%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">2</span><br>",
+    "tooltip": "<span class=\"fmt-7\">Durability: </span><span class=\"fmt-a\">76,800 / 76,800</span><br><span class=\"fmt-7\">Black Steel:</span><span class=\"fmt-e\"> Tier 3</span><br><span class=\"fmt-f\">Base Efficiency: </span><span class=\"fmt-9\">85%</span><br><span class=\"fmt-7\">Fuel | Optimal Flow &gt; EU/t Produced | Efficiency</span><br><span class=\"fmt-f\">  Steam </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">325</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">138</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">85%</span><br><span class=\"fmt-f\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">1,072</span><span class=\"fmt-7\"> L/t &gt; </span><span class=\"fmt-2\">250</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">46%</span><br><span class=\"fmt-8\">  Supercritical and Superheated EU values are 2x</span><br><span class=\"fmt-b\">  Gas </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">325</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">276</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">85%</span><br><span class=\"fmt-b\">  Loose </span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">682</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">337</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">49%</span><br><span class=\"fmt-d\">  Plasma</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">13,650</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">11,602</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">85%</span><br><span class=\"fmt-d\">  Loose</span><span class=\"fmt-7\"> | </span><span class=\"fmt-6\">28,119</span><span class=\"fmt-7\"> EU/t &gt; </span><span class=\"fmt-2\">14,621</span><span class=\"fmt-7\"> EU/t | </span><span class=\"fmt-9\">52%</span><br><span class=\"fmt-d\">Overflow Efficiency Tier: </span><span class=\"fmt-6\">2</span><br>Turbine Rotors for your power station<br>",
     "unlocalizedName": "gt.metatool.01.170",
     "nbt": "{GT.ToolStats:{PrimaryMaterial:\"BlackSteel\",Mode:0b,SecondaryMaterial:\"BlackSteel\",MaxDamage:76800L}}",
     "searchMask": [
-      4026529535,
+      4294967039,
       4294901759,
       4294967295,
       2143256575
@@ -179,6 +179,34 @@
     "searchable": true,
     "stackSize": 1,
     "damage": 170,
+    "container": null
+  },
+  "effectTooltipItem": {
+    "id": "i:AWWayofTime:alchemyFlask:0:3cba42101fa30f79fdc168bc388218f75223e007",
+    "name": "Potion Flask",
+    "mod": "AWWayofTime",
+    "internalName": "alchemyFlask",
+    "numericId": 6017,
+    "iconId": 1510,
+    "tooltip": "<span class=\"fmt-9\">Swigs Left: 8/8</span><br><span class=\"fmt-7\">Flight (7:06)</span><br>",
+    "unlocalizedName": "item.alchemyFlask",
+    "nbt": "{CustomFlaskEffects:[0:{concentration:0,durationFactor:2,potionID:104,tickDuration:1200}]}",
+    "searchMask": [
+      1343968083,
+      202639974,
+      302649350,
+      322665596
+    ],
+    "productionRecipeIds": [
+      "r~r-mIjjTmNU-OA-2QNFqlNw=="
+    ],
+    "usageRecipeIds": [
+      "r:asp:i:AWWayofTime:alchemyFlask:0:3cba42101fa30f79fdc168bc388218f75223e007"
+    ],
+    "kind": "item",
+    "searchable": true,
+    "stackSize": 1,
+    "damage": 0,
     "container": null
   },
   "recipes": [
