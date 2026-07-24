@@ -8,7 +8,9 @@ import {
 } from '../lib/recipeSearch';
 
 type WorkerRequest =
-  | { type: 'init'; generation: number; catalog: RecipeSearchCatalogEntry[] }
+  | { type: 'init'; generation: number }
+  | { type: 'appendCatalog'; generation: number; catalog: RecipeSearchCatalogEntry[] }
+  | { type: 'finishCatalog'; generation: number }
   | { type: 'reset'; generation: number }
   | { type: 'append'; generation: number; recipes: RecipeSearchRecord[] }
   | {
@@ -80,8 +82,9 @@ async function search(
 self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const request = event.data;
   if (request.type === 'init') {
+    if (request.generation < generation) return;
     generation = request.generation;
-    catalog = new Map(request.catalog.map((entry) => [entry.id, entry]));
+    catalog = new Map();
     documentsById = new Map();
     documents = [];
     documentsDirty = false;
@@ -89,6 +92,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     return;
   }
   if (request.type === 'reset') {
+    if (request.generation < generation) return;
     generation = request.generation;
     documentsById = new Map();
     documents = [];
@@ -97,6 +101,14 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     return;
   }
   if (request.generation !== generation) return;
+  if (request.type === 'appendCatalog') {
+    for (const entry of request.catalog) catalog.set(entry.id, entry);
+    return;
+  }
+  if (request.type === 'finishCatalog') {
+    self.postMessage({ type: 'catalogReady', generation });
+    return;
+  }
   if (request.type === 'append') {
     for (const recipe of request.recipes) {
       documentsById.set(recipe.id, buildRecipeSearchDocument(recipe, catalog));

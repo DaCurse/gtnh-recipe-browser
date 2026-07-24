@@ -16,6 +16,8 @@ export class RecipeBrowserState {
   recipeError = $state('');
   recipeLoadedShards = $state(0);
   recipeTotalShards = $state(0);
+  recipeCatalogIndexed = $state(0);
+  recipeCatalogTotal = $state(0);
   recipePage = $state(0);
   recipeQuery = $state('');
   recipeFilter = $state('');
@@ -30,7 +32,9 @@ export class RecipeBrowserState {
   private recipeSearchGeneration = $state(0);
   private recipeIndexRevision = $state(0);
   private recipeSearchReady = $state(false);
+  private recipeWorkerMounted = $state(false);
   private recipeSearchWorker: Worker | null = null;
+  private recipeCatalogDatasetId = '';
   private recipeAbortController: AbortController | null = null;
   private recipeRequest = 0;
   private recipeSearchRequest = 0;
@@ -82,10 +86,12 @@ export class RecipeBrowserState {
 
     $effect(() => {
       const repository = this.context.repository();
-      if (!this.recipeSearchReady) return;
+      const active = this.context.active();
+      if (!this.recipeWorkerMounted || !active) return;
+      if (this.recipeSearchReady && this.recipeCatalogDatasetId === repository.datasetId) return;
       untrack(() => {
         this.loadedRecipeCounts = {};
-        this.initializeRecipeSearch(repository.entries);
+        void this.initializeRecipeSearch(repository.entries);
       });
     });
 
@@ -132,6 +138,10 @@ export class RecipeBrowserState {
 
   get recipeSearchPending(): boolean {
     return this.recipeDebouncePending || this.recipeWorkerPending;
+  }
+
+  get recipePreparing(): boolean {
+    return this.context.active() && this.recipeWorkerMounted && !this.recipeSearchReady;
   }
 
   get modeLabel(): string {
@@ -221,17 +231,38 @@ export class RecipeBrowserState {
     }
   }
 
-  private initializeRecipeSearch(catalog: CatalogEntry[]) {
-    this.recipeSearchGeneration += 1;
+  private async initializeRecipeSearch(catalog: CatalogEntry[]) {
+    const generation = ++this.recipeSearchGeneration;
     this.recipeIndexRevision += 1;
     this.recipeSearchIds = [];
     this.recipeSearchTotalValue = 0;
     this.recipeWorkerPending = false;
+    this.recipeSearchReady = false;
+    this.recipeCatalogDatasetId = this.context.repository().datasetId;
+    this.recipeCatalogIndexed = 0;
+    this.recipeCatalogTotal = catalog.length;
     this.recipeSearchWorker?.postMessage({
       type: 'init',
-      generation: this.recipeSearchGeneration,
-      catalog: catalog.map(toRecipeSearchCatalogEntry)
+      generation
     });
+    for (let start = 0; start < catalog.length; start += 2_000) {
+      if (
+        generation !== this.recipeSearchGeneration
+        || !this.recipeSearchWorker
+        || !this.context.active()
+      ) return;
+      const end = Math.min(start + 2_000, catalog.length);
+      this.recipeSearchWorker.postMessage({
+        type: 'appendCatalog',
+        generation,
+        catalog: catalog.slice(start, end).map(toRecipeSearchCatalogEntry)
+      });
+      this.recipeCatalogIndexed = end;
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+    }
+    if (generation === this.recipeSearchGeneration) {
+      this.recipeSearchWorker?.postMessage({ type: 'finishCatalog', generation });
+    }
   }
 
   private resetRecipeSearch() {
@@ -262,13 +293,22 @@ export class RecipeBrowserState {
       { type: 'module' }
     );
     this.recipeSearchWorker = worker;
-    worker.onmessage = (event: MessageEvent<{
-      type: 'results';
-      generation: number;
-      id: number;
-      total: number;
-      ids: string[];
-    }>) => {
+    worker.onmessage = (event: MessageEvent<
+      | { type: 'catalogReady'; generation: number }
+      | {
+          type: 'results';
+          generation: number;
+          id: number;
+          total: number;
+          ids: string[];
+        }
+    >) => {
+      if (event.data.type === 'catalogReady') {
+        if (event.data.generation === this.recipeSearchGeneration) {
+          this.recipeSearchReady = true;
+        }
+        return;
+      }
       if (
         event.data.type !== 'results'
         || event.data.generation !== this.recipeSearchGeneration
@@ -284,10 +324,12 @@ export class RecipeBrowserState {
       this.recipeWorkerPending = false;
       this.recipeError = 'Recipe filtering could not start. Reload the page to retry.';
     };
-    this.recipeSearchReady = true;
+    this.recipeWorkerMounted = true;
     return () => {
       worker.terminate();
       this.recipeSearchWorker = null;
+      this.recipeCatalogDatasetId = '';
+      this.recipeWorkerMounted = false;
       this.recipeSearchReady = false;
       this.recipeAbortController?.abort();
       this.recipeAbortController = null;

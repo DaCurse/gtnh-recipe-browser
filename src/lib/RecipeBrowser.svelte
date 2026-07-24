@@ -108,7 +108,21 @@
 {/if}
 
 <div class="recipe-list">
-  {#if state.recipeLoading}
+  {#if state.recipePreparing}
+    <div class="recipe-loading" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <b>Preparing recipe search…</b>
+      <p>
+        {state.recipeCatalogIndexed.toLocaleString()} of
+        {state.recipeCatalogTotal.toLocaleString()} catalog entries
+      </p>
+      {#if state.recipeCatalogTotal > 0}
+        <div class="load-progress compact">
+          <span style:width={`${state.recipeCatalogIndexed / state.recipeCatalogTotal * 100}%`}></span>
+        </div>
+      {/if}
+    </div>
+  {:else if state.recipeLoading}
     <div class:partial={related.length > 0} class="recipe-loading" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
       <b>Loading {modeLabel}…</b>
