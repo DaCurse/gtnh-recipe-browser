@@ -1,10 +1,12 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import CatalogVariantIcon from './CatalogVariantIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
-  import ItemIcon from './ItemIcon.svelte';
   import MinecraftText from './MinecraftText.svelte';
   import ProjectLinks from './ProjectLinks.svelte';
   import VariantPicker from './VariantPicker.svelte';
+  import { resolveCatalogVariant } from './catalogVariants';
+  import { oreCycle } from './oreCycle';
   import type { CatalogBrowseEntry, CatalogEntry } from './types';
 
   let {
@@ -311,7 +313,12 @@
             else select(entry.variantIds[0]!);
           }}
         >
-          <ItemIcon {entry} size={56} selected={entry.variantIds.includes(selected.id)} />
+          <CatalogVariantIcon
+            {entry}
+            exactEntries={exactEntryById}
+            size={56}
+            selected={entry.variantIds.includes(selected.id)}
+          />
           <span class="item-summary">
             <strong>{entry.name}</strong>
             <small>{entry.isVariantGroup
@@ -361,7 +368,7 @@
 
 {#if tooltipEntry}
   <FloatingCatalogTooltip
-    entry={tooltipEntry}
+    entry={resolveCatalogVariant(tooltipEntry, exactEntryById, $oreCycle)}
     x={tooltipX}
     y={tooltipY}
     action={tooltipEntry.isVariantGroup

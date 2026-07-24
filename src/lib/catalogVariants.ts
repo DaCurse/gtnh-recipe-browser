@@ -63,3 +63,13 @@ export function buildCatalogBrowseEntries(entries: CatalogEntry[]): CatalogBrows
 
   return result.sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
 }
+
+export function resolveCatalogVariant(
+  entry: CatalogBrowseEntry,
+  exactEntries: ReadonlyMap<string, CatalogEntry>,
+  cycle: number
+): CatalogEntry {
+  if (!entry.isVariantGroup || entry.variantIds.length === 0) return entry;
+  const variantId = entry.variantIds[cycle % entry.variantIds.length];
+  return exactEntries.get(variantId!) ?? entry;
+}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { buildCatalogBrowseEntries } from '../src/lib/catalogVariants';
+import { buildCatalogBrowseEntries, resolveCatalogVariant } from '../src/lib/catalogVariants';
 import { querySearchMask, searchMaskContains } from '../src/lib/searchMask';
 import type { CatalogEntry } from '../src/lib/types';
 
@@ -52,6 +52,33 @@ describe('catalog variant families', () => {
     ];
 
     expect(buildCatalogBrowseEntries(entries)).toHaveLength(4);
+  });
+
+  it('cycles a grouped row through its exact variants', () => {
+    const entries = [
+      entry({
+        id: 'ichorium',
+        name: 'Small Ichorium Turbine',
+        internalName: 'gregtech:gt.metatool.01',
+        damage: 170,
+        nbt: '{material:ichorium}',
+        icon: { url: 'icons.webp', index: 1, columns: 32 }
+      }),
+      entry({
+        id: 'steel',
+        name: 'Small Steel Turbine',
+        internalName: 'gregtech:gt.metatool.01',
+        damage: 170,
+        nbt: '{material:steel}',
+        icon: { url: 'icons.webp', index: 2, columns: 32 }
+      })
+    ];
+    const [family] = buildCatalogBrowseEntries(entries);
+    const exactEntries = new Map(entries.map((item) => [item.id, item]));
+
+    expect(resolveCatalogVariant(family!, exactEntries, 0).id).toBe('ichorium');
+    expect(resolveCatalogVariant(family!, exactEntries, 1).id).toBe('steel');
+    expect(resolveCatalogVariant(family!, exactEntries, 2).id).toBe('ichorium');
   });
 });
 
