@@ -55,6 +55,12 @@
     if (state) return 'Catalog cached';
     return 'Available online';
   }
+
+  function hasMultipleRevisions(version: DatasetVersion): boolean {
+    return datasets.filter(
+      (managed) => managed.version.gtnhVersion === version.gtnhVersion
+    ).length > 1;
+  }
 </script>
 
 <div class="scrim" role="presentation" onclick={(event) => {
@@ -79,6 +85,9 @@
               <span class="dataset-icon"><img src="./assets/gtnh-logo.png" alt="" /></span>
               <div>
                 <b>{managed.version.gtnhVersion}</b>
+                {#if hasMultipleRevisions(managed.version)}
+                  <small class="dataset-revision">Revision {managed.version.revision.slice(0, 8)}</small>
+                {/if}
                 <small><i></i> {datasetStateLabel(state, current)}</small>
               </div>
               <strong>
@@ -168,6 +177,7 @@
   .dataset-summary>div { min-width:0; flex:1; }
   .dataset b,.dataset small { display:block; }
   .dataset-summary small { margin-top:6px; color:#b0b4b8; font-size:10px; }
+  .dataset-summary .dataset-revision { color:#858a8f; font:10px ui-monospace,monospace; }
   .dataset-summary strong { color:#9a9fa4; font-size:12px; text-align:right; white-space:nowrap; }
   .dataset i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#b6bbc1; box-shadow:0 0 5px #969ba1; }
   .dataset-actions { display:flex; align-items:center; justify-content:flex-end; gap:7px; margin-top:12px; }

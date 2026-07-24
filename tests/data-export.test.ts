@@ -116,6 +116,7 @@ describe('data export tooling', () => {
 
     expect(processSource).toContain("DOTNET_GCHeapHardLimitPercent: '0x32'");
     expect(processSource).toContain('...process.env');
+    expect(processSource).toContain("args.get('resume-processed') === 'true'");
   });
 
   it('publishes a new default without removing historical datasets', () => {

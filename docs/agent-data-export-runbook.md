@@ -76,6 +76,12 @@ recipes. The patch also corrects the pinned processor's double dereference of le
 matching the format-v5 decoder's single-dereference semantics. These controls leave matching inputs and output
 unchanged apart from making the previously broken carry-forward traversal usable.
 
+If processing reaches completed `processed/data.bin` and `processed/atlas.webp` but a later sanity, pack, or
+verification step fails, correct the general cause and resume with `--resume-processed true`. Resume still validates
+the copied processor markers, source schema, decoded counts, deterministic pack output, hashes, and sprite samples;
+it only avoids repeating SQL conversion and atlas generation. Never use it after modifying the applied processor
+source or against incomplete processed files.
+
 ## Manual checkpoint
 
 After preparation, inspect the instance name, both exporter jars, disabled BugTorch jar, absence of staging

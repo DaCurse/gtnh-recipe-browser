@@ -37,6 +37,7 @@ const repositoryRoot = process.cwd();
 const sessionPath = resolve(requiredArgument(args, 'session'));
 const session = await readExportSession(sessionPath);
 const outputWorkDirectory = resolve(args.get('work-dir') ?? session.workDirectory);
+const resumeProcessed = args.get('resume-processed') === 'true';
 const nesqlRoot = join(session.instanceDirectory, '.minecraft/nesql');
 const scripts = await findFiles(nesqlRoot, 'nesql-db.script');
 if (scripts.length !== 1) {
@@ -58,22 +59,26 @@ const processorDirectory = join(outputWorkDirectory, 'processor');
 const firstBuild = join(outputWorkDirectory, 'pack-a');
 const secondBuild = join(outputWorkDirectory, 'pack-b');
 const finalPack = join(outputWorkDirectory, 'pack');
-for (const path of [processedDirectory, processorDirectory, firstBuild, secondBuild, finalPack]) {
+for (const path of [firstBuild, secondBuild, finalPack]) {
   await assertPathMissing(path, 'Process output');
 }
-await mkdir(processedDirectory, { recursive: true });
-await cp(join(repositoryRoot, 'gtnh@ShadowTheAge/export'), processorDirectory, {
-  recursive: true
-});
-const processorPatch = join(repositoryRoot, 'tools/data-export/patches/processor-2.9.patch');
-run('patch', ['--dry-run', '--batch', '-p1', '-i', processorPatch], processorDirectory);
-run('patch', ['--batch', '-p1', '-i', processorPatch], processorDirectory);
 const browserPolicyPatch = join(
   repositoryRoot,
   'tools/data-export/patches/browser-catalog-policy.patch'
 );
-run('patch', ['--dry-run', '--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
-run('patch', ['--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
+if (!resumeProcessed) {
+  await assertPathMissing(processedDirectory, 'Process output');
+  await assertPathMissing(processorDirectory, 'Process output');
+  await mkdir(processedDirectory, { recursive: true });
+  await cp(join(repositoryRoot, 'gtnh@ShadowTheAge/export'), processorDirectory, {
+    recursive: true
+  });
+  const processorPatch = join(repositoryRoot, 'tools/data-export/patches/processor-2.9.patch');
+  run('patch', ['--dry-run', '--batch', '-p1', '-i', processorPatch], processorDirectory);
+  run('patch', ['--batch', '-p1', '-i', processorPatch], processorDirectory);
+  run('patch', ['--dry-run', '--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
+  run('patch', ['--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
+}
 const patchedProcessor = await readFile(join(processorDirectory, 'PackPreProcessor.cs'), 'utf8');
 const patchedConverter = await readFile(join(processorDirectory, 'PackConverter.cs'), 'utf8');
 const patchedGenerator = await readFile(join(processorDirectory, 'PackGenerator.cs'), 'utf8');
@@ -90,21 +95,23 @@ if (
   throw new Error('Processor compatibility patch did not produce the expected source');
 }
 const previousData = join(repositoryRoot, 'tests/fixtures/shadowtheage-v5-2.8.0/data.bin');
-run('dotnet', [
-  'run',
-  '--project',
-  join(processorDirectory, 'export.csproj'),
-  '--',
-  nesqlDirectory,
-  '--output',
-  processedDirectory,
-  '--previous',
-  previousData
-], repositoryRoot, {
-  // Keep transient hash/remap allocations from exhausting a 16 GiB WSL environment.
-  // .NET environment-variable percentages use hexadecimal notation: 0x32 = 50%.
-  DOTNET_GCHeapHardLimitPercent: '0x32'
-});
+if (!resumeProcessed) {
+  run('dotnet', [
+    'run',
+    '--project',
+    join(processorDirectory, 'export.csproj'),
+    '--',
+    nesqlDirectory,
+    '--output',
+    processedDirectory,
+    '--previous',
+    previousData
+  ], repositoryRoot, {
+    // Keep transient hash/remap allocations from exhausting a 16 GiB WSL environment.
+    // .NET environment-variable percentages use hexadecimal notation: 0x32 = 50%.
+    DOTNET_GCHeapHardLimitPercent: '0x32'
+  });
+}
 
 const dataPath = join(processedDirectory, 'data.bin');
 const atlasPath = join(processedDirectory, 'atlas.webp');
@@ -118,7 +125,10 @@ if (repository.items.length < 75_000 || repository.recipes.length < 200_000) {
   );
 }
 const retainedGtTools = repository.items.filter(
-  (item) => item.searchable && item.internalName === 'gregtech:gt.metatool.01'
+  (item) =>
+    item.searchable
+    && item.mod.toLowerCase() === 'gregtech'
+    && item.internalName === 'gt.metatool.01'
 );
 const craftableGtTools = retainedGtTools.filter((item) => item.productionRecipeIds.length > 0);
 if (retainedGtTools.length < 10_000 || craftableGtTools.length < 10_000) {
