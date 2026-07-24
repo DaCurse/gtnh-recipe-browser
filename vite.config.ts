@@ -8,7 +8,12 @@ export default defineConfig({
     svelte(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'assets/inventory-slot.webp', 'assets/Minecraft*.otf', 'assets/gtnh-logo.png', 'assets/gtnh-logo-192.png'],
+      includeAssets: [
+        'favicon.ico',
+        'assets/inventory-slot.webp',
+        'assets/gtnh-logo.png',
+        'assets/gtnh-logo-192.png'
+      ],
       manifest: {
         name: 'GTNH Recipe Browser',
         short_name: 'GTNH Recipes',

@@ -30,6 +30,7 @@
   let searchTotal = $state(0);
   let searchPending = $state(true);
   let searchLoadingMore = $state(false);
+  let searchReady = $state(false);
   let searchWorker = $state<Worker | null>(null);
   let searchRequest = 0;
   let tooltipEntry = $state<CatalogEntry>();
@@ -45,10 +46,12 @@
     const worker = searchWorker;
     const nextCatalog = searchableCatalog;
     if (!worker) return;
+    searchRequest += 1;
     searchIds = [];
     searchTotal = 0;
     searchPending = true;
     searchLoadingMore = false;
+    searchReady = false;
     worker.postMessage({
       type: 'init',
       catalog: nextCatalog.map(({ id, name, mod }) => ({ id, name, mod }))
@@ -58,7 +61,8 @@
   $effect(() => {
     const nextQuery = query;
     const worker = searchWorker;
-    if (!worker) return;
+    const ready = searchReady;
+    if (!worker || !ready) return;
     searchPending = true;
     const request = ++searchRequest;
     searchLoadingMore = false;
@@ -169,7 +173,10 @@
     worker.onmessage = (event: MessageEvent<
       { type: 'ready' } | { type: 'results'; id: number; offset: number; total: number; ids: string[] }
     >) => {
-      if (event.data.type === 'ready') return;
+      if (event.data.type === 'ready') {
+        searchReady = true;
+        return;
+      }
       if (event.data.id !== searchRequest) return;
       searchIds = event.data.offset === 0
         ? event.data.ids
@@ -180,10 +187,12 @@
     };
     worker.onerror = (event) => {
       console.error('Catalog search worker failed', event);
+      searchReady = false;
       searchPending = false;
     };
     return () => {
       worker.terminate();
+      searchReady = false;
       if (searchWorker === worker) searchWorker = null;
     };
   });

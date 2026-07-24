@@ -168,7 +168,10 @@
     };
     addEventListener('popstate', handlePopState);
     addEventListener('keydown', handleShortcut);
-    registerSW({ onNeedRefresh: () => updateReady = true });
+    registerSW({
+      onNeedRefresh: () => updateReady = true,
+      onRegisterError: (error) => console.error('Service worker registration failed', error)
+    });
     void loadDataset();
     return () => {
       removeEventListener('popstate', handlePopState);

@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:lan": "vite --host 0.0.0.0",
-    "build": "vite build",
+    "build": "vite build && node tools/verify-precache.mjs",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint .",
     "deadcode": "knip --no-config-hints",
