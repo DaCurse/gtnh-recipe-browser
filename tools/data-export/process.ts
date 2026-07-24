@@ -90,7 +90,8 @@ if (
   !patchedConverter.includes('items.TryGetValue(aspectModel.IconId') ||
   !patchedGenerator.includes('dbParser = null') ||
   !patchedItemPolicy.includes('BrowserCatalogPolicy.RetainRecipeConnectedItems') ||
-  !patchedAtlasBuilder.includes('i >> IconAtlas.DimensionBits')
+  !patchedAtlasBuilder.includes('i >> IconAtlas.DimensionBits') ||
+  !patchedProcessor.includes('for (var i = 1; i < parts.Length; i++)')
 ) {
   throw new Error('Processor compatibility patch did not produce the expected source');
 }

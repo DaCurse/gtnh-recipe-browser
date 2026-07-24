@@ -32,7 +32,7 @@ diff --git a/AtlasBuilder.cs b/AtlasBuilder.cs
 index b01d6e4..6972f7a 100644
 --- a/AtlasBuilder.cs
 +++ b/AtlasBuilder.cs
-@@ -78,4 +78,6 @@ namespace Source
+@@ -78,7 +78,9 @@ namespace Source
                  using (image)
                  {
                      var positionX = (i & IconAtlas.XMask) * IconAtlas.ImageSize;
@@ -40,3 +40,32 @@ index b01d6e4..6972f7a 100644
 +                    // The browser catalog can exceed the original 65,536-sprite page.
 +                    // The allocated atlas is already tall enough, so do not wrap later rows.
 +                    var positionY = (i >> IconAtlas.DimensionBits) * IconAtlas.ImageSize;
+                     
+                     atlas.Mutate(x => x.DrawImage(image, new Point(positionX, positionY), 1f));
+                 }
+diff --git a/PackPreProcessor.cs b/PackPreProcessor.cs
+index cb8633b..bb9ec58 100644
+--- a/PackPreProcessor.cs
++++ b/PackPreProcessor.cs
+@@ -140,12 +140,20 @@ namespace Source
+                 var parts = item.tooltip.Split('\n');
+                 builder.Clear();
+-                for (var i = 1; i < parts.Length-1; i++)
++                // ItemStack#getTooltip supplies the display name first, but it does not
++                // guarantee a redundant footer. The final line frequently contains real
++                // effects, durability, material stats, or other gameplay information.
++                for (var i = 1; i < parts.Length; i++)
+                 {
+                     var part = parts[i];
++                    var cleanedPart = Regex.Replace(part, "§.", "").Trim();
++                    if (cleanedPart.Equals("shift", StringComparison.OrdinalIgnoreCase) ||
++                        cleanedPart.Equals("ctrl", StringComparison.OrdinalIgnoreCase) ||
++                        cleanedPart.Equals("control", StringComparison.OrdinalIgnoreCase))
++                        continue;
+                     if ((part.Contains("press", StringComparison.OrdinalIgnoreCase) || part.Contains("hold", StringComparison.OrdinalIgnoreCase)) &&
+                         (part.Contains("ctrl", StringComparison.OrdinalIgnoreCase) || part.Contains("shift", StringComparison.OrdinalIgnoreCase) || part.Contains("control", StringComparison.OrdinalIgnoreCase)))
+                         continue;
+                     if (i == 1 && part == "")
+                         continue;
+ 
+                     builder.Append(part).Append('\n');

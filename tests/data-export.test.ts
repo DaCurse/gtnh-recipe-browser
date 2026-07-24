@@ -60,6 +60,17 @@ describe('data export tooling', () => {
     }
   });
 
+  it('retains the final gameplay tooltip line in the browser processor policy', async () => {
+    const patch = await readFile(
+      join(process.cwd(), 'tools/data-export/patches/browser-catalog-policy.patch'),
+      'utf8'
+    );
+
+    expect(patch).toContain('for (var i = 1; i < parts.Length; i++)');
+    expect(patch).toContain('cleanedPart.Equals("shift"');
+    expect(patch).toContain('final line frequently contains real');
+  });
+
   it('handles dangling quest prerequisites without pinning an individual quest ID', async () => {
     const patch = await readFile(
       join(process.cwd(), 'tools/data-export/patches/combined-tooltips.patch'),
