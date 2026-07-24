@@ -65,8 +65,8 @@ add a sibling fixture when supporting a new upstream shape.
 
 `tests/fixtures/shadowtheage-v5-2.8.0/` is the pinned, network-independent compatibility source for decoder and
 recipe-parity tests. `tests/fixtures/gtnh-2.9.0-beta-2-browser-policy/` pins real GT tool variants and their recipes.
-`public/data/2.9.0-beta-2-r080719a85854/` is the current default format-v2 pack; the previous 2.9.0-beta-2 and
-2.8.0 packs remain available for version switching.
+`public/data/2.9.0-beta-2-r080719a85854/` is the current default format-v2 pack; the immutable 2.8.0 pack remains
+available for version switching.
 
 ## Assets and attribution
 
