@@ -13,13 +13,13 @@
 
 <div class="minecraft-tooltip" role="group" aria-label={`${entry.name} tooltip`}>
   <div class="tooltip-header">
-    <MinecraftText lines={entry.formattedName} fallback={entry.name} />
+    <MinecraftText lines={entry.formattedName} raw={entry.rawName} fallback={entry.name} />
   </div>
   <div class="tooltip-debug">{entry.id}</div>
-  {#if entry.formula || entry.formattedTooltip?.length || entry.tooltip.length}
+  {#if entry.formula || entry.rawTooltip || entry.formattedTooltip?.length || entry.tooltip.length}
     <div class="tooltip-text">
       {#if entry.formula}<span class="tooltip-formula">{entry.formula}</span>{/if}
-      <MinecraftText lines={entry.formattedTooltip} fallback={entry.tooltip} />
+      <MinecraftText lines={entry.formattedTooltip} raw={entry.rawTooltip} fallback={entry.tooltip} />
     </div>
   {/if}
   <div class="tooltip-mod">{entry.mod}</div>

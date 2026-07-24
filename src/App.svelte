@@ -208,7 +208,8 @@
       {detailsOpen}
       bind:query
       bind:searchInput
-      {catalog}
+      catalog={repository.browseEntries}
+      exactCatalog={catalog}
       bind:sidebarWidth
       bind:sidebarResizing
       select={(id) => select(id)}

@@ -1,7 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { parseMinecraftHtml } from '../src/lib/minecraftText';
+import { minecraftHtmlPlainText, parseMinecraftHtml } from '../src/lib/minecraftText';
 
 describe('Minecraft tooltip formatting', () => {
+  it('extracts plain text without materializing formatting segments', () => {
+    expect(minecraftHtmlPlainText('<span class="fmt-a">Line one</span><br>Line &amp; two'))
+      .toBe('Line one\nLine & two');
+  });
+
   it('preserves colors, styles, new lines, and intentional blank lines', () => {
     expect(parseMinecraftHtml(
       'The Souls of the Damned<br>do not like stone...<br><br>' +

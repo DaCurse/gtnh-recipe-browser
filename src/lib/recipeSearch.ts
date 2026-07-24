@@ -1,3 +1,4 @@
+import { minecraftHtmlPlainText } from './minecraftText';
 import { normalize } from './search';
 import type { CatalogEntry, Recipe } from './types';
 
@@ -6,6 +7,7 @@ export interface RecipeSearchCatalogEntry {
   name: string;
   mod: string;
   tooltip: string[];
+  rawTooltip?: string | null;
 }
 
 export interface RecipeSearchRecord {
@@ -33,7 +35,8 @@ export function toRecipeSearchCatalogEntry(entry: CatalogEntry): RecipeSearchCat
     id: entry.id,
     name: entry.name,
     mod: entry.mod,
-    tooltip: entry.tooltip
+    tooltip: entry.tooltip,
+    rawTooltip: entry.rawTooltip
   };
 }
 
@@ -70,7 +73,9 @@ export function buildRecipeSearchDocument(
 ): RecipeSearchDocument {
   const ingredients = recipe.ingredientIds.flatMap((id) => {
     const entry = catalog.get(id);
-    return entry ? [id, entry.name, entry.mod, ...entry.tooltip] : [id];
+    return entry
+      ? [id, entry.name, entry.mod, ...entry.tooltip, minecraftHtmlPlainText(entry.rawTooltip)]
+      : [id];
   });
   return {
     id: recipe.id,

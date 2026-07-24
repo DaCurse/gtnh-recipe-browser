@@ -4,7 +4,8 @@
   import ItemIcon from './ItemIcon.svelte';
   import MinecraftText from './MinecraftText.svelte';
   import ProjectLinks from './ProjectLinks.svelte';
-  import type { CatalogEntry } from './types';
+  import VariantPicker from './VariantPicker.svelte';
+  import type { CatalogBrowseEntry, CatalogEntry } from './types';
 
   let {
     selected,
@@ -12,6 +13,7 @@
     query = $bindable(),
     searchInput = $bindable(),
     catalog,
+    exactCatalog,
     sidebarWidth = $bindable(),
     sidebarResizing = $bindable(),
     select,
@@ -20,7 +22,8 @@
     detailsOpen: boolean;
     query: string;
     searchInput?: HTMLInputElement;
-    catalog: CatalogEntry[];
+    catalog: CatalogBrowseEntry[];
+    exactCatalog: CatalogEntry[];
     sidebarWidth: number;
     sidebarResizing: boolean;
     select: (id: string) => void;
@@ -31,31 +34,66 @@
   let searchPending = $state(true);
   let searchLoadingMore = $state(false);
   let searchReady = $state(false);
+  let searchInitProgress = $state(0);
   let searchWorker = $state<Worker | null>(null);
   let searchRequest = 0;
-  let tooltipEntry = $state<CatalogEntry>();
+  let searchGeneration = 0;
+  let tooltipEntry = $state<CatalogBrowseEntry>();
+  let variantGroup = $state<CatalogBrowseEntry>();
   let tooltipX = $state(0);
   let tooltipY = $state(0);
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
+  const exactEntryById = $derived(new Map(exactCatalog.map((entry) => [entry.id, entry])));
   const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
   const visibleEntries = $derived(searchIds
     .map((id) => entryById.get(id))
-    .filter((entry): entry is CatalogEntry => entry !== undefined));
+    .filter((entry): entry is CatalogBrowseEntry => entry !== undefined));
 
   $effect(() => {
     const worker = searchWorker;
     const nextCatalog = searchableCatalog;
     if (!worker) return;
+    const generation = ++searchGeneration;
     searchRequest += 1;
     searchIds = [];
     searchTotal = 0;
     searchPending = true;
     searchLoadingMore = false;
     searchReady = false;
-    worker.postMessage({
-      type: 'init',
-      catalog: nextCatalog.map(({ id, name, mod }) => ({ id, name, mod }))
-    });
+    searchInitProgress = 0;
+    worker.postMessage({ type: 'init', generation });
+    const initialize = async () => {
+      for (let start = 0; start < nextCatalog.length; start += 1_000) {
+        if (generation !== searchGeneration || worker !== searchWorker) return;
+        const end = Math.min(start + 1_000, nextCatalog.length);
+        worker.postMessage({
+          type: 'append',
+          generation,
+          catalog: nextCatalog.slice(start, end).map((entry) => ({
+            id: entry.id,
+            name: entry.name,
+            mod: entry.mod,
+            members: entry.variantIds.map((id) => {
+              const member = exactEntryById.get(id)!;
+              return {
+                id: member.id,
+                name: member.name,
+                mod: member.mod,
+                rawTooltip: member.rawTooltip,
+                searchMask: member.searchMask
+              };
+            })
+          })),
+          completed: end,
+          total: nextCatalog.length
+        });
+        await new Promise((resolve) => window.setTimeout(resolve, 0));
+      }
+      if (generation === searchGeneration && worker === searchWorker) {
+        worker.postMessage({ type: 'finish', generation });
+      }
+    };
+    void initialize();
   });
 
   $effect(() => {
@@ -67,12 +105,19 @@
     const request = ++searchRequest;
     searchLoadingMore = false;
     const timeout = window.setTimeout(() => {
-      worker.postMessage({ type: 'search', id: request, query: nextQuery, offset: 0, limit: 300 });
+      worker.postMessage({
+        type: 'search',
+        generation: searchGeneration,
+        id: request,
+        query: nextQuery,
+        offset: 0,
+        limit: 300
+      });
     }, nextQuery ? 80 : 0);
     return () => window.clearTimeout(timeout);
   });
 
-  function showPointerTooltip(event: PointerEvent, entry: CatalogEntry) {
+  function showPointerTooltip(event: PointerEvent, entry: CatalogBrowseEntry) {
     if (event.pointerType === 'touch') return;
     tooltipEntry = entry;
     tooltipX = event.clientX;
@@ -85,7 +130,7 @@
     tooltipY = event.clientY;
   }
 
-  function showFocusTooltip(event: FocusEvent, entry: CatalogEntry) {
+  function showFocusTooltip(event: FocusEvent, entry: CatalogBrowseEntry) {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     tooltipEntry = entry;
     tooltipX = rect.right;
@@ -101,6 +146,7 @@
     searchLoadingMore = true;
     searchWorker.postMessage({
       type: 'search',
+      generation: searchGeneration,
       id: searchRequest,
       query,
       offset: searchIds.length,
@@ -171,10 +217,27 @@
     });
     searchWorker = worker;
     worker.onmessage = (event: MessageEvent<
-      { type: 'ready' } | { type: 'results'; id: number; offset: number; total: number; ids: string[] }
+      | { type: 'ready'; generation: number }
+      | { type: 'progress'; generation: number; completed: number; total: number }
+      | {
+          type: 'results';
+          generation: number;
+          id: number;
+          offset: number;
+          total: number;
+          ids: string[];
+        }
     >) => {
+      if (event.data.generation !== searchGeneration) return;
+      if (event.data.type === 'progress') {
+        searchInitProgress = event.data.total > 0
+          ? Math.round(event.data.completed / event.data.total * 100)
+          : 100;
+        return;
+      }
       if (event.data.type === 'ready') {
         searchReady = true;
+        searchInitProgress = 100;
         return;
       }
       if (event.data.id !== searchRequest) return;
@@ -221,7 +284,7 @@
   </div>
   <div class="result-bar">
     <span>{searchPending && searchTotal === 0
-      ? 'PREPARING ITEMS & FLUIDS'
+      ? `PREPARING ITEMS & FLUIDS${searchInitProgress ? ` · ${searchInitProgress}%` : ''}`
       : `${searchTotal.toLocaleString()} ITEMS & FLUIDS`}</span>
     {#if searchPending}<span class="mini-spinner" aria-label="Searching"></span>{/if}
   </div>
@@ -234,7 +297,7 @@
     {:else}
       {#each visibleEntries as entry (entry.id)}
         <button
-          class:active={selected.id === entry.id}
+          class:active={entry.variantIds.includes(selected.id)}
           class="item-tile"
           aria-label={entry.name}
           onpointerenter={(event) => showPointerTooltip(event, entry)}
@@ -244,16 +307,23 @@
           onblur={hideTooltip}
           onclick={() => {
             hideTooltip();
-            select(entry.id);
+            if (entry.isVariantGroup) variantGroup = entry;
+            else select(entry.variantIds[0]!);
           }}
         >
-          <ItemIcon {entry} size={56} selected={selected.id === entry.id} />
+          <ItemIcon {entry} size={56} selected={entry.variantIds.includes(selected.id)} />
           <span class="item-summary">
             <strong>{entry.name}</strong>
-            <small>{entry.kind}</small>
+            <small>{entry.isVariantGroup
+              ? `${entry.variantCount.toLocaleString()} exact variants`
+              : entry.kind}</small>
             <span class="tooltip-preview">
               {#if entry.formula}<b>{entry.formula}</b>{/if}
-              <MinecraftText lines={entry.formattedTooltip} fallback={entry.tooltip} />
+              <MinecraftText
+                lines={entry.formattedTooltip}
+                raw={entry.rawTooltip}
+                fallback={entry.tooltip}
+              />
             </span>
           </span>
           <span class="row-arrow">›</span>
@@ -273,7 +343,7 @@
   <footer>
     <div class="sidebar-status">
       <span><i></i> Catalog ready</span>
-      <span>{searchableCatalog.length.toLocaleString()} entries</span>
+      <span>{searchableCatalog.length.toLocaleString()} families</span>
     </div>
     <ProjectLinks variant="mobile-sidebar-links" />
   </footer>
@@ -290,5 +360,26 @@
 </aside>
 
 {#if tooltipEntry}
-  <FloatingCatalogTooltip entry={tooltipEntry} x={tooltipX} y={tooltipY} />
+  <FloatingCatalogTooltip
+    entry={tooltipEntry}
+    x={tooltipX}
+    y={tooltipY}
+    action={tooltipEntry.isVariantGroup
+      ? `Click to choose one of ${tooltipEntry.variantCount.toLocaleString()} exact variants`
+      : undefined}
+  />
+{/if}
+
+{#if variantGroup}
+  <VariantPicker
+    group={variantGroup}
+    members={variantGroup.variantIds
+      .map((id) => exactEntryById.get(id))
+      .filter((entry): entry is CatalogEntry => entry !== undefined)}
+    close={() => variantGroup = undefined}
+    select={(id) => {
+      variantGroup = undefined;
+      select(id);
+    }}
+  />
 {/if}

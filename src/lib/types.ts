@@ -13,8 +13,16 @@ export interface MachineRecipeCapability {
 export interface CatalogEntry {
   id: string;
   name: string;
+  rawName?: string;
   mod: string;
   kind: Kind;
+  internalName?: string;
+  unlocalizedName?: string;
+  numericId?: number;
+  damage?: number;
+  nbt?: string | null;
+  searchMask?: number[];
+  rawTooltip?: string | null;
   formula?: string;
   tooltip: string[];
   formattedName?: MinecraftTextLine[];
@@ -44,6 +52,13 @@ export interface CatalogEntry {
   members?: string[];
   /** Recipe categories this item can process when used as a machine/crafter. */
   machineCapabilities?: MachineRecipeCapability[];
+}
+
+export interface CatalogBrowseEntry extends CatalogEntry {
+  /** Exact stable item IDs represented by this browse row. */
+  variantIds: string[];
+  variantCount: number;
+  isVariantGroup: boolean;
 }
 
 export interface Ingredient {

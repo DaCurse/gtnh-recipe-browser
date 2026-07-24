@@ -1,18 +1,22 @@
 <script lang="ts">
-  import { plainMinecraftText } from './minecraftText';
+  import { parseMinecraftHtml, plainMinecraftText } from './minecraftText';
   import type { MinecraftTextLine } from './minecraftText';
 
   let {
     lines,
+    raw,
     fallback = ''
   }: {
     lines?: MinecraftTextLine[];
+    raw?: string | null;
     fallback?: string | string[];
   } = $props();
 
-  const displayLines = $derived(lines ?? plainMinecraftText(
-    Array.isArray(fallback) ? fallback.join('\n') : fallback
-  ).lines);
+  const displayLines = $derived(
+    lines
+    ?? (raw !== undefined ? parseMinecraftHtml(raw).lines : undefined)
+    ?? plainMinecraftText(Array.isArray(fallback) ? fallback.join('\n') : fallback).lines
+  );
 </script>
 
 <span class="minecraft-text">

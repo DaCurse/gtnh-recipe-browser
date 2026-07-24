@@ -1,5 +1,5 @@
 import { fluidRecipeScope } from './fluidContainers';
-import { parseMinecraftHtml } from './minecraftText';
+import { minecraftHtmlPlainText } from './minecraftText';
 import { productionFallbackDictionary } from './oreDictionary';
 import { propagateOreMachineCapabilities, recipeTypeMachineCapabilities } from './recipePresentation';
 import type {
@@ -74,12 +74,7 @@ export function materializeCatalog(
 
   const goodsEntries = catalog.goods.map((goods): CatalogEntry => {
     const sheet = goods.icon ? sheets.get(goods.icon.sheetId) : undefined;
-    const formattedName = parseMinecraftHtml(goods.name);
-    const parsedTooltip = parseMinecraftHtml(goods.tooltip);
-    const formattedTooltip = goods.tooltip ? parsedTooltip.lines : [];
-    const tooltip = formattedTooltip
-      .map((line) => line.segments.map((segment) => segment.text).join('').trim())
-      .filter(Boolean);
+    const name = minecraftHtmlPlainText(goods.name).trim();
     const productionFallback = productionFallbacks.get(goods.id);
     const fluidScope = fluidRecipeScope(goods.id, goodsById);
     const recipeScopeIds = fluidScope?.memberIds ?? productionFallback?.itemIds;
@@ -93,12 +88,18 @@ export function materializeCatalog(
       : goods.usageShards;
     return {
       id: goods.id,
-      name: formattedName.plainText.trim(),
+      name,
+      rawName: goods.name,
       mod: goods.mod,
       kind: goods.kind,
-      tooltip,
-      formattedName: formattedName.lines,
-      formattedTooltip,
+      internalName: goods.internalName,
+      unlocalizedName: goods.unlocalizedName,
+      numericId: goods.numericId,
+      damage: goods.damage,
+      nbt: goods.nbt,
+      searchMask: goods.searchMask,
+      rawTooltip: goods.tooltip,
+      tooltip: [],
       color: '#aeb3b8',
       glyph: goods.kind === 'fluid' ? '≈' : '□',
       searchable: goods.searchable,

@@ -1,5 +1,6 @@
 import { decode } from '@msgpack/msgpack';
 import { materializeCatalog } from './catalogMaterialization';
+import { buildCatalogBrowseEntries } from './catalogVariants';
 import {
   decompress,
   fetchJsonNetworkFirst,
@@ -34,6 +35,7 @@ import {
 } from './storage';
 import type {
   AssetDescriptor,
+  CatalogBrowseEntry,
   CatalogEntry,
   DatasetState,
   DatasetVersion,
@@ -125,6 +127,7 @@ async function loadCatalog(
 
 export class DatasetRepository {
   readonly entries: CatalogEntry[];
+  readonly browseEntries: CatalogBrowseEntry[];
   readonly datasetId: string;
   readonly gtnhVersion: string;
   readonly revision: string;
@@ -156,6 +159,7 @@ export class DatasetRepository {
     this.revision = manifest.revision;
     const materialized = materializeCatalog(manifest, manifestUrl, catalog);
     this.entries = materialized.entries;
+    this.browseEntries = buildCatalogBrowseEntries(materialized.entries);
     this.packedGoods = materialized.goods;
     this.types = materialized.recipeTypes;
     this.ores = materialized.oreDictionaries;

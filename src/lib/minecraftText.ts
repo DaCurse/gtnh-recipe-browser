@@ -34,6 +34,17 @@ function decodeEntities(text: string): string {
   });
 }
 
+export function minecraftHtmlPlainText(html: string | null | undefined): string {
+  if (!html) return '';
+  let result = '';
+  for (const match of html.matchAll(/<[^>]*>|[^<]+/g)) {
+    const token = match[0];
+    if (!token.startsWith('<')) result += decodeEntities(token);
+    else if (/^<br\s*\/?>$/i.test(token)) result += '\n';
+  }
+  return result.replace(/\r\n?/g, '\n').replace(/\n+$/, '');
+}
+
 function sameFormats(left: MinecraftFormatCode[], right: MinecraftFormatCode[]): boolean {
   return left.length === right.length && left.every((format, index) => format === right[index]);
 }
