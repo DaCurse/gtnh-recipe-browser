@@ -82,10 +82,18 @@ const assets = verifyAllAssets
       [manifest.recipeShards?.[0], 'recipe shard'],
       [manifest.iconSheets?.[0], 'icon sheet']
     ];
-for (const [asset, label] of assets) {
-  if (!asset) throw new Error(`pack manifest: missing ${label}`);
-  await verifyAsset(asset, manifestUrl, label);
+let nextAsset = 0;
+async function verifyNextAsset() {
+  while (nextAsset < assets.length) {
+    const [asset, label] = assets[nextAsset++] ?? [];
+    if (!asset) throw new Error(`pack manifest: missing ${label}`);
+    await verifyAsset(asset, manifestUrl, label);
+  }
 }
+await Promise.all(Array.from(
+  { length: Math.min(6, assets.length) },
+  () => verifyNextAsset()
+));
 
 console.log(
   `Deployment smoke test passed: ${appUrl} (${verifyAllAssets ? listedAssets.length : 3} assets)`
