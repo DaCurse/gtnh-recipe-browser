@@ -210,6 +210,8 @@
   .dataset-actions button,.active-label { min-height:42px; padding:0 13px; display:inline-flex; align-items:center; justify-content:center; gap:7px; border:1px solid #5b6066; border-radius:7px; background:#363a3f; color:#e1e4e7; font-size:12px; font-weight:700; cursor:pointer; }
   .dataset-actions button.primary { background:#d1d4d7; border-color:#d1d4d7; color:#17191b; }
   .dataset-actions button.delete { margin-left:auto; color:#c5a4a4; border-color:#654b4b; background:#382b2d; }
+  .dataset.stale .dataset-actions button.delete { color:#ffd4d7; border-color:#98525a; background:#663139; }
+  .dataset.stale .dataset-actions button.delete:hover { border-color:#bd6872; background:#783943; }
   .dataset-actions button.cancel { color:#d6c4a4; }
   .dataset-actions button:disabled { opacity:.42; cursor:not-allowed; }
   .active-label { border-color:transparent; background:transparent; color:#b8bdc2; }
