@@ -9,7 +9,11 @@
   import ItemOverview from './lib/ItemOverview.svelte';
   import RecipeBrowser from './lib/RecipeBrowser.svelte';
   import { DatasetRepository } from './lib/dataset';
-  import { itemListUrl } from './lib/navigation';
+  import {
+    itemListUrl,
+    recipeViewFromUrl,
+    recipeViewUrlValue
+  } from './lib/navigation';
   import type { CatalogEntry, RecipeView } from './lib/types';
 
   let catalog = $state<CatalogEntry[]>([]);
@@ -37,16 +41,6 @@
     applyRepository,
     markReady: () => datasetStatus = 'ready'
   });
-  function viewUrlValue(view: RecipeView): string {
-    return view === 'machineUsages' ? 'machine-usages' : view;
-  }
-
-  function viewFromUrl(value: string | null): RecipeView {
-    if (value === 'usages') return 'usages';
-    if (value === 'machine-usages') return 'machineUsages';
-    return 'recipes';
-  }
-
   function select(id: string, push = true, nextMode: RecipeView = 'recipes') {
     mode = nextMode;
     selectedId = id;
@@ -54,7 +48,7 @@
     if (push) {
       const url = new URL(location.href);
       url.searchParams.set('item', id);
-      url.searchParams.set('view', viewUrlValue(mode));
+      url.searchParams.set('view', recipeViewUrlValue(mode));
       history.pushState({ id }, '', url);
     }
   }
@@ -62,7 +56,7 @@
   function setMode(next: RecipeView) {
     mode = next;
     const url = new URL(location.href);
-    url.searchParams.set('view', viewUrlValue(mode));
+    url.searchParams.set('view', recipeViewUrlValue(mode));
     history.replaceState({ id: selectedId }, '', url);
   }
 
@@ -158,10 +152,10 @@
 
   onMount(() => {
     const params = new URLSearchParams(location.search);
-    mode = viewFromUrl(params.get('view'));
+    mode = recipeViewFromUrl(params.get('view'));
     const handlePopState = () => {
       const id = new URLSearchParams(location.search).get('item');
-      const linkedView = viewFromUrl(new URLSearchParams(location.search).get('view'));
+      const linkedView = recipeViewFromUrl(new URLSearchParams(location.search).get('view'));
       if (id && entryById.has(id)) select(id, false, linkedView);
       else detailsOpen = false;
     };
