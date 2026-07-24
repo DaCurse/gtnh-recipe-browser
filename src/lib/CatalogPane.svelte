@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import MinecraftText from './MinecraftText.svelte';
@@ -10,40 +11,62 @@
     detailsOpen,
     query = $bindable(),
     searchInput = $bindable(),
-    searchPending,
-    searchTotal,
-    visibleEntries,
-    searchLoadingMore,
-    searchableCount,
+    catalog,
+    sidebarWidth = $bindable(),
+    sidebarResizing = $bindable(),
     select,
-    requestMoreItems,
-    loadMoreItems,
-    startResize,
-    moveResize,
-    stopResize,
-    resizeWithKeyboard
   }: {
     selected: CatalogEntry;
     detailsOpen: boolean;
     query: string;
     searchInput?: HTMLInputElement;
-    searchPending: boolean;
-    searchTotal: number;
-    visibleEntries: CatalogEntry[];
-    searchLoadingMore: boolean;
-    searchableCount: number;
+    catalog: CatalogEntry[];
+    sidebarWidth: number;
+    sidebarResizing: boolean;
     select: (id: string) => void;
-    requestMoreItems: () => void;
-    loadMoreItems: (node: HTMLElement) => void | { destroy: () => void };
-    startResize: (event: PointerEvent) => void;
-    moveResize: (event: PointerEvent) => void;
-    stopResize: (event: PointerEvent) => void;
-    resizeWithKeyboard: (event: KeyboardEvent) => void;
   } = $props();
 
+  let searchIds = $state<string[]>([]);
+  let searchTotal = $state(0);
+  let searchPending = $state(true);
+  let searchLoadingMore = $state(false);
+  let searchWorker = $state<Worker | null>(null);
+  let searchRequest = 0;
   let tooltipEntry = $state<CatalogEntry>();
   let tooltipX = $state(0);
   let tooltipY = $state(0);
+  const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
+  const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
+  const visibleEntries = $derived(searchIds
+    .map((id) => entryById.get(id))
+    .filter((entry): entry is CatalogEntry => entry !== undefined));
+
+  $effect(() => {
+    const worker = searchWorker;
+    const nextCatalog = searchableCatalog;
+    if (!worker) return;
+    searchIds = [];
+    searchTotal = 0;
+    searchPending = true;
+    searchLoadingMore = false;
+    worker.postMessage({
+      type: 'init',
+      catalog: nextCatalog.map(({ id, name, mod }) => ({ id, name, mod }))
+    });
+  });
+
+  $effect(() => {
+    const nextQuery = query;
+    const worker = searchWorker;
+    if (!worker) return;
+    searchPending = true;
+    const request = ++searchRequest;
+    searchLoadingMore = false;
+    const timeout = window.setTimeout(() => {
+      worker.postMessage({ type: 'search', id: request, query: nextQuery, offset: 0, limit: 300 });
+    }, nextQuery ? 80 : 0);
+    return () => window.clearTimeout(timeout);
+  });
 
   function showPointerTooltip(event: PointerEvent, entry: CatalogEntry) {
     if (event.pointerType === 'touch') return;
@@ -68,6 +91,102 @@
   function hideTooltip() {
     tooltipEntry = undefined;
   }
+
+  function requestMoreItems() {
+    if (!searchWorker || searchPending || searchLoadingMore || searchIds.length >= searchTotal) return;
+    searchLoadingMore = true;
+    searchWorker.postMessage({
+      type: 'search',
+      id: searchRequest,
+      query,
+      offset: searchIds.length,
+      limit: 300
+    });
+  }
+
+  function loadMoreItems(node: HTMLElement) {
+    if (!('IntersectionObserver' in window)) return;
+    const root = node.closest('.item-grid');
+    const observer = new IntersectionObserver((entries) => {
+      if (entries.some((entry) => entry.isIntersecting)) requestMoreItems();
+    }, { root, rootMargin: '400px 0px' });
+    observer.observe(node);
+    return { destroy: () => observer.disconnect() };
+  }
+
+  function clampSidebarWidth(width: number): number {
+    return Math.round(Math.max(300, Math.min(width, Math.min(720, window.innerWidth - 360))));
+  }
+
+  function saveSidebarWidth() {
+    try {
+      localStorage.setItem('gtnh-sidebar-width', String(sidebarWidth));
+    } catch {
+      // Resizing still works when storage is unavailable.
+    }
+  }
+
+  function startResize(event: PointerEvent) {
+    if (window.innerWidth <= 800) return;
+    sidebarResizing = true;
+    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    event.preventDefault();
+  }
+
+  function moveResize(event: PointerEvent) {
+    if (!sidebarResizing) return;
+    sidebarWidth = clampSidebarWidth(event.clientX);
+  }
+
+  function stopResize(event: PointerEvent) {
+    if (!sidebarResizing) return;
+    sidebarResizing = false;
+    const target = event.currentTarget as HTMLElement;
+    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
+    saveSidebarWidth();
+  }
+
+  function resizeWithKeyboard(event: KeyboardEvent) {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    sidebarWidth = clampSidebarWidth(sidebarWidth + (event.key === 'ArrowRight' ? 20 : -20));
+    saveSidebarWidth();
+  }
+
+  onMount(() => {
+    try {
+      const storedWidth = Number(localStorage.getItem('gtnh-sidebar-width'));
+      if (Number.isFinite(storedWidth) && storedWidth > 0) {
+        sidebarWidth = clampSidebarWidth(storedWidth);
+      }
+    } catch {
+      // Use the default width when storage is unavailable.
+    }
+    const worker = new Worker(new URL('../workers/search.worker.ts', import.meta.url), {
+      type: 'module'
+    });
+    searchWorker = worker;
+    worker.onmessage = (event: MessageEvent<
+      { type: 'ready' } | { type: 'results'; id: number; offset: number; total: number; ids: string[] }
+    >) => {
+      if (event.data.type === 'ready') return;
+      if (event.data.id !== searchRequest) return;
+      searchIds = event.data.offset === 0
+        ? event.data.ids
+        : [...searchIds, ...event.data.ids];
+      searchTotal = event.data.total;
+      searchPending = false;
+      searchLoadingMore = false;
+    };
+    worker.onerror = (event) => {
+      console.error('Catalog search worker failed', event);
+      searchPending = false;
+    };
+    return () => {
+      worker.terminate();
+      if (searchWorker === worker) searchWorker = null;
+    };
+  });
 </script>
 
 <aside class:mobile-hidden={detailsOpen}>
@@ -145,7 +264,7 @@
   <footer>
     <div class="sidebar-status">
       <span><i></i> Catalog ready</span>
-      <span>{searchableCount.toLocaleString()} entries</span>
+      <span>{searchableCatalog.length.toLocaleString()} entries</span>
     </div>
     <ProjectLinks variant="mobile-sidebar-links" />
   </footer>

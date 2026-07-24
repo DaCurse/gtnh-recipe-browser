@@ -55,14 +55,8 @@
   let recipeSearchGeneration = $state(0);
   let recipeIndexRevision = $state(0);
   let recipeSearchReady = $state(false);
-  let searchIds = $state<string[]>([]);
-  let searchTotal = $state(0);
-  let searchPending = $state(true);
-  let searchLoadingMore = $state(false);
-  let searchWorker: Worker | null = null;
   let recipeSearchWorker: Worker | null = null;
   let recipeAbortController: AbortController | null = null;
-  let searchRequest = 0;
   let recipeRequest = 0;
   let recipeSearchRequest = 0;
   let query = $state('');
@@ -88,10 +82,6 @@
   let persistentStorage = $state<boolean>();
 
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
-  const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
-  const visibleEntries = $derived(searchIds
-    .map((id) => entryById.get(id))
-    .filter((entry): entry is CatalogEntry => entry !== undefined));
   const selected = $derived(entryById.get(selectedId));
   const related = $derived(allRecipes);
   const types = $derived([...new Set(related.map((x) => x.type))]);
@@ -122,18 +112,6 @@
   });
   const activeDatasetState = $derived(datasetRecords.find((state) => state.active));
   const modeLabel = $derived(mode === 'machineUsages' ? 'machine usages' : mode);
-
-  $effect(() => {
-    const nextQuery = query;
-    if (datasetStatus !== 'ready' || !searchWorker) return;
-    searchPending = true;
-    const request = ++searchRequest;
-    searchLoadingMore = false;
-    const timeout = window.setTimeout(() => {
-      searchWorker?.postMessage({ type: 'search', id: request, query: nextQuery, offset: 0, limit: 300 });
-    }, nextQuery ? 80 : 0);
-    return () => window.clearTimeout(timeout);
-  });
 
   $effect(() => {
     void selectedId;
@@ -274,67 +252,6 @@
         behavior: 'smooth'
       });
     });
-  }
-
-  function requestMoreItems() {
-    if (!searchWorker || searchPending || searchLoadingMore || searchIds.length >= searchTotal) return;
-    searchLoadingMore = true;
-    searchWorker.postMessage({
-      type: 'search',
-      id: searchRequest,
-      query,
-      offset: searchIds.length,
-      limit: 300
-    });
-  }
-
-  function loadMoreItems(node: HTMLElement) {
-    if (!('IntersectionObserver' in window)) return;
-    const root = node.closest('.item-grid');
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) requestMoreItems();
-    }, { root, rootMargin: '400px 0px' });
-    observer.observe(node);
-    return { destroy: () => observer.disconnect() };
-  }
-
-  function clampSidebarWidth(width: number): number {
-    return Math.round(Math.max(300, Math.min(width, Math.min(720, window.innerWidth - 360))));
-  }
-
-  function saveSidebarWidth() {
-    try {
-      localStorage.setItem('gtnh-sidebar-width', String(sidebarWidth));
-    } catch {
-      // Resizing still works when storage is unavailable.
-    }
-  }
-
-  function startSidebarResize(event: PointerEvent) {
-    if (window.innerWidth <= 800) return;
-    sidebarResizing = true;
-    (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
-    event.preventDefault();
-  }
-
-  function moveSidebarResize(event: PointerEvent) {
-    if (!sidebarResizing) return;
-    sidebarWidth = clampSidebarWidth(event.clientX);
-  }
-
-  function stopSidebarResize(event: PointerEvent) {
-    if (!sidebarResizing) return;
-    sidebarResizing = false;
-    const target = event.currentTarget as HTMLElement;
-    if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId);
-    saveSidebarWidth();
-  }
-
-  function resizeSidebarWithKeyboard(event: KeyboardEvent) {
-    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
-    event.preventDefault();
-    sidebarWidth = clampSidebarWidth(sidebarWidth + (event.key === 'ArrowRight' ? 20 : -20));
-    saveSidebarWidth();
   }
 
   function viewUrlValue(view: RecipeView): string {
@@ -481,16 +398,6 @@
     if (mode === 'machineUsages' && !selectedEntry?.machineCapabilities?.length) mode = 'recipes';
     if (preserveSelection && preferredId !== selectedId) detailsOpen = false;
     if (!preserveSelection) detailsOpen = Boolean(linkedId && linkedId === selectedId);
-    searchWorker?.postMessage({
-      type: 'init',
-      catalog: loaded.entries
-        .filter((entry) => entry.searchable !== false)
-        .map(({ id, name, mod }) => ({ id, name, mod }))
-    });
-    searchIds = [];
-    searchTotal = 0;
-    searchPending = true;
-    searchLoadingMore = false;
     type = '';
     const url = new URL(location.href);
     url.searchParams.set('version', loaded.datasetId);
@@ -511,10 +418,6 @@
     repository = null;
     catalog = [];
     allRecipes = [];
-    searchIds = [];
-    searchTotal = 0;
-    searchPending = true;
-    searchLoadingMore = false;
     recipeLoading = false;
     selectedId = '';
     datasetVersion = '…';
@@ -628,33 +531,6 @@
   onMount(() => {
     const params = new URLSearchParams(location.search);
     mode = viewFromUrl(params.get('view'));
-    try {
-      const storedWidth = Number(localStorage.getItem('gtnh-sidebar-width'));
-      if (Number.isFinite(storedWidth) && storedWidth > 0) sidebarWidth = clampSidebarWidth(storedWidth);
-    } catch {
-      // Use the default width when storage is unavailable.
-    }
-    searchWorker = new Worker(new URL('./workers/search.worker.ts', import.meta.url), { type: 'module' });
-    searchWorker.onmessage = (event: MessageEvent<
-      { type: 'ready' } | { type: 'results'; id: number; offset: number; total: number; ids: string[] }
-    >) => {
-      if (event.data.type === 'ready') {
-        const request = ++searchRequest;
-        searchWorker?.postMessage({ type: 'search', id: request, query, offset: 0, limit: 300 });
-        return;
-      }
-      if (event.data.type !== 'results' || event.data.id !== searchRequest) return;
-      searchIds = event.data.offset === 0
-        ? event.data.ids
-        : [...searchIds, ...event.data.ids];
-      searchTotal = event.data.total;
-      searchPending = false;
-      searchLoadingMore = false;
-    };
-    searchWorker.onerror = (event) => {
-      console.error('Catalog search worker failed', event);
-      searchPending = false;
-    };
     recipeSearchWorker = new Worker(
       new URL('./workers/recipeSearch.worker.ts', import.meta.url),
       { type: 'module' }
@@ -702,8 +578,6 @@
     return () => {
       removeEventListener('popstate', handlePopState);
       removeEventListener('keydown', handleShortcut);
-      searchWorker?.terminate();
-      searchWorker = null;
       recipeSearchWorker?.terminate();
       recipeSearchWorker = null;
       recipeSearchReady = false;
@@ -741,18 +615,10 @@
       {detailsOpen}
       bind:query
       bind:searchInput
-      {searchPending}
-      {searchTotal}
-      {visibleEntries}
-      {searchLoadingMore}
-      searchableCount={searchableCatalog.length}
+      {catalog}
+      bind:sidebarWidth
+      bind:sidebarResizing
       select={(id) => select(id)}
-      {requestMoreItems}
-      {loadMoreItems}
-      startResize={startSidebarResize}
-      moveResize={moveSidebarResize}
-      stopResize={stopSidebarResize}
-      resizeWithKeyboard={resizeSidebarWithKeyboard}
     />
 
     <section class:mobile-visible={detailsOpen} class="detail">
