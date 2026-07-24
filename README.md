@@ -9,7 +9,14 @@ npm install
 npm run dev
 ```
 
-Build and test with `npm run build`, `npm run check`, and `npm test`.
+Run the complete lint, dead-code, type, test, and production-build suite with:
+
+```sh
+npm run quality
+```
+
+The runtime module boundaries and maintenance rules are documented in
+[`docs/architecture.md`](docs/architecture.md).
 
 The application loads the real GTNH dataset indexed by `public/versions.json`. Catalog, recipe, and icon assets
 are immutable and content-hashed. The client verifies them before caching catalogs and on-demand recipe shards in

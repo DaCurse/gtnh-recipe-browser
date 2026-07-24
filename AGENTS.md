@@ -15,9 +15,12 @@
 npm install          # Install locked dependencies
 npm run dev          # Start local Vite development
 npm run dev:lan      # Expose HTTP development server to phones on the LAN
+npm run lint         # Check TypeScript and Svelte lint rules
+npm run deadcode     # Find unused files, exports, and dependencies
 npm run check        # Run Svelte and TypeScript diagnostics
 npm test             # Run all Vitest suites once
 npm run build        # Produce the PWA in dist/
+npm run quality      # Run every required validation gate
 ```
 
 Use `npm run pack -- --help` conventions documented in `README.md` to generate datasets. Run `npm run verify-pack -- --pack <dir> --atlas <file>` before publishing or committing generated assets.
@@ -26,7 +29,7 @@ Use `npm run pack -- --help` conventions documented in `README.md` to generate d
 
 Use TypeScript with strict types and two-space indentation. Prefer small Svelte components, plain interfaces, and descriptive camelCase functions and variables. Components use PascalCase filenames such as `RecipeGrid.svelte`; tests use `*.test.ts`.
 
-No automatic formatter or linter is configured. Match surrounding style, use semicolons in TypeScript, and run `npm run check` before committing. Never use raw upstream tooltip HTML without explicit sanitization.
+ESLint and Knip enforce source quality and dead-code boundaries. Match surrounding style, use semicolons in TypeScript, and run `npm run quality` before committing. Never use raw upstream tooltip HTML without explicit sanitization. Follow `docs/architecture.md` when moving state or introducing a new data layer.
 
 ## Testing Guidelines
 
