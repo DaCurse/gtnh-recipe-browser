@@ -11,10 +11,6 @@
   import { itemListUrl } from './lib/navigation';
   import { storageShortfall } from './lib/offline';
   import {
-    toRecipeSearchCatalogEntry,
-    toRecipeSearchRecord
-  } from './lib/recipeSearch';
-  import {
     estimateStorage,
     listDatasets,
     removeDataset,
@@ -27,12 +23,10 @@
     DatasetVersion,
     ManagedDataset,
     OfflineInstallProgress,
-    Recipe,
     RecipeView
   } from './lib/types';
 
   let catalog = $state<CatalogEntry[]>([]);
-  let allRecipes = $state<Recipe[]>([]);
   let repository = $state<DatasetRepository | null>(null);
   let datasetVersion = $state('…');
   let datasetStatus = $state<'loading' | 'ready' | 'error'>('loading');
@@ -40,29 +34,9 @@
   let datasetProgress = $state(0);
   let datasetStage = $state('Starting');
   let errorCopied = $state(false);
-  let recipeLoading = $state(false);
-  let recipeError = $state('');
-  let recipeLoadedShards = $state(0);
-  let recipeTotalShards = $state(0);
-  let recipePage = $state(0);
-  let loadedRecipeCounts = $state<Record<string, number>>({});
-  let recipeQuery = $state('');
-  let recipeFilter = $state('');
-  let recipeDebouncePending = $state(false);
-  let recipeWorkerPending = $state(false);
-  let recipeSearchIds = $state<string[]>([]);
-  let recipeSearchTotal = $state(0);
-  let recipeSearchGeneration = $state(0);
-  let recipeIndexRevision = $state(0);
-  let recipeSearchReady = $state(false);
-  let recipeSearchWorker: Worker | null = null;
-  let recipeAbortController: AbortController | null = null;
-  let recipeRequest = 0;
-  let recipeSearchRequest = 0;
   let query = $state('');
   let selectedId = $state('');
   let mode = $state<RecipeView>('recipes');
-  let type = $state('');
   let detailsOpen = $state(false);
   let versionOpen = $state(false);
   let updateReady = $state(false);
@@ -83,15 +57,6 @@
 
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
   const selected = $derived(entryById.get(selectedId));
-  const related = $derived(allRecipes);
-  const types = $derived([...new Set(related.map((x) => x.type))]);
-  const recipeById = $derived(new Map(related.map((recipe) => [recipe.id, recipe])));
-  const visibleRecipes = $derived(recipeSearchIds
-    .map((id) => recipeById.get(id))
-    .filter((recipe): recipe is Recipe => recipe !== undefined));
-  const recipePageSize = 20;
-  const recipePageCount = $derived(Math.max(1, Math.ceil(recipeSearchTotal / recipePageSize)));
-  const recipeSearchPending = $derived(recipeDebouncePending || recipeWorkerPending);
   const managedDatasets = $derived.by(() => {
     const versions = new Map(availableDatasets.map((version) => [version.datasetId, version]));
     for (const state of datasetRecords) {
@@ -111,149 +76,6 @@
     }));
   });
   const activeDatasetState = $derived(datasetRecords.find((state) => state.active));
-  const modeLabel = $derived(mode === 'machineUsages' ? 'machine usages' : mode);
-
-  $effect(() => {
-    void selectedId;
-    void mode;
-    void type;
-    void recipeFilter;
-    recipePage = 0;
-  });
-
-  $effect(() => {
-    const nextQuery = recipeQuery;
-    recipeDebouncePending = nextQuery !== recipeFilter;
-    const timeout = window.setTimeout(() => {
-      recipeFilter = nextQuery;
-      recipeDebouncePending = false;
-    }, nextQuery ? 100 : 0);
-    return () => window.clearTimeout(timeout);
-  });
-
-  $effect(() => {
-    const generation = recipeSearchGeneration;
-    void recipeIndexRevision;
-    const query = recipeFilter;
-    const recipeType = type;
-    const page = recipePage;
-    if (!detailsOpen || !recipeSearchReady || !recipeSearchWorker || !recipeType) {
-      recipeWorkerPending = false;
-      return;
-    }
-    const request = ++recipeSearchRequest;
-    recipeWorkerPending = true;
-    recipeSearchWorker.postMessage({
-      type: 'search',
-      generation,
-      id: request,
-      query,
-      recipeType,
-      offset: page * recipePageSize,
-      limit: recipePageSize
-    });
-  });
-
-  function initializeRecipeSearch(nextCatalog: CatalogEntry[]) {
-    recipeSearchGeneration += 1;
-    recipeIndexRevision += 1;
-    recipeSearchIds = [];
-    recipeSearchTotal = 0;
-    recipeWorkerPending = false;
-    recipeSearchWorker?.postMessage({
-      type: 'init',
-      generation: recipeSearchGeneration,
-      catalog: nextCatalog.map(toRecipeSearchCatalogEntry)
-    });
-  }
-
-  function resetRecipeSearch() {
-    recipeSearchGeneration += 1;
-    recipeIndexRevision += 1;
-    recipeSearchIds = [];
-    recipeSearchTotal = 0;
-    recipeWorkerPending = false;
-    recipeSearchWorker?.postMessage({
-      type: 'reset',
-      generation: recipeSearchGeneration
-    });
-  }
-
-  function appendRecipeSearch(batch: Recipe[]) {
-    if (batch.length === 0) return;
-    recipeSearchWorker?.postMessage({
-      type: 'append',
-      generation: recipeSearchGeneration,
-      recipes: batch.map(toRecipeSearchRecord)
-    });
-    recipeIndexRevision += 1;
-  }
-
-  async function refreshRecipes() {
-    if (!repository || !selectedId) return;
-    recipeAbortController?.abort();
-    const controller = new AbortController();
-    recipeAbortController = controller;
-    const request = ++recipeRequest;
-    const entryId = selectedId;
-    const view = mode;
-    allRecipes = [];
-    type = '';
-    recipePage = 0;
-    resetRecipeSearch();
-    recipeError = '';
-    recipeLoading = true;
-    recipeLoadedShards = 0;
-    recipeTotalShards = 0;
-    try {
-      const loaded = await repository.recipesFor(entryId, view, ({
-        loadedShards,
-        totalShards,
-        batch
-      }) => {
-        if (request !== recipeRequest) return;
-        recipeLoadedShards = loadedShards;
-        recipeTotalShards = totalShards;
-        if (batch.length > 0) {
-          const next = [...allRecipes, ...batch]
-            .sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
-          allRecipes = next;
-          appendRecipeSearch(batch);
-          loadedRecipeCounts = {
-            ...loadedRecipeCounts,
-            [`${entryId}:${view}`]: next.length
-          };
-          if (!type) type = next[0]?.type ?? '';
-        }
-      }, controller.signal);
-      if (request === recipeRequest) {
-        allRecipes = loaded;
-        loadedRecipeCounts = { ...loadedRecipeCounts, [`${entryId}:${view}`]: loaded.length };
-        if (!type) type = loaded[0]?.type ?? '';
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') return;
-      console.error('Unable to load recipes', error);
-      if (request === recipeRequest) {
-        allRecipes = [];
-        resetRecipeSearch();
-        recipeError = error instanceof Error ? error.message : String(error);
-      }
-    } finally {
-      if (request === recipeRequest) recipeLoading = false;
-    }
-  }
-
-  function setRecipePage(nextPage: number) {
-    recipePage = Math.max(0, Math.min(nextPage, recipePageCount - 1));
-    requestAnimationFrame(() => {
-      document.querySelector('.recipe-search-block, .recipe-list')?.scrollIntoView({
-        block: 'start',
-        behavior: 'smooth'
-      });
-    });
-  }
-
   function viewUrlValue(view: RecipeView): string {
     return view === 'machineUsages' ? 'machine-usages' : view;
   }
@@ -267,11 +89,7 @@
   function select(id: string, push = true, nextMode: RecipeView = 'recipes') {
     mode = nextMode;
     selectedId = id;
-    recipeQuery = '';
-    recipeFilter = '';
     detailsOpen = true;
-    type = '';
-    void refreshRecipes();
     if (push) {
       const url = new URL(location.href);
       url.searchParams.set('item', id);
@@ -282,34 +100,15 @@
 
   function setMode(next: RecipeView) {
     mode = next;
-    recipeQuery = '';
-    recipeFilter = '';
-    type = '';
-    void refreshRecipes();
     const url = new URL(location.href);
     url.searchParams.set('view', viewUrlValue(mode));
     history.replaceState({ id: selectedId }, '', url);
   }
 
   function showItemList(clearSearch = false) {
-    recipeAbortController?.abort();
-    recipeAbortController = null;
-    ++recipeRequest;
     detailsOpen = false;
-    recipeLoading = false;
-    recipeError = '';
     if (clearSearch) query = '';
     history.replaceState({ route: 'items' }, '', itemListUrl(location.href));
-  }
-
-  function recipeCount(view: RecipeView): number | undefined {
-    if (!selected) return undefined;
-    const declared = view === 'recipes'
-      ? selected.productionCount
-      : view === 'usages'
-        ? selected.usageCount
-        : undefined;
-    return loadedRecipeCounts[`${selected.id}:${view}`] ?? declared;
   }
 
   function diagnostic(error: unknown): string {
@@ -380,14 +179,8 @@
   }
 
   async function applyRepository(loaded: DatasetRepository, preserveSelection: boolean) {
-    recipeAbortController?.abort();
-    recipeAbortController = null;
-    ++recipeRequest;
-    allRecipes = [];
-    loadedRecipeCounts = {};
     repository = loaded;
     catalog = loaded.entries;
-    initializeRecipeSearch(loaded.entries);
     datasetVersion = loaded.gtnhVersion;
     const linkedId = new URLSearchParams(location.search).get('item');
     const preferredId = preserveSelection ? selectedId : linkedId;
@@ -398,7 +191,6 @@
     if (mode === 'machineUsages' && !selectedEntry?.machineCapabilities?.length) mode = 'recipes';
     if (preserveSelection && preferredId !== selectedId) detailsOpen = false;
     if (!preserveSelection) detailsOpen = Boolean(linkedId && linkedId === selectedId);
-    type = '';
     const url = new URL(location.href);
     url.searchParams.set('version', loaded.datasetId);
     if (!detailsOpen) {
@@ -406,7 +198,6 @@
       url.searchParams.delete('view');
     }
     history.replaceState(detailsOpen ? { id: selectedId } : { route: 'items' }, '', url);
-    if (detailsOpen && selectedId) await refreshRecipes();
   }
 
   async function loadDataset(targetDatasetId?: string) {
@@ -417,8 +208,6 @@
     errorCopied = false;
     repository = null;
     catalog = [];
-    allRecipes = [];
-    recipeLoading = false;
     selectedId = '';
     datasetVersion = '…';
     try {
@@ -531,33 +320,6 @@
   onMount(() => {
     const params = new URLSearchParams(location.search);
     mode = viewFromUrl(params.get('view'));
-    recipeSearchWorker = new Worker(
-      new URL('./workers/recipeSearch.worker.ts', import.meta.url),
-      { type: 'module' }
-    );
-    recipeSearchReady = true;
-    recipeSearchWorker.onmessage = (event: MessageEvent<{
-      type: 'results';
-      generation: number;
-      id: number;
-      total: number;
-      ids: string[];
-    }>) => {
-      if (
-        event.data.type !== 'results'
-        || event.data.generation !== recipeSearchGeneration
-        || event.data.id !== recipeSearchRequest
-      ) return;
-      recipeSearchIds = event.data.ids;
-      recipeSearchTotal = event.data.total;
-      recipeWorkerPending = false;
-    };
-    recipeSearchWorker.onerror = (event) => {
-      console.error('Recipe search worker failed', event);
-      recipeSearchReady = false;
-      recipeWorkerPending = false;
-      recipeError = 'Recipe filtering could not start. Reload the page to retry.';
-    };
     const handlePopState = () => {
       const id = new URLSearchParams(location.search).get('item');
       const linkedView = viewFromUrl(new URLSearchParams(location.search).get('view'));
@@ -578,11 +340,6 @@
     return () => {
       removeEventListener('popstate', handlePopState);
       removeEventListener('keydown', handleShortcut);
-      recipeSearchWorker?.terminate();
-      recipeSearchWorker = null;
-      recipeSearchReady = false;
-      recipeAbortController?.abort();
-      recipeAbortController = null;
     };
   });
 </script>
@@ -608,7 +365,7 @@
       retry={() => loadDataset()}
       {copyError}
     />
-  {:else if selected}
+  {:else if selected && repository}
   <main class:home-view={!detailsOpen} class:resizing={sidebarResizing} style:--sidebar-width={`${sidebarWidth}px`}>
     <CatalogPane
       {selected}
@@ -632,30 +389,12 @@
         navigate={(id, view) => select(id, true, view)}
       />
       <RecipeBrowser
+        {repository}
         {selected}
         {mode}
-        {modeLabel}
-        bind:type
-        {types}
-        {related}
-        {entryById}
-        bind:recipeQuery
-        {recipeFilter}
-        {recipeSearchPending}
-        {recipeSearchTotal}
-        {recipeLoading}
-        {recipeLoadedShards}
-        {recipeTotalShards}
-        {recipeError}
-        {visibleRecipes}
-        {recipePage}
-        {recipePageSize}
-        {recipePageCount}
-        {recipeCount}
+        active={detailsOpen}
         {setMode}
         navigate={(id, view) => select(id, true, view)}
-        retry={refreshRecipes}
-        {setRecipePage}
       />
     </section>
   </main>

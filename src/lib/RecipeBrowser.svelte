@@ -1,59 +1,36 @@
 <script lang="ts">
+  import type { DatasetRepository } from './dataset';
   import ItemIcon from './ItemIcon.svelte';
   import RecipeCard from './RecipeCard.svelte';
-  import type { CatalogEntry, Recipe, RecipeView } from './types';
+  import { RecipeBrowserState } from './recipeBrowserState.svelte';
+  import type { CatalogEntry, RecipeView } from './types';
 
   let {
+    repository,
     selected,
     mode,
-    modeLabel,
-    type = $bindable(),
-    types,
-    related,
-    entryById,
-    recipeQuery = $bindable(),
-    recipeFilter,
-    recipeSearchPending,
-    recipeSearchTotal,
-    recipeLoading,
-    recipeLoadedShards,
-    recipeTotalShards,
-    recipeError,
-    visibleRecipes,
-    recipePage,
-    recipePageSize,
-    recipePageCount,
-    recipeCount,
+    active,
     setMode,
-    navigate,
-    retry,
-    setRecipePage
+    navigate
   }: {
+    repository: DatasetRepository;
     selected: CatalogEntry;
     mode: RecipeView;
-    modeLabel: string;
-    type: string;
-    types: string[];
-    related: Recipe[];
-    entryById: Map<string, CatalogEntry>;
-    recipeQuery: string;
-    recipeFilter: string;
-    recipeSearchPending: boolean;
-    recipeSearchTotal: number;
-    recipeLoading: boolean;
-    recipeLoadedShards: number;
-    recipeTotalShards: number;
-    recipeError: string;
-    visibleRecipes: Recipe[];
-    recipePage: number;
-    recipePageSize: number;
-    recipePageCount: number;
-    recipeCount: (view: RecipeView) => number | undefined;
+    active: boolean;
     setMode: (view: RecipeView) => void;
     navigate: (id: string, view: RecipeView) => void;
-    retry: () => void;
-    setRecipePage: (page: number) => void;
   } = $props();
+
+  const state = new RecipeBrowserState(() => ({ repository, selected, mode, active }));
+  const entryById = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
+  const related = $derived(state.related);
+  const types = $derived(state.types);
+  const visibleRecipes = $derived(state.visibleRecipes);
+  const recipeSearchTotal = $derived(state.recipeSearchTotal);
+  const recipePageCount = $derived(state.recipePageCount);
+  const recipeSearchPending = $derived(state.recipeSearchPending);
+  const modeLabel = $derived(state.modeLabel);
+  const recipeCount = (view: RecipeView) => state.recipeCount(view);
 </script>
 
 <nav class="view-tabs" aria-label="Item views">
@@ -84,9 +61,14 @@
   {#each types as tab (tab)}
     {@const tabRecipe = related.find((recipe) => recipe.type === tab)}
     {@const tabCrafter = tabRecipe?.typeIconId ? entryById.get(tabRecipe.typeIconId) : undefined}
-    <button class:active={type === tab} onclick={() => type = tab} title={tab} aria-label={tab}>
+    <button
+      class:active={state.type === tab}
+      onclick={() => state.type = tab}
+      title={tab}
+      aria-label={tab}
+    >
       {#if tabCrafter}
-        <ItemIcon entry={tabCrafter} size={60} selected={type === tab} crisp={false} />
+        <ItemIcon entry={tabCrafter} size={60} selected={state.type === tab} crisp={false} />
       {:else}
         <span class="machine-fallback">⚙</span>
       {/if}
@@ -102,12 +84,12 @@
         <path d="m15.5 15.5 4 4"></path>
       </svg>
       <input
-        bind:value={recipeQuery}
+        bind:value={state.recipeQuery}
         placeholder={`Filter ${modeLabel} by item, mod, or metadata…`}
         aria-label={`Filter ${modeLabel}`}
       />
-      {#if recipeQuery}
-        <button onclick={() => recipeQuery = ''} aria-label="Clear recipe filter">
+      {#if state.recipeQuery}
+        <button onclick={() => state.recipeQuery = ''} aria-label="Clear recipe filter">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m7 7 10 10M17 7 7 17"></path>
           </svg>
@@ -121,37 +103,37 @@
 {/if}
 
 <div class="recipe-list">
-  {#if recipeLoading}
+  {#if state.recipeLoading}
     <div class:partial={related.length > 0} class="recipe-loading" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
       <b>Loading {modeLabel}…</b>
-      <p>{recipeTotalShards > 0
-        ? `${recipeLoadedShards} of ${recipeTotalShards} recipe chunks`
+      <p>{state.recipeTotalShards > 0
+        ? `${state.recipeLoadedShards} of ${state.recipeTotalShards} recipe chunks`
         : 'Finding the recipe data needed for this item.'}</p>
-      {#if recipeTotalShards > 0}
+      {#if state.recipeTotalShards > 0}
         <div class="load-progress compact">
-          <span style:width={`${recipeLoadedShards / recipeTotalShards * 100}%`}></span>
+          <span style:width={`${state.recipeLoadedShards / state.recipeTotalShards * 100}%`}></span>
         </div>
       {/if}
     </div>
   {/if}
-  {#if recipeError}
+  {#if state.recipeError}
     <div class="no-recipes recipe-error">
       <span>!</span>
       <b>Could not load {modeLabel}</b>
-      <p>{recipeError}</p>
-      <button onclick={retry}>Try again</button>
+      <p>{state.recipeError}</p>
+      <button onclick={() => state.refresh()}>Try again</button>
     </div>
-  {:else if !recipeLoading && recipeSearchPending && visibleRecipes.length === 0}
+  {:else if !state.recipeLoading && recipeSearchPending && visibleRecipes.length === 0}
     <div class="recipe-loading partial" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
       <b>Filtering {modeLabel}…</b>
     </div>
-  {:else if !recipeLoading && visibleRecipes.length === 0}
+  {:else if !state.recipeLoading && visibleRecipes.length === 0}
     <div class="no-recipes">
       <span>⌁</span>
-      <b>{recipeFilter ? `No matching ${modeLabel}` : `No ${modeLabel} found`}</b>
-      <p>{recipeFilter
+      <b>{state.recipeFilter ? `No matching ${modeLabel}` : `No ${modeLabel} found`}</b>
+      <p>{state.recipeFilter
         ? 'Try fewer terms or clear the recipe filter.'
         : `This item has no known ${modeLabel} in the active dataset.`}</p>
     </div>
@@ -159,18 +141,22 @@
     {#each visibleRecipes as recipe (recipe.id)}
       <RecipeCard {recipe} {navigate} resolve={(id) => entryById.get(id)} />
     {/each}
-    {#if recipeSearchTotal > recipePageSize}
+    {#if recipeSearchTotal > state.recipePageSize}
       <nav class="recipe-pagination" aria-label="Recipe pages">
-        <button disabled={recipePage === 0} onclick={() => setRecipePage(recipePage - 1)}>
-          Previous
-        </button>
+        <button
+          disabled={state.recipePage === 0}
+          onclick={() => state.setPage(state.recipePage - 1)}
+        >Previous</button>
         <span>
-          {recipePage * recipePageSize + 1}–{Math.min((recipePage + 1) * recipePageSize, recipeSearchTotal)}
+          {state.recipePage * state.recipePageSize + 1}–{Math.min(
+            (state.recipePage + 1) * state.recipePageSize,
+            recipeSearchTotal
+          )}
           of {recipeSearchTotal.toLocaleString()}
         </span>
         <button
-          disabled={recipePage >= recipePageCount - 1}
-          onclick={() => setRecipePage(recipePage + 1)}
+          disabled={state.recipePage >= recipePageCount - 1}
+          onclick={() => state.setPage(state.recipePage + 1)}
         >Next</button>
       </nav>
     {/if}
