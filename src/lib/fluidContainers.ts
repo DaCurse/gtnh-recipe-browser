@@ -1,4 +1,4 @@
-export interface FluidContainerReference {
+interface FluidContainerReference {
   fluidId: string;
   amount: number;
   emptyItemId: string | null;

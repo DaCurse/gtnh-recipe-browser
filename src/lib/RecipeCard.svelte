@@ -116,7 +116,7 @@
     {#if recipe.amperage}<span>{recipe.amperage}</span>{/if}
     {#if recipe.eu}<span title={recipe.euExact}>{recipe.eu}</span>{/if}
     {#if recipe.euPerTick}<span title={recipe.euPerTickExact}>{recipe.euPerTick}</span>{/if}
-    {#each recipe.metadata ?? [] as line}<span>{line}</span>{/each}
+    {#each recipe.metadata ?? [] as line, index (`${index}:${line}`)}<span>{line}</span>{/each}
     {#if recipe.note}<span class="note">{recipe.note}</span>{/if}
   </div>
 </article>

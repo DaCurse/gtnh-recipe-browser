@@ -1,4 +1,4 @@
-export type AssetEncoding = 'gzip' | 'identity';
+type AssetEncoding = 'gzip' | 'identity';
 
 export interface ImmutableAsset {
   id: string;

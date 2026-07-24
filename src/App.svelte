@@ -148,10 +148,10 @@
   });
 
   $effect(() => {
-    selectedId;
-    mode;
-    type;
-    recipeFilter;
+    void selectedId;
+    void mode;
+    void type;
+    void recipeFilter;
     recipePage = 0;
   });
 
@@ -167,7 +167,7 @@
 
   $effect(() => {
     const generation = recipeSearchGeneration;
-    recipeIndexRevision;
+    void recipeIndexRevision;
     const query = recipeFilter;
     const recipeType = type;
     const page = recipePage;
@@ -914,7 +914,7 @@
         <div class="ore-members" aria-label="Interchangeable ore dictionary members">
           <p>{selected.members.length.toLocaleString()} ACCEPTED ITEMS</p>
           <div>
-            {#each selected.members as memberId}
+            {#each selected.members as memberId (memberId)}
               {@const member = entryById.get(memberId)}
               {#if member}
                 <button
@@ -971,7 +971,7 @@
         </div>
       {/if}
       <div class="type-row">
-        {#each types as tab}
+        {#each types as tab (tab)}
           {@const tabRecipe = related.find((recipe) => recipe.type === tab)}
           {@const tabCrafter = tabRecipe?.typeIconId ? entryById.get(tabRecipe.typeIconId) : undefined}
           <button class:active={type === tab} onclick={() => type = tab} title={tab} aria-label={tab}>

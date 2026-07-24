@@ -1,6 +1,6 @@
 import type { GridDimensions, MachineRecipeCapability } from './types';
 
-export interface CrafterReference {
+interface CrafterReference {
   id: string;
 }
 

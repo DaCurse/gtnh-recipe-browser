@@ -22,6 +22,7 @@
   } = $props();
 
   const cellCount = $derived(dimensions.columns * dimensions.rows);
+  const slots = $derived(Array.from({ length: cellCount }, (_, slot) => slot));
   const slotIngredients = $derived(ingredientsByGridSlot(ingredients, dimensions));
   let chooserOpen = $state(false);
   let chosenItemId = $state('');
@@ -91,7 +92,7 @@
       style:grid-template-columns={`repeat(${dimensions.columns}, 56px)`}
       aria-label={label}
     >
-      {#each Array(cellCount) as _, slot}
+      {#each slots as slot (slot)}
         {@const ingredient = slotIngredients.get(slot)}
         {@const alternatives = ingredient?.alternatives ?? []}
         {@const alternativeIndex = alternatives.length > 0 ? $oreCycle % alternatives.length : 0}

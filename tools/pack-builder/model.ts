@@ -1,11 +1,11 @@
 export type RecipeIoKind = 'item' | 'oreDict' | 'fluid';
 
-export interface DecodedGridDimensions {
+interface DecodedGridDimensions {
   columns: number;
   rows: number;
 }
 
-export interface DecodedCrafter {
+interface DecodedCrafter {
   id: string;
   name: string;
   iconId: number;
@@ -36,7 +36,7 @@ export interface DecodedRecipeIo {
   probability: number;
 }
 
-export interface DecodedGtMetadata {
+interface DecodedGtMetadata {
   key: string;
   value: number;
 }

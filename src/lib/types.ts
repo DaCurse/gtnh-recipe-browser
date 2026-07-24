@@ -1,6 +1,6 @@
 import type { MinecraftTextLine } from './minecraftText';
 
-export type Kind = 'item' | 'fluid' | 'oreDict';
+type Kind = 'item' | 'fluid' | 'oreDict';
 export type RecipeView = 'recipes' | 'usages' | 'machineUsages';
 
 export interface MachineRecipeCapability {
@@ -111,17 +111,6 @@ export interface AssetDescriptor {
   bytes: number;
   sha256: string;
   encoding: 'gzip' | 'identity';
-}
-
-export interface PackManifest {
-  formatVersion: 1;
-  datasetId: string;
-  gtnhVersion: string;
-  revision: string;
-  displayName: string;
-  catalogAssets: AssetDescriptor[];
-  recipeShards: (AssetDescriptor & { recipeType: string })[];
-  iconSheets: (AssetDescriptor & { firstIcon: number; iconCount: number })[];
 }
 
 export interface DatasetState {

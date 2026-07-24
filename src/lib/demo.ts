@@ -29,5 +29,3 @@ export const recipes: Recipe[] = [
     {id:'minecraft:planks:0',amount:1,slot:4}
   ], outputs:[{id:'minecraft:crafting_table',amount:1,slot:0}], note:'Shaped recipe' }
 ];
-
-export const byId = new Map(entries.map((entry) => [entry.id, entry]));
