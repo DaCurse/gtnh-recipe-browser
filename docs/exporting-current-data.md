@@ -79,8 +79,8 @@ npm run export:publish -- \
   --mode activate
 ```
 
-The current browser-complete run produced dataset `2.9.0-beta-2-r080719a85854`. Its provenance is stored beside
-the manifest under `public/data/2.9.0-beta-2-r080719a85854/`. It retains recipe-connected configurable tools and
+The current browser-complete run produced dataset `2.9.0-beta-2-racad91e7243b`. Its provenance is stored beside
+the manifest under `public/data/2.9.0-beta-2-racad91e7243b/`. It retains recipe-connected configurable tools and
 other families that ShadowTheAge intentionally excludes from its calculator; see
 [`browser-catalog-policy.md`](browser-catalog-policy.md).
 

@@ -200,13 +200,15 @@ Implemented:
 - Processing validates tooltip compatibility, restores recipe-connected catalog families excluded by the upstream
   calculator policy, builds twice, compares deterministic digests, and verifies every asset.
 - Publishing stages the immutable pack before atomically prepending its version entry while retaining older datasets.
-- GTNH 2.9.0-beta-2 is published as `2.9.0-beta-2-r080719a85854`: 102,914 goods, 102,905 searchable entries,
-  306,831 recipes, 281 immutable assets, and 51,869,197 offline bytes. Its five catalog assets remain below the
+- GTNH 2.9.0-beta-2 is published as `2.9.0-beta-2-racad91e7243b`: 102,914 goods, 102,905 searchable entries,
+  306,831 recipes, 281 immutable assets, and 52,211,615 offline bytes. Its five catalog assets remain below the
   2 MiB compressed cap.
+- Tooltip preprocessing removes only the display-name header and explicit key-expansion hints. It retains final
+  gameplay lines such as potion effects, material statistics, durability, and enchantments with Minecraft colors.
 - The staged Netlify deployment passed byte-size and SHA-256 verification for all 281 immutable assets before
   `versions.json` was updated.
 - A pinned network-independent fixture covers real Ichorium and Steel GT turbine variants, exact NBT identities,
-  high atlas coordinates, and their Assembler recipes.
+  high atlas coordinates, their Assembler recipes, and a gray potion effect in the final tooltip line.
 
 ## Immediate next milestone
 
