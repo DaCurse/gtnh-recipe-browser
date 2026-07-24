@@ -78,12 +78,14 @@ const patchedProcessor = await readFile(join(processorDirectory, 'PackPreProcess
 const patchedConverter = await readFile(join(processorDirectory, 'PackConverter.cs'), 'utf8');
 const patchedGenerator = await readFile(join(processorDirectory, 'PackGenerator.cs'), 'utf8');
 const patchedItemPolicy = await readFile(join(processorDirectory, 'ItemBanlist.cs'), 'utf8');
+const patchedAtlasBuilder = await readFile(join(processorDirectory, 'AtlasBuilder.cs'), 'utf8');
 if (
   !patchedProcessor.includes('x.mod == "thaumcraftneiplugin"') ||
   !patchedProcessor.includes('x.mod == "aspectrecipeindex"') ||
   !patchedConverter.includes('items.TryGetValue(aspectModel.IconId') ||
   !patchedGenerator.includes('dbParser = null') ||
-  !patchedItemPolicy.includes('BrowserCatalogPolicy.RetainRecipeConnectedItems')
+  !patchedItemPolicy.includes('BrowserCatalogPolicy.RetainRecipeConnectedItems') ||
+  !patchedAtlasBuilder.includes('i >> IconAtlas.DimensionBits')
 ) {
   throw new Error('Processor compatibility patch did not produce the expected source');
 }
@@ -109,10 +111,20 @@ const atlasPath = join(processedDirectory, 'atlas.webp');
 const data = await readFile(dataPath);
 const atlas = await readFile(atlasPath);
 const repository = decodeFormat5(data);
-if (repository.items.length < 20_000 || repository.recipes.length < 100_000) {
+if (repository.items.length < 75_000 || repository.recipes.length < 200_000) {
   throw new Error(
     `Processed repository is unexpectedly small: ${repository.items.length} items, `
     + `${repository.recipes.length} recipes`
+  );
+}
+const retainedGtTools = repository.items.filter(
+  (item) => item.searchable && item.internalName === 'gregtech:gt.metatool.01'
+);
+const craftableGtTools = retainedGtTools.filter((item) => item.productionRecipeIds.length > 0);
+if (retainedGtTools.length < 10_000 || craftableGtTools.length < 10_000) {
+  throw new Error(
+    `Browser retention policy is incomplete: ${retainedGtTools.length} searchable GT tools, `
+    + `${craftableGtTools.length} with production recipes`
   );
 }
 const searchableItems = repository.items.filter((item) => item.searchable);

@@ -103,6 +103,8 @@ describe('data export tooling', () => {
     expect(patch).toContain('BrowserCatalogPolicy.RetainRecipeConnectedItems');
     expect(patch).toContain('return false;');
     expect(patch).toContain("PackConverter's existing touched-item pass");
+    expect(patch).toContain('i >> IconAtlas.DimensionBits');
+    expect(patch).not.toContain('+                    var positionY = ((i & IconAtlas.YMask)');
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });
 

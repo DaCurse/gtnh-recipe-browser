@@ -28,3 +28,15 @@ index 51cf4af..ab30e38 100644
              if (BanList.TryGetValue((mod, internalName), out var processor))
                  return processor == null || processor(localizedName, nbt);
              return false;
+diff --git a/AtlasBuilder.cs b/AtlasBuilder.cs
+index b01d6e4..6972f7a 100644
+--- a/AtlasBuilder.cs
++++ b/AtlasBuilder.cs
+@@ -78,4 +78,6 @@ namespace Source
+                 using (image)
+                 {
+                     var positionX = (i & IconAtlas.XMask) * IconAtlas.ImageSize;
+-                    var positionY = ((i & IconAtlas.YMask) >> IconAtlas.DimensionBits) * IconAtlas.ImageSize;
++                    // The browser catalog can exceed the original 65,536-sprite page.
++                    // The allocated atlas is already tall enough, so do not wrap later rows.
++                    var positionY = (i >> IconAtlas.DimensionBits) * IconAtlas.ImageSize;

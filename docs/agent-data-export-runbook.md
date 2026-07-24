@@ -57,6 +57,13 @@ patch recognizes aspect icon items from both the legacy `thaumcraftneiplugin` an
 providers and retains every icon referenced by the exported `ASPECT` table. Apply this patch only to the copy; never
 edit `gtnh@ShadowTheAge/`.
 
+The browser-catalog policy patch is applied after the compatibility patch. It disables the calculator-oriented item
+banlist in the disposable copy while preserving the converter’s existing relationship-reachability pass. This
+restores configurable GT, Tinkers’, TGregworks, genetics, and other craftable families without special-casing an
+item ID. The same patch removes the atlas writer’s 65,536-sprite Y-coordinate wrap; retained catalogs can exceed one
+legacy sprite page. Processing rejects a result with fewer than 75,000 items or fewer than 10,000 craftable
+`gregtech:gt.metatool.01` variants.
+
 The compatibility patch also releases the processor's parsed SQL tables immediately after repository conversion.
 This is required for current full exports: retaining both object graphs through recipe remapping can exhaust a 16 GiB
 WSL environment. A second collection boundary releases conflict-analysis temporaries before historical remapping and
@@ -89,8 +96,9 @@ Once the user confirms completion:
 3. Confirm the pack was built twice with identical digests and passed asset plus sprite verification.
 4. Inspect representative crafting, GT machine, multiblock, fluid-container, ore-dictionary, tooltip-color, and
    large-recipe entries before publication.
-5. Run `npm run export:publish -- --pack <verified-pack>`. This stages immutable assets before updating
-   `public/versions.json` and retains historical versions.
+5. Run `npm run export:publish -- --pack <verified-pack> --mode stage`. Deploy and smoke-test the immutable staged
+   assets, then run the same command with `--mode activate` to update `public/versions.json`. `--mode publish`
+   performs both locally for compatibility, but must not be used for a remote release.
 6. Run `npm run check`, `npm test`, and `npm run build`, then commit incrementally with Conventional Commit subjects.
 7. Deploy and run `npm run smoke:deploy -- https://<site>.netlify.app/`. Do not call the dataset released before the
    deployed-origin verification succeeds.

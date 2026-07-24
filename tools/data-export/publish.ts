@@ -1,11 +1,12 @@
 #!/usr/bin/env node
-import { cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { access, cp, mkdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, join, resolve } from 'node:path';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
 import { verifyPack } from '../pack-builder/verifier';
 import {
   argumentsMap,
   assertPathMissing,
+  directoryDigest,
   requiredArgument,
   withPublishedVersion,
   type VersionsIndex
@@ -14,6 +15,10 @@ import {
 const args = argumentsMap(process.argv.slice(2));
 const repositoryRoot = process.cwd();
 const packDirectory = resolve(requiredArgument(args, 'pack'));
+const mode = args.get('mode') ?? 'publish';
+if (mode !== 'stage' && mode !== 'activate' && mode !== 'publish') {
+  throw new Error(`Unsupported publish mode ${mode}; expected stage, activate, or publish`);
+}
 const manifest = JSON.parse(
   await readFile(join(packDirectory, 'pack-manifest.json'), 'utf8')
 ) as GeneratedPackManifest;
@@ -21,16 +26,31 @@ await verifyPack({ packDirectory });
 
 const publicData = join(repositoryRoot, 'public/data');
 const destination = join(publicData, manifest.datasetId);
-await assertPathMissing(destination, 'Published dataset');
-const staging = join(publicData, `.${manifest.datasetId}.staging-${process.pid}`);
-await assertPathMissing(staging, 'Publish staging directory');
-await mkdir(staging, { recursive: true });
-try {
-  await cp(packDirectory, staging, { recursive: true });
-  await rename(staging, destination);
-} catch (error) {
-  await rm(staging, { recursive: true, force: true });
-  throw error;
+if (mode === 'stage' || mode === 'publish') {
+  await assertPathMissing(destination, 'Published dataset');
+  const staging = join(publicData, `.${manifest.datasetId}.staging-${process.pid}`);
+  await assertPathMissing(staging, 'Publish staging directory');
+  await mkdir(staging, { recursive: true });
+  try {
+    await cp(packDirectory, staging, { recursive: true });
+    await rename(staging, destination);
+  } catch (error) {
+    await rm(staging, { recursive: true, force: true });
+    throw error;
+  }
+} else {
+  await access(join(destination, 'pack-manifest.json'));
+  const sourceDigest = await directoryDigest(packDirectory);
+  const stagedDigest = await directoryDigest(destination);
+  if (sourceDigest !== stagedDigest) {
+    throw new Error(`Staged dataset digest ${stagedDigest} does not match source ${sourceDigest}`);
+  }
+  await verifyPack({ packDirectory: destination });
+}
+
+if (mode === 'stage') {
+  console.log(JSON.stringify({ datasetId: manifest.datasetId, destination, staged: true }, null, 2));
+  process.exit(0);
 }
 
 const versionsPath = join(repositoryRoot, 'public/versions.json');
