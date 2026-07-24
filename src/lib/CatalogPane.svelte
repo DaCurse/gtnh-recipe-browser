@@ -80,7 +80,7 @@
                 name: member.name,
                 mod: member.mod,
                 rawTooltip: member.rawTooltip,
-                searchMask: member.searchMask
+                searchMask: [...(member.searchMask ?? [])]
               };
             })
           })),

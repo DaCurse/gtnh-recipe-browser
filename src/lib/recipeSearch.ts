@@ -35,7 +35,7 @@ export function toRecipeSearchCatalogEntry(entry: CatalogEntry): RecipeSearchCat
     id: entry.id,
     name: entry.name,
     mod: entry.mod,
-    tooltip: entry.tooltip,
+    tooltip: [...entry.tooltip],
     rawTooltip: entry.rawTooltip
   };
 }
