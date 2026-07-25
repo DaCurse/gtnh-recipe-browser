@@ -63,7 +63,7 @@ if (directManifest) {
 }
 const manifest = await fetchJson(manifestUrl, 'pack manifest');
 if (
-  ![1, 2].includes(manifest.formatVersion)
+  ![1, 2, 3].includes(manifest.formatVersion)
   || typeof manifest.datasetId !== 'string'
   || (expectedDatasetId && manifest.datasetId !== expectedDatasetId)
 ) {
