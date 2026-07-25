@@ -1,7 +1,16 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-07-24T17:22:08.831Z",
+  "generatedAt": "2026-07-25T15:49:52.423Z",
   "versions": [
+    {
+      "datasetId": "2.9.0-beta-2-r6845cab1f95b",
+      "gtnhVersion": "2.9.0-beta-2",
+      "revision": "6845cab1f95b",
+      "publishedAt": "2026-07-25T15:49:52.423Z",
+      "packManifestUrl": "./data/2.9.0-beta-2-r6845cab1f95b/pack-manifest.json",
+      "catalogBytes": 6857966,
+      "offlineBytes": 54887597
+    },
     {
       "datasetId": "2.9.0-beta-2-racad91e7243b",
       "gtnhVersion": "2.9.0-beta-2",
