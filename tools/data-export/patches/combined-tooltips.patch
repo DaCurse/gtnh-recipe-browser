@@ -44,6 +44,9 @@ index d3b6aa4..81408c8 100644
                      itemStack.getMaxStackSize(),
                      itemStack.getMaxDamage(),
                      new HashMap<>());
+@@ -105 +105 @@ public class ItemFactory extends EntityFactory<Item, String> {
+-            RenderDispatcher.INSTANCE.addJob(RenderJob.ofItem(itemStack));
++            RenderDispatcher.INSTANCE.addJob(RenderJob.ofItem(itemStack, item.getImageFilePath()));
 diff --git a/src/main/java/com/github/dcysteine/nesql/sql/base/item/Item.java b/src/main/java/com/github/dcysteine/nesql/sql/base/item/Item.java
 index 6a4b59c..44fb9a1 100644
 --- a/src/main/java/com/github/dcysteine/nesql/sql/base/item/Item.java
@@ -106,25 +109,54 @@ index 48a3bb9..0961c1f 100644
 +            }
 +            quest.addRequiredQuest(requiredQuest);
 +        }
-diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java b/src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java
-index 81c206f..6bb9fd2 100644
---- a/src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java
-+++ b/src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java
-@@ -168,5 +168,8 @@ public final class Renderer {
-                 RenderJob job = jobOptional.get();
-                 RenderTarget target = job.getRenderTarget();
-+                // Some item renderers mutate NBT while drawing. The SQL row identifies the
-+                // pre-render stack, so capture its matching path before invoking render().
-+                String imageFilePath = job.getImageFilePath();
-                 bindAndClearBuffer(target);
-                 render(job);
-                 BufferedImage image = readImage(target);
-@@ -174,4 +177,4 @@ public final class Renderer {
--                Path outputPath = imageZipFileSystem.getPath(job.getImageFilePath());
-+                Path outputPath = imageZipFileSystem.getPath(imageFilePath);
-                 Path outputDir = outputPath.getParent();
-                 if (!Files.exists(outputDir)) {
-                     try {
+diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/render/RenderJob.java b/src/main/java/com/github/dcysteine/nesql/exporter/render/RenderJob.java
+index a4abc0d..ac001cf 100644
+--- a/src/main/java/com/github/dcysteine/nesql/exporter/render/RenderJob.java
++++ b/src/main/java/com/github/dcysteine/nesql/exporter/render/RenderJob.java
+@@ -14,0 +15,2 @@ public abstract class RenderJob {
++    private String imageFilePath;
++
+@@ -19,5 +21,9 @@ public abstract class RenderJob {
+     public static RenderJob ofItem(ItemStack itemStack) {
++        return ofItem(itemStack, IdUtil.imageFilePath(itemStack));
++    }
++
++    public static RenderJob ofItem(ItemStack itemStack, String imageFilePath) {
+         ItemStack newStack = itemStack.copy();
+         newStack.stackSize = 1;
+-        return AutoOneOf_RenderJob.item(newStack);
++        return withImageFilePath(AutoOneOf_RenderJob.item(newStack), imageFilePath);
+     }
+@@ -26 +32 @@ public abstract class RenderJob {
+-        return AutoOneOf_RenderJob.fluid(fluidStack);
++        return withImageFilePath(AutoOneOf_RenderJob.fluid(fluidStack), IdUtil.imageFilePath(fluidStack));
+@@ -30 +36 @@ public abstract class RenderJob {
+-        return AutoOneOf_RenderJob.mob(spec);
++        return withImageFilePath(AutoOneOf_RenderJob.mob(spec), IdUtil.mobImageFilePath(spec));
+@@ -31,0 +38,6 @@ public abstract class RenderJob {
++
++    private static RenderJob withImageFilePath(RenderJob job, String imageFilePath) {
++        job.imageFilePath = imageFilePath;
++        return job;
++    }
++
+@@ -52,15 +64,3 @@ public abstract class RenderJob {
+     public String getImageFilePath() {
+-        switch (getType()) {
+-            case ITEM:
+-                return IdUtil.imageFilePath(getItem());
+-
+-            case FLUID:
+-                return IdUtil.imageFilePath(getFluid());
+-
+-            case MOB:
+-                return IdUtil.mobImageFilePath(getMob());
+-
+-            default:
+-                throw new IllegalStateException("Unhandled job type: " + this);
+-        }
++        return imageFilePath;
+     }
 diff --git a/gradle.properties b/gradle.properties
 index faef861..341b7b6 100644
 --- a/gradle.properties

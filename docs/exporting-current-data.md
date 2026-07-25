@@ -24,7 +24,7 @@ npm run export:prepare -- \
 ```
 
 Preparation verifies the official archive digest, patches a temporary exporter copy for format-v5 tooltip
-compatibility and stable pre-render image paths, disables BugTorch, installs the production exporter jars, and writes
+compatibility and immutable persisted image paths, disables BugTorch, installs the production exporter jars, and writes
 `.export-work/2.9.0-beta-2/export-session.json`. It refuses to replace an existing work directory or Prism instance.
 
 Restart Prism Launcher, launch the clearly named export instance, and create a new creative single-player world.

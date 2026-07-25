@@ -35,9 +35,9 @@ The committed compatibility patch is applied only to `.export-work/<version>/nes
 - upgrades the unavailable RetroFuturaGradle 1.3.35 plugin to the compatible 1.4.9 release;
 - combines ordered tooltip lines into the single format-v5 `TOOLTIP` column expected by the pinned processor;
 - retains exporter failures as tooltip text for parity with the prior representation;
-- snapshots each image filename before rendering. Some GT, Tinkers', genetics, and other renderers mutate copied
-  item NBT while drawing; deriving the filename afterward disconnects `image.zip` from the database row and produces
-  transparent atlas cells;
+- stores the persisted item image path in its render job. GT, Tinkers', genetics, and other item implementations can
+  mutate copied NBT during metadata inspection or rendering; recomputing the filename later disconnects `image.zip`
+  from the database row and produces transparent atlas cells;
 - skips only dangling BetterQuesting prerequisite edges while warning with both quest IDs. GTNH packs can retain
   references to removed quests; aborting the entire item and recipe export for an impossible edge is not useful;
 - builds against AspectRecipeIndex 1.1.3 and its `aspectrecipeindex` mod ID. The old `thaumcraftneiplugin`

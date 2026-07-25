@@ -111,8 +111,9 @@ describe('data export tooling', () => {
     expect(patch).toContain('findQuestOrNull(requiredQuestId)');
     expect(patch).toContain('com.github.GTNewHorizons:AspectRecipeIndex:');
     expect(patch).toContain('THAUMCRAFT_NEI("aspectrecipeindex")');
-    expect(patch).toContain('String imageFilePath = job.getImageFilePath();');
-    expect(patch).toContain('imageZipFileSystem.getPath(imageFilePath)');
+    expect(patch).toContain('RenderJob.ofItem(itemStack, item.getImageFilePath())');
+    expect(patch).toContain('job.imageFilePath = imageFilePath');
+    expect(patch).toContain('return imageFilePath;');
     expect(patch).not.toMatch(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/i);
   });
 

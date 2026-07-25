@@ -105,8 +105,15 @@ const patchedQuestFactory = await readFile(
   ),
   'utf8'
 );
-const patchedRenderer = await readFile(
-  join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java'),
+const patchedItemFactory = await readFile(
+  join(
+    patchedExporter,
+    'src/main/java/com/github/dcysteine/nesql/exporter/plugin/base/factory/ItemFactory.java'
+  ),
+  'utf8'
+);
+const patchedRenderJob = await readFile(
+  join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/render/RenderJob.java'),
   'utf8'
 );
 if (
@@ -114,8 +121,9 @@ if (
   !patchedBuild.includes('com.github.GTNewHorizons:AspectRecipeIndex:') ||
   !patchedItem.includes('private String tooltip;') ||
   !patchedQuestFactory.includes('Skipping missing required quest {} referenced by quest {}') ||
-  !patchedRenderer.includes('String imageFilePath = job.getImageFilePath();') ||
-  !patchedRenderer.includes('imageZipFileSystem.getPath(imageFilePath)')
+  !patchedItemFactory.includes('RenderJob.ofItem(itemStack, item.getImageFilePath())') ||
+  !patchedRenderJob.includes('job.imageFilePath = imageFilePath') ||
+  !patchedRenderJob.includes('return imageFilePath;')
 ) {
   throw new Error('Exporter compatibility patch did not produce the expected source');
 }
