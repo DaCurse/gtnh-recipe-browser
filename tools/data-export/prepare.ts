@@ -2,6 +2,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { cp, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import {
   argumentsMap,
   assertPathMissing,
@@ -46,6 +47,19 @@ async function builtJar(libs: string, classifier?: string): Promise<string> {
     throw new Error(`Expected one ${classifier ?? 'main'} exporter jar, found: ${jars.join(', ')}`);
   }
   return join(libs, jars[0]!);
+}
+
+async function finalizeInstance(source: string, destination: string): Promise<void> {
+  for (let attempt = 1; attempt <= 10; attempt++) {
+    try {
+      await rename(source, destination);
+      return;
+    } catch (error) {
+      const code = (error as NodeJS.ErrnoException).code;
+      if (!['EACCES', 'EBUSY', 'EPERM'].includes(code ?? '') || attempt === 10) throw error;
+      await delay(2_000);
+    }
+  }
 }
 
 const args = argumentsMap(process.argv.slice(2));
@@ -112,15 +126,21 @@ const mainJar = await builtJar(libs);
 const dependenciesJar = await builtJar(libs, 'deps');
 const instanceStaging = join(dirname(instanceDirectory), `.${basename(instanceDirectory)}.preparing-${process.pid}`);
 await mkdir(instanceStaging, { recursive: true });
+let instanceFinalized = false;
 try {
   // The official Windows pack contains three paths that differ only by directory
   // casing. NTFS merges those directories, so explicitly let the final ZIP entry
   // win instead of ever stopping for an interactive overwrite prompt.
   run('unzip', ['-q', '-o', archivePath, '-d', instanceStaging]);
   const extracted = await onlyDirectory(instanceStaging);
-  await rename(extracted, instanceDirectory);
+  await finalizeInstance(extracted, instanceDirectory);
+  instanceFinalized = true;
 } finally {
-  await rm(instanceStaging, { recursive: true, force: true });
+  if (instanceFinalized) {
+    await rm(instanceStaging, { recursive: true, force: true });
+  } else {
+    console.error(`Preserving incomplete instance staging directory: ${instanceStaging}`);
+  }
 }
 
 const instanceConfigPath = join(instanceDirectory, 'instance.cfg');
