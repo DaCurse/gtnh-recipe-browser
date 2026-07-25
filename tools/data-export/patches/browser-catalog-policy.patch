@@ -47,16 +47,18 @@ index b01d6e4..2c4cb9b 100644
              {
                  path = path.Substring(0, path.Length - 4);
                  foreach (var iEntry in archive.Entries)
-@@ -40,6 +47,7 @@ namespace Source
+@@ -39,5 +46,11 @@ namespace Source
              if (entry == null)
              {
--                Console.WriteLine("Unable to find archive entry for " + path);
--                return null;
-+                throw new InvalidDataException(
-+                    "Image archive has no render for " + path +
-+                    ". Mutable item renderers must preserve their pre-render image path.");
++                if (hasVariantIdentity)
++                {
++                    throw new InvalidDataException(
++                        "Image archive has no render for " + path +
++                        ". Mutable item renderers must preserve their persisted image path.");
++                }
+                 Console.WriteLine("Unable to find archive entry for " + path);
+                 return null;
              }
-             using var stream = entry.Open();
 @@ -81 +89,3 @@ namespace Source
 -                    var positionY = ((i & IconAtlas.YMask) >> IconAtlas.DimensionBits) * IconAtlas.ImageSize;
 +                    // The browser catalog can exceed the original 65,536-sprite page.

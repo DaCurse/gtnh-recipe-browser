@@ -149,7 +149,10 @@ describe('data export tooling', () => {
     expect(patch).toContain("PackConverter's existing touched-item pass");
     expect(patch).toContain('i >> IconAtlas.DimensionBits');
     expect(patch).toContain('hasVariantIdentity');
-    expect(patch).toContain('Mutable item renderers must preserve their pre-render image path');
+    expect(patch).toContain('if (hasVariantIdentity)');
+    expect(patch).toContain('Mutable item renderers must preserve their persisted image path');
+    expect(patch).toContain('Console.WriteLine("Unable to find archive entry for " + path)');
+    expect(patch).toContain('return null;');
     expect(patch).not.toContain('+                    var positionY = ((i & IconAtlas.YMask)');
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });

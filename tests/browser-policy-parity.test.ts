@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import fixture from './fixtures/gtnh-2.9.0-beta-2-browser-policy/parity.json';
+import fixture from './fixtures/gtnh-2.9.0-beta-2-browser-policy-r6845cab1f95b/parity.json';
 import { buildCatalogBrowseEntries } from '../src/lib/catalogVariants';
 import { parseMinecraftHtml } from '../src/lib/minecraftText';
 import type { CatalogEntry } from '../src/lib/types';
@@ -24,12 +24,28 @@ function catalogEntry(item: DecodedItem): CatalogEntry {
 
 describe('pinned browser catalog policy parity', () => {
   it('retains a high-cardinality exact GT tool catalog', () => {
+    expect(fixture.schemaVersion).toBe(2);
     expect(fixture.source.formatVersion).toBe(5);
-    expect(fixture.counts.items).toBe(101_438);
-    expect(fixture.counts.recipes).toBe(306_831);
+    expect(fixture.counts.items).toBe(101_437);
+    expect(fixture.counts.recipes).toBe(306_802);
     expect(fixture.counts.searchableGtTools).toBe(19_010);
     expect(fixture.source.dataSha256).toMatch(/^[a-f0-9]{64}$/);
     expect(fixture.source.atlasSha256).toMatch(/^[a-f0-9]{64}$/);
+  });
+
+  it('pins visible sprites for every retained GT tool and representative wrench family', () => {
+    expect(fixture.spriteAudit.searchableGtTools).toEqual({
+      total: 19_010,
+      visible: 19_010,
+      transparent: 0
+    });
+    for (const name of ['Wrench (LV)', 'Wrench (MV)', 'Wrench (HV)'] as const) {
+      expect(fixture.spriteAudit.wrenches[name]).toEqual({
+        total: 651,
+        visible: 651,
+        transparent: 0
+      });
+    }
   });
 
   it('preserves all four Ichorium turbine sizes as exact NBT stacks', () => {

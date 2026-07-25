@@ -106,7 +106,7 @@ if (
   !patchedItemPolicy.includes('BrowserCatalogPolicy.RetainRecipeConnectedItems') ||
   !patchedAtlasBuilder.includes('i >> IconAtlas.DimensionBits') ||
   !patchedAtlasBuilder.includes('hasVariantIdentity') ||
-  !patchedAtlasBuilder.includes('Mutable item renderers must preserve their pre-render image path') ||
+  !patchedAtlasBuilder.includes('Mutable item renderers must preserve their persisted image path') ||
   !patchedProcessor.includes('for (var i = 1; i < parts.Length; i++)')
 ) {
   throw new Error('Processor compatibility patch did not produce the expected source');
