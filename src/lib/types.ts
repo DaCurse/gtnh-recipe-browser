@@ -58,7 +58,9 @@ export interface CatalogBrowseEntry extends CatalogEntry {
   /** Exact stable item IDs represented by this browse row. */
   variantIds: string[];
   variantCount: number;
-  isVariantGroup: boolean;
+  variantKind: 'single' | 'exact' | 'gtOre';
+  /** Client-derived labels which distinguish otherwise identical exact stacks. */
+  variantLabels?: Record<string, string>;
 }
 
 export interface Ingredient {

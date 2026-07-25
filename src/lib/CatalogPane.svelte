@@ -81,6 +81,7 @@
                 id: member.id,
                 name: member.name,
                 mod: member.mod,
+                variantLabel: entry.variantLabels?.[id],
                 rawTooltip: member.rawTooltip,
                 searchMask: [...(member.searchMask ?? [])]
               };
@@ -141,6 +142,19 @@
 
   function hideTooltip() {
     tooltipEntry = undefined;
+  }
+
+  function variantSummary(entry: CatalogBrowseEntry): string {
+    return entry.variantKind === 'gtOre'
+      ? `${entry.variantCount.toLocaleString()} host-stone variants`
+      : `${entry.variantCount.toLocaleString()} exact variants`;
+  }
+
+  function variantAction(entry: CatalogBrowseEntry): string | undefined {
+    if (entry.variantKind === 'single') return undefined;
+    return entry.variantKind === 'gtOre'
+      ? `Click to choose one of ${entry.variantCount.toLocaleString()} host-stone variants`
+      : `Click to choose one of ${entry.variantCount.toLocaleString()} exact variants`;
   }
 
   function requestMoreItems() {
@@ -309,7 +323,7 @@
           onblur={hideTooltip}
           onclick={() => {
             hideTooltip();
-            if (entry.isVariantGroup) variantGroup = entry;
+            if (entry.variantKind !== 'single') variantGroup = entry;
             else select(entry.variantIds[0]!);
           }}
         >
@@ -321,8 +335,8 @@
           />
           <span class="item-summary">
             <strong>{entry.name}</strong>
-            <small>{entry.isVariantGroup
-              ? `${entry.variantCount.toLocaleString()} exact variants`
+            <small>{entry.variantKind !== 'single'
+              ? variantSummary(entry)
               : entry.kind}</small>
             <span class="tooltip-preview">
               {#if entry.formula}<b>{entry.formula}</b>{/if}
@@ -371,9 +385,7 @@
     entry={resolveCatalogVariant(tooltipEntry, exactEntryById, $oreCycle)}
     x={tooltipX}
     y={tooltipY}
-    action={tooltipEntry.isVariantGroup
-      ? `Click to choose one of ${tooltipEntry.variantCount.toLocaleString()} exact variants`
-      : undefined}
+    action={variantAction(tooltipEntry)}
   />
 {/if}
 

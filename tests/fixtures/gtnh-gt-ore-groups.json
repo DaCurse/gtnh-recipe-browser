@@ -1,0 +1,77 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "legacy": {
+      "datasetId": "2.8.0-r6d351536",
+      "catalogSha256": "c7610531f5de37a37a6ad837e0a72a82c74128462a3f5e4939a44af90b8c21ed"
+    },
+    "current": {
+      "datasetId": "2.9.0-beta-2-r6845cab1f95b",
+      "dataSha256": "f5814992cb60924b7373b4e4c5de2f96abcd0b9e1f85237494682b646e469ead",
+      "catalogGoodsSha256": "55579af65bb9e80493a42a2043fd8a968f403ed0741d268d8fbf37c18ba89442"
+    }
+  },
+  "material": {
+    "id": 32,
+    "name": "Iron Ore"
+  },
+  "legacy": [
+    {
+      "internalName": "gt.blockores",
+      "damages": [32, 1032, 2032, 3032, 4032, 5032, 6032],
+      "hosts": ["Stone", "Netherrack", "End Stone", "Black Granite", "Red Granite", "Marble", "Basalt"]
+    }
+  ],
+  "current": [
+    {
+      "internalName": "gt.blockores2",
+      "damages": [32, 1032, 2032, 3032, 4032, 5032, 6032, 7032],
+      "hosts": ["Stone", "Netherrack", "End Stone", "Black Granite", "Red Granite", "Marble", "Basalt", "Moon"]
+    },
+    {
+      "internalName": "gt.blockores3",
+      "damages": [32, 1032, 2032, 3032, 4032, 5032, 6032, 7032],
+      "hosts": ["Mars", "Asteroid", "Phobos", "Deimos", "Ceres", "Io", "Europa", "Ganymede"]
+    },
+    {
+      "internalName": "gt.blockores4",
+      "damages": [32, 1032, 2032, 3032, 4032, 5032, 6032, 7032],
+      "hosts": ["Callisto", "Enceladus", "Titan", "Miranda", "Oberon", "Proteus", "Triton", "Pluto"]
+    },
+    {
+      "internalName": "gt.blockores5",
+      "damages": [32, 1032],
+      "hosts": ["Venus", "Mercury"]
+    },
+    {
+      "internalName": "gt.blockores6",
+      "damages": [32, 1032, 2032, 3032, 4032, 5032, 6032, 7032],
+      "hosts": ["Haumea", "Makemake", "Alpha Centauri", "Tau Ceti e", "Vega b", "Barnard's Star e", "Barnard's Star f", "Horus"]
+    },
+    {
+      "internalName": "gt.blockores7",
+      "damages": [32, 1032, 2032, 3032, 4032, 5032, 6032],
+      "hosts": ["Anubis & Maahes", "Packed Ice", "Seth Ice", "Seth Clay", "Deepslate", "Tuff", "Blue Ice"]
+    }
+  ],
+  "legacyPlaceholderCollision": [
+    {
+      "id": "i:gregtech:gt.blockores:540",
+      "name": "Ore",
+      "internalName": "gt.blockores",
+      "damage": 540
+    },
+    {
+      "id": "i:gregtech:gt.blockores2:540",
+      "name": "Aer Infused Stone",
+      "internalName": "gt.blockores2",
+      "damage": 540
+    },
+    {
+      "id": "i:gregtech:gt.blockores2:1540",
+      "name": "Aer Infused Stone",
+      "internalName": "gt.blockores2",
+      "damage": 1540
+    }
+  ]
+}

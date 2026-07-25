@@ -10,6 +10,13 @@ ore dictionaries, fluid containers, crafter metadata, or other exported relation
 NBT, icons, and recipe directions are preserved. The client groups NBT-distinguished stacks sharing a registry name
 and damage value for browsing, then asks the user to select an exact variant.
 
+GregTech generated ores receive a second, equally browse-only grouping rule. Legacy `gt.blockores` and current
+`gt.blockores2`–`gt.blockores7` stacks encode the material as `damage % 1000`; their block series and thousands
+digit identify the host stone. The client collapses matching GT stacks with the same material and exported name,
+cycles their exact sprites, and labels the picker with host stones such as Stone, Moon, Mars, and Deepslate. It does
+not merge other mods' ores or infer families from ore-dictionary membership. Unknown block series, hidden
+natural/small metadata, and singletons remain exact rows until explicitly supported.
+
 ## GTNH 2.9.0-beta-2 audit
 
 The raw export contains 60,812 items matched by the upstream blacklist and 59,806 recipes whose output would be

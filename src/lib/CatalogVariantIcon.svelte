@@ -23,12 +23,12 @@
   const displayEntry = $derived(resolveCatalogVariant(entry, exactEntries, cycle));
 
   $effect(() => {
-    if (!entry.isVariantGroup || !visible) return;
+    if (entry.variantKind === 'single' || !visible) return;
     return oreCycle.subscribe((value) => cycle = value);
   });
 
   onMount(() => {
-    if (!entry.isVariantGroup || !('IntersectionObserver' in window)) {
+    if (entry.variantKind === 'single' || !('IntersectionObserver' in window)) {
       visible = true;
       return;
     }

@@ -20,6 +20,7 @@
   let tooltipX = $state(0);
   let tooltipY = $state(0);
   let searchInput: HTMLInputElement;
+  const isGtOre = $derived(group.variantKind === 'gtOre');
   const filtered = $derived.by(() => {
     const terms = normalize(query).split(/\s+/).filter(Boolean);
     if (terms.length === 0) return members;
@@ -28,6 +29,7 @@
         entry.name,
         entry.mod,
         entry.id,
+        group.variantLabels?.[entry.id],
         minecraftHtmlPlainText(entry.rawTooltip)
       ].join(' '));
       return terms.every((term) => haystack.includes(term));
@@ -54,15 +56,23 @@
 >
   <div class="variant-picker" role="dialog" aria-modal="true" aria-label={`Choose ${group.name} variant`}>
     <button class="variant-close" onclick={close} aria-label="Close variant picker">×</button>
-    <small>EXACT ITEM VARIANTS</small>
+    <small>{isGtOre ? 'GT ORE VARIANTS' : 'EXACT ITEM VARIANTS'}</small>
     <h2>{group.name}</h2>
-    <p>{members.length.toLocaleString()} stacks share this item family. Choose the exact material or configuration.</p>
+    <p>{isGtOre
+      ? `${members.length.toLocaleString()} host stones share this ore material. Choose the exact block.`
+      : `${members.length.toLocaleString()} stacks share this item family. Choose the exact material or configuration.`}</p>
     <div class="variant-search">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="10.5" cy="10.5" r="6.5"></circle>
         <path d="m15.5 15.5 4 4"></path>
       </svg>
-      <input bind:this={searchInput} bind:value={query} placeholder="Search material, tooltip, or identifier…" />
+      <input
+        bind:this={searchInput}
+        bind:value={query}
+        placeholder={isGtOre
+          ? 'Search host stone, tooltip, or identifier…'
+          : 'Search material, tooltip, or identifier…'}
+      />
       {#if query}<button onclick={() => query = ''} aria-label="Clear variant search">×</button>{/if}
     </div>
     <div class="variant-count">{filtered.length.toLocaleString()} matching variants</div>
@@ -78,13 +88,15 @@
           <ItemIcon {entry} size={52} />
           <span>
             <strong><MinecraftText raw={entry.rawName} fallback={entry.name} /></strong>
-            <small>{entry.mod}</small>
+            <small>{group.variantLabels?.[entry.id]
+              ? `${group.variantLabels[entry.id]} · ${entry.mod}`
+              : entry.mod}</small>
             <em><MinecraftText raw={entry.rawTooltip} fallback={entry.tooltip} /></em>
           </span>
           <b>›</b>
         </button>
       {:else}
-        <div class="variant-empty">No exact variants match this search.</div>
+        <div class="variant-empty">No variants match this search.</div>
       {/each}
       {#if visible.length < filtered.length}
         <button class="variant-more" onclick={() => limit += 100}>
