@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import fixture from './fixtures/gtnh-2.9.0-beta-2-browser-policy-r6845cab1f95b/parity.json';
+import oreDictionaryFixture from './fixtures/gtnh-2.9.0-beta-2-browser-policy-rece64b477cd6/parity.json';
 import { buildCatalogBrowseEntries } from '../src/lib/catalogVariants';
 import { parseMinecraftHtml } from '../src/lib/minecraftText';
 import type { CatalogEntry } from '../src/lib/types';
@@ -24,7 +25,7 @@ function catalogEntry(item: DecodedItem): CatalogEntry {
 
 describe('pinned browser catalog policy parity', () => {
   it('retains a high-cardinality exact GT tool catalog', () => {
-    expect(fixture.schemaVersion).toBe(2);
+    expect(fixture.schemaVersion).toBeGreaterThanOrEqual(2);
     expect(fixture.source.formatVersion).toBe(5);
     expect(fixture.counts.items).toBe(101_437);
     expect(fixture.counts.recipes).toBe(306_802);
@@ -105,5 +106,40 @@ describe('pinned browser catalog policy parity', () => {
     expect(parsed.lines[1]?.segments).toEqual([
       { text: 'Flight (7:06)', formats: ['7'] }
     ]);
+  });
+});
+
+describe('pinned named ore-dictionary parity', () => {
+  it('pins the corrected immutable format-v5 source', () => {
+    expect(oreDictionaryFixture.schemaVersion).toBe(3);
+    expect(oreDictionaryFixture.source).toEqual({
+      formatVersion: 5,
+      dataSha256: '2d31ab7b15912938f3c8c0a8ddca30f5fcf0021194f7c941bb6d72795e58e264',
+      atlasSha256: '29e950c2bc78a944f2aa75173940037ade8e16caad8af93a271be78e364a3a06'
+    });
+  });
+
+  it('preserves every named Iron Ore alias with its complete membership', () => {
+    expect(oreDictionaryFixture.ironOre.id).toBe('i:gregtech:gt.blockores2:32');
+    expect(oreDictionaryFixture.ironOreDictionaries.map((dictionary) => dictionary.id))
+      .toEqual(['o:oreIron', 'o:oreAnyIron']);
+    expect(oreDictionaryFixture.ironOreDictionaries[0]?.itemIds).toHaveLength(11);
+    expect(oreDictionaryFixture.ironOreDictionaries[1]?.itemIds).toHaveLength(12);
+    expect(oreDictionaryFixture.ironOreDictionaries[1]?.itemIds)
+      .toContain('i:gregtech:gt.blockores2:307');
+  });
+
+  it('keeps recipe alternatives outside the named ore-dictionary namespace', () => {
+    expect(oreDictionaryFixture.anonymousIronGroup).toEqual(expect.objectContaining({
+      id: 'g:ig~_TYRaar_O3e-NoaTUgTtEw==',
+      kind: 'itemGroup'
+    }));
+    expect(oreDictionaryFixture.anonymousIronGroup.itemIds).toHaveLength(10);
+    expect(oreDictionaryFixture.anonymousIronRecipe.inputs).toContainEqual(
+      expect.objectContaining({
+        kind: 'itemGroup',
+        goodsId: oreDictionaryFixture.anonymousIronGroup.id
+      })
+    );
   });
 });

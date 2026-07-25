@@ -87,6 +87,30 @@ if (!effectTooltipItem) {
   throw new Error('Could not find a representative item whose final tooltip line is a potion effect');
 }
 
+const ironOre = repository.items.find(
+  (item) => item.id === 'i:gregtech:gt.blockores2:32'
+);
+if (!ironOre) throw new Error('Could not find the representative GregTech Iron Ore');
+const ironOreDictionaries = repository.oreDictionaries.filter(
+  (dictionary) => dictionary.itemIds.includes(ironOre.id)
+);
+for (const expected of ['o:oreIron', 'o:oreAnyIron']) {
+  if (!ironOreDictionaries.some((dictionary) => dictionary.id === expected)) {
+    throw new Error(`Iron Ore is missing named dictionary ${expected}`);
+  }
+}
+const anonymousIronGroup = repository.ingredientGroups.find(
+  (group) => group.itemIds.includes(ironOre.id)
+);
+if (!anonymousIronGroup) throw new Error('Could not find an anonymous recipe group containing Iron Ore');
+const anonymousIronRecipe = repository.recipes.find(
+  (recipe) => recipe.inputs.some((input) =>
+    input.kind === 'itemGroup' && input.goodsId === anonymousIronGroup.id)
+);
+if (!anonymousIronRecipe) {
+  throw new Error('Could not find a recipe referencing the anonymous Iron Ore group');
+}
+
 const recipeIds = new Set(turbines.flatMap((item) => item.productionRecipeIds));
 const recipes = repository.recipes.filter((recipe) => recipeIds.has(recipe.id));
 if (recipes.length < 4) {
@@ -112,7 +136,7 @@ if (
 }
 
 const fixture = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   source: {
     formatVersion: repository.formatVersion,
     dataSha256: sha256(data),
@@ -132,6 +156,10 @@ const fixture = {
   turbines,
   comparisonTurbine,
   effectTooltipItem,
+  ironOre,
+  ironOreDictionaries,
+  anonymousIronGroup,
+  anonymousIronRecipe,
   recipes
 };
 await writeFile(outputPath, `${JSON.stringify(fixture, null, 2)}\n`, { flag: 'wx' });
