@@ -26,9 +26,28 @@ describe('ore-dictionary ingredients', () => {
       chance: 1,
       slot: 4,
       kind: 'oreDict',
-      oreDictionaryId: 'o:dustIron',
+      ingredientGroupId: 'o:dustIron',
+      ingredientGroupKind: 'oreDict',
       alternatives: ['i:gregtech:iron-dust', 'i:ic2:iron-dust']
     });
+  });
+
+  it('keeps anonymous alternatives distinct from named ore dictionaries', () => {
+    const groups = new Map([
+      ['g:recipe-alternatives', { itemIds: ['i:mod:first', 'i:mod:second'] }]
+    ]);
+    expect(materializeIngredient({
+      kind: 'itemGroup',
+      goodsId: 'g:recipe-alternatives',
+      slot: 0,
+      amount: 1,
+      probability: 1
+    }, groups)).toEqual(expect.objectContaining({
+      kind: 'itemGroup',
+      ingredientGroupId: 'g:recipe-alternatives',
+      ingredientGroupKind: 'itemGroup',
+      alternatives: ['i:mod:first', 'i:mod:second']
+    }));
   });
 
   it('matches usages for every member item', () => {
@@ -79,6 +98,14 @@ describe('ore-dictionary ingredients', () => {
       'i:mod:unobtainable',
       [{ id: 'o:unobtainable', itemIds: ['i:mod:unobtainable', 'i:other:unobtainable'] }],
       () => false
+    )).toBeUndefined();
+  });
+
+  it('cannot select anonymous groups when only named dictionaries are supplied', () => {
+    expect(productionFallbackDictionary(
+      'i:mod:iron',
+      [],
+      () => true
     )).toBeUndefined();
   });
 });

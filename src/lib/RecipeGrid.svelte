@@ -26,23 +26,23 @@
   const slotIngredients = $derived(ingredientsByGridSlot(ingredients, dimensions));
   let chooserOpen = $state(false);
   let chosenItemId = $state('');
-  let chosenOreId = $state('');
+  let chosenGroupId = $state('');
   let tooltipSlot = $state(-1);
   let tooltipX = $state(0);
   let tooltipY = $state(0);
   const chosenItem = $derived(chosenItemId ? resolve(chosenItemId) : undefined);
-  const chosenOre = $derived(chosenOreId ? resolve(chosenOreId) : undefined);
+  const chosenGroup = $derived(chosenGroupId ? resolve(chosenGroupId) : undefined);
   const tooltipIngredient = $derived(tooltipSlot >= 0 ? slotIngredients.get(tooltipSlot) : undefined);
   const tooltipAlternatives = $derived(tooltipIngredient?.alternatives ?? []);
   const tooltipDisplayId = $derived(tooltipAlternatives.length > 0
     ? tooltipAlternatives[$oreCycle % tooltipAlternatives.length]
     : tooltipIngredient?.id);
   const tooltipEntry = $derived(tooltipDisplayId ? resolve(tooltipDisplayId) : undefined);
-  const tooltipOreId = $derived(tooltipIngredient?.oreDictionaryId ?? '');
+  const tooltipGroupId = $derived(tooltipIngredient?.ingredientGroupId ?? '');
 
-  function openOreChooser(itemId: string, oreId: string) {
+  function openGroupChooser(itemId: string, groupId: string) {
     chosenItemId = itemId;
-    chosenOreId = oreId;
+    chosenGroupId = groupId;
     chooserOpen = true;
   }
 
@@ -101,26 +101,30 @@
         {#if ingredient && entry}
           <button
             class="ingredient"
-            aria-label={ingredient.oreDictionaryId
-              ? `${ingredient.oreDictionaryId}, showing ${entry.name}, alternative ${alternativeIndex + 1} of ${alternatives.length}`
+            aria-label={ingredient.ingredientGroupId
+              ? `${ingredient.ingredientGroupId}, showing ${entry.name}, alternative ${alternativeIndex + 1} of ${alternatives.length}`
               : entry.name}
             onpointerenter={(event) => showPointerTooltip(event, slot)}
             onpointermove={movePointerTooltip}
             onpointerleave={hideTooltip}
             onfocus={(event) => showFocusTooltip(event, slot)}
             onblur={hideTooltip}
-            onclick={() => ingredient.oreDictionaryId
-              ? openOreChooser(entry.id, ingredient.oreDictionaryId)
+            onclick={() => ingredient.ingredientGroupId
+              ? openGroupChooser(entry.id, ingredient.ingredientGroupId)
               : navigate(ingredient.id, 'recipes')}
             oncontextmenu={(event) => {
               event.preventDefault();
-              if (ingredient.oreDictionaryId) openOreChooser(entry.id, ingredient.oreDictionaryId);
+              if (ingredient.ingredientGroupId) {
+                openGroupChooser(entry.id, ingredient.ingredientGroupId);
+              }
               else navigate(ingredient.id, 'usages');
             }}
           >
             <ItemIcon {entry} size={56} />
-            {#if ingredient.oreDictionaryId}
-              <span class="ore-count">ORE +{alternatives.length}</span>
+            {#if ingredient.ingredientGroupId}
+              <span class="ore-count">
+                {ingredient.ingredientGroupKind === 'oreDict' ? 'ORE' : 'ALT'} +{alternatives.length}
+              </span>
             {/if}
             {#if ingredient.amount !== undefined && (ingredient.amount !== 1 || entry.kind === 'fluid')}
               <span class="amount">
@@ -144,8 +148,10 @@
     entry={tooltipEntry}
     x={tooltipX}
     y={tooltipY}
-    action={tooltipOreId
-      ? 'Click to choose current item or ore dictionary entry'
+    action={tooltipGroupId
+      ? tooltipIngredient?.ingredientGroupKind === 'oreDict'
+        ? 'Click to choose current item or ore dictionary entry'
+        : 'Click to choose current item or interchangeable ingredient group'
       : 'Left-click: Recipes · Right-click: Usages'}
   />
 {/if}
@@ -154,15 +160,17 @@
   if (chooserOpen && event.key === 'Escape') chooserOpen = false;
 }} />
 
-{#if chooserOpen && chosenItem && chosenOre}
+{#if chooserOpen && chosenItem && chosenGroup}
   <div class="ore-choice-scrim" role="presentation" onclick={(event) => {
     if (event.currentTarget === event.target) chooserOpen = false;
   }}>
-    <div class="ore-choice" role="dialog" aria-modal="true" aria-label="Choose ore dictionary destination" tabindex="-1">
+    <div class="ore-choice" role="dialog" aria-modal="true" aria-label="Choose ingredient destination" tabindex="-1">
       <button class="choice-close" onclick={() => chooserOpen = false} aria-label="Close">
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 7 10 10M17 7 7 17"></path></svg>
       </button>
-      <p class="choice-eyebrow">INTERCHANGEABLE INGREDIENT</p>
+      <p class="choice-eyebrow">
+        {chosenGroup.kind === 'oreDict' ? 'ORE DICTIONARY ENTRY' : 'INTERCHANGEABLE INGREDIENT'}
+      </p>
       <h2>What do you want to inspect?</h2>
       <div class="choice-option">
         <ItemIcon entry={chosenItem} size={56} />
@@ -174,10 +182,10 @@
       </div>
       <div class="choice-option">
         <ItemIcon entry={chosenItem} size={56} />
-        <div><b>{chosenOre.name}</b><small>All {chosenOre.members?.length ?? 0} valid alternatives</small></div>
+        <div><b>{chosenGroup.name}</b><small>All {chosenGroup.members?.length ?? 0} valid alternatives</small></div>
         <span class="choice-actions">
-          <button onclick={() => choose(chosenOre.id, 'recipes')}>Recipes</button>
-          <button onclick={() => choose(chosenOre.id, 'usages')}>Usages</button>
+          <button onclick={() => choose(chosenGroup.id, 'recipes')}>Recipes</button>
+          <button onclick={() => choose(chosenGroup.id, 'usages')}>Usages</button>
         </span>
       </div>
     </div>

@@ -15,7 +15,8 @@
     navigate: (id: string, view: RecipeView) => void;
   } = $props();
 
-  const iconEntry = $derived(selected.kind === 'oreDict' && selected.members?.length
+  const iconEntry = $derived(
+    (selected.kind === 'oreDict' || selected.kind === 'itemGroup') && selected.members?.length
     ? entryById.get(selected.members[$oreCycle % selected.members.length]) ?? selected
     : selected);
   let tooltipEntry = $state<CatalogEntry>();
@@ -51,8 +52,8 @@
   </div>
 </div>
 
-{#if selected.kind === 'oreDict' && selected.members}
-  <div class="ore-members" aria-label="Interchangeable ore dictionary members">
+{#if (selected.kind === 'oreDict' || selected.kind === 'itemGroup') && selected.members}
+  <div class="ore-members" aria-label="Interchangeable ingredient members">
     <p>{selected.members.length.toLocaleString()} ACCEPTED ITEMS</p>
     <div>
       {#each selected.members as memberId (memberId)}

@@ -54,7 +54,7 @@ type VerifiableManifest = Omit<GeneratedPackManifest, 'formatVersion' | 'catalog
 export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPackResult> {
   const manifestBytes = await readFile(join(options.packDirectory, 'pack-manifest.json'));
   const manifest = JSON.parse(manifestBytes.toString('utf8')) as VerifiableManifest;
-  if (manifest.formatVersion !== 1 && manifest.formatVersion !== 2) {
+  if (![1, 2, 3].includes(manifest.formatVersion)) {
     throw new Error(`Unsupported generated pack format ${manifest.formatVersion}`);
   }
   const assets: ImmutableAsset[] = [
@@ -155,8 +155,8 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
     goods += descriptor.goodsCount;
     nextGoodsPart++;
   }
-  if (manifest.formatVersion === 2 && (coreAssets !== 1 || nextGoodsPart === 0)) {
-    throw new Error('Format-2 pack requires one catalog core and at least one goods part');
+  if (manifest.formatVersion >= 2 && (coreAssets !== 1 || nextGoodsPart === 0)) {
+    throw new Error(`Format-${manifest.formatVersion} pack requires one catalog core and at least one goods part`);
   }
 
   for (const descriptor of manifest.iconSheets) {

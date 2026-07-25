@@ -14,7 +14,7 @@ import type {
   RecipeShardAsset
 } from './manifest';
 
-const PACK_FORMAT_VERSION = 2;
+const PACK_FORMAT_VERSION = 3;
 const DEFAULT_MAX_SHARD_BYTES = 2 * 1024 * 1024;
 const DEFAULT_MAX_CATALOG_BYTES = 2 * 1024 * 1024;
 const ICONS_PER_SHEET = 1024;
@@ -196,6 +196,7 @@ function buildCatalog(repository: DecodedRepository, shardByRecipeId: Map<string
   return {
     goods,
     oreDictionaries: repository.oreDictionaries,
+    ingredientGroups: repository.ingredientGroups,
     recipeTypes: repository.recipeTypes.map((recipeType) => ({
       ...recipeType,
       multiblocks: recipeType.multiblocks.map((crafter) => ({ ...crafter, icon: iconReference(crafter.iconId) })),

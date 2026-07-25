@@ -157,6 +157,20 @@ describe('data export tooling', () => {
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });
 
+  it('preserves named ore aliases and gives anonymous ingredient groups their own namespace', async () => {
+    const patch = await readFile(
+      join(process.cwd(), 'tools/data-export/patches/named-ore-dictionaries.patch'),
+      'utf8'
+    );
+
+    expect(patch).toContain('oreDictNames');
+    expect(patch).toContain('MarkOreDictionaryItems');
+    expect(patch).toContain('GetRepositoryGroups');
+    expect(patch).toContain('id = oreDictNames.FirstOrDefault()');
+    expect(patch).toContain('id = "g:" + iid');
+    expect(patch).not.toMatch(/\boreIron\b|\boreAnyIron\b/);
+  });
+
   it('bounds processor GC heap growth during full recipe remapping', async () => {
     const processSource = await readFile(
       join(process.cwd(), 'tools/data-export/process.ts'),

@@ -4,6 +4,7 @@ import type {
   DecodedGoodsBase,
   DecodedGtRecipe,
   DecodedItem,
+  DecodedAnonymousIngredientGroup,
   DecodedOreDictionary,
   DecodedRecipe,
   DecodedRecipeIo,
@@ -221,15 +222,28 @@ export function decodeFormat5(compressed: Uint8Array): DecodedRepository {
     })
   }));
 
-  const oreDictionaries: DecodedOreDictionary[] = orderedOres.map((pointer, index) => ({
-    id: idAt(pointer, `ore dictionary ${index}`),
-    searchMask: [0, 1, 2, 3].map((word) => reader.uint(pointer + word, `ore dictionary ${index} search mask`)),
-    itemIds: reader.pointersAt(pointer + 5, `ore dictionary ${index} items`).map((itemPointer, itemIndex) => {
+  const ingredientGroups = orderedOres.map((pointer, index) => {
+    const id = idAt(pointer, `ingredient group ${index}`);
+    return {
+      id,
+      searchMask: [0, 1, 2, 3].map((word) => reader.uint(pointer + word, `ingredient group ${index} search mask`)),
+      itemIds: reader.pointersAt(pointer + 5, `ingredient group ${index} items`).map((itemPointer, itemIndex) => {
       const itemId = itemIdByPointer.get(itemPointer);
-      if (!itemId) throw new PackDecodeError(`ore dictionary ${index} item ${itemIndex}: pointer ${itemPointer} is not an item`);
+      if (!itemId) throw new PackDecodeError(`ingredient group ${index} item ${itemIndex}: pointer ${itemPointer} is not an item`);
       return itemId;
-    })
-  }));
+      }),
+      kind: (id.startsWith('g:') ? 'itemGroup' : 'oreDict') as 'itemGroup' | 'oreDict'
+    };
+  });
+  const oreDictionaries = ingredientGroups.filter(
+    (group): group is DecodedOreDictionary => group.kind === 'oreDict'
+  );
+  const anonymousIngredientGroups = ingredientGroups.filter(
+    (group): group is DecodedAnonymousIngredientGroup => group.kind === 'itemGroup'
+  );
+  const ingredientGroupKindByPointer = new Map(
+    orderedOres.map((pointer, index) => [pointer, ingredientGroups[index]!.kind])
+  );
 
   const decodeGt = (pointer: number, context: string): DecodedGtRecipe => ({
     voltage: reader.int(pointer, `${context} voltage`),
@@ -267,7 +281,9 @@ export function decodeFormat5(compressed: Uint8Array): DecodedRepository {
         throw new PackDecodeError(`recipe ${recipeIndex} I/O ${index / 5}: unresolved goods pointer ${goodsPointer}`);
       }
       const io: DecodedRecipeIo = {
-        kind: ioKind[rawKind],
+        kind: rawKind === 1
+          ? ingredientGroupKindByPointer.get(goodsPointer) ?? 'oreDict'
+          : ioKind[rawKind],
         goodsId,
         slot: packedIo[index + 2],
         amount: packedIo[index + 3],
@@ -309,6 +325,7 @@ export function decodeFormat5(compressed: Uint8Array): DecodedRepository {
     items,
     fluids,
     oreDictionaries,
+    ingredientGroups: anonymousIngredientGroups,
     recipeTypes,
     recipes,
     serviceItemIds,

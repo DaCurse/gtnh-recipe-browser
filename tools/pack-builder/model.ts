@@ -1,4 +1,4 @@
-export type RecipeIoKind = 'item' | 'oreDict' | 'fluid';
+export type RecipeIoKind = 'item' | 'oreDict' | 'itemGroup' | 'fluid';
 
 interface DecodedGridDimensions {
   columns: number;
@@ -96,10 +96,18 @@ export interface DecodedFluid extends DecodedGoodsBase {
   containerItemIds: string[];
 }
 
-export interface DecodedOreDictionary {
+interface DecodedIngredientGroup {
   id: string;
   searchMask: number[];
   itemIds: string[];
+}
+
+export interface DecodedOreDictionary extends DecodedIngredientGroup {
+  kind: 'oreDict';
+}
+
+export interface DecodedAnonymousIngredientGroup extends DecodedIngredientGroup {
+  kind: 'itemGroup';
 }
 
 export interface DecodedRepository {
@@ -107,6 +115,7 @@ export interface DecodedRepository {
   items: DecodedItem[];
   fluids: DecodedFluid[];
   oreDictionaries: DecodedOreDictionary[];
+  ingredientGroups: DecodedAnonymousIngredientGroup[];
   recipeTypes: DecodedRecipeType[];
   recipes: DecodedRecipe[];
   serviceItemIds: string[];

@@ -1,0 +1,106 @@
+diff --git a/PackConverter.cs b/PackConverter.cs
+index cc65fc4..b39db7a 100644
+--- a/PackConverter.cs
++++ b/PackConverter.cs
+@@ -70,7 +70,7 @@ namespace Source
+         private class ItemGroupBuilder
+         {
+             public string iid;
+-            public string oredict;
++            public readonly List<string> oreDictNames = new List<string>();
+             public readonly List<RecipeInput<Item>> variants = new List<RecipeInput<Item>>();
+ 
+             public Item singleItem;
+@@ -87,6 +87,15 @@ namespace Source
+                 variants[0].goods.touched = true;
+             }
+ 
++            public void MarkOreDictionaryItems()
++            {
++                if (oreDictNames.Count == 0 || variants.Count == 0)
++                    return;
++                touched = true;
++                foreach (var variant in variants)
++                    variant.goods.touched = true;
++            }
++
+             public void Compile()
+             {
+                 if (variants.Count == 0 || compiled || !touched)
+@@ -107,9 +116,33 @@ namespace Source
+                     variants.RemoveAll(x => !x.goods.touched);
+                     if (variants.Count == 1)
+                         singleItem = variants[0].goods;
+-                    else multiItem = new OreDict { id = oredict, variants = variants.Select(x => x.goods).ToArray(), iid = iid };
++                    else multiItem = new OreDict
++                    {
++                        id = oreDictNames.FirstOrDefault(),
++                        variants = variants.Select(x => x.goods).ToArray(),
++                        iid = iid
++                    };
+                 }
+             }
++
++            public IEnumerable<OreDict> GetRepositoryGroups()
++            {
++                if (baseItemGroup != this || variants.Count == 0 || !touched)
++                    yield break;
++                if (multiItem != null)
++                    yield return multiItem;
++                foreach (var name in oreDictNames)
++                {
++                    if (multiItem != null && multiItem.id == name)
++                        continue;
++                    yield return new OreDict
++                    {
++                        id = name,
++                        variants = variants.Select(x => x.goods).ToArray(),
++                        iid = iid
++                    };
++                }
++            }
+         }
+ 
+         private class FluidGroupBuilder
+@@ -275,10 +308,17 @@ namespace Source
+                 igroups[itemStack.ItemGroupId].variants.Add(new RecipeInput<Item> {goods = items[itemStack.ItemStacksItemId], amount = itemStack.ItemStacksStackSize});
+ 
+             foreach (var oreDict in generator.GetTableContents(oreDictionary))
+-                igroups[oreDict.ItemGroupId].oredict = oreDict.Name;
++            {
++                var group = igroups[oreDict.ItemGroupId].baseItemGroup;
++                if (!group.oreDictNames.Contains(oreDict.Name))
++                    group.oreDictNames.Add(oreDict.Name);
++            }
+ 
+             foreach (var (_, value) in igroups)
+                 value.variants.RemoveAll(x => x.goods == null);
++
++            foreach (var (_, igroup) in igroups)
++                igroup.MarkOreDictionaryItems();
+ 
+             foreach (var recipe in generator.GetTableContents(recipe))
+                 recipes[recipe.Id] = new RecipeBuilder() { recipe = new Recipe {recipeType = recipeTypesMap[recipe.RecipeTypeId], id = recipe.Id} };
+@@ -372,7 +412,7 @@ namespace Source
+             //repository.items = items.Values.Where(x => x != null && x.touched).ToArray();
+             repository.items = items.Values.Where(x => x != null && x.touched).ToList();
+             repository.fluids = fluids.Values.ToList();
+-            repository.oreDicts = igroups.Values.Select(x => x.multiItem).Where(x => x != null).Distinct().ToList();
++            repository.oreDicts = igroups.Values.SelectMany(x => x.GetRepositoryGroups()).Distinct().ToList();
+             repository.recipeTypes = recipeTypes;
+             repository.recipes = recipes.Values.Select(x => x.banned ? null : x.recipe).Where(x => x != null).ToList();
+             
+diff --git a/Data/Goods.cs b/Data/Goods.cs
+index 9058d31..cba00c2 100644
+--- a/Data/Goods.cs
++++ b/Data/Goods.cs
+@@ -19,9 +19,9 @@ namespace Source.Data
+                 var variant = variants[0];
+                 if (variants.All(x => x.mod == variant.mod && x.internalName == variant.internalName) && repository.items.Count(x => x.mod == variant.mod && x.internalName == variant.internalName) == variants.Length)
+-                    id = "o:" + variant.mod + ":" + variant.internalName;
+-                else id = "o:" + iid;
++                    id = "g:" + variant.mod + ":" + variant.internalName;
++                else id = "g:" + iid;
+             }
+         }
+     }

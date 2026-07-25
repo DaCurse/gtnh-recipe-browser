@@ -57,7 +57,7 @@
   <div class="ore-production-note">
     No direct output exists for this exact item. Showing recipes which produce an
     interchangeable <button onclick={() => navigate(selected.productionOreDictionaryId!, 'recipes')}>
-      {selected.productionOreDictionaryId}
+      {selected.productionOreDictionaryId!.replace(/^o:/, '')}
     </button> member.
   </div>
 {/if}

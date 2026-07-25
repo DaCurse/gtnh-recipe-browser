@@ -6,6 +6,7 @@ import type {
   DatasetManifest,
   PackedCatalog,
   PackedGoods,
+  PackedIngredientGroup,
   PackedOreDictionary,
   PackedRecipeType
 } from './datasetSchema';
@@ -16,6 +17,7 @@ interface MaterializedCatalog {
   goods: Map<string, PackedGoods>;
   recipeTypes: Map<string, PackedRecipeType>;
   oreDictionaries: Map<string, PackedOreDictionary>;
+  ingredientGroups: Map<string, PackedOreDictionary | PackedIngredientGroup>;
   productionFallbacks: Map<string, PackedOreDictionary>;
 }
 
@@ -28,6 +30,11 @@ export function materializeCatalog(
   const goodsById = new Map(catalog.goods.map((goods) => [goods.id, goods]));
   const recipeTypes = new Map(catalog.recipeTypes.map((type) => [type.id, type]));
   const oreDictionaries = new Map(catalog.oreDictionaries.map((ore) => [ore.id, ore]));
+  const anonymousGroups = catalog.ingredientGroups ?? [];
+  const ingredientGroups = new Map<string, PackedOreDictionary | PackedIngredientGroup>([
+    ...catalog.oreDictionaries.map((group) => [group.id, group] as const),
+    ...anonymousGroups.map((group) => [group.id, group] as const)
+  ]);
   const itemOres = new Map<string, PackedOreDictionary[]>();
   for (const ore of catalog.oreDictionaries) {
     for (const itemId of ore.itemIds) {
@@ -69,7 +76,7 @@ export function materializeCatalog(
   }
   const capabilitiesByMachine = propagateOreMachineCapabilities(
     directCapabilities,
-    catalog.oreDictionaries
+    [...catalog.oreDictionaries, ...anonymousGroups]
   );
 
   const goodsEntries = catalog.goods.map((goods): CatalogEntry => {
@@ -114,6 +121,7 @@ export function materializeCatalog(
       productionCount: recipeScopeIds ? undefined : goods.productionCount,
       usageCount: fluidScope ? undefined : goods.usageCount,
       productionOreDictionaryId: fluidScope ? undefined : productionFallback?.id,
+      oreDictionaryIds: (itemOres.get(goods.id) ?? []).map((ore) => ore.id),
       container: goods.container,
       containerItemIds: goods.containerItemIds,
       machineCapabilities: capabilitiesByMachine.get(goods.id)
@@ -121,26 +129,27 @@ export function materializeCatalog(
   });
 
   const goodsEntriesById = new Map(goodsEntries.map((entry) => [entry.id, entry]));
-  const oreEntries = catalog.oreDictionaries.map((ore): CatalogEntry => {
-    const members = ore.itemIds
+  const groupEntries = [...catalog.oreDictionaries, ...anonymousGroups].map((group): CatalogEntry => {
+    const members = group.itemIds
       .map((id) => goodsEntriesById.get(id))
       .filter((entry) => entry !== undefined);
     const representative = members[0];
     const productionShards = new Set<string>();
     const usageShards = new Set<string>();
-    for (const memberId of ore.itemIds) {
+    for (const memberId of group.itemIds) {
       const member = goodsById.get(memberId);
       member?.productionShards.forEach((id) => productionShards.add(id));
       member?.usageShards.forEach((id) => usageShards.add(id));
     }
-    const dictionaryName = ore.id.startsWith('o:') ? ore.id.slice(2) : ore.id;
+    const namedDictionary = group.id.startsWith('o:');
+    const dictionaryName = namedDictionary ? group.id.slice(2) : '';
     return {
-      id: ore.id,
-      name: `Ore dictionary: ${dictionaryName}`,
-      mod: 'Ore Dictionary',
-      kind: 'oreDict',
+      id: group.id,
+      name: namedDictionary ? `Ore dictionary: ${dictionaryName}` : 'Interchangeable ingredients',
+      mod: namedDictionary ? 'Ore Dictionary' : 'Recipe Alternatives',
+      kind: namedDictionary ? 'oreDict' : 'itemGroup',
       tooltip: [
-        `${ore.itemIds.length.toLocaleString('en-US')} interchangeable item${ore.itemIds.length === 1 ? '' : 's'}`,
+        `${group.itemIds.length.toLocaleString('en-US')} interchangeable item${group.itemIds.length === 1 ? '' : 's'}`,
         'All listed members are valid recipe ingredients.'
       ],
       color: '#aeb3b8',
@@ -149,16 +158,17 @@ export function materializeCatalog(
       icon: representative?.icon,
       productionShards: [...productionShards].sort(),
       usageShards: [...usageShards].sort(),
-      members: ore.itemIds,
-      machineCapabilities: capabilitiesByMachine.get(ore.id)
+      members: group.itemIds,
+      machineCapabilities: capabilitiesByMachine.get(group.id)
     };
   });
 
   return {
-    entries: [...goodsEntries, ...oreEntries],
+    entries: [...goodsEntries, ...groupEntries],
     goods: goodsById,
     recipeTypes,
     oreDictionaries,
+    ingredientGroups,
     productionFallbacks
   };
 }

@@ -34,7 +34,7 @@ export interface IconSheetAsset extends ImmutableAsset {
 }
 
 export interface GeneratedPackManifest {
-  formatVersion: 2;
+  formatVersion: 3;
   datasetId: string;
   gtnhVersion: string;
   revision: string;

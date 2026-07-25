@@ -1,7 +1,7 @@
 import type { Ingredient } from './types';
 
 export interface RecipeIngredientReference {
-  kind: 'item' | 'fluid' | 'oreDict';
+  kind: 'item' | 'fluid' | 'oreDict' | 'itemGroup';
   goodsId: string;
   slot: number;
   amount: number;
@@ -41,11 +41,13 @@ export function ingredientMatchesEntry(
   dictionaries: ReadonlyMap<string, OreDictionaryReference>
 ): boolean {
   if (selectedMembers) {
-    if (ingredient.kind !== 'oreDict') return selectedMembers.has(ingredient.goodsId);
+    if (ingredient.kind !== 'oreDict' && ingredient.kind !== 'itemGroup') {
+      return selectedMembers.has(ingredient.goodsId);
+    }
     return dictionaries.get(ingredient.goodsId)?.itemIds.some((id) => selectedMembers.has(id)) ?? false;
   }
   if (ingredient.goodsId === entryId) return true;
-  return ingredient.kind === 'oreDict' &&
+  return (ingredient.kind === 'oreDict' || ingredient.kind === 'itemGroup') &&
     (dictionaries.get(ingredient.goodsId)?.itemIds.includes(entryId) ?? false);
 }
 
@@ -53,7 +55,8 @@ export function materializeIngredient(
   ingredient: RecipeIngredientReference,
   dictionaries: ReadonlyMap<string, OreDictionaryReference>
 ): Ingredient {
-  const alternatives = ingredient.kind === 'oreDict'
+  const grouped = ingredient.kind === 'oreDict' || ingredient.kind === 'itemGroup';
+  const alternatives = grouped
     ? dictionaries.get(ingredient.goodsId)?.itemIds ?? []
     : undefined;
   return {
@@ -62,7 +65,10 @@ export function materializeIngredient(
     chance: ingredient.probability,
     slot: ingredient.slot,
     kind: ingredient.kind,
-    oreDictionaryId: ingredient.kind === 'oreDict' ? ingredient.goodsId : undefined,
+    ingredientGroupId: grouped ? ingredient.goodsId : undefined,
+    ingredientGroupKind: ingredient.kind === 'oreDict' || ingredient.kind === 'itemGroup'
+      ? ingredient.kind
+      : undefined,
     alternatives
   };
 }

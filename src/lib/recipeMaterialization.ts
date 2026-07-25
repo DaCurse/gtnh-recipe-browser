@@ -6,6 +6,7 @@ import {
   recipeTypeIconId
 } from './recipePresentation';
 import type {
+  PackedIngredientGroup,
   PackedOreDictionary,
   PackedRecipe,
   PackedRecipeType
@@ -33,12 +34,12 @@ export function materializeRecipe(
   recipe: PackedRecipe,
   order: number,
   recipeTypes: ReadonlyMap<string, PackedRecipeType>,
-  oreDictionaries: ReadonlyMap<string, PackedOreDictionary>
+  ingredientGroups: ReadonlyMap<string, PackedOreDictionary | PackedIngredientGroup>
 ): Recipe {
   const type = recipeTypes.get(recipe.recipeTypeId);
   if (!type) throw new Error(`Unknown recipe type ${recipe.recipeTypeId}`);
   const convert = (io: PackedRecipe['inputs'][number]) =>
-    materializeIngredient(io, oreDictionaries);
+    materializeIngredient(io, ingredientGroups);
   const gt = recipe.gt;
   const powerInfo = hasRelevantPower(gt) ? gt : null;
   const totalEu = powerInfo

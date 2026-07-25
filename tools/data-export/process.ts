@@ -80,6 +80,10 @@ const browserPolicyPatch = join(
   repositoryRoot,
   'tools/data-export/patches/browser-catalog-policy.patch'
 );
+const namedOreDictionariesPatch = join(
+  repositoryRoot,
+  'tools/data-export/patches/named-ore-dictionaries.patch'
+);
 if (!resumeProcessed) {
   await assertPathMissing(processedDirectory, 'Process output');
   await assertPathMissing(processorDirectory, 'Process output');
@@ -92,6 +96,8 @@ if (!resumeProcessed) {
   run('patch', ['--batch', '-p1', '-i', processorPatch], processorDirectory);
   run('patch', ['--dry-run', '--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
   run('patch', ['--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
+  run('patch', ['--dry-run', '--batch', '-p1', '-i', namedOreDictionariesPatch], processorDirectory);
+  run('patch', ['--batch', '-p1', '-i', namedOreDictionariesPatch], processorDirectory);
 }
 const patchedProcessor = await readFile(join(processorDirectory, 'PackPreProcessor.cs'), 'utf8');
 const patchedConverter = await readFile(join(processorDirectory, 'PackConverter.cs'), 'utf8');
@@ -107,7 +113,9 @@ if (
   !patchedAtlasBuilder.includes('i >> IconAtlas.DimensionBits') ||
   !patchedAtlasBuilder.includes('hasVariantIdentity') ||
   !patchedAtlasBuilder.includes('Mutable item renderers must preserve their persisted image path') ||
-  !patchedProcessor.includes('for (var i = 1; i < parts.Length; i++)')
+  !patchedProcessor.includes('for (var i = 1; i < parts.Length; i++)') ||
+  !patchedConverter.includes('GetRepositoryGroups()') ||
+  !patchedConverter.includes('MarkOreDictionaryItems()')
 ) {
   throw new Error('Processor compatibility patch did not produce the expected source');
 }
@@ -208,6 +216,10 @@ const provenance = {
   browserCatalogPolicy: {
     mode: 'recipe-connected',
     patchSha256: await sha256File(browserPolicyPatch)
+  },
+  namedOreDictionaries: {
+    mode: 'preserve-all-names-and-separate-anonymous-groups',
+    patchSha256: await sha256File(namedOreDictionariesPatch)
   },
   toolchains: session.toolchains,
   previousData: {

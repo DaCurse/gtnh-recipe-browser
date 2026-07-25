@@ -5,7 +5,7 @@ import { splitCatalogGoods } from '../tools/pack-builder/builder';
 
 function encodedSize(datasetId: string, part: number, goods: unknown[]): number {
   return gzipSync(encode({
-    schemaVersion: 2,
+    schemaVersion: 3,
     datasetId,
     kind: 'goods',
     part,

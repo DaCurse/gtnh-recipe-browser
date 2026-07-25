@@ -22,6 +22,12 @@
       <MinecraftText lines={entry.formattedTooltip} raw={entry.rawTooltip} fallback={entry.tooltip} />
     </div>
   {/if}
+  {#if entry.oreDictionaryIds?.length}
+    <div class="tooltip-ore-dictionaries">
+      <span>Ore dictionary</span>
+      {entry.oreDictionaryIds.map((id) => id.startsWith('o:') ? id.slice(2) : id).join(', ')}
+    </div>
+  {/if}
   <div class="tooltip-mod">{entry.mod}</div>
   {#if action}
     <div class="tooltip-action">
@@ -29,3 +35,21 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .tooltip-ore-dictionaries {
+    margin-top: 4px;
+    color: #aca1ab;
+    font: 12px/1.45 Minecraft, monospace;
+    text-shadow: 2px 2px #342c34;
+    overflow-wrap: anywhere;
+  }
+  .tooltip-ore-dictionaries span {
+    display: block;
+    color: #777c82;
+    font: 10px/1.4 ui-sans-serif, system-ui, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: .08em;
+    text-shadow: none;
+  }
+</style>

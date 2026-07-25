@@ -1,6 +1,6 @@
 import type { MinecraftTextLine } from './minecraftText';
 
-type Kind = 'item' | 'fluid' | 'oreDict';
+type Kind = 'item' | 'fluid' | 'oreDict' | 'itemGroup';
 export type RecipeView = 'recipes' | 'usages' | 'machineUsages';
 
 export interface MachineRecipeCapability {
@@ -41,6 +41,8 @@ export interface CatalogEntry {
   usageCount?: number;
   /** Ore dictionary used when this item has no direct production recipes. */
   productionOreDictionaryId?: string;
+  /** Every named Forge ore dictionary containing this exact item. */
+  oreDictionaryIds?: string[];
   container?: {
     fluidId: string;
     amount: number;
@@ -69,10 +71,11 @@ export interface Ingredient {
   chance?: number;
   /** Zero-based position in the matching NEI item/fluid grid. */
   slot?: number;
-  kind?: 'item' | 'fluid' | 'oreDict';
-  /** Stable ore-dictionary ID retained instead of flattening the ingredient to one item. */
-  oreDictionaryId?: string;
-  /** Every interchangeable item accepted by an ore-dictionary ingredient. */
+  kind?: 'item' | 'fluid' | 'oreDict' | 'itemGroup';
+  /** Stable named dictionary or anonymous recipe-group ID. */
+  ingredientGroupId?: string;
+  ingredientGroupKind?: 'oreDict' | 'itemGroup';
+  /** Every interchangeable item accepted by a grouped ingredient. */
   alternatives?: string[];
 }
 

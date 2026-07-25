@@ -82,6 +82,13 @@ export interface PackedRecipeType {
 export interface PackedOreDictionary {
   id: string;
   itemIds: string[];
+  kind?: 'oreDict';
+}
+
+export interface PackedIngredientGroup {
+  id: string;
+  itemIds: string[];
+  kind: 'itemGroup';
 }
 
 export interface PackedCatalog {
@@ -89,17 +96,18 @@ export interface PackedCatalog {
   goods: PackedGoods[];
   recipeTypes: PackedRecipeType[];
   oreDictionaries: PackedOreDictionary[];
+  ingredientGroups?: PackedIngredientGroup[];
   serviceItemIds?: string[];
   obsoleteRecipeRemaps?: Record<string, string>;
 }
 
 export interface PackedCatalogCore extends Omit<PackedCatalog, 'goods'> {
-  schemaVersion: 2;
+  schemaVersion: 2 | 3;
   kind: 'core';
 }
 
 export interface PackedCatalogGoods {
-  schemaVersion: 2;
+  schemaVersion: 2 | 3;
   datasetId: string;
   kind: 'goods';
   part: number;
@@ -107,7 +115,7 @@ export interface PackedCatalogGoods {
 }
 
 interface PackedIo {
-  kind: 'item' | 'fluid' | 'oreDict';
+  kind: 'item' | 'fluid' | 'oreDict' | 'itemGroup';
   goodsId: string;
   slot: number;
   amount: number;

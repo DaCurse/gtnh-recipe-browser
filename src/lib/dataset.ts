@@ -14,6 +14,7 @@ import type {
   PackedCatalogCore,
   PackedCatalogGoods,
   PackedGoods,
+  PackedIngredientGroup,
   PackedOreDictionary,
   PackedRecipe,
   PackedRecipeType,
@@ -73,7 +74,7 @@ async function loadCatalog(
     if (catalog.datasetId !== manifest.datasetId) throw new Error('Catalog dataset identity mismatch');
     return { catalog, hashes: [asset.sha256] };
   }
-  if (manifest.formatVersion !== 2) {
+  if (manifest.formatVersion !== 2 && manifest.formatVersion !== 3) {
     throw new Error(`Unsupported pack manifest format ${manifest.formatVersion}`);
   }
 
@@ -92,7 +93,7 @@ async function loadCatalog(
         );
       });
       const value = decode(await decompress(bytes)) as PackedCatalogCore | PackedCatalogGoods;
-      if (value.schemaVersion !== 2 || value.datasetId !== manifest.datasetId) {
+      if (value.schemaVersion !== manifest.formatVersion || value.datasetId !== manifest.datasetId) {
         throw new Error(`${asset.id}: catalog identity mismatch`);
       }
       return value;
@@ -107,7 +108,7 @@ async function loadCatalog(
     .filter((asset): asset is PackedCatalogGoods => asset.kind === 'goods')
     .sort((left, right) => left.part - right.part);
   if (coreAssets.length !== 1 || goodsAssets.length === 0) {
-    throw new Error('Format-2 catalog requires one core and at least one goods chunk');
+    throw new Error(`Format-${manifest.formatVersion} catalog requires one core and at least one goods chunk`);
   }
   goodsAssets.forEach((asset, index) => {
     if (asset.part !== index) throw new Error(`Catalog goods chunk ${asset.part} is out of order`);
@@ -119,6 +120,7 @@ async function loadCatalog(
       goods: goodsAssets.flatMap((asset) => asset.goods),
       recipeTypes: core.recipeTypes,
       oreDictionaries: core.oreDictionaries,
+      ingredientGroups: core.ingredientGroups ?? [],
       serviceItemIds: core.serviceItemIds,
       obsoleteRecipeRemaps: core.obsoleteRecipeRemaps
     },
@@ -136,7 +138,7 @@ export class DatasetRepository {
   private readonly manifestUrl: string;
   private readonly packedGoods: Map<string, PackedGoods>;
   private readonly types: Map<string, PackedRecipeType>;
-  private readonly ores: Map<string, PackedOreDictionary>;
+  private readonly ingredientGroups: Map<string, PackedOreDictionary | PackedIngredientGroup>;
   private readonly productionFallbacks: Map<string, PackedOreDictionary>;
   private readonly shards = new Map<string, Promise<PackedRecipe[]>>();
 
@@ -163,7 +165,7 @@ export class DatasetRepository {
     this.browseEntries = buildCatalogBrowseEntries(materialized.entries);
     this.packedGoods = materialized.goods;
     this.types = materialized.recipeTypes;
-    this.ores = materialized.oreDictionaries;
+    this.ingredientGroups = materialized.ingredientGroups;
     this.productionFallbacks = materialized.productionFallbacks;
   }
 
@@ -210,7 +212,7 @@ export class DatasetRepository {
       `manifest:${manifestUrl}`
     );
     const manifest = manifestResult.value;
-    if (manifest.formatVersion !== 1 && manifest.formatVersion !== 2) {
+    if (![1, 2, 3].includes(manifest.formatVersion)) {
       throw new Error(`Unsupported pack manifest format ${manifest.formatVersion}`);
     }
     if (manifest.datasetId !== selected.datasetId) throw new Error('Manifest dataset identity mismatch');
@@ -354,23 +356,23 @@ export class DatasetRepository {
     signal?: AbortSignal
   ): Promise<Recipe[]> {
     const goods = this.packedGoods.get(entryId);
-    const selectedOre = this.ores.get(entryId);
-    if (!goods && !selectedOre) return [];
+    const selectedGroup = this.ingredientGroups.get(entryId);
+    if (!goods && !selectedGroup) return [];
     const catalogEntry = this.entries.find((entry) => entry.id === entryId);
     const productionFallback = this.productionFallbacks.get(entryId);
     const fluidScope = fluidRecipeScope(entryId, this.packedGoods);
     const machineCapabilities = catalogEntry?.machineCapabilities ?? [];
     const shardIds = view === 'machineUsages'
       ? [...new Set(machineCapabilities.flatMap((capability) => capability.recipeShards))]
-      : selectedOre
+      : selectedGroup
       ? view === 'recipes'
         ? catalogEntry?.productionShards ?? []
         : catalogEntry?.usageShards ?? []
       : view === 'recipes'
         ? catalogEntry?.productionShards ?? []
         : goods!.usageShards;
-    const selectedMembers = selectedOre
-      ? new Set(selectedOre.itemIds)
+    const selectedMembers = selectedGroup
+      ? new Set(selectedGroup.itemIds)
       : view === 'recipes' && productionFallback
         ? new Set(productionFallback.itemIds)
         : null;
@@ -384,7 +386,7 @@ export class DatasetRepository {
       }
       return (view === 'recipes' ? recipe.outputs : recipe.inputs).some((io) => {
         if (fluidScope) return fluidScope.memberIds.has(io.goodsId);
-        return ingredientMatchesEntry(io, entryId, selectedMembers, this.ores);
+        return ingredientMatchesEntry(io, entryId, selectedMembers, this.ingredientGroups);
       });
     };
     onProgress?.({ loadedShards: 0, totalShards: shardIds.length, batch: [] });
@@ -399,7 +401,7 @@ export class DatasetRepository {
             recipe,
             shardIndex * 1_000_000 + recipeIndex,
             this.types,
-            this.ores
+            this.ingredientGroups
           ));
         await yieldToBrowser();
         return batch;
