@@ -91,11 +91,17 @@ const patchedQuestFactory = await readFile(
   ),
   'utf8'
 );
+const patchedRenderer = await readFile(
+  join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java'),
+  'utf8'
+);
 if (
   !patchedBuild.includes('retrofuturagradle") version "1.4.9"') ||
   !patchedBuild.includes('com.github.GTNewHorizons:AspectRecipeIndex:') ||
   !patchedItem.includes('private String tooltip;') ||
-  !patchedQuestFactory.includes('Skipping missing required quest {} referenced by quest {}')
+  !patchedQuestFactory.includes('Skipping missing required quest {} referenced by quest {}') ||
+  !patchedRenderer.includes('String imageFilePath = job.getImageFilePath();') ||
+  !patchedRenderer.includes('imageZipFileSystem.getPath(imageFilePath)')
 ) {
   throw new Error('Exporter compatibility patch did not produce the expected source');
 }

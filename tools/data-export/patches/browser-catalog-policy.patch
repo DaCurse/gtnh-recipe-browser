@@ -29,20 +29,39 @@ index 51cf4af..ab30e38 100644
                  return processor == null || processor(localizedName, nbt);
              return false;
 diff --git a/AtlasBuilder.cs b/AtlasBuilder.cs
-index b01d6e4..6972f7a 100644
+index b01d6e4..2c4cb9b 100644
 --- a/AtlasBuilder.cs
 +++ b/AtlasBuilder.cs
-@@ -78,7 +78,9 @@ namespace Source
-                 using (image)
-                 {
-                     var positionX = (i & IconAtlas.XMask) * IconAtlas.ImageSize;
+@@ -24,6 +24,13 @@ namespace Source
+         {
+             var entry = archive.GetEntry(path);
+-            if (entry == null)
++            var fileName = Path.GetFileNameWithoutExtension(path);
++            var firstSeparator = fileName.IndexOf('~');
++            var lastSeparator = fileName.LastIndexOf('~');
++            var hasVariantIdentity = firstSeparator >= 0 && firstSeparator != lastSeparator;
++
++            // Generic goods may intentionally resolve to their first rendered sibling.
++            // NBT-specific goods must match exactly or the wrong variant would be shown.
++            if (entry == null && !hasVariantIdentity)
+             {
+                 path = path.Substring(0, path.Length - 4);
+                 foreach (var iEntry in archive.Entries)
+@@ -40,6 +47,7 @@ namespace Source
+             if (entry == null)
+             {
+-                Console.WriteLine("Unable to find archive entry for " + path);
+-                return null;
++                throw new InvalidDataException(
++                    "Image archive has no render for " + path +
++                    ". Mutable item renderers must preserve their pre-render image path.");
+             }
+             using var stream = entry.Open();
+@@ -81 +89,3 @@ namespace Source
 -                    var positionY = ((i & IconAtlas.YMask) >> IconAtlas.DimensionBits) * IconAtlas.ImageSize;
 +                    // The browser catalog can exceed the original 65,536-sprite page.
 +                    // The allocated atlas is already tall enough, so do not wrap later rows.
 +                    var positionY = (i >> IconAtlas.DimensionBits) * IconAtlas.ImageSize;
-                     
-                     atlas.Mutate(x => x.DrawImage(image, new Point(positionX, positionY), 1f));
-                 }
 diff --git a/PackPreProcessor.cs b/PackPreProcessor.cs
 index cb8633b..bb9ec58 100644
 --- a/PackPreProcessor.cs

@@ -9,7 +9,7 @@ index 59ea0e4..9a32955 100644
 -    id("com.gtnewhorizons.retrofuturagradle") version "1.3.35"
 +    id("com.gtnewhorizons.retrofuturagradle") version "1.4.9"
  }
- 
+
  idea {
 diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/plugin/base/factory/ItemFactory.java b/src/main/java/com/github/dcysteine/nesql/exporter/plugin/base/factory/ItemFactory.java
 index d3b6aa4..81408c8 100644
@@ -106,6 +106,25 @@ index 48a3bb9..0961c1f 100644
 +            }
 +            quest.addRequiredQuest(requiredQuest);
 +        }
+diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java b/src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java
+index 81c206f..6bb9fd2 100644
+--- a/src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java
++++ b/src/main/java/com/github/dcysteine/nesql/exporter/render/Renderer.java
+@@ -168,5 +168,8 @@ public final class Renderer {
+                 RenderJob job = jobOptional.get();
+                 RenderTarget target = job.getRenderTarget();
++                // Some item renderers mutate NBT while drawing. The SQL row identifies the
++                // pre-render stack, so capture its matching path before invoking render().
++                String imageFilePath = job.getImageFilePath();
+                 bindAndClearBuffer(target);
+                 render(job);
+                 BufferedImage image = readImage(target);
+@@ -174,4 +177,4 @@ public final class Renderer {
+-                Path outputPath = imageZipFileSystem.getPath(job.getImageFilePath());
++                Path outputPath = imageZipFileSystem.getPath(imageFilePath);
+                 Path outputDir = outputPath.getParent();
+                 if (!Files.exists(outputDir)) {
+                     try {
 diff --git a/gradle.properties b/gradle.properties
 index faef861..341b7b6 100644
 --- a/gradle.properties

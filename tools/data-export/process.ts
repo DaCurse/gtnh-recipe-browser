@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { spawnSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { access, cp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { buildPack } from '../pack-builder/builder';
@@ -14,6 +14,7 @@ import {
   readExportSession,
   requiredArgument,
   sha256File,
+  auditRenderedItemPaths,
   validateCombinedTooltipSchema
 } from './lib';
 
@@ -53,6 +54,19 @@ if ((await stat(imageZip)).size < 10_000_000) {
   throw new Error('NESQL image archive is unexpectedly small; export may be incomplete');
 }
 await validateCombinedTooltipSchema(scripts[0]!, ['THAUMCRAFT']);
+const imageEntries = execFileSync('unzip', ['-Z1', imageZip], {
+  encoding: 'utf8',
+  maxBuffer: 256 * 1024 * 1024
+}).split('\n').filter(Boolean);
+const imageAudit = await auditRenderedItemPaths(scripts[0]!, imageEntries);
+if (imageAudit.missingVariantPaths > 0) {
+  throw new Error(
+    `NESQL image archive is missing ${imageAudit.missingVariantPaths.toLocaleString()} of `
+    + `${imageAudit.totalItemPaths.toLocaleString()} item renders referenced by the database. `
+    + `The exporter must snapshot image paths before mutable renderers run. Examples: `
+    + imageAudit.examples.join(', ')
+  );
+}
 
 const processedDirectory = join(outputWorkDirectory, 'processed');
 const processorDirectory = join(outputWorkDirectory, 'processor');
@@ -91,6 +105,8 @@ if (
   !patchedGenerator.includes('dbParser = null') ||
   !patchedItemPolicy.includes('BrowserCatalogPolicy.RetainRecipeConnectedItems') ||
   !patchedAtlasBuilder.includes('i >> IconAtlas.DimensionBits') ||
+  !patchedAtlasBuilder.includes('hasVariantIdentity') ||
+  !patchedAtlasBuilder.includes('Mutable item renderers must preserve their pre-render image path') ||
   !patchedProcessor.includes('for (var i = 1; i < parts.Length; i++)')
 ) {
   throw new Error('Processor compatibility patch did not produce the expected source');

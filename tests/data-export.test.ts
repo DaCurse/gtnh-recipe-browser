@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   argumentsMap,
+  auditRenderedItemPaths,
   combinedRevision,
   validateCombinedTooltipSchema,
   withPublishedVersion,
@@ -71,6 +72,35 @@ describe('data export tooling', () => {
     expect(patch).toContain('final line frequently contains real');
   });
 
+  it('rejects NBT-specific item renders that do not match the database path', async () => {
+    const directory = await mkdtemp(join(tmpdir(), 'gtnh-export-images-'));
+    try {
+      const script = join(directory, 'nesql-db.script');
+      await writeFile(
+        script,
+        [
+          "INSERT INTO ITEM VALUES('generic','item/gregtech/tool~120.png')",
+          "INSERT INTO ITEM VALUES('matched','item/gregtech/tool~120~matched.png')",
+          "INSERT INTO ITEM VALUES('missing','item/gregtech/tool~120~missing.png')"
+        ].join('\n'),
+        'utf8'
+      );
+
+      const audit = await auditRenderedItemPaths(script, [
+        'item/gregtech/tool~120~first-sibling.png',
+        'item/gregtech/tool~120~matched.png'
+      ]);
+
+      expect(audit).toEqual({
+        totalItemPaths: 3,
+        missingVariantPaths: 1,
+        examples: ['item/gregtech/tool~120~missing.png']
+      });
+    } finally {
+      await rm(directory, { recursive: true, force: true });
+    }
+  });
+
   it('handles dangling quest prerequisites without pinning an individual quest ID', async () => {
     const patch = await readFile(
       join(process.cwd(), 'tools/data-export/patches/combined-tooltips.patch'),
@@ -81,6 +111,8 @@ describe('data export tooling', () => {
     expect(patch).toContain('findQuestOrNull(requiredQuestId)');
     expect(patch).toContain('com.github.GTNewHorizons:AspectRecipeIndex:');
     expect(patch).toContain('THAUMCRAFT_NEI("aspectrecipeindex")');
+    expect(patch).toContain('String imageFilePath = job.getImageFilePath();');
+    expect(patch).toContain('imageZipFileSystem.getPath(imageFilePath)');
     expect(patch).not.toMatch(/[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}/i);
   });
 
@@ -115,6 +147,8 @@ describe('data export tooling', () => {
     expect(patch).toContain('return false;');
     expect(patch).toContain("PackConverter's existing touched-item pass");
     expect(patch).toContain('i >> IconAtlas.DimensionBits');
+    expect(patch).toContain('hasVariantIdentity');
+    expect(patch).toContain('Mutable item renderers must preserve their pre-render image path');
     expect(patch).not.toContain('+                    var positionY = ((i & IconAtlas.YMask)');
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });

@@ -136,6 +136,51 @@ export async function validateCombinedTooltipSchema(
   }
 }
 
+export interface RenderedImageAudit {
+  totalItemPaths: number;
+  missingVariantPaths: number;
+  examples: string[];
+}
+
+function itemVariantPrefix(path: string): string | undefined {
+  if (!path.startsWith('item/') || !path.endsWith('.png')) return undefined;
+  const fileName = path.slice(path.lastIndexOf('/') + 1, -4);
+  const firstSeparator = fileName.indexOf('~');
+  const lastSeparator = fileName.lastIndexOf('~');
+  if (firstSeparator < 0 || firstSeparator === lastSeparator) return undefined;
+  return path.slice(0, path.lastIndexOf('~'));
+}
+
+export async function auditRenderedItemPaths(
+  scriptPath: string,
+  archiveEntries: readonly string[]
+): Promise<RenderedImageAudit> {
+  const exactPaths = new Set(archiveEntries);
+  const renderedVariantPrefixes = new Set(
+    archiveEntries.map(itemVariantPrefix).filter((path): path is string => path !== undefined)
+  );
+  const lines = createInterface({
+    input: createReadStream(scriptPath, { encoding: 'utf8' }),
+    crlfDelay: Infinity
+  });
+  let totalItemPaths = 0;
+  let missingVariantPaths = 0;
+  const examples: string[] = [];
+  for await (const line of lines) {
+    const match = /^INSERT INTO ITEM VALUES\('[^']*','([^']+)'/.exec(line);
+    const path = match?.[1];
+    if (!path) continue;
+    totalItemPaths++;
+    if (exactPaths.has(path)) continue;
+    const variantPrefix = itemVariantPrefix(path);
+    if (!variantPrefix && renderedVariantPrefixes.has(path.slice(0, -4))) continue;
+    missingVariantPaths++;
+    if (examples.length < 5) examples.push(path);
+  }
+  lines.close();
+  return { totalItemPaths, missingVariantPaths, examples };
+}
+
 export function withPublishedVersion(
   index: VersionsIndex,
   version: VersionsIndexEntry,

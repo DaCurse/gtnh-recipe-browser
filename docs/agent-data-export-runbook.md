@@ -35,6 +35,9 @@ The committed compatibility patch is applied only to `.export-work/<version>/nes
 - upgrades the unavailable RetroFuturaGradle 1.3.35 plugin to the compatible 1.4.9 release;
 - combines ordered tooltip lines into the single format-v5 `TOOLTIP` column expected by the pinned processor;
 - retains exporter failures as tooltip text for parity with the prior representation;
+- snapshots each image filename before rendering. Some GT, Tinkers', genetics, and other renderers mutate copied
+  item NBT while drawing; deriving the filename afterward disconnects `image.zip` from the database row and produces
+  transparent atlas cells;
 - skips only dangling BetterQuesting prerequisite edges while warning with both quest IDs. GTNH packs can retain
   references to removed quests; aborting the entire item and recipe export for an impossible edge is not useful;
 - builds against AspectRecipeIndex 1.1.3 and its `aspectrecipeindex` mod ID. The old `thaumcraftneiplugin`
@@ -63,6 +66,10 @@ restores configurable GT, Tinkers’, TGregworks, genetics, and other craftable 
 item ID. The same patch removes the atlas writer’s 65,536-sprite Y-coordinate wrap; retained catalogs can exceed one
 legacy sprite page. Processing rejects a result with fewer than 75,000 items or fewer than 10,000 craftable
 `gregtech:gt.metatool.01` variants.
+
+Atlas generation rejects a missing NBT-specific image path instead of silently writing a transparent sprite.
+Generic goods may still use the processor's upstream sibling fallback. A missing variant render means the exporter
+and database disagree and requires a corrected fresh NESQL export; never substitute another variant's image.
 
 The compatibility patch also releases the processor's parsed SQL tables immediately after repository conversion.
 This is required for current full exports: retaining both object graphs through recipe remapping can exhaust a 16 GiB
