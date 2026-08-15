@@ -23,8 +23,14 @@ Stateful feature workflows use Svelte 5 rune modules:
 
 - `datasetSchema.ts` defines immutable manifest and MessagePack wire shapes.
 - `datasetAssets.ts` performs verified network/cache reads and decompression.
-- `catalogMaterialization.ts` builds searchable items, ore dictionaries, and machine capabilities.
+- `storage.ts` owns versioned IndexedDB records for verified blobs and decoded catalog snapshots.
+- `catalogMaterialization.ts` builds (and serializes/restores) searchable items, ore dictionaries, and machine capabilities.
 - `recipeMaterialization.ts` converts packed recipes into display-domain recipes.
+
+The service worker precaches only the application shell. Immutable dataset bytes,
+on-demand icon sheets, and the decoded catalog snapshot stay in IndexedDB so
+dataset deletion and storage accounting remain explicit. Recipe shards remain
+lazy and are decoded only when a tab needs them.
 
 UI code should depend on `DatasetRepository` and `types.ts`, not packed wire interfaces. Pack-generation code under `tools/` remains independent from browser storage and UI modules.
 

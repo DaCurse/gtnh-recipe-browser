@@ -30,10 +30,14 @@ export interface CatalogEntry {
   color: string;
   glyph: string;
   icon?: {
+    id?: string;
     url: string;
     index: number;
     columns: number;
     sha256?: string;
+    bytes?: number;
+    encoding?: 'gzip' | 'identity';
+    datasetId?: string;
   };
   productionShards?: string[];
   usageShards?: string[];

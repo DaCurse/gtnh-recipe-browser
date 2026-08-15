@@ -6,6 +6,7 @@
   import ProjectLinks from './ProjectLinks.svelte';
   import VariantPicker from './VariantPicker.svelte';
   import { resolveCatalogVariant } from './catalogVariants';
+  import type { CatalogSearchDocument } from './catalogSearch';
   import { oreCycle } from './oreCycle';
   import type { CatalogBrowseEntry, CatalogEntry } from './types';
 
@@ -16,6 +17,7 @@
     searchInput = $bindable(),
     catalog,
     exactCatalog,
+    searchDocuments,
     sidebarWidth = $bindable(),
     sidebarResizing = $bindable(),
     select,
@@ -26,6 +28,7 @@
     searchInput?: HTMLInputElement;
     catalog: CatalogBrowseEntry[];
     exactCatalog: CatalogEntry[];
+    searchDocuments?: CatalogSearchDocument[];
     sidebarWidth: number;
     sidebarResizing: boolean;
     select: (id: string) => void;
@@ -54,6 +57,7 @@
   $effect(() => {
     const worker = searchWorker;
     const nextCatalog = searchableCatalog;
+    const nextDocuments = searchDocuments;
     if (!worker) return;
     const generation = ++searchGeneration;
     searchRequest += 1;
@@ -68,28 +72,38 @@
       for (let start = 0; start < nextCatalog.length; start += 1_000) {
         if (generation !== searchGeneration || worker !== searchWorker) return;
         const end = Math.min(start + 1_000, nextCatalog.length);
-        worker.postMessage({
-          type: 'append',
-          generation,
-          catalog: nextCatalog.slice(start, end).map((entry) => ({
-            id: entry.id,
-            name: entry.name,
-            mod: entry.mod,
-            members: entry.variantIds.map((id) => {
-              const member = exactEntryById.get(id)!;
-              return {
-                id: member.id,
-                name: member.name,
-                mod: member.mod,
-                variantLabel: entry.variantLabels?.[id],
-                rawTooltip: member.rawTooltip,
-                searchMask: [...(member.searchMask ?? [])]
-              };
-            })
-          })),
-          completed: end,
-          total: nextCatalog.length
-        });
+        if (nextDocuments) {
+          worker.postMessage({
+            type: 'appendDocuments',
+            generation,
+            documents: nextDocuments.slice(start, end),
+            completed: end,
+            total: nextDocuments.length
+          });
+        } else {
+          worker.postMessage({
+            type: 'append',
+            generation,
+            catalog: nextCatalog.slice(start, end).map((entry) => ({
+              id: entry.id,
+              name: entry.name,
+              mod: entry.mod,
+              members: entry.variantIds.map((id) => {
+                const member = exactEntryById.get(id)!;
+                return {
+                  id: member.id,
+                  name: member.name,
+                  mod: member.mod,
+                  variantLabel: entry.variantLabels?.[id],
+                  rawTooltip: member.rawTooltip,
+                  searchMask: [...(member.searchMask ?? [])]
+                };
+              })
+            })),
+            completed: end,
+            total: nextCatalog.length
+          });
+        }
         await new Promise((resolve) => window.setTimeout(resolve, 0));
       }
       if (generation === searchGeneration && worker === searchWorker) {

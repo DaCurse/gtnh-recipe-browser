@@ -1,5 +1,10 @@
 import { decode } from '@msgpack/msgpack';
-import { materializeCatalog } from './catalogMaterialization';
+import {
+  materializeCatalog,
+  restoreMaterializedCatalog,
+  snapshotMaterializedCatalog,
+  type MaterializedCatalog
+} from './catalogMaterialization';
 import { buildCatalogBrowseEntries } from './catalogVariants';
 import {
   decompress,
@@ -28,10 +33,16 @@ import { materializeRecipe } from './recipeMaterialization';
 import { machineCanProcessVoltage } from './recipePresentation';
 import { mapProgressively } from './progressive';
 import {
+  buildCatalogSearchDocuments,
+  type CatalogSearchDocument
+} from './catalogSearch';
+import {
   activateDataset,
+  getCatalogSnapshot,
   getDataset,
   hasCachedAsset,
   listDatasets,
+  saveCatalogSnapshot,
   saveDataset
 } from './storage';
 import type {
@@ -131,6 +142,7 @@ async function loadCatalog(
 export class DatasetRepository {
   readonly entries: CatalogEntry[];
   readonly browseEntries: CatalogBrowseEntry[];
+  readonly searchDocuments: CatalogSearchDocument[];
   readonly datasetId: string;
   readonly gtnhVersion: string;
   readonly revision: string;
@@ -154,19 +166,28 @@ export class DatasetRepository {
     return this.assets.reduce((total, asset) => total + asset.bytes, 0);
   }
 
-  private constructor(manifest: DatasetManifest, manifestUrl: string, catalog: PackedCatalog) {
+  private constructor(
+    manifest: DatasetManifest,
+    manifestUrl: string,
+    catalog: PackedCatalog,
+    materialized?: MaterializedCatalog,
+    browseEntries?: CatalogBrowseEntry[],
+    searchDocuments?: CatalogSearchDocument[]
+  ) {
     this.manifest = manifest;
     this.manifestUrl = manifestUrl;
     this.datasetId = manifest.datasetId;
     this.gtnhVersion = manifest.gtnhVersion;
     this.revision = manifest.revision;
-    const materialized = materializeCatalog(manifest, manifestUrl, catalog);
-    this.entries = materialized.entries;
-    this.browseEntries = buildCatalogBrowseEntries(materialized.entries);
-    this.packedGoods = materialized.goods;
-    this.types = materialized.recipeTypes;
-    this.ingredientGroups = materialized.ingredientGroups;
-    this.productionFallbacks = materialized.productionFallbacks;
+    const resolved = materialized ?? materializeCatalog(manifest, manifestUrl, catalog);
+    this.entries = resolved.entries;
+    this.browseEntries = browseEntries ?? buildCatalogBrowseEntries(resolved.entries);
+    this.searchDocuments = searchDocuments
+      ?? buildCatalogSearchDocuments(this.browseEntries, this.entries);
+    this.packedGoods = resolved.goods;
+    this.types = resolved.recipeTypes;
+    this.ingredientGroups = resolved.ingredientGroups;
+    this.productionFallbacks = resolved.productionFallbacks;
   }
 
   static async availableVersions(): Promise<DatasetVersion[]> {
@@ -217,9 +238,77 @@ export class DatasetRepository {
     }
     if (manifest.datasetId !== selected.datasetId) throw new Error('Manifest dataset identity mismatch');
     report(12, 'Loading catalog');
-    const loadedCatalog = await loadCatalog(manifest, manifestResult.url, report);
+    const expectedCatalogHashes = manifest.catalogAssets.map((asset) => asset.sha256);
+    const cachedSnapshot = await getCatalogSnapshot(manifest.datasetId);
+    const snapshotMatches = cachedSnapshot
+      && cachedSnapshot.cacheVersion === 1
+      && cachedSnapshot.formatVersion === manifest.formatVersion
+      && cachedSnapshot.manifestUrl === manifestResult.url
+      && Array.isArray(cachedSnapshot.catalogHashes)
+      && cachedSnapshot.catalogHashes.length === expectedCatalogHashes.length
+      && cachedSnapshot.catalogHashes.every((hash, index) => hash === expectedCatalogHashes[index])
+      && cachedSnapshot.catalog !== undefined
+      && cachedSnapshot.catalog.datasetId === manifest.datasetId
+      && Array.isArray(cachedSnapshot.materialized?.entries)
+      && Array.isArray(cachedSnapshot.materialized?.productionFallbacks)
+      && Array.isArray(cachedSnapshot.browseEntries)
+      && Array.isArray(cachedSnapshot.searchDocuments);
+    let restoredSnapshot = false;
+    let loadedCatalog: {
+      catalog: PackedCatalog;
+      hashes: string[];
+      materialized?: MaterializedCatalog;
+      browseEntries?: CatalogBrowseEntry[];
+      searchDocuments?: CatalogSearchDocument[];
+    };
+    if (snapshotMatches) {
+      try {
+        report(88, 'Restoring decoded catalog cache');
+        loadedCatalog = {
+          catalog: cachedSnapshot.catalog,
+          hashes: expectedCatalogHashes,
+          materialized: restoreMaterializedCatalog(cachedSnapshot.materialized, cachedSnapshot.catalog),
+          browseEntries: cachedSnapshot.browseEntries,
+          searchDocuments: cachedSnapshot.searchDocuments
+        };
+        restoredSnapshot = true;
+      } catch (error) {
+        console.warn('Ignoring an incompatible decoded catalog cache', error);
+        loadedCatalog = await loadCatalog(manifest, manifestResult.url, report);
+      }
+    } else {
+      loadedCatalog = await loadCatalog(manifest, manifestResult.url, report);
+    }
     report(93, 'Preparing items and ore dictionaries');
-    const repository = new DatasetRepository(manifest, manifestResult.url, loadedCatalog.catalog);
+    const repository = new DatasetRepository(
+      manifest,
+      manifestResult.url,
+      loadedCatalog.catalog,
+      loadedCatalog.materialized,
+      loadedCatalog.browseEntries,
+      loadedCatalog.searchDocuments
+    );
+    if (!restoredSnapshot) {
+      void saveCatalogSnapshot({
+        cacheVersion: 1,
+        datasetId: manifest.datasetId,
+        formatVersion: manifest.formatVersion,
+        manifestUrl: manifestResult.url,
+        catalogHashes: expectedCatalogHashes,
+        catalog: loadedCatalog.catalog,
+        materialized: snapshotMaterializedCatalog({
+          entries: repository.entries,
+          goods: repository.packedGoods,
+          recipeTypes: repository.types,
+          oreDictionaries: new Map(loadedCatalog.catalog.oreDictionaries.map((ore) => [ore.id, ore])),
+          ingredientGroups: repository.ingredientGroups,
+          productionFallbacks: repository.productionFallbacks
+        }),
+        browseEntries: repository.browseEntries,
+        searchDocuments: repository.searchDocuments,
+        cachedAt: Date.now()
+      }).catch((error) => console.warn('Unable to persist decoded catalog cache', error));
+    }
     const previous = await getDataset(manifest.datasetId);
     const assetHashes = new Set(previous?.assetHashes ?? []);
     loadedCatalog.hashes.forEach((hash) => assetHashes.add(hash));

@@ -3,10 +3,13 @@ import { describe, expect, it } from 'vitest';
 import {
   activateDataset,
   cacheAsset,
+  getCatalogSnapshot,
   getCachedAsset,
   listDatasets,
   removeDataset,
-  saveDataset
+  saveCatalogSnapshot,
+  saveDataset,
+  type CachedCatalogSnapshot
 } from '../src/lib/storage';
 import type { DatasetState } from '../src/lib/types';
 
@@ -50,5 +53,38 @@ describe('IndexedDB dataset lifecycle', () => {
     expect(await listDatasets()).toEqual([]);
     expect(await getCachedAsset('shared')).toBeNull();
     expect(await getCachedAsset('only-b')).toBeNull();
+  });
+
+  it('persists and removes a decoded catalog snapshot with its dataset', async () => {
+    const snapshot: CachedCatalogSnapshot = {
+      cacheVersion: 1,
+      datasetId: 'snapshot-version',
+      formatVersion: 3,
+      manifestUrl: 'https://example.test/snapshot/manifest.json',
+      catalogHashes: ['catalog-hash'],
+      catalog: {
+        datasetId: 'snapshot-version',
+        goods: [],
+        recipeTypes: [],
+        oreDictionaries: [],
+        ingredientGroups: []
+      },
+      materialized: {
+        entries: [],
+        productionFallbacks: []
+      },
+      browseEntries: [],
+      searchDocuments: [],
+      cachedAt: Date.now()
+    };
+    await saveCatalogSnapshot(snapshot);
+    expect(await getCatalogSnapshot(snapshot.datasetId)).toMatchObject({
+      datasetId: snapshot.datasetId,
+      catalogHashes: ['catalog-hash']
+    });
+    await saveDataset(dataset(snapshot.datasetId, false, ['catalog-hash']));
+    await cacheAsset('catalog-hash', new Uint8Array([4]));
+    await removeDataset(snapshot.datasetId);
+    expect(await getCatalogSnapshot(snapshot.datasetId)).toBeNull();
   });
 });

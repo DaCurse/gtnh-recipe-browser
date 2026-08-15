@@ -9,6 +9,7 @@
   import ItemOverview from './lib/ItemOverview.svelte';
   import RecipeBrowser from './lib/RecipeBrowser.svelte';
   import { DatasetRepository } from './lib/dataset';
+  import { clearIconSheetCache } from './lib/iconCache';
   import {
     itemListUrl,
     recipeViewFromUrl,
@@ -24,6 +25,9 @@
   let datasetProgress = $state(0);
   let datasetStage = $state('Starting');
   let errorCopied = $state(false);
+  let loadTargetDatasetId = $state<string>();
+  let loadTargetVersion = $state<string>();
+  let loadPreserveSelection = $state(false);
   let query = $state('');
   let selectedId = $state('');
   let mode = $state<RecipeView>('recipes');
@@ -38,8 +42,11 @@
   const datasetManager = new DatasetManagerState({
     getRepository: () => repository,
     validateRepository,
-    applyRepository,
-    markReady: () => datasetStatus = 'ready'
+    loadDataset: (version, preserveSelection) => loadDataset(
+      version.datasetId,
+      preserveSelection,
+      version.gtnhVersion
+    )
   });
   function select(id: string, push = true, nextMode: RecipeView = 'recipes') {
     mode = nextMode;
@@ -116,24 +123,35 @@
     if (!detailsOpen) {
       url.searchParams.delete('item');
       url.searchParams.delete('view');
+    } else {
+      url.searchParams.set('item', selectedId);
+      url.searchParams.set('view', recipeViewUrlValue(mode));
     }
     history.replaceState(detailsOpen ? { id: selectedId } : { route: 'items' }, '', url);
   }
 
-  async function loadDataset(targetDatasetId?: string) {
+  async function loadDataset(
+    targetDatasetId?: string,
+    preserveSelection = false,
+    expectedVersion?: string
+  ): Promise<boolean> {
+    const linkedDatasetId = targetDatasetId
+      ?? new URLSearchParams(location.search).get('version')
+      ?? undefined;
+    loadTargetDatasetId = linkedDatasetId;
+    loadTargetVersion = expectedVersion;
+    loadPreserveSelection = preserveSelection;
     datasetStatus = 'loading';
     datasetError = '';
     datasetProgress = 0;
     datasetStage = 'Starting';
     errorCopied = false;
+    clearIconSheetCache();
     repository = null;
     catalog = [];
-    selectedId = '';
-    datasetVersion = '…';
+    if (!preserveSelection) selectedId = '';
+    datasetVersion = expectedVersion ?? '…';
     try {
-      const linkedDatasetId = targetDatasetId
-        ?? new URLSearchParams(location.search).get('version')
-        ?? undefined;
       const loaded = await DatasetRepository.load(
         linkedDatasetId,
         ({ percent, stage, gtnhVersion }) => {
@@ -147,10 +165,12 @@
       await applyRepository(loaded, false);
       datasetStatus = 'ready';
       await datasetManager.refreshAvailability();
+      return true;
     } catch (error) {
       console.error('Unable to load the GTNH dataset', error);
       datasetError = diagnostic(error);
       datasetStatus = 'error';
+      return false;
     }
   }
 
@@ -214,7 +234,7 @@
       loadingVersion={datasetVersion === '…' ? undefined : datasetVersion}
       error={datasetError}
       {errorCopied}
-      retry={() => loadDataset()}
+      retry={() => loadDataset(loadTargetDatasetId, loadPreserveSelection, loadTargetVersion)}
       {copyError}
     />
   {:else if selected && repository}
@@ -226,6 +246,7 @@
       bind:searchInput
       catalog={repository.browseEntries}
       exactCatalog={catalog}
+      searchDocuments={repository.searchDocuments}
       bind:sidebarWidth
       bind:sidebarResizing
       select={(id) => select(id)}

@@ -10,6 +10,7 @@ import {
 type WorkerRequest =
   | { type: 'init'; generation: number }
   | { type: 'append'; generation: number; catalog: CatalogSearchEntry[]; completed: number; total: number }
+  | { type: 'appendDocuments'; generation: number; documents: CatalogSearchDocument[]; completed: number; total: number }
   | { type: 'finish'; generation: number }
   | { type: 'search'; generation: number; id: number; query: string; offset: number; limit: number };
 
@@ -75,6 +76,16 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   if (request.generation !== generation) return;
   if (request.type === 'append') {
     catalog.push(...request.catalog.map(buildCatalogSearchDocument));
+    self.postMessage({
+      type: 'progress',
+      generation,
+      completed: request.completed,
+      total: request.total
+    });
+    return;
+  }
+  if (request.type === 'appendDocuments') {
+    catalog.push(...request.documents);
     self.postMessage({
       type: 'progress',
       generation,

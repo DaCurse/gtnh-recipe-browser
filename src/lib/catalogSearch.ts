@@ -1,6 +1,7 @@
 import { minecraftHtmlPlainText } from './minecraftText';
 import { normalize } from './search';
 import { querySearchMask, searchMaskContains } from './searchMask';
+import type { CatalogBrowseEntry, CatalogEntry } from './types';
 
 interface CatalogSearchMember {
   id: string;
@@ -39,6 +40,38 @@ export interface CatalogSearchQuery {
   terms: string[];
   termMasks: number[][];
   modFilters: string[];
+}
+
+function buildCatalogSearchEntries(
+  catalog: readonly CatalogBrowseEntry[],
+  exactCatalog: readonly CatalogEntry[]
+): CatalogSearchEntry[] {
+  const exactById = new Map(exactCatalog.map((entry) => [entry.id, entry]));
+  return catalog
+    .filter((entry) => entry.searchable !== false)
+    .map((entry) => ({
+      id: entry.id,
+      name: entry.name,
+      mod: entry.mod,
+      members: entry.variantIds
+        .map((id) => exactById.get(id))
+        .filter((member): member is CatalogEntry => member !== undefined)
+        .map((member) => ({
+          id: member.id,
+          name: member.name,
+          mod: member.mod,
+          variantLabel: entry.variantLabels?.[member.id],
+          rawTooltip: member.rawTooltip,
+          searchMask: [...(member.searchMask ?? [])]
+        }))
+    }));
+}
+
+export function buildCatalogSearchDocuments(
+  catalog: readonly CatalogBrowseEntry[],
+  exactCatalog: readonly CatalogEntry[]
+): CatalogSearchDocument[] {
+  return buildCatalogSearchEntries(catalog, exactCatalog).map(buildCatalogSearchDocument);
 }
 
 export function buildCatalogSearchDocument(entry: CatalogSearchEntry): CatalogSearchDocument {

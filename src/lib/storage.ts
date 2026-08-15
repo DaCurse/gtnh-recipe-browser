@@ -1,10 +1,27 @@
 import { openDB } from 'idb';
-import type { DatasetState } from './types';
+import type { MaterializedCatalogSnapshot } from './catalogMaterialization';
+import type { CatalogSearchDocument } from './catalogSearch';
+import type { PackedCatalog } from './datasetSchema';
+import type { CatalogBrowseEntry, DatasetState } from './types';
 
 const DB_NAME = 'gtnh-recipe-browser';
 const DATASET_STORE = 'datasets';
 const ASSET_STORE = 'assets';
 const METADATA_STORE = 'metadata';
+const CATALOG_STORE = 'catalogs';
+
+export interface CachedCatalogSnapshot {
+  cacheVersion: 1;
+  datasetId: string;
+  formatVersion: number;
+  manifestUrl: string;
+  catalogHashes: string[];
+  catalog: PackedCatalog;
+  materialized: MaterializedCatalogSnapshot;
+  browseEntries: CatalogBrowseEntry[];
+  searchDocuments: CatalogSearchDocument[];
+  cachedAt: number;
+}
 
 interface CachedAsset {
   sha256: string;
@@ -47,7 +64,7 @@ export function unreferencedDatasetAssets(
 }
 
 function database() {
-  databasePromise ??= openDB(DB_NAME, 2, {
+  databasePromise ??= openDB(DB_NAME, 3, {
     upgrade(db) {
       if (!db.objectStoreNames.contains(DATASET_STORE)) {
         db.createObjectStore(DATASET_STORE, { keyPath: 'datasetId' });
@@ -57,6 +74,9 @@ function database() {
       }
       if (!db.objectStoreNames.contains(METADATA_STORE)) {
         db.createObjectStore(METADATA_STORE, { keyPath: 'key' });
+      }
+      if (!db.objectStoreNames.contains(CATALOG_STORE)) {
+        db.createObjectStore(CATALOG_STORE, { keyPath: 'datasetId' });
       }
     }
   });
@@ -88,13 +108,47 @@ export async function activateDataset(datasetId: string): Promise<void> {
 
 export async function removeDataset(datasetId: string): Promise<void> {
   const db = await database();
-  const transaction = db.transaction([DATASET_STORE, ASSET_STORE], 'readwrite');
+  const transaction = db.transaction([DATASET_STORE, ASSET_STORE, CATALOG_STORE], 'readwrite');
   const datasets = await transaction.objectStore(DATASET_STORE).getAll() as DatasetState[];
   for (const hash of unreferencedDatasetAssets(datasets, datasetId)) {
     await transaction.objectStore(ASSET_STORE).delete(hash);
   }
   await transaction.objectStore(DATASET_STORE).delete(datasetId);
+  await transaction.objectStore(CATALOG_STORE).delete(datasetId);
   await transaction.done;
+}
+
+export async function getCatalogSnapshot(datasetId: string): Promise<CachedCatalogSnapshot | null> {
+  if (!('indexedDB' in globalThis)) return null;
+  try {
+    const snapshot = await (await database()).get(CATALOG_STORE, datasetId) as CachedCatalogSnapshot | undefined;
+    return snapshot ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function saveCatalogSnapshot(snapshot: CachedCatalogSnapshot): Promise<void> {
+  if (!('indexedDB' in globalThis)) return;
+  await (await database()).put(CATALOG_STORE, snapshot);
+}
+
+/** Record an on-demand asset in the owning dataset for accounting and cleanup. */
+export async function recordDatasetAsset(
+  datasetId: string,
+  sha256: string,
+  byteLength: number
+): Promise<void> {
+  const dataset = await getDataset(datasetId);
+  const assetHashes = dataset?.assetHashes ?? [];
+  if (!dataset || assetHashes.includes(sha256)) return;
+  await saveDataset({
+    ...dataset,
+    status: dataset.status === 'catalog' ? 'partial' : dataset.status,
+    storedBytes: dataset.storedBytes + byteLength,
+    assetHashes: [...assetHashes, sha256],
+    updatedAt: Date.now()
+  });
 }
 
 export async function estimateStorage() {

@@ -12,13 +12,50 @@ import type {
 } from './datasetSchema';
 import type { CatalogEntry } from './types';
 
-interface MaterializedCatalog {
+export interface MaterializedCatalog {
   entries: CatalogEntry[];
   goods: Map<string, PackedGoods>;
   recipeTypes: Map<string, PackedRecipeType>;
   oreDictionaries: Map<string, PackedOreDictionary>;
   ingredientGroups: Map<string, PackedOreDictionary | PackedIngredientGroup>;
   productionFallbacks: Map<string, PackedOreDictionary>;
+}
+
+/**
+ * The materialized catalog is intentionally kept as arrays at the IndexedDB
+ * boundary.  Maps are cheap to rebuild, while arrays are portable across
+ * browsers and make the snapshot format explicit and inspectable.
+ */
+export interface MaterializedCatalogSnapshot {
+  entries: CatalogEntry[];
+  productionFallbacks: Array<[string, PackedOreDictionary]>;
+}
+
+export function snapshotMaterializedCatalog(
+  materialized: MaterializedCatalog
+): MaterializedCatalogSnapshot {
+  return {
+    entries: materialized.entries,
+    productionFallbacks: [...materialized.productionFallbacks.entries()]
+  };
+}
+
+export function restoreMaterializedCatalog(
+  snapshot: MaterializedCatalogSnapshot,
+  catalog: PackedCatalog
+): MaterializedCatalog {
+  const ingredientGroups = [
+    ...catalog.oreDictionaries,
+    ...(catalog.ingredientGroups ?? [])
+  ];
+  return {
+    entries: snapshot.entries,
+    goods: new Map(catalog.goods.map((goods) => [goods.id, goods])),
+    recipeTypes: new Map(catalog.recipeTypes.map((type) => [type.id, type])),
+    oreDictionaries: new Map(catalog.oreDictionaries.map((ore) => [ore.id, ore])),
+    ingredientGroups: new Map(ingredientGroups.map((group) => [group.id, group])),
+    productionFallbacks: new Map(snapshot.productionFallbacks)
+  };
 }
 
 export function materializeCatalog(
@@ -111,10 +148,14 @@ export function materializeCatalog(
       glyph: goods.kind === 'fluid' ? '≈' : '□',
       searchable: goods.searchable,
       icon: goods.icon && sheet ? {
+        id: sheet.id,
         url: new URL(sheet.url, manifestUrl).href,
         index: goods.icon.index,
         columns: sheet.columns,
-        sha256: sheet.sha256
+        sha256: sheet.sha256,
+        bytes: sheet.bytes,
+        encoding: sheet.encoding,
+        datasetId: manifest.datasetId
       } : undefined,
       productionShards,
       usageShards,

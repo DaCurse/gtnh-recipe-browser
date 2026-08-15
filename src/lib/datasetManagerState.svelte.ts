@@ -18,8 +18,8 @@ import type {
 interface DatasetManagerCallbacks {
   getRepository: () => DatasetRepository | null;
   validateRepository: (repository: DatasetRepository) => void;
-  applyRepository: (repository: DatasetRepository, preserveSelection: boolean) => Promise<void>;
-  markReady: () => void;
+  /** Load through the app-level startup state, preserving the current item. */
+  loadDataset: (version: DatasetVersion, preserveSelection: boolean) => Promise<boolean>;
 }
 
 function diagnostic(error: unknown): string {
@@ -168,14 +168,12 @@ export class DatasetManagerState {
     if (this.switchingDatasetId || version.datasetId === repository?.datasetId) return;
     this.switchingDatasetId = version.datasetId;
     this.error = '';
+    this.open = false;
     try {
-      const loaded = await DatasetRepository.load(version.datasetId);
-      this.callbacks.validateRepository(loaded);
-      await loaded.activate();
-      await this.callbacks.applyRepository(loaded, true);
-      this.callbacks.markReady();
-      await this.refresh();
+      if (await this.callbacks.loadDataset(version, true)) await this.refresh();
     } catch (error) {
+      // The app-level loader normally owns this error. Keep a defensive
+      // fallback here for integrations that reject from their callback.
       this.error = diagnostic(error);
     } finally {
       this.switchingDatasetId = '';
