@@ -38,6 +38,7 @@ aside { min-height:0; position:relative; display:flex; flex-direction:column; ba
 .clear-search svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; }
 kbd { color:#777c81; border:1px solid #3d4044; border-radius:4px; padding:3px 6px; font:10px ui-monospace,monospace; white-space:nowrap; }
 .result-bar { display:flex; justify-content:space-between; align-items:center; min-height:38px; padding:0 17px; color:#8d9297; font-size:11px; font-weight:650; letter-spacing:.55px; border-bottom:1px solid #2d3033; }
+.search-fallback-note { margin:0; padding:6px 17px; color:#b9a66b; font-size:11px; line-height:1.35; border-bottom:1px solid #3a3525; background:#28251a; }
 .item-grid { overflow:auto; display:grid; grid-template-columns:repeat(3,1fr); align-content:start; padding:11px; gap:5px; scrollbar-color:#484c51 transparent; }
 .item-tile { min-width:0; min-height:108px; padding:8px 3px 5px; display:flex; flex-direction:column; align-items:center; gap:4px; border:1px solid transparent; border-radius:7px; background:transparent; cursor:pointer; overflow:hidden; text-align:center; }
 .item-tile:hover { background:#25272a; }.item-tile.active { border-color:#62676d; background:#2a2d31; }

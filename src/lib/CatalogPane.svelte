@@ -8,6 +8,7 @@
   import { resolveCatalogVariant } from './catalogVariants';
   import type { CatalogSearchDocument } from './catalogSearch';
   import { oreCycle } from './oreCycle';
+  import { normalize } from './search';
   import type { CatalogBrowseEntry, CatalogEntry } from './types';
 
   let {
@@ -40,6 +41,8 @@
   let searchLoadingMore = $state(false);
   let searchReady = $state(false);
   let searchInitProgress = $state(0);
+  let searchWorkerError = $state('');
+  let fallbackIds = $state<string[]>([]);
   let searchWorker = $state<Worker | null>(null);
   let searchRequest = 0;
   let searchGeneration = 0;
@@ -61,13 +64,21 @@
     if (!worker) return;
     const generation = ++searchGeneration;
     searchRequest += 1;
-    searchIds = [];
-    searchTotal = 0;
+    const nextFallbackIds = nextCatalog.map((entry) => entry.id);
+    fallbackIds = nextFallbackIds;
+    searchIds = nextFallbackIds.slice(0, 300);
+    searchTotal = nextFallbackIds.length;
     searchPending = true;
     searchLoadingMore = false;
     searchReady = false;
     searchInitProgress = 0;
-    worker.postMessage({ type: 'init', generation });
+    searchWorkerError = '';
+    try {
+      worker.postMessage({ type: 'init', generation });
+    } catch (error) {
+      handleSearchWorkerFailure(error);
+      return;
+    }
     const initialize = async () => {
       for (let start = 0; start < nextCatalog.length; start += 1_000) {
         if (generation !== searchGeneration || worker !== searchWorker) return;
@@ -110,7 +121,7 @@
         worker.postMessage({ type: 'finish', generation });
       }
     };
-    void initialize();
+    void initialize().catch((error) => handleSearchWorkerFailure(error));
   });
 
   $effect(() => {
@@ -132,6 +143,58 @@
       });
     }, nextQuery ? 80 : 0);
     return () => window.clearTimeout(timeout);
+  });
+
+  async function fallbackSearch(nextQuery: string, request: number): Promise<void> {
+    const terms = normalize(nextQuery).split(/\s+/).filter(Boolean);
+    if (terms.length === 0) {
+      const ids = searchableCatalog.map((entry) => entry.id);
+      fallbackIds = ids;
+      searchIds = ids.slice(0, 300);
+      searchTotal = ids.length;
+      searchPending = false;
+      searchLoadingMore = false;
+      return;
+    }
+    const matches: string[] = [];
+    for (let start = 0; start < searchableCatalog.length; start += 1_000) {
+      const end = Math.min(start + 1_000, searchableCatalog.length);
+      for (const entry of searchableCatalog.slice(start, end)) {
+        const haystack = normalize([
+          entry.id,
+          entry.name,
+          entry.mod,
+          entry.rawTooltip ?? ''
+        ].join(' '));
+        if (terms.every((term) => haystack.includes(term))) matches.push(entry.id);
+      }
+      if (end < searchableCatalog.length) {
+        await new Promise((resolve) => window.setTimeout(resolve, 0));
+        if (request !== searchRequest) return;
+      }
+    }
+    if (request !== searchRequest) return;
+    fallbackIds = matches;
+    searchIds = matches.slice(0, 300);
+    searchTotal = matches.length;
+    searchPending = false;
+    searchLoadingMore = false;
+  }
+
+  function handleSearchWorkerFailure(error: unknown): void {
+    console.error('Catalog search worker failed', error);
+    searchWorkerError = 'Search index unavailable; showing the catalog with a local fallback.';
+    searchReady = false;
+    searchPending = false;
+    searchLoadingMore = false;
+    void fallbackSearch(query, ++searchRequest);
+  }
+
+  $effect(() => {
+    const nextQuery = query;
+    if (!searchWorkerError || searchReady) return;
+    const request = ++searchRequest;
+    void fallbackSearch(nextQuery, request);
   });
 
   function showPointerTooltip(event: PointerEvent, entry: CatalogBrowseEntry) {
@@ -172,7 +235,12 @@
   }
 
   function requestMoreItems() {
-    if (!searchWorker || searchPending || searchLoadingMore || searchIds.length >= searchTotal) return;
+    if (searchPending || searchLoadingMore || searchIds.length >= searchTotal) return;
+    if (searchWorkerError) {
+      searchIds = fallbackIds.slice(0, Math.min(searchIds.length + 300, fallbackIds.length));
+      return;
+    }
+    if (!searchWorker) return;
     searchLoadingMore = true;
     searchWorker.postMessage({
       type: 'search',
@@ -279,9 +347,7 @@
       searchLoadingMore = false;
     };
     worker.onerror = (event) => {
-      console.error('Catalog search worker failed', event);
-      searchReady = false;
-      searchPending = false;
+      handleSearchWorkerFailure(event);
     };
     return () => {
       worker.terminate();
@@ -313,11 +379,14 @@
     <kbd>Ctrl K</kbd>
   </div>
   <div class="result-bar">
-    <span>{searchPending && searchTotal === 0
+    <span>{searchPending && !searchReady
       ? `PREPARING ITEMS & FLUIDS${searchInitProgress ? ` · ${searchInitProgress}%` : ''}`
       : `${searchTotal.toLocaleString()} ITEMS & FLUIDS`}</span>
     {#if searchPending}<span class="mini-spinner" aria-label="Searching"></span>{/if}
   </div>
+  {#if searchWorkerError}
+    <div class="search-fallback-note">{searchWorkerError}</div>
+  {/if}
   <div class="item-grid">
     {#if searchPending && visibleEntries.length === 0}
       <div class="empty search-loading">
