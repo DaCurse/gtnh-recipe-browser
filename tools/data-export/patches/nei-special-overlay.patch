@@ -26,7 +26,7 @@ diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecia
 new file mode 100644
 --- /dev/null
 +++ b/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java
-@@ -0,0 +1,428 @@
+@@ -0,0 +1,451 @@
 +package com.github.dcysteine.nesql.exporter.special;
 +
 +import com.github.dcysteine.nesql.exporter.main.Logger;
@@ -53,6 +53,8 @@ new file mode 100644
 +import java.nio.file.Path;
 +import java.nio.file.StandardCopyOption;
 +import java.nio.file.StandardOpenOption;
++import java.security.MessageDigest;
++import java.security.NoSuchAlgorithmException;
 +import java.util.ArrayList;
 +import java.util.Arrays;
 +import java.util.Collections;
@@ -201,13 +203,34 @@ new file mode 100644
 +        /** Persist/render a referenced item through the normal base factory. */
 +        public String retainItem(ItemStack stack) {
 +            Item item = itemFactory.get(stack);
-+            return item.getId();
++            return browserItemId(item);
 +        }
 +
 +        /** Persist/render a referenced fluid through the normal base factory. */
 +        public String retainFluid(FluidStack stack) {
 +            Fluid fluid = fluidFactory.get(stack);
-+            return fluid.getId();
++            return "f:" + fluid.getModId() + ":" + fluid.getInternalName();
++        }
++
++        private static String browserItemId(Item item) {
++            String id = "i:" + item.getModId() + ":" + item.getInternalName() + ":" + item.getItemDamage();
++            return item.hasNbt() ? id + ":" + sha1(item.getNbt()) : id;
++        }
++
++        private static String sha1(String value) {
++            final byte[] digest;
++            try {
++                digest = MessageDigest.getInstance("SHA-1").digest(value.getBytes(StandardCharsets.UTF_8));
++            } catch (NoSuchAlgorithmException error) {
++                throw new AssertionError("SHA-1 is required by the Java runtime", error);
++            }
++            StringBuilder result = new StringBuilder(digest.length * 2);
++            for (byte entry : digest) {
++                int unsigned = entry & 0xff;
++                result.append(Character.forDigit(unsigned >>> 4, 16));
++                result.append(Character.forDigit(unsigned & 0xf, 16));
++            }
++            return result.toString();
 +        }
 +
 +        /** Persist an ore dictionary and all of its member item stacks. */

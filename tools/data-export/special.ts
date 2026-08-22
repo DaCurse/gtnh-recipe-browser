@@ -183,7 +183,10 @@ function cloneForJson(value: unknown, path: string): unknown {
   if (!isRecord(value)) throw new SpecialDataError(`${path} contains a non-JSON value`);
   const result: Record<string, unknown> = {};
   for (const key of Object.keys(value).sort()) {
-    result[key] = cloneForJson(value[key], `${path}.${key}`);
+    const childPath = `${path}.${key}`;
+    result[key] = key === 'oreDictionary'
+      ? requiredString(value[key], childPath)
+      : cloneForJson(value[key], childPath);
   }
   return result;
 }

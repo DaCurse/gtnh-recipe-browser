@@ -1469,7 +1469,8 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         if (value == null) return null;
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("amount", number(fieldOrNull(value, "stackSize")));
-        payload.put("oreDictionary", stringOrEmpty(callOrNull(value, "getOreDict")));
+        String oreDictionary = stringOrEmpty(callOrNull(value, "getOreDict"));
+        if (!oreDictionary.isEmpty()) payload.put("oreDictionary", oreDictionary);
         List<String> ids = retainItems(sink, stacks(callOrNull(value, "getCombinedStacks")));
         if (ids.isEmpty()) {
             Object ingredient = callOrNull(value, "getOreIngredient");

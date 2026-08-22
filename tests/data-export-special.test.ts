@@ -147,6 +147,16 @@ describe('NEI special sidecar contract', () => {
     expect(() => canonicalizeSpecialData(source)).toThrow(/searchable must be false/);
   });
 
+  it('rejects empty ore-dictionary references before pack processing', async () => {
+    const source = JSON.parse(await readFile(fixturePath, 'utf8')) as Record<string, unknown>;
+    const records = source.records as Array<Record<string, unknown>>;
+    const vending = records.find((record) => record.category === 'vending-trades')!;
+    const payload = vending.payload as Record<string, unknown>;
+    const inputs = payload.inputs as Array<Record<string, unknown>>;
+    inputs[0]!.oreDictionary = '';
+    expect(() => canonicalizeSpecialData(source)).toThrow(/oreDictionary must be a non-empty string/);
+  });
+
   it('retains nested goods references and produces a stable sidecar hash', async () => {
     const data = await fixture();
     const goods = specialGoodsIds(data);
@@ -162,6 +172,9 @@ describe('NEI special sidecar contract', () => {
     expect(patch).toContain('No NEI special-data adapters installed');
     expect(patch).toContain('requireId(searchText, "record search text")');
     expect(patch).toContain('record.put("searchText", searchText)');
+    expect(patch).toContain('return browserItemId(item)');
+    expect(patch).toContain('MessageDigest.getInstance("SHA-1")');
+    expect(patch).toContain('return "f:" + fluid.getModId()');
     expect(patch).toContain('CropsNH", "2.0.91"');
     expect(patch).toContain('GT5-Unofficial", "5.09.54.20"');
     expect(patch).toContain('BloodMagic", "1.9.4"');
@@ -206,6 +219,7 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('outputBelongsTo');
     expect(adapter).toContain('MAX_ORE_GRAPH_EDGES');
     expect(adapter).toContain('GT ore provenance closure recipes=');
+    expect(adapter).toContain('if (!oreDictionary.isEmpty()) payload.put("oreDictionary", oreDictionary);');
     expect(adapter).not.toContain('materialByKey');
 
     const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
