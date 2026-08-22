@@ -131,6 +131,7 @@ describe('NEI special sidecar contract', () => {
       expect(adapter).toContain(`category(sink, "${category}"`);
     }
     expect(adapter).toContain('getIndexedModList');
+    expect(adapter).toContain('pin.getValue().equals(display)');
     expect(adapter).toContain('implements NeiSpecialOverlay.Adapter');
     expect(adapter).toContain('searchText("gregtech", "gt-ore-processing"');
     expect(adapter).toContain('detectPrefix');

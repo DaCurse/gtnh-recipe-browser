@@ -158,8 +158,8 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                         + " expected " + pin.getValue());
             }
             String version = string(call(container, "getVersion"));
-            if (!pin.getValue().equals(version)) {
-                String display = stringOrNull(callOrNull(container, "getDisplayVersion"));
+            String display = stringOrNull(callOrNull(container, "getDisplayVersion"));
+            if (!pin.getValue().equals(version) && !pin.getValue().equals(display)) {
                 throw new IllegalStateException("Pinned NEI special mod " + pin.getKey()
                         + " expected " + pin.getValue() + " but Forge reported " + version
                         + (display == null ? "" : " (display " + display + ")"));
