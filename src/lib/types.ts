@@ -43,6 +43,11 @@ export interface CatalogEntry {
   usageShards?: string[];
   productionCount?: number;
   usageCount?: number;
+  /** NEI sidecar shards which produce or consume this goods entry. */
+  specialProductionShards?: string[];
+  specialUsageShards?: string[];
+  specialProductionCount?: number;
+  specialUsageCount?: number;
   /** Ore dictionary used when this item has no direct production recipes. */
   productionOreDictionaryId?: string;
   /** Every named Forge ore dictionary containing this exact item. */

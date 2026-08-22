@@ -1,5 +1,13 @@
 import { onMount, untrack } from 'svelte';
 import { toRecipeSearchCatalogEntry, toRecipeSearchRecord } from './recipeSearch';
+import {
+  specialLabel,
+  specialRepository,
+  specialSearchText,
+  type SpecialLoadProgress,
+  type SpecialRecord,
+  type SpecialViewType
+} from './specialData';
 import type { DatasetRepository } from './dataset';
 import type { CatalogEntry, Recipe, RecipeView } from './types';
 
@@ -22,9 +30,20 @@ export class RecipeBrowserState {
   recipeQuery = $state('');
   recipeFilter = $state('');
   type = $state('');
+  specialType = $state('');
+  specialRecords = $state<SpecialRecord[]>([]);
+  specialLoading = $state(false);
+  specialError = $state('');
+  specialLoadedShards = $state(0);
+  specialTotalShards = $state(0);
+  specialPage = $state(0);
+  specialQuery = $state('');
+  specialFilter = $state('');
   readonly recipePageSize = 20;
+  readonly specialPageSize = 20;
 
   private loadedRecipeCounts = $state<Record<string, number>>({});
+  private loadedSpecialCounts = $state<Record<string, number>>({});
   private recipeDebouncePending = $state(false);
   private recipeWorkerPending = $state(false);
   private recipeSearchIds = $state<string[]>([]);
@@ -38,6 +57,9 @@ export class RecipeBrowserState {
   private recipeAbortController: AbortController | null = null;
   private recipeRequest = 0;
   private recipeSearchRequest = 0;
+  private specialAbortController: AbortController | null = null;
+  private specialRequest = 0;
+  private specialCache = new Map<string, SpecialRecord[]>();
 
   constructor(private readonly context: RecipeBrowserContext) {
     $effect(() => {
@@ -47,7 +69,10 @@ export class RecipeBrowserState {
       void mode;
       void this.type;
       void this.recipeFilter;
+      void this.specialType;
+      void this.specialFilter;
       this.recipePage = 0;
+      this.specialPage = 0;
     });
 
     $effect(() => {
@@ -56,6 +81,14 @@ export class RecipeBrowserState {
       const timeout = window.setTimeout(() => {
         this.recipeFilter = nextQuery;
         this.recipeDebouncePending = false;
+      }, nextQuery ? 100 : 0);
+      return () => window.clearTimeout(timeout);
+    });
+
+    $effect(() => {
+      const nextQuery = this.specialQuery;
+      const timeout = window.setTimeout(() => {
+        this.specialFilter = nextQuery;
       }, nextQuery ? 100 : 0);
       return () => window.clearTimeout(timeout);
     });
@@ -102,6 +135,7 @@ export class RecipeBrowserState {
       const active = this.context.active();
       if (!active || !this.recipeSearchReady) {
         this.recipeAbortController?.abort();
+        this.specialAbortController?.abort();
         return;
       }
       void repository;
@@ -119,6 +153,54 @@ export class RecipeBrowserState {
 
   get types(): string[] {
     return [...new Set(this.related.map((recipe) => recipe.type))];
+  }
+
+  get specialTypes(): SpecialViewType[] {
+    const repository = specialRepository(this.context.repository());
+    const serviceIcons = new Map((repository.specialServiceIcons ?? []).map((icon) => [icon.id, icon]));
+    return [...(repository.specialViewTypes ?? [])]
+      .map((viewType) => ({
+        ...viewType,
+        iconId: viewType.iconId
+          ?? (viewType.serviceIconId ? serviceIcons.get(viewType.serviceIconId)?.goodsId : undefined),
+        glyph: viewType.glyph
+          ?? serviceIcons.get(viewType.serviceIconId ?? '')?.label.slice(0, 1)
+      }))
+      .filter((viewType) => viewType.id.length > 0)
+      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
+  }
+
+  get specialTypeLabel(): string {
+    const selected = this.specialTypes.find((viewType) => viewType.id === this.specialType);
+    return selected ? specialLabel(selected) : 'special data';
+  }
+
+  get visibleSpecialRecords(): SpecialRecord[] {
+    const terms = this.specialFilter.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    const filtered = terms.length === 0
+      ? this.specialRecords
+      : this.specialRecords.filter((record) => {
+        const text = specialSearchText(record);
+        return terms.every((term) => text.includes(term));
+      });
+    return filtered.slice(this.specialPage * this.specialPageSize, (this.specialPage + 1) * this.specialPageSize);
+  }
+
+  get specialSearchTotal(): number {
+    const terms = this.specialFilter.toLocaleLowerCase().split(/\s+/).filter(Boolean);
+    if (terms.length === 0) return this.specialRecords.length;
+    return this.specialRecords.filter((record) => {
+      const text = specialSearchText(record);
+      return terms.every((term) => text.includes(term));
+    }).length;
+  }
+
+  get specialPageCount(): number {
+    return Math.max(1, Math.ceil(this.specialSearchTotal / this.specialPageSize));
+  }
+
+  get specialSearchPending(): boolean {
+    return this.specialQuery !== this.specialFilter;
   }
 
   get visibleRecipes(): Recipe[] {
@@ -149,6 +231,10 @@ export class RecipeBrowserState {
     return mode === 'machineUsages' ? 'machine usages' : mode;
   }
 
+  get showingSpecial(): boolean {
+    return this.specialType.length > 0 && this.specialTypes.some((viewType) => viewType.id === this.specialType);
+  }
+
   recipeCount(view: RecipeView): number | undefined {
     const selected = this.context.selected();
     const declared = view === 'recipes'
@@ -157,6 +243,21 @@ export class RecipeBrowserState {
         ? selected.usageCount
         : undefined;
     return this.loadedRecipeCounts[`${selected.id}:${view}`] ?? declared;
+  }
+
+  specialCount(view: RecipeView, viewType = this.specialType): number | undefined {
+    if (!viewType) return undefined;
+    const selected = this.context.selected();
+    const declared = selected as CatalogEntry & {
+      specialProductionCount?: number;
+      specialUsageCount?: number;
+    };
+    const declaredCount = view === 'recipes'
+      ? declared.specialProductionCount
+      : view === 'usages'
+        ? declared.specialUsageCount
+        : undefined;
+    return this.loadedSpecialCounts[`${selected.id}:${view}:${viewType}`] ?? declaredCount;
   }
 
   setPage(nextPage: number) {
@@ -169,27 +270,104 @@ export class RecipeBrowserState {
     });
   }
 
+  setSpecialPage(nextPage: number) {
+    this.specialPage = Math.max(0, Math.min(nextPage, this.specialPageCount - 1));
+    requestAnimationFrame(() => {
+      document.querySelector('.recipe-search-block, .recipe-list')?.scrollIntoView({
+        block: 'start',
+        behavior: 'smooth'
+      });
+    });
+  }
+
+  selectRecipeType(type: string) {
+    this.specialType = '';
+    this.type = type;
+    this.recipePage = 0;
+    this.specialPage = 0;
+    this.specialQuery = '';
+    this.specialFilter = '';
+  }
+
+  selectSpecialType(type: string) {
+    if (!this.specialTypes.some((viewType) => viewType.id === type)) return;
+    this.specialType = type;
+    this.type = '';
+    this.specialPage = 0;
+    this.specialQuery = '';
+    this.specialFilter = '';
+    void this.refresh();
+  }
+
   async refresh() {
     const repository = this.context.repository();
     const selected = this.context.selected();
     const mode = this.context.mode();
     this.recipeAbortController?.abort();
+    this.specialAbortController?.abort();
     const controller = new AbortController();
     this.recipeAbortController = controller;
     const request = ++this.recipeRequest;
+    const specialRequest = ++this.specialRequest;
     const entryId = selected.id;
     const view = mode;
+    const specialType = this.specialTypes.some((viewType) => viewType.id === this.specialType)
+      ? this.specialType
+      : '';
+    this.specialType = specialType;
     this.allRecipes = [];
+    this.specialRecords = [];
     this.type = '';
     this.recipeQuery = '';
     this.recipeFilter = '';
     this.recipePage = 0;
     this.resetRecipeSearch();
     this.recipeError = '';
+    this.specialError = '';
     this.recipeLoading = true;
+    this.specialLoading = false;
     this.recipeLoadedShards = 0;
     this.recipeTotalShards = 0;
+    this.specialLoadedShards = 0;
+    this.specialTotalShards = 0;
     try {
+      if (specialType) {
+        this.recipeLoading = false;
+        this.specialLoading = true;
+        const specialController = new AbortController();
+        this.specialAbortController = specialController;
+        const cacheKey = `${repository.datasetId}:${entryId}:${view}:${specialType}`;
+        const specialRepo = specialRepository(repository);
+        const loader = specialRepo.specialFor ?? specialRepo.specialRecordsFor;
+        if (!loader) {
+          this.specialRecords = [];
+          this.loadedSpecialCounts = {
+            ...this.loadedSpecialCounts,
+            [`${entryId}:${view}:${specialType}`]: 0
+          };
+        } else {
+          const cached = this.specialCache.get(cacheKey);
+          const loaded = cached ?? await loader.call(
+            specialRepo,
+            entryId,
+            view,
+            specialType,
+            (progress) => this.applySpecialProgress(progress, specialRequest, entryId, view, specialType),
+            specialController.signal
+          );
+          if (specialRequest !== this.specialRequest || request !== this.recipeRequest) return;
+          const ordered = [...loaded].sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
+          this.specialCache.set(cacheKey, ordered);
+          this.specialRecords = ordered;
+          this.loadedSpecialCounts = {
+            ...this.loadedSpecialCounts,
+            [`${entryId}:${view}:${specialType}`]: ordered.length
+          };
+          this.specialTotalShards = Math.max(this.specialTotalShards, 1);
+          this.specialLoadedShards = this.specialTotalShards;
+        }
+        return;
+      }
       const loaded = await repository.recipesFor(entryId, view, ({
         loadedShards,
         totalShards,
@@ -223,12 +401,37 @@ export class RecipeBrowserState {
       console.error('Unable to load recipes', error);
       if (request === this.recipeRequest) {
         this.allRecipes = [];
+        this.specialRecords = [];
         this.resetRecipeSearch();
-        this.recipeError = error instanceof Error ? error.message : String(error);
+        if (specialType) this.specialError = error instanceof Error ? error.message : String(error);
+        else this.recipeError = error instanceof Error ? error.message : String(error);
       }
     } finally {
-      if (request === this.recipeRequest) this.recipeLoading = false;
+      if (request === this.recipeRequest) {
+        this.recipeLoading = false;
+        this.specialLoading = false;
+      }
     }
+  }
+
+  private applySpecialProgress(
+    progress: SpecialLoadProgress,
+    request: number,
+    entryId: string,
+    view: RecipeView,
+    viewType: string
+  ) {
+    if (request !== this.specialRequest) return;
+    this.specialLoadedShards = progress.loadedShards;
+    this.specialTotalShards = progress.totalShards;
+    if (progress.batch.length === 0) return;
+    const next = [...this.specialRecords, ...progress.batch]
+      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
+    this.specialRecords = next;
+    this.loadedSpecialCounts = {
+      ...this.loadedSpecialCounts,
+      [`${entryId}:${view}:${viewType}`]: next.length
+    };
   }
 
   private async initializeRecipeSearch(catalog: CatalogEntry[]) {
@@ -333,6 +536,8 @@ export class RecipeBrowserState {
       this.recipeSearchReady = false;
       this.recipeAbortController?.abort();
       this.recipeAbortController = null;
+      this.specialAbortController?.abort();
+      this.specialAbortController = null;
     };
   }
 }
