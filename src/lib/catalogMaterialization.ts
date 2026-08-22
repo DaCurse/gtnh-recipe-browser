@@ -183,12 +183,12 @@ export function materializeCatalog(
     const representative = members[0];
     const productionShards = new Set<string>();
     const usageShards = new Set<string>();
-    const specialProductionShards = new Set<string>();
-    const specialUsageShards = new Set<string>();
-    const specialProductionLookupIds = new Set<string>();
-    const specialUsageLookupIds = new Set<string>();
-    let specialProductionCount = 0;
-    let specialUsageCount = 0;
+    const specialProductionShards = new Set(group.specialProductionShards ?? []);
+    const specialUsageShards = new Set(group.specialUsageShards ?? []);
+    const specialProductionLookupIds = new Set(group.specialProductionLookupIds ?? []);
+    const specialUsageLookupIds = new Set(group.specialUsageLookupIds ?? []);
+    let specialProductionCount = group.specialProductionCount ?? 0;
+    let specialUsageCount = group.specialUsageCount ?? 0;
     for (const memberId of group.itemIds) {
       const member = goodsById.get(memberId);
       member?.productionShards.forEach((id) => productionShards.add(id));

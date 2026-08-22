@@ -170,6 +170,21 @@ describe('NEI special sidecar contract', () => {
     expect(() => canonicalizeSpecialData(source)).not.toThrow();
   });
 
+  it('normalizes runtime ore-dictionary IDs to the browser catalog identity', async () => {
+    const source = JSON.parse(await readFile(fixturePath, 'utf8')) as Record<string, unknown>;
+    const records = source.records as Array<Record<string, unknown>>;
+    records[0]!.goodsIds = [...(records[0]!.goodsIds as string[]), 'od~oreIron'];
+    const payload = records[0]!.payload as Record<string, unknown>;
+    payload.outputs = [{ goodsId: 'od~dustIron', weight: 1 }];
+
+    const data = canonicalizeSpecialData(source);
+    expect(data.records[0]!.goodsIds).toContain('o:oreIron');
+    expect(data.records[0]!.payload.outputs).toEqual([
+      { goodsId: 'o:dustIron', weight: 1 }
+    ]);
+    expect(specialGoodsIds(data)).not.toContain('od~oreIron');
+  });
+
   it('retains nested goods references and produces a stable sidecar hash', async () => {
     const data = await fixture();
     const goods = specialGoodsIds(data);

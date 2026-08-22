@@ -41,6 +41,13 @@ namespace Source
                     if (!fluids.Values.Any(candidate => candidate.id == goodsId))
                         throw new InvalidDataException("Special sidecar references unknown fluid " + goodsId);
                 }
+                else if (goodsId.StartsWith("o:", StringComparison.Ordinal)
+                    || goodsId.StartsWith("od~", StringComparison.Ordinal))
+                {
+                    // Named ore dictionaries are marked separately below.  The
+                    // runtime overlay may expose either the browser-canonical
+                    // ID (o:name) or NESQL's raw format-v5 ID (od~name).
+                }
                 else
                 {
                     throw new InvalidDataException("Special sidecar has invalid goods ID " + goodsId);

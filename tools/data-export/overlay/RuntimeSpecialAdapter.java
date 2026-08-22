@@ -10,6 +10,7 @@ import net.minecraft.util.WeightedRandomChestContent;
 import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraftforge.common.ChestGenHooks;
 import net.minecraftforge.fluids.FluidStack;
+import net.minecraftforge.oredict.OreDictionary;
 
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
@@ -439,8 +440,12 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             // NEI asks for the cached form. This is semantically identical to
             // the uncached form, but avoids rebuilding the full soil/block
             // lists once for the payload and again while retaining goods IDs.
-            payload.put("soils", itemPayloads(sink, callOrNull(crop, "getSoilsForNEI", true)));
-            payload.put("underBlocks", itemPayloads(sink, callOrNull(crop, "getBlocksUnderForNEI", true)));
+            List<Object> soils = cropSoilPayloads(sink, crop);
+            List<Object> underBlocks = cropUnderBlockPayloads(sink, crop, true);
+            payload.put("soils", soils);
+            payload.put("underBlocks", underBlocks);
+            addAllGoodsFromPayload(soils, goods);
+            addAllGoodsFromPayload(underBlocks, goods);
             payload.put("requirements", requirementDescriptions(callOrNull(crop, "getGrowthRequirements")));
             payload.put("drops", cropDrops(sink, crop));
             String slug = slug(cropId);
@@ -513,7 +518,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 parentSeeds.add(seed);
                 addAllUnique(goods, cropGoods(sink, parent));
             }
-            List<Object> catalysts = itemPayloads(sink, callOrNull(mutation, "getBlocksUnderForNEI", false));
+            List<Object> catalysts = cropUnderBlockPayloads(sink, mutation, false);
             addAllGoodsFromPayload(catalysts, goods);
             List<Object> machineCatalysts = itemPayloadsNested(sink,
                     callOrNull(mutation, "getBreedingMachineCatalystsForNEI", false));
@@ -527,6 +532,10 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             payload.put("parentCount", number(call(mutation, "getParentCount")));
             payload.put("parents", parentSeeds);
             payload.put("parentCropIds", parentIds);
+            // Keep the old key for already-decoded sidecars, but expose the
+            // semantic NEI name so the browser can render this in the same
+            // soil/subsoil position as a crop-output page.
+            payload.put("underBlocks", catalysts);
             payload.put("blocksUnder", catalysts);
             payload.put("machineCatalysts", machineCatalysts);
             payload.put("requirements", requirementDescriptions(callOrNull(mutation, "getRequirements")));
@@ -536,7 +545,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             String suffix = digest(key).substring(0, 10);
             String slug = slug(outputId);
             sink.addRecord("breeding:" + slug + ":" + suffix, "crop-breeding",
-                    "Direct Breeding: " + outputId,
+                    cropTitle(output, outputId),
                     searchText("cropsnh", "crop-breeding", outputId, join(parentIds, " ")), goods,
                     "special:breeding:" + slug + ":" + suffix + ":recipes",
                     "special:breeding:" + slug + ":" + suffix + ":usages",
@@ -1383,19 +1392,153 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         return goodsId;
     }
 
+    /**
+     * CropsNH's soil registry is keyed by the same names it passes to Forge's
+     * ore dictionary (for example {@code stone}, {@code farmland}, or a
+     * compound such as {@code sand+dirt}).  The NEI handler expands that
+     * registry into a long list of concrete stacks, which is useful for the
+     * recipe grid but loses the semantic requirement.  Keep the registry
+     * names as named ore-dictionary goods and only fall back to the expanded
+     * list for custom soil lists that are not registered with Forge.
+     */
+    private static List<Object> cropSoilPayloads(NeiSpecialOverlay.Sink sink, Object crop) {
+        Set<String> names = new TreeSet<>();
+        Object soilTypes = callOrNull(crop, "getSoilTypes");
+        String soilId = stringOrEmpty(callOrNull(soilTypes, "getId"));
+        if (!soilId.isEmpty()) {
+            for (String name : soilId.split("\\+")) {
+                String normalized = name.trim();
+                if (!normalized.isEmpty()) names.add(normalized);
+            }
+        }
+        List<Object> result = oreDictionaryPayloads(sink, names, "crop soil");
+        if (!result.isEmpty()) return result;
+        return itemPayloads(sink, callOrNull(crop, "getSoilsForNEI", true));
+    }
+
+    /**
+     * Block-under requirements retain their original ore-dictionary names in
+     * a private CropsNH set.  Reading that set mirrors the runtime growth
+     * predicate exactly; the item-list path is retained for third-party crop
+     * implementations which only expose concrete catalyst stacks.
+     */
+    private static List<Object> cropUnderBlockPayloads(NeiSpecialOverlay.Sink sink, Object owner,
+            boolean cached) {
+        Set<String> names = new TreeSet<>();
+        Object requirements = callOrNull(owner, "getGrowthRequirements");
+        if (requirements == null) requirements = callOrNull(owner, "getRequirements");
+        for (Object requirement : list(requirements)) {
+            Object raw = fieldOrNull(requirement, "oreDictionaries");
+            if (raw instanceof Collection) {
+                for (Object name : (Collection<?>) raw) {
+                    String normalized = stringOrEmpty(name).trim();
+                    if (!normalized.isEmpty()) names.add(normalized);
+                }
+            }
+        }
+        List<Object> result = oreDictionaryPayloads(sink, names, "crop under-block");
+        if (!result.isEmpty()) return result;
+
+        Object stacks = callOrNull(owner, "getBlocksUnderForNEI", cached);
+        return oreBackedItemPayloads(sink, stacks, "crop under-block");
+    }
+
+    /** Materialize named Forge ore dictionaries through the normal exporter factory. */
+    private static List<Object> oreDictionaryPayloads(NeiSpecialOverlay.Sink sink, Set<String> names,
+            String context) {
+        List<Object> result = new ArrayList<>();
+        for (String name : names) {
+            List<ItemStack> stacks = OreDictionary.getOres(name, false);
+            if (stacks == null || stacks.isEmpty()) continue;
+            String goodsId = sink.retainOreDictionary(name, stacks);
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("goodsId", goodsId);
+            payload.put("oreDictionary", name);
+            payload.put("label", name);
+            result.add(payload);
+        }
+        sortMaps(result, "goodsId");
+        return result;
+    }
+
+    /**
+     * Convert an expanded stack list to its named ore dictionaries where
+     * possible.  A concrete stack remains only when Forge reports no named
+     * dictionary for it, so custom third-party requirements are not lost.
+     */
+    private static List<Object> oreBackedItemPayloads(NeiSpecialOverlay.Sink sink, Object value,
+            String context) {
+        Map<String, List<ItemStack>> dictionaryStacks = new TreeMap<>();
+        List<Object> concrete = new ArrayList<>();
+        for (Object raw : list(value)) {
+            ItemStack stack = asItemStack(raw, context);
+            if (stack == null) continue;
+            Set<String> names = new TreeSet<>();
+            for (int oreId : OreDictionary.getOreIDs(stack)) {
+                String name = OreDictionary.getOreName(oreId);
+                if (name != null && !name.trim().isEmpty()) names.add(name.trim());
+            }
+            if (names.isEmpty()) {
+                String goodsId = retainItemOrNull(sink, stack, context);
+                if (goodsId != null) {
+                    Map<String, Object> payload = new LinkedHashMap<>();
+                    payload.put("goodsId", goodsId);
+                    concrete.add(payload);
+                }
+                continue;
+            }
+            for (String name : names) {
+                List<ItemStack> stacks = dictionaryStacks.get(name);
+                if (stacks == null) {
+                    stacks = new ArrayList<>();
+                    dictionaryStacks.put(name, stacks);
+                }
+                stacks.add(stack);
+            }
+        }
+
+        List<Object> result = new ArrayList<>();
+        for (Map.Entry<String, List<ItemStack>> entry : dictionaryStacks.entrySet()) {
+            String goodsId = sink.retainOreDictionary(entry.getKey(), entry.getValue());
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("goodsId", goodsId);
+            payload.put("oreDictionary", entry.getKey());
+            payload.put("label", entry.getKey());
+            result.add(payload);
+        }
+        result.addAll(concrete);
+        sortMaps(result, "goodsId");
+        return result;
+    }
+
     private static List<Object> cropDrops(NeiSpecialOverlay.Sink sink, Object crop) {
         List<Object> result = new ArrayList<>();
         Object table = callOrNull(crop, "getDropTable");
         if (!(table instanceof Map)) return result;
+
+        // CropsNH stores the integer in each drop-table entry as a relative
+        // weight.  getDropChance() is the crop-wide harvest probability and
+        // must not be copied onto every alternative (Rubyne is 7500:2500,
+        // hence 75%:25%, while its harvest chance is ~81.45%).
+        double totalWeight = 0.0;
+        List<Map.Entry<?, ?>> entries = new ArrayList<>(((Map<?, ?>) table).entrySet());
+        for (Map.Entry<?, ?> entry : entries) {
+            Number value = number(entry.getValue());
+            double weight = value.doubleValue();
+            if (Double.isFinite(weight) && weight > 0.0) totalWeight += weight;
+        }
         for (Map.Entry<?, ?> entry : ((Map<?, ?>) table).entrySet()) {
             ItemStack stack = asItemStack(entry.getKey(), "crop drop");
             if (stack == null) continue;
             String goodsId = retainItemOrNull(sink, stack, "crop drop");
             if (goodsId == null) continue;
+            Number rawWeight = number(entry.getValue());
+            double weight = rawWeight.doubleValue();
             Map<String, Object> drop = new LinkedHashMap<>();
             drop.put("goodsId", goodsId);
-            drop.put("amount", number(entry.getValue()));
-            drop.put("chance", number(callOrNull(crop, "getDropChance")));
+            drop.put("weight", rawWeight);
+            drop.put("chance", totalWeight > 0.0 && Double.isFinite(weight) && weight > 0.0
+                    ? weight / totalWeight : 0.0);
             result.add(drop);
         }
         sortMaps(result, "goodsId");

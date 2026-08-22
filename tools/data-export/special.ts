@@ -176,6 +176,17 @@ function sortedUniqueStrings(value: unknown, path: string): string[] {
   return unique;
 }
 
+/**
+ * NESQL's format-v5 runtime IDs use `od~name` for named ore dictionaries,
+ * while the browser catalog deliberately exposes the same group as `o:name`
+ * beside item (`i:`) and fluid (`f:`) goods.  Normalize this one runtime
+ * spelling at the sidecar boundary so raw exports and packed catalogs share
+ * one searchable identity.
+ */
+function normalizeGoodsId(value: string): string {
+  return value.startsWith('od~') ? `o:${value.slice(3)}` : value;
+}
+
 function cloneForJson(value: unknown, path: string): unknown {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'number') return finiteNumber(value, path);
@@ -184,9 +195,18 @@ function cloneForJson(value: unknown, path: string): unknown {
   const result: Record<string, unknown> = {};
   for (const key of Object.keys(value).sort()) {
     const childPath = `${path}.${key}`;
-    result[key] = key === 'oreDictionary'
-      ? requiredString(value[key], childPath)
-      : cloneForJson(value[key], childPath);
+    const normalizedKey = key.toLowerCase();
+    if (normalizedKey.endsWith('goodsid') && typeof value[key] === 'string') {
+      result[key] = normalizeGoodsId(value[key]);
+    } else if (normalizedKey.endsWith('goodsids') && Array.isArray(value[key])) {
+      result[key] = value[key].map((entry, index) => normalizeGoodsId(
+        requiredString(entry, `${childPath}[${index}]`)
+      ));
+    } else {
+      result[key] = key === 'oreDictionary'
+        ? requiredString(value[key], childPath)
+        : cloneForJson(value[key], childPath);
+    }
   }
   return result;
 }
@@ -254,7 +274,9 @@ function serviceIcons(value: unknown): SpecialServiceIcon[] {
       label: requiredString(entry.label, `${path}.label`),
       searchable: false
     };
-    if (entry.goodsId !== undefined) icon.goodsId = requiredString(entry.goodsId, `${path}.goodsId`);
+    if (entry.goodsId !== undefined) {
+      icon.goodsId = normalizeGoodsId(requiredString(entry.goodsId, `${path}.goodsId`));
+    }
     if (entry.searchable !== false) throw new SpecialDataError(`${path}.searchable must be false`);
     return icon;
   });
@@ -321,7 +343,15 @@ function normalizeRecord(value: unknown, index: number, iconIds: ReadonlySet<str
     category,
     title: requiredString(value.title ?? value.name, `${path}.title`),
     searchText: requiredString(value.searchText ?? value.search, `${path}.searchText`),
-    goodsIds: sortedUniqueStrings(rawGoodsIds, `${path}.goodsIds`),
+    goodsIds: sortedUniqueStrings(
+      Array.isArray(rawGoodsIds)
+        ? rawGoodsIds.map((entry, index) => {
+          const goodsId = requiredString(entry, `${path}.goodsIds[${index}]`);
+          return normalizeGoodsId(goodsId);
+        })
+        : rawGoodsIds,
+      `${path}.goodsIds`
+    ),
     recipesLookupId: lookupId(value, ['recipesLookupId', 'recipeLookupId'], `${path}.recipesLookupId`),
     usagesLookupId: lookupId(value, ['usagesLookupId', 'usageLookupId'], `${path}.usagesLookupId`),
     serviceIconId,
@@ -411,7 +441,8 @@ function validateCanonicalGoodsId(goodsId: string, owner: string): void {
   // prefix/mod and the item damage/NBT suffix instead of counting separators.
   const item = /^i:[^:]+:.+:-?\d+(?::[0-9a-f]{40})?$/.test(goodsId);
   const fluid = /^f:[^:]+:.+$/.test(goodsId);
-  if (!item && !fluid) {
+  const oreDictionary = /^o:.+$/.test(goodsId);
+  if (!item && !fluid && !oreDictionary) {
     throw new SpecialDataError(`${owner}: invalid canonical goods ID ${goodsId}`);
   }
 }

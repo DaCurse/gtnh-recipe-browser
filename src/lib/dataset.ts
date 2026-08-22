@@ -610,7 +610,7 @@ export class DatasetRepository {
           throw new Error(`${id}: record ${record.id} has an empty lookup ID`);
         }
         for (const goodsId of specialRecordGoodsIds(record)) {
-          if (!this.packedGoods.has(goodsId)) {
+          if (!this.packedGoods.has(goodsId) && !this.ingredientGroups.has(goodsId)) {
             throw new Error(`${id}: record ${record.id} references unknown goods ${goodsId}`);
           }
         }
@@ -626,7 +626,7 @@ export class DatasetRepository {
     if (view === 'machineUsages') return null;
     const selectedGroup = this.ingredientGroups.get(entryId);
     const fluidScope = fluidRecipeScope(entryId, this.packedGoods);
-    if (selectedGroup) return new Set(selectedGroup.itemIds);
+    if (selectedGroup) return new Set([entryId, ...selectedGroup.itemIds]);
     if (fluidScope) return new Set(fluidScope.memberIds);
     if (!this.packedGoods.has(entryId)) return null;
     const productionFallback = this.productionFallbacks.get(entryId);
@@ -650,7 +650,8 @@ export class DatasetRepository {
     const field = view === 'recipes' ? 'specialProductionShards' : 'specialUsageShards';
     const result = new Set<string>();
     for (const entryId of entryIds) {
-      for (const shardId of this.packedGoods.get(entryId)?.[field] ?? []) result.add(shardId);
+      const metadata = this.packedGoods.get(entryId) ?? this.ingredientGroups.get(entryId);
+      for (const shardId of metadata?.[field] ?? []) result.add(shardId);
     }
     return [...result].sort((left, right) => {
       const a = this.manifest.specialDataShards?.find((shard) => shard.id === left);

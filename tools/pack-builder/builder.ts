@@ -493,6 +493,17 @@ function buildCatalog(
   const specialRecords = specialData?.records ?? [];
   const allGoods = [...repository.items, ...repository.fluids];
   const specialGoodsIndex = buildSpecialGoodsIndex(specialRecords, specialShardByRecordId, allGoods);
+  const specialGroupFields = (id: string) => {
+    const special = specialGoodsIndex.get(id);
+    return {
+      specialProductionShards: special?.recipes.shardIds ?? [],
+      specialUsageShards: special?.usages.shardIds ?? [],
+      specialProductionLookupIds: special?.recipes.lookupIds ?? [],
+      specialUsageLookupIds: special?.usages.lookupIds ?? [],
+      specialProductionCount: special?.recipes.recordCount ?? 0,
+      specialUsageCount: special?.usages.recordCount ?? 0
+    };
+  };
   const goods = allGoods.map((entry) => {
     const { productionRecipeIds, usageRecipeIds, ...catalogEntry } = entry;
     const special = specialGoodsIndex.get(entry.id);
@@ -515,8 +526,14 @@ function buildCatalog(
   });
   return {
     goods,
-    oreDictionaries: repository.oreDictionaries,
-    ingredientGroups: repository.ingredientGroups,
+    oreDictionaries: repository.oreDictionaries.map((group) => ({
+      ...group,
+      ...specialGroupFields(group.id)
+    })),
+    ingredientGroups: repository.ingredientGroups.map((group) => ({
+      ...group,
+      ...specialGroupFields(group.id)
+    })),
     recipeTypes: repository.recipeTypes.map((recipeType) => ({
       ...recipeType,
       multiblocks: recipeType.multiblocks.map((crafter) => ({ ...crafter, icon: iconReference(crafter.iconId) })),
@@ -715,7 +732,9 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   if (specialData) {
     const repositoryGoodsIds = new Set([
       ...repository.items.map((entry) => entry.id),
-      ...repository.fluids.map((entry) => entry.id)
+      ...repository.fluids.map((entry) => entry.id),
+      ...repository.oreDictionaries.map((entry) => entry.id),
+      ...repository.ingredientGroups.map((entry) => entry.id)
     ]);
     validateSpecialGoodsReferences(specialData, repositoryGoodsIds);
     validateSpecialOreDictionaries(specialData, repository);

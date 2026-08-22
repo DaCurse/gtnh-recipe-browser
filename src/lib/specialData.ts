@@ -78,10 +78,14 @@ export interface CropSpecialPayload {
   duration?: number;
   multiplier?: number;
   biomes?: string[];
-  soils?: string[];
-  underBlocks?: string[];
+  /** Named ore-dictionary soil requirements, with concrete-stack fallback. */
+  soils?: Array<string | SpecialGoods>;
+  /** Named ore-dictionary subsoil/under-block requirements, with fallback. */
+  underBlocks?: Array<string | SpecialGoods>;
   requirements?: string[];
   drops?: SpecialDrop[];
+  /** Crop-wide harvest probability; drop chances are relative table weights. */
+  dropChance?: number;
   poolId?: string;
   poolLabel?: string;
   parents?: string[];
@@ -371,15 +375,23 @@ function objectValue(value: unknown): Record<string, unknown> | undefined {
     : undefined;
 }
 
+/** Accept raw NESQL ore-dictionary IDs while reading older/unprocessed packs. */
+function canonicalSpecialGoodsId(value: string): string {
+  return value.startsWith('od~') ? `o:${value.slice(3)}` : value;
+}
+
 /** Tolerant adapters for raw sidecar payloads used by the fixture and exporter. */
 export function toSpecialGoods(value: unknown): SpecialGoods | undefined {
-  if (typeof value === 'string') return { goodsId: value, label: value };
+  if (typeof value === 'string') {
+    const goodsId = canonicalSpecialGoodsId(value);
+    return { goodsId, label: goodsId };
+  }
   const object = objectValue(value);
   if (!object) return undefined;
   const rawId = object.goodsId ?? object.id;
   const oreDictionary = object.oreDictionary;
   const goodsId = typeof rawId === 'string'
-    ? rawId
+    ? canonicalSpecialGoodsId(rawId)
     : typeof oreDictionary === 'string'
       ? `o:${oreDictionary}`
       : undefined;
@@ -405,7 +417,11 @@ export function toSpecialGoods(value: unknown): SpecialGoods | undefined {
     alternatives: Array.isArray(object.alternatives)
       ? object.alternatives.filter((id): id is string => typeof id === 'string')
       : undefined,
-    oreDictionaryId: typeof oreDictionary === 'string' ? `o:${oreDictionary}` : undefined
+    oreDictionaryId: typeof oreDictionary === 'string'
+      ? `o:${oreDictionary}`
+      : goodsId.startsWith('o:')
+        ? goodsId
+        : undefined
   };
 }
 

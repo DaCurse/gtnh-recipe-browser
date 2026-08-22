@@ -1,8 +1,9 @@
 <script lang="ts">
+  import CatalogVariantIcon from './CatalogVariantIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import { boundedSpecialPage, displaySpecialAmount, type SpecialGoods, type SpecialResolver } from './specialData';
-  import type { RecipeView } from './types';
+  import type { CatalogBrowseEntry, CatalogEntry, RecipeView } from './types';
 
   let {
     goods,
@@ -67,15 +68,51 @@
     return item.alternatives?.[0] ?? item.goodsId;
   }
 
+  function oreDictionaryIcon(entry: CatalogEntry): {
+    browse: CatalogBrowseEntry;
+    exactEntries: ReadonlyMap<string, CatalogEntry>;
+  } | undefined {
+    if (entry.kind !== 'oreDict' || !entry.members || entry.members.length === 0) return undefined;
+    const exactEntries = new Map<string, CatalogEntry>();
+    for (const memberId of entry.members) {
+      const member = resolve(memberId);
+      if (member) exactEntries.set(memberId, member);
+    }
+    if (exactEntries.size === 0) return undefined;
+    return {
+      browse: {
+        ...entry,
+        variantIds: [...exactEntries.keys()],
+        variantCount: exactEntries.size,
+        variantKind: 'exact'
+      },
+      exactEntries
+    };
+  }
+
+  function displayLabel(item: SpecialGoods, entry: CatalogEntry): string {
+    // Older sidecars stored CropsNH's internal crop ID as an explicit label.
+    // Prefer the resolved catalog display name for those IDs while preserving
+    // meaningful labels on loot groups, dimensions, and machine roles.
+    if (!item.label || /^cropsnh(?:[:_]|$)/i.test(item.label)) return entry.name;
+    return item.label;
+  }
+
   function inspect(item: SpecialGoods, view: RecipeView) {
+    const id = displayId(item);
+    // A semantic soil/subsoil entry already points at the ore-dictionary
+    // catalog row. Opening a chooser with the same row twice is noisy and
+    // misleading; concrete goods with an ore-dictionary alternative still
+    // use the chooser.
     if (item.oreDictionaryId && resolve(item.oreDictionaryId)) {
       hideTooltip();
-      chosenItemId = displayId(item);
-      chosenGroupId = item.oreDictionaryId;
-      chooserOpen = true;
-      return;
+      if (id !== item.oreDictionaryId) {
+        chosenItemId = id;
+        chosenGroupId = item.oreDictionaryId;
+        chooserOpen = true;
+        return;
+      }
     }
-    const id = displayId(item);
     if (id) navigate(id, view);
   }
 
@@ -115,9 +152,11 @@
     <div class="special-goods-grid">
       {#each visible as item, itemIndex (`${itemIndex}:${item.goodsId}:${item.role ?? ''}:${item.amount ?? ''}`)}
         {@const entry = resolve(displayId(item))}
+        {@const oreIcon = entry ? oreDictionaryIcon(entry) : undefined}
         {@const fortune = fortuneLabel(item)}
         {#if entry}
           <button
+            class:ore-dictionary={Boolean(item.oreDictionaryId)}
             class="special-good"
             aria-label={`${entry.name}${item.amount !== undefined ? `, ${item.amount}` : ''}`}
             onpointerenter={(event) => showPointerTooltip(event, item)}
@@ -131,7 +170,11 @@
               inspect(item, 'usages');
             }}
           >
-            <ItemIcon entry={entry} size={56} />
+            {#if oreIcon}
+              <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={56} />
+            {:else}
+              <ItemIcon entry={entry} size={56} />
+            {/if}
             {#if showAmounts && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
               <span class="special-amount">{item.minAmount !== undefined || item.maxAmount !== undefined
                 ? `${item.minAmount ?? item.maxAmount}–${item.maxAmount ?? item.minAmount}`
@@ -143,7 +186,7 @@
             {#if item.weight !== undefined}
               <span class="special-weight">w {item.weight}</span>
             {/if}
-            <small>{item.label ?? entry.name}</small>
+            <small>{displayLabel(item, entry)}</small>
             {#if fortune}<small class="special-fortune">{fortune}</small>{/if}
           </button>
         {:else}
@@ -193,7 +236,7 @@
         <span><button onclick={() => choose(chosenItem.id, 'recipes')}>Recipes</button><button onclick={() => choose(chosenItem.id, 'usages')}>Usages</button></span>
       </div>
       <div class="special-choice-option">
-        <ItemIcon entry={chosenItem} size={52} />
+        <ItemIcon entry={chosenGroup} size={52} />
         <b>{chosenGroup.name}</b>
         <span><button onclick={() => choose(chosenGroup.id, 'recipes')}>Recipes</button><button onclick={() => choose(chosenGroup.id, 'usages')}>Usages</button></span>
       </div>
@@ -206,6 +249,7 @@
   .special-goods-label { margin-bottom:6px; color:#8d9297; font-size:10px; font-weight:700; letter-spacing:.65px; text-transform:uppercase; }
   .special-goods-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:7px; min-width:0; }
   .special-good,.unresolved { position:relative; min-width:64px; min-height:76px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2px; padding:2px; border:1px solid transparent; border-radius:6px; background:transparent; color:#d9dcdf; cursor:pointer; }
+  .special-good.ore-dictionary { border-color:#7565a2; box-shadow:0 0 0 1px #7565a255,0 0 8px #8b78ce66; animation:ore-dictionary-pulse 1.8s ease-in-out infinite; }
   .special-good:hover,.special-good:focus-visible { border-color:#5b6167; background:#303338; filter:brightness(1.08); outline:0; }
   .special-good small,.unresolved small { width:100%; overflow:hidden; color:#a6abb0; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
   .special-good .special-fortune { color:#d8ca75; font-size:8px; }
@@ -220,5 +264,7 @@
   .special-goods-pages button:disabled { opacity:.4; cursor:default; }
   .special-goods-pages span { color:#92979c; font-size:11px; }
   .special-choice-scrim { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }.special-choice { position:relative; width:min(560px,100%); padding:26px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }.special-choice>p { margin:0 40px 7px 0; color:#a5aaaf; font:12px Minecraft,monospace; letter-spacing:.08em; }.special-choice h2 { margin:0 40px 18px 0; color:#f0f1f2; font:20px Minecraft,monospace; }.special-choice-close { position:absolute; top:8px; right:8px; width:40px; height:40px; border:0; background:none; color:#b3b8bd; font-size:25px; cursor:pointer; }.special-choice-option { display:grid; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; gap:10px; padding:10px; border:1px solid #464a4f; border-radius:8px; background:#292c30; }.special-choice-option+.special-choice-option { margin-top:9px; }.special-choice-option b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.special-choice-option span { display:flex; gap:6px; }.special-choice-option button { min-height:40px; padding:0 9px; border:1px solid #5a5f65; border-radius:6px; background:#35393d; color:#e3e5e7; cursor:pointer; }.special-choice-option button:first-child { background:#d1d4d7; color:#17191b; }
+  @keyframes ore-dictionary-pulse { 0%,100% { box-shadow:0 0 0 1px #7565a255,0 0 5px #8b78ce44; } 50% { box-shadow:0 0 0 1px #b49bf4aa,0 0 13px #a58ce999; } }
+  @media (prefers-reduced-motion: reduce) { .special-good.ore-dictionary { animation:none; } }
   @media (max-width:600px) { .special-choice { padding:22px 14px; }.special-choice-option { grid-template-columns:52px minmax(0,1fr); }.special-choice-option span { grid-column:1/-1; }.special-choice-option button { flex:1; } }
 </style>

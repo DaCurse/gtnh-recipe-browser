@@ -75,6 +75,8 @@ interface DecodedCatalog {
   kind?: 'core' | 'goods';
   part?: number;
   goods?: unknown[];
+  oreDictionaries?: unknown[];
+  ingredientGroups?: unknown[];
   specialViewTypes?: unknown[];
   specialServiceIcons?: unknown[];
 }
@@ -276,6 +278,17 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
     }
     if (catalog.kind !== descriptor.role) {
       throw new Error(`${descriptor.id}: catalog role does not match its descriptor`);
+    }
+    // Semantic ore dictionaries and anonymous ingredient groups are stored
+    // in the core catalog (not in goods shards), so include them when
+    // validating special-record references before handling the core shape.
+    for (const value of [
+      ...(catalog.oreDictionaries ?? []),
+      ...(catalog.ingredientGroups ?? [])
+    ]) {
+      if (value !== null && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string') {
+        catalogGoodsIds.add((value as { id: string }).id);
+      }
     }
     if (descriptor.role === 'core') {
       coreAssets++;

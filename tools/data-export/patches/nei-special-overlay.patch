@@ -26,7 +26,7 @@ diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecia
 new file mode 100644
 --- /dev/null
 +++ b/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java
-@@ -0,0 +1,467 @@
+@@ -0,0 +1,469 @@
 +package com.github.dcysteine.nesql.exporter.special;
 +
 +import com.github.dcysteine.nesql.exporter.main.Logger;
@@ -235,8 +235,10 @@ new file mode 100644
 +
 +        /** Persist an ore dictionary and all of its member item stacks. */
 +        public String retainOreDictionary(String name, java.util.Collection<ItemStack> stacks) {
-+            OreDictionary dictionary = oreDictionaryFactory.get(name, stacks);
-+            return dictionary.getId();
++            oreDictionaryFactory.get(name, stacks);
++            // Format-v5 persists the runtime entity as od~name, while the
++            // browser catalog's canonical goods identity is o:name.
++            return "o:" + name;
 +        }
 +
 +        public void addServiceIcon(String id, String label) {

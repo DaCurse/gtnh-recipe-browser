@@ -99,12 +99,24 @@ export interface PackedOreDictionary {
   id: string;
   itemIds: string[];
   kind?: 'oreDict';
+  specialProductionShards?: string[];
+  specialUsageShards?: string[];
+  specialProductionLookupIds?: string[];
+  specialUsageLookupIds?: string[];
+  specialProductionCount?: number;
+  specialUsageCount?: number;
 }
 
 export interface PackedIngredientGroup {
   id: string;
   itemIds: string[];
   kind: 'itemGroup';
+  specialProductionShards?: string[];
+  specialUsageShards?: string[];
+  specialProductionLookupIds?: string[];
+  specialUsageLookupIds?: string[];
+  specialProductionCount?: number;
+  specialUsageCount?: number;
 }
 
 export interface PackedCatalog {
