@@ -216,3 +216,29 @@ Complete the remaining Phase 6 browser acceptance runs: interrupted install/relo
 complete dataset in current Chromium, Firefox, and WebKit at desktop and mobile widths. Continue profiling catalog
 startup and high-cardinality variant browsing on representative phones; no further pack-format change is currently
 required.
+
+## Phase 8 — NEI special data (implementation complete; live export pending)
+
+Format 4 adds semantic NEI pages that cannot be reconstructed from the existing processed repository: crop
+products, mutation pools and breeding; GT veins and small ores; Meteor Rituals; Enhanced LootBags; Vending Machine
+trades; world-gen loot; and GT ore processing. Existing format 1–3 datasets remain loadable and simply expose no
+special tabs.
+
+The source contract is a deterministic `browser-nei-special.json` emitted by a maintained overlay in the disposable
+NESQL exporter. The sidecar preserves raw category metadata, stable goods and lookup IDs, pinned mod versions, and
+service icons. The processor retains all referenced goods, and the pack builder shards special records near the same
+compressed-size cap as recipes. The sidecar digest participates in the dataset revision. Format-4 manifests include
+special assets, catalog view descriptors, and per-goods production/usage references; verification, offline
+installation, storage accounting, and deletion treat them as ordinary immutable assets.
+
+The browser keeps Recipes and Usages as its top-level views. Special view icons join machine-type icons and use
+progressive verified loading, cancellation, filtering, caching, and bounded paging. Large drop tables page their
+slots internally. Ore processing is rendered from graph nodes and edges with deterministic ranks, non-overlapping
+boxes, routed connectors, and touch panning rather than an exported image. Player-dependent quest completion and
+current loot counts are never inferred from static exports.
+
+The network-independent `nei-special-v1` fixture is the compatibility boundary for schema rejection, stable
+ordering, all required category payloads, indexing, sharding, offline behavior, and graph layout. The release exit
+condition remains manual: prepare a fresh disposable Prism instance, perform a new NESQL export, compare every
+category against in-game NEI, build twice with identical digests, verify the deployed immutable assets, and only
+then activate the new revision.

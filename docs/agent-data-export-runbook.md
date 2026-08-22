@@ -43,6 +43,28 @@ The committed compatibility patch is applied only to `.export-work/<version>/nes
 - builds against AspectRecipeIndex 1.1.3 and its `aspectrecipeindex` mod ID. The old `thaumcraftneiplugin`
   dependency otherwise silently disables the entire Thaumcraft exporter on GTNH 2.9.
 
+The maintained NEI-special overlay is applied after that compatibility patch,
+again only to the disposable exporter copy. For the 2.9.0-beta-2 profile it is
+compiled against the release artifacts installed in the prepared instance:
+
+- CropsNH 2.0.91;
+- GT5-Unofficial 5.09.54.20;
+- BloodMagic 1.9.4;
+- EnhancedLootBags 1.3.4;
+- VendingMachine 0.4.95;
+- NEI Custom Diagram 1.8.30;
+- Roguelike Dungeons 1.6.6-GTNH and Twilight Forest 2.7.36.
+
+Preparation must fail when those pins do not match. The special exporter runs
+before normal plugin processing so every referenced item, fluid, ore dictionary,
+tooltip, and sprite is registered through the existing factories. It writes
+`browser-nei-special.json` next to the named NESQL database. The sidecar is
+schema-versioned, sorted by stable record ID, and contains pinned source versions,
+special-view descriptors, Recipes/Usages lookup IDs, service-icon IDs, and the
+category payloads. Missing required categories, duplicate IDs, unknown goods,
+unknown ore dictionaries, and unresolvable service icons are fatal; never delete
+a bad record to make processing pass.
+
 Use `patch --dry-run -p1` followed by `patch -p1`. Do not substitute `git apply` inside the ignored temporary copy:
 Git discovers the parent repository and interprets paths from the wrong root.
 
@@ -94,7 +116,9 @@ source or against incomplete processed files.
 After preparation, inspect the instance name, both exporter jars, disabled BugTorch jar, absence of staging
 directories, and `export-session.json`. Then stop and ask the user to perform the Prism steps. The user must create
 a fresh creative world, populate NEI, read a Creative Thaumonomicon, clear all three warp kinds, run the named
-`/nesql` export, and wait for its explicit completion message. Do not process a partial database.
+`/nesql` export, and wait for its explicit completion message. Confirm that the completion log also names
+`browser-nei-special.json` and reports every required special category. Do not process a partial database or a
+sidecar copied from a different export.
 
 When an export fails, inspect output sizes to confirm whether the transaction committed. Fully exit Minecraft before
 replacing its locked jar. Preserve the failed jar outside `mods/` for audit, then retry the same repository name with
@@ -105,10 +129,14 @@ replacing its locked jar. Preserve the failed jar outside `mods/` for audit, the
 Once the user confirms completion:
 
 1. Run `npm run export:process -- --session <export-session.json>`.
-2. Investigate any schema or sanity failure generally; never special-case an item or recipe.
+2. Confirm the processor hashes the sidecar into the revision, validates every goods/ore-dictionary/service-icon
+   reference, and reports nonzero records for every required category. Investigate any schema or sanity failure
+   generally; never special-case an item or recipe.
 3. Confirm the pack was built twice with identical digests and passed asset plus sprite verification.
 4. Inspect representative crafting, GT machine, multiblock, fluid-container, ore-dictionary, tooltip-color, and
-   large-recipe entries before publication.
+   large-recipe entries before publication. In-game NEI comparison must also cover one record from each special
+   category, complete Meteor Ritual metadata, grouped/limited loot, conditional vending, and a branched
+   ore-processing graph with chemical-bath and sifter routes.
 5. Run `npm run export:publish -- --pack <verified-pack> --mode stage`. Deploy and verify every staged asset with
    `npm run smoke:deploy -- <origin> --manifest <staged-manifest> --all-assets`, then run the publish command with
    `--mode activate` to update `public/versions.json`. `--mode publish`
