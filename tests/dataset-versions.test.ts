@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   hasRevisionUpdate,
+  preferredDatasetId,
   reconcileDatasetVersions
 } from '../src/lib/datasetVersions';
 import type { DatasetState, DatasetVersion } from '../src/lib/types';
@@ -30,6 +31,21 @@ function stored(datasetId: string, active = false): DatasetState {
 }
 
 describe('dataset revision availability', () => {
+  it('automatically selects the published replacement for a stale active revision', () => {
+    const oldDataset = stored('2.9.0-beta-2-rold', true);
+    const latest = version('2.9.0-beta-2-rnew');
+
+    expect(preferredDatasetId([latest], [oldDataset])).toBe(latest.datasetId);
+  });
+
+  it('updates stale explicit links to the published replacement', () => {
+    const oldDataset = stored('2.9.0-beta-2-rold', true);
+    const latest = version('2.9.0-beta-2-rnew');
+
+    expect(preferredDatasetId([latest], [oldDataset], oldDataset.datasetId)).toBe(latest.datasetId);
+    expect(preferredDatasetId([latest], [oldDataset], latest.datasetId)).toBe(latest.datasetId);
+  });
+
   it('marks a locally retained revision as stale and its replacement as new', () => {
     const oldDataset = stored('2.9.0-beta-2-rold', true);
     const latest = version('2.9.0-beta-2-rnew');

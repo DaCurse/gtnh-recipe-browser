@@ -58,6 +58,7 @@ import type {
   RecipeView
 } from './types';
 import type { SpecialRecord, SpecialViewType } from './specialData';
+import { preferredDatasetId } from './datasetVersions';
 
 function specialRecordGoodsIds(record: PackedSpecialRecord): string[] {
   const result = new Set<string>([
@@ -312,8 +313,7 @@ export class DatasetRepository {
     const versionsResult = await fetchJsonNetworkFirst<VersionsIndex>(versionsUrl, `versions:${versionsUrl}`);
     const versions = versionsResult.value;
     const installed = await listDatasets();
-    const active = installed.find((dataset) => dataset.active);
-    const selectedId = datasetId ?? active?.datasetId ?? versions.versions[0]?.datasetId;
+    const selectedId = preferredDatasetId(versions.versions, installed, datasetId);
     const published = versions.versions.find((version) => version.datasetId === selectedId);
     const installedSelection = installed.find((dataset) => dataset.datasetId === selectedId);
     const selected = published ?? (installedSelection ? {

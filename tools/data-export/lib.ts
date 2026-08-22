@@ -194,7 +194,12 @@ export function withPublishedVersion(
   return {
     schemaVersion: 1,
     generatedAt,
-    versions: [version, ...index.versions.filter((candidate) => candidate.datasetId !== version.datasetId)]
+    // Keep one immutable release per GTNH version. A replacement revision must
+    // become the first entry without leaving the previous release selectable.
+    versions: [version, ...index.versions.filter((candidate) => (
+      candidate.datasetId !== version.datasetId
+      && candidate.gtnhVersion !== version.gtnhVersion
+    ))]
   };
 }
 

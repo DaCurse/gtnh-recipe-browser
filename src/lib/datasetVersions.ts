@@ -4,6 +4,27 @@ import type {
   ManagedDataset
 } from './types';
 
+/** Select a published same-version replacement unless the caller requested an explicit dataset. */
+export function preferredDatasetId(
+  available: readonly DatasetVersion[],
+  stored: readonly DatasetState[],
+  requested?: string
+): string | undefined {
+  if (requested && available.some((version) => version.datasetId === requested)) return requested;
+  if (requested) {
+    const requestedState = stored.find((state) => state.datasetId === requested);
+    const replacement = requestedState
+      ? available.find((version) => version.gtnhVersion === requestedState.gtnhVersion)
+      : undefined;
+    return replacement?.datasetId ?? requested;
+  }
+  const active = stored.find((state) => state.active);
+  const replacement = active
+    ? available.find((version) => version.gtnhVersion === active.gtnhVersion)
+    : undefined;
+  return replacement?.datasetId ?? active?.datasetId ?? available[0]?.datasetId;
+}
+
 export function reconcileDatasetVersions(
   available: readonly DatasetVersion[],
   stored: readonly DatasetState[]

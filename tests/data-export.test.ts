@@ -182,7 +182,7 @@ describe('data export tooling', () => {
     expect(processSource).toContain("args.get('resume-processed') === 'true'");
   });
 
-  it('publishes a new default without removing historical datasets', () => {
+  it('publishes a new default while retaining other GTNH versions', () => {
     const existing: VersionsIndex = {
       schemaVersion: 1,
       generatedAt: 'old',
@@ -208,6 +208,42 @@ describe('data export tooling', () => {
 
     expect(withPublishedVersion(existing, latest, 'now').versions.map((entry) => entry.datasetId))
       .toEqual(['2.9.0-beta-2-r2', '2.8.0-r1']);
+  });
+
+  it('replaces the previous revision for the same GTNH version', () => {
+    const existing: VersionsIndex = {
+      schemaVersion: 1,
+      generatedAt: 'old',
+      versions: [{
+        datasetId: '2.9.0-beta-2-old',
+        gtnhVersion: '2.9.0-beta-2',
+        revision: 'old',
+        publishedAt: 'old',
+        packManifestUrl: './data/2.9.0-beta-2-old/pack-manifest.json',
+        catalogBytes: 10,
+        offlineBytes: 20
+      }, {
+        datasetId: '2.8.0-r1',
+        gtnhVersion: '2.8.0',
+        revision: '1',
+        publishedAt: 'old',
+        packManifestUrl: './data/2.8.0-r1/pack-manifest.json',
+        catalogBytes: 30,
+        offlineBytes: 40
+      }]
+    };
+    const latest = {
+      datasetId: '2.9.0-beta-2-new',
+      gtnhVersion: '2.9.0-beta-2',
+      revision: 'new',
+      publishedAt: 'now',
+      packManifestUrl: './data/2.9.0-beta-2-new/pack-manifest.json',
+      catalogBytes: 50,
+      offlineBytes: 60
+    };
+
+    expect(withPublishedVersion(existing, latest, 'now').versions.map((entry) => entry.datasetId))
+      .toEqual(['2.9.0-beta-2-new', '2.8.0-r1']);
   });
 
   it('replaces an existing immutable identity instead of duplicating the index entry', () => {
