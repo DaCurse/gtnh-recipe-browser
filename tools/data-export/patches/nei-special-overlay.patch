@@ -26,7 +26,7 @@ diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecia
 new file mode 100644
 --- /dev/null
 +++ b/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java
-@@ -0,0 +1,382 @@
+@@ -0,0 +1,399 @@
 +package com.github.dcysteine.nesql.exporter.special;
 +
 +import com.github.dcysteine.nesql.exporter.main.Logger;
@@ -243,9 +243,26 @@ new file mode 100644
 +                String usagesLookupId,
 +                String serviceIconId,
 +                Map<String, Object> payload) {
++            addRecord(
++                    id, category, title, title, goodsIds, recipesLookupId, usagesLookupId,
++                    serviceIconId, payload);
++        }
++
++        /** Adds a record with adapter-supplied, normalized plain search text. */
++        public void addRecord(
++                String id,
++                String category,
++                String title,
++                String searchText,
++                List<String> goodsIds,
++                String recipesLookupId,
++                String usagesLookupId,
++                String serviceIconId,
++                Map<String, Object> payload) {
 +            requireId(id, "record");
 +            requireCategory(category);
 +            requireId(title, "record title");
++            requireId(searchText, "record search text");
 +            requireId(recipesLookupId, "Recipes lookup");
 +            requireId(usagesLookupId, "Usages lookup");
 +            requireId(serviceIconId, "record service icon");
@@ -265,7 +282,7 @@ new file mode 100644
 +            record.put("type", category);
 +            record.put("title", title);
 +            record.put("name", title);
-+            record.put("searchText", title);
++            record.put("searchText", searchText);
 +            record.put("goodsIds", references);
 +            record.put("recipesLookupId", recipesLookupId);
 +            record.put("usagesLookupId", usagesLookupId);

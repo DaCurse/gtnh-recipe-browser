@@ -109,6 +109,8 @@ describe('NEI special sidecar contract', () => {
     const patch = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
     expect(patch).toContain('NeiSpecialOverlay.export(repositoryDirectory, exporterState, activePlugins)');
     expect(patch).toContain('No NEI special-data adapters installed');
+    expect(patch).toContain('requireId(searchText, "record search text")');
+    expect(patch).toContain('record.put("searchText", searchText)');
     expect(patch).toContain('CropsNH", "2.0.91"');
     expect(patch).toContain('GT5-Unofficial", "5.09.54.20"');
     expect(patch).toContain('BloodMagic", "1.9.4"');
