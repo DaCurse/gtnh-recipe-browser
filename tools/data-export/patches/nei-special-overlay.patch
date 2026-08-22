@@ -26,7 +26,7 @@ diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecia
 new file mode 100644
 --- /dev/null
 +++ b/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java
-@@ -0,0 +1,399 @@
+@@ -0,0 +1,428 @@
 +package com.github.dcysteine.nesql.exporter.special;
 +
 +import com.github.dcysteine.nesql.exporter.main.Logger;
@@ -43,10 +43,16 @@ new file mode 100644
 +import net.minecraft.item.ItemStack;
 +import net.minecraftforge.fluids.FluidStack;
 +
++import java.io.BufferedWriter;
 +import java.io.File;
 +import java.io.IOException;
++import java.io.Writer;
 +import java.nio.charset.StandardCharsets;
++import java.nio.file.AtomicMoveNotSupportedException;
 +import java.nio.file.Files;
++import java.nio.file.Path;
++import java.nio.file.StandardCopyOption;
++import java.nio.file.StandardOpenOption;
 +import java.util.ArrayList;
 +import java.util.Arrays;
 +import java.util.Collections;
@@ -358,71 +364,94 @@ new file mode 100644
 +            root.put("serviceIcons", icons);
 +            root.put("specialViewTypes", views);
 +            root.put("records", records);
-+            Files.write(path.toPath(), Json.encode(root).getBytes(StandardCharsets.UTF_8));
++
++            Path target = path.toPath().toAbsolutePath();
++            Path temporary = Files.createTempFile(target.getParent(), target.getFileName().toString(), ".tmp");
++            boolean moved = false;
++            try {
++                try (BufferedWriter writer = Files.newBufferedWriter(
++                        temporary,
++                        StandardCharsets.UTF_8,
++                        StandardOpenOption.WRITE,
++                        StandardOpenOption.TRUNCATE_EXISTING)) {
++                    Json.write(writer, root);
++                }
++                try {
++                    Files.move(
++                            temporary,
++                            target,
++                            StandardCopyOption.ATOMIC_MOVE,
++                            StandardCopyOption.REPLACE_EXISTING);
++                } catch (AtomicMoveNotSupportedException unsupported) {
++                    Files.move(temporary, target, StandardCopyOption.REPLACE_EXISTING);
++                }
++                moved = true;
++            } finally {
++                if (!moved) Files.deleteIfExists(temporary);
++            }
 +        }
 +    }
 +
-+    /** Tiny JSON encoder avoids depending on a mod's optional Gson version. */
++    /** Streaming JSON encoder avoids depending on a mod's optional Gson version. */
 +    private static final class Json {
 +        private Json() {}
 +
-+        static String encode(Object value) {
-+            StringBuilder output = new StringBuilder();
++        /** Kept separate from Sink.write so the deterministic writer is easy to exercise. */
++        static void write(Writer output, Object value) throws IOException {
 +            append(output, value);
-+            output.append('\n');
-+            return output.toString();
++            output.write('\n');
 +        }
 +
 +        @SuppressWarnings("unchecked")
-+        private static void append(StringBuilder output, Object value) {
-+            if (value == null) { output.append("null"); return; }
++        private static void append(Writer output, Object value) throws IOException {
++            if (value == null) { output.write("null"); return; }
 +            if (value instanceof String) { quote(output, (String) value); return; }
-+            if (value instanceof Boolean || value instanceof Number) { output.append(value); return; }
++            if (value instanceof Boolean || value instanceof Number) { output.write(value.toString()); return; }
 +            if (value instanceof Map) {
-+                output.append('{');
++                output.write('{');
 +                boolean first = true;
 +                List<String> keys = new ArrayList<>(((Map<String, Object>) value).keySet());
 +                Collections.sort(keys);
 +                for (String key : keys) {
-+                    if (!first) output.append(',');
++                    if (!first) output.write(',');
 +                    first = false;
 +                    quote(output, key);
-+                    output.append(':');
++                    output.write(':');
 +                    append(output, ((Map<String, Object>) value).get(key));
 +                }
-+                output.append('}');
++                output.write('}');
 +                return;
 +            }
 +            if (value instanceof Iterable) {
-+                output.append('[');
++                output.write('[');
 +                boolean first = true;
 +                for (Object entry : (Iterable<Object>) value) {
-+                    if (!first) output.append(',');
++                    if (!first) output.write(',');
 +                    first = false;
 +                    append(output, entry);
 +                }
-+                output.append(']');
++                output.write(']');
 +                return;
 +            }
 +            throw new IllegalArgumentException("unsupported JSON value " + value.getClass());
 +        }
 +
-+        private static void quote(StringBuilder output, String value) {
-+            output.append('"');
++        private static void quote(Writer output, String value) throws IOException {
++            output.write('"');
 +            for (int index = 0; index < value.length(); index++) {
 +                char character = value.charAt(index);
 +                switch (character) {
-+                    case '"': output.append("\\\""); break;
-+                    case '\\': output.append("\\\\"); break;
-+                    case '\n': output.append("\\n"); break;
-+                    case '\r': output.append("\\r"); break;
-+                    case '\t': output.append("\\t"); break;
++                    case '"': output.write("\\\""); break;
++                    case '\\': output.write("\\\\"); break;
++                    case '\n': output.write("\\n"); break;
++                    case '\r': output.write("\\r"); break;
++                    case '\t': output.write("\\t"); break;
 +                    default:
-+                        if (character < 0x20) output.append(String.format("\\u%04x", (int) character));
-+                        else output.append(character);
++                        if (character < 0x20) output.write(String.format("\\u%04x", (int) character));
++                        else output.write(character);
 +                }
 +            }
-+            output.append('"');
++            output.write('"');
 +        }
 +    }
 +}

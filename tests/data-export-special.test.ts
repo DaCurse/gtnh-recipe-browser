@@ -17,6 +17,57 @@ async function fixture(): Promise<SpecialData> {
   return readSpecialSidecar(fixturePath, { requireNonEmptyCategories: true });
 }
 
+type JsonFixture = null | string | boolean | number | JsonFixture[] | { [key: string]: JsonFixture };
+
+function quoteJavaJson(value: string): string {
+  let output = '"';
+  for (let index = 0; index < value.length; index += 1) {
+    const character = value[index]!;
+    if (character === '"') output += '\\"';
+    else if (character === '\\') output += '\\\\';
+    else if (character === '\n') output += '\\n';
+    else if (character === '\r') output += '\\r';
+    else if (character === '\t') output += '\\t';
+    else if (character.charCodeAt(0) < 0x20) {
+      output += `\\u${character.charCodeAt(0).toString(16).padStart(4, '0')}`;
+    } else output += character;
+  }
+  return `${output}"`;
+}
+
+function legacyJavaJson(value: JsonFixture): string {
+  if (value === null) return 'null';
+  if (typeof value === 'string') return quoteJavaJson(value);
+  if (typeof value === 'boolean' || typeof value === 'number') return value.toString();
+  if (Array.isArray(value)) return `[${value.map((entry) => legacyJavaJson(entry)).join(',')}]`;
+  return `{${Object.keys(value).sort().map((key) => `${quoteJavaJson(key)}:${legacyJavaJson(value[key]!)}`).join(',')}}`;
+}
+
+function streamedJavaJson(value: JsonFixture): string {
+  const chunks: string[] = [];
+  const append = (entry: JsonFixture): void => {
+    if (entry === null) { chunks.push('null'); return; }
+    if (typeof entry === 'string') { chunks.push(quoteJavaJson(entry)); return; }
+    if (typeof entry === 'boolean' || typeof entry === 'number') { chunks.push(entry.toString()); return; }
+    if (Array.isArray(entry)) {
+      chunks.push('[');
+      entry.forEach((child, index) => { if (index > 0) chunks.push(','); append(child); });
+      chunks.push(']');
+      return;
+    }
+    chunks.push('{');
+    Object.keys(entry).sort().forEach((key, index) => {
+      if (index > 0) chunks.push(',');
+      chunks.push(quoteJavaJson(key), ':');
+      append(entry[key]!);
+    });
+    chunks.push('}');
+  };
+  append(value);
+  chunks.push('\n');
+  return chunks.join('');
+}
+
 describe('NEI special sidecar contract', () => {
   it('accepts every requested category and preserves rich payloads', async () => {
     const data = await fixture();
@@ -174,6 +225,34 @@ describe('NEI special sidecar contract', () => {
     expect(javaSource).toContain('exporter.put("commit", "b9279b39f2f439da78eebd70fab272b028947371")');
     expect(javaSource).not.toContain('versions.put("gtnh",');
     expect(javaSource).not.toContain('versions.put("overlay", "nei-special-v1")');
+  });
+
+  it('keeps streamed overlay JSON byte-equivalent and atomically replaces the sidecar', async () => {
+    const sample: JsonFixture = {
+      z: 'quote" slash\\ line\n tab\t control\u0001',
+      array: [null, true, 2.5, { b: 'é', a: 'first' }],
+      a: 'first'
+    };
+    const legacy = `${legacyJavaJson(sample)}\n`;
+    const streamed = streamedJavaJson(sample);
+    expect(streamed).toBe(legacy);
+    expect(streamed).toMatch(/^\{"a":"first","array":/);
+    expect(streamed).toContain('quote\\" slash\\\\ line\\n tab\\t control\\u0001');
+
+    const patch = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
+    const javaSource = patch
+      .split('\n')
+      .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+      .map((line) => line.slice(1))
+      .join('\n');
+    expect(javaSource).toContain('static void write(Writer output, Object value) throws IOException');
+    expect(javaSource).toContain('Json.write(writer, root)');
+    expect(javaSource).not.toContain('Json.encode(root)');
+    expect(javaSource).not.toContain('new StringBuilder()');
+    expect(javaSource).toContain('Files.newBufferedWriter');
+    expect(javaSource).toContain('Files.createTempFile');
+    expect(javaSource).toContain('StandardCopyOption.ATOMIC_MOVE');
+    expect(javaSource).toContain('Files.deleteIfExists(temporary)');
   });
 
   it('requires the sidecar for special exports and preserves the GT-tool sanity predicate', async () => {
