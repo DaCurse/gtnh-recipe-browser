@@ -223,7 +223,7 @@ export interface SpecialRecord {
   usageGoodsIds?: string[];
   inputs?: SpecialGoods[];
   outputs?: SpecialDrop[];
-  payload: SpecialPayload;
+  payload: SpecialPayload | Record<string, unknown>;
   order?: number;
 }
 
