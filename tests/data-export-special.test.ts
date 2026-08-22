@@ -267,6 +267,20 @@ describe('NEI special sidecar contract', () => {
     expect(prepare).toContain('exportAutomationPatchSha256');
   });
 
+  it('keeps the maintained Java overlay hunk length synchronized', async () => {
+    const patch = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
+    const start = patch.indexOf('diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java');
+    expect(start).toBeGreaterThanOrEqual(0);
+    const sourcePatch = patch.slice(start);
+    const header = sourcePatch.match(/^@@ -0,0 \+1,(\d+) @@$/m);
+    expect(header).not.toBeNull();
+    const addedLines = sourcePatch
+      .split('\n')
+      .filter((line) => line.startsWith('+') && !line.startsWith('+++'));
+    expect(addedLines).toHaveLength(Number(header?.[1]));
+    expect(addedLines.at(-1)).toBe('+}');
+  });
+
   it('emits the nested sourceVersions object required by the sidecar validator', async () => {
     const patch = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
     const javaSource = patch
