@@ -120,9 +120,9 @@ describe('NEI special sidecar contract', () => {
     expect(() => canonicalizeSpecialData(source)).toThrow(new SpecialDataError('missing requested category loot-bag'));
 
     source.categories = [...(source.categories as string[]), 'lootbags'];
-    records[0]!.goodsIds = ['i:missing:0'];
+    records[0]!.goodsIds = ['i:missing:item:0'];
     expect(() => canonicalizeSpecialData(source, { knownGoodsIds: new Set(['i:gregtech:gt.metaitem.01:2816']) }))
-      .toThrow(/unresolved goods ID i:missing:0/);
+      .toThrow(/unresolved goods ID i:missing:item:0/);
 
     records[0]!.goodsIds = ['i:gregtech:gt.metaitem.01:2816'];
     records[0]!.recipesLookupId = 'special:missing';
@@ -155,6 +155,15 @@ describe('NEI special sidecar contract', () => {
     const inputs = payload.inputs as Array<Record<string, unknown>>;
     inputs[0]!.oreDictionary = '';
     expect(() => canonicalizeSpecialData(source)).toThrow(/oreDictionary must be a non-empty string/);
+  });
+
+  it('rejects raw NESQL keys instead of accepting them as browser goods IDs', async () => {
+    const source = JSON.parse(await readFile(fixturePath, 'utf8')) as Record<string, unknown>;
+    const records = source.records as Array<Record<string, unknown>>;
+    records[0]!.goodsIds = ['i~gregtech~gt.metaitem.01~2816'];
+    expect(() => canonicalizeSpecialData(source)).toThrow(
+      /invalid canonical goods ID i~gregtech~gt\.metaitem\.01~2816/
+    );
   });
 
   it('retains nested goods references and produces a stable sidecar hash', async () => {

@@ -371,7 +371,11 @@ function validateReferences(
   const knownRecipes = options.knownRecipeLookupIds;
   const knownUsages = options.knownUsageLookupIds;
   const goods = new Set<string>();
-  for (const icon of data.serviceIcons) if (icon.goodsId) goods.add(icon.goodsId);
+  for (const icon of data.serviceIcons) {
+    if (!icon.goodsId) continue;
+    validateCanonicalGoodsId(icon.goodsId, icon.id);
+    goods.add(icon.goodsId);
+  }
   for (const record of data.records) {
     if (!iconIds.has(record.serviceIconId)) throw new SpecialDataError(`${record.id}: unknown service icon ${record.serviceIconId}`);
     if (knownIcons && !knownIcons.has(record.serviceIconId)) {
@@ -384,6 +388,7 @@ function validateReferences(
       throw new SpecialDataError(`${record.id}: unresolved Usages lookup ${record.usagesLookupId}`);
     }
     for (const goodsId of [...record.goodsIds, ...nestedGoodsIds(record.payload)]) {
+      validateCanonicalGoodsId(goodsId, record.id);
       if (goods.has(goodsId)) continue;
       goods.add(goodsId);
       if (knownGoods && !knownGoods.has(goodsId)) {
@@ -397,6 +402,14 @@ function validateReferences(
         throw new SpecialDataError(`${icon.id}: unresolved goods ID ${icon.goodsId}`);
       }
     }
+  }
+}
+
+function validateCanonicalGoodsId(goodsId: string, owner: string): void {
+  const item = /^i:[^:]+:[^:]+:-?\d+(?::[0-9a-f]{40})?$/.test(goodsId);
+  const fluid = /^f:[^:]+:[^:]+$/.test(goodsId);
+  if (!item && !fluid) {
+    throw new SpecialDataError(`${owner}: invalid canonical goods ID ${goodsId}`);
   }
 }
 

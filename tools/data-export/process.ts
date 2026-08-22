@@ -70,6 +70,25 @@ if (imageAudit.missingVariantPaths > 0) {
   );
 }
 
+const sidecarPath = join(nesqlDirectory, 'browser-nei-special.json');
+let specialDataPath: string | undefined;
+try {
+  await access(sidecarPath);
+  // Fail malformed or incomplete special exports before the expensive .NET
+  // conversion. Cross-checking against processed goods happens during build.
+  await readSpecialSidecar(sidecarPath);
+  specialDataPath = sidecarPath;
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  if (!allowMissingSpecial) {
+    throw new Error(
+      `NESQL export is missing ${sidecarPath}; the NEI special-data overlay must emit all requested categories. `
+      + `Use --allow-missing-special true only when intentionally processing a legacy export.`,
+      { cause: error }
+    );
+  }
+}
+
 const processedDirectory = join(outputWorkDirectory, 'processed');
 const processorDirectory = join(outputWorkDirectory, 'processor');
 const firstBuild = join(outputWorkDirectory, 'pack-a');
@@ -193,24 +212,6 @@ if (!tooltips.some((tooltip) => tooltip.includes('\n') || /<br\s*\/?>/i.test(too
 }
 
 const sourceRevision = combinedRevision(data, atlas);
-const sidecarPath = join(nesqlDirectory, 'browser-nei-special.json');
-let specialDataPath: string | undefined;
-try {
-  await access(sidecarPath);
-  // Parse before the expensive processor run so a malformed or incomplete
-  // overlay export fails without producing a publishable pack.
-  await readSpecialSidecar(sidecarPath);
-  specialDataPath = sidecarPath;
-} catch (error) {
-  if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-  if (!allowMissingSpecial) {
-    throw new Error(
-      `NESQL export is missing ${sidecarPath}; the NEI special-data overlay must emit all requested categories. `
-      + `Use --allow-missing-special true only when intentionally processing a legacy export.`,
-      { cause: error }
-    );
-  }
-}
 const options = {
   dataPath,
   atlasPath,
