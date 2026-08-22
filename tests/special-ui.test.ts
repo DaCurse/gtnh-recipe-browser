@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { layoutOreProcessingGraph, stagesToOreGraph } from '../src/lib/oreProcessingGraph';
 import {
   boundedSpecialPage,
+  isSpecialViewEnabled,
   specialCategory,
   humanizeSpecialName,
   specialLookupMatchesView,
@@ -36,6 +37,11 @@ describe('NEI special browser presentation', () => {
     expect(specialLookupMatchesView('special:pool:cropsnh-gray:usages', 'mutation-pool')).toBe(true);
     expect(specialLookupMatchesView('special:ore-processing:iron:recipes', 'gt-ore-processing')).toBe(true);
     expect(specialLookupMatchesView('special:crop:cropsnh-rubyne:recipes', 'gt-ore-processing')).toBe(false);
+  });
+
+  it('keeps the unreliable ore-processing view disabled', () => {
+    expect(isSpecialViewEnabled('gt-ore-processing')).toBe(false);
+    expect(isSpecialViewEnabled('crop-output')).toBe(true);
   });
 
   it('humanizes legacy CropsNH localization keys', () => {

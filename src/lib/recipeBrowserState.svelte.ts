@@ -2,6 +2,7 @@ import { onMount, untrack } from 'svelte';
 import { toRecipeSearchCatalogEntry, toRecipeSearchRecord } from './recipeSearch';
 import {
   specialLabel,
+  isSpecialViewEnabled,
   specialLookupMatchesView,
   specialRepository,
   specialSearchText,
@@ -169,6 +170,7 @@ export class RecipeBrowserState {
           ?? serviceIcons.get(viewType.serviceIconId ?? '')?.label.slice(0, 1)
       }))
       .filter((viewType) => viewType.id.length > 0)
+      .filter((viewType) => isSpecialViewEnabled(viewType.id))
       .filter((viewType) => this.specialCount(mode, viewType.id) !== 0)
       .sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
   }

@@ -23,6 +23,10 @@ const SPECIAL_CATEGORY_ORDER = [
   'oreProcessing'
 ] as const;
 
+// Keep the exported records available for later repair, but do not expose the
+// currently unreliable graph as a browser tab or load it on item selection.
+const DISABLED_SPECIAL_VIEW_TYPES = new Set(['gt-ore-processing']);
+
 export type SpecialCategory = typeof SPECIAL_CATEGORY_ORDER[number];
 
 export interface SpecialViewType {
@@ -330,6 +334,10 @@ export function specialLookupMatchesView(lookupId: string, viewTypeId: string): 
 
 export function specialLabel(viewType: SpecialViewType): string {
   return viewType.shortLabel || viewType.label || viewType.id;
+}
+
+export function isSpecialViewEnabled(viewTypeId: string): boolean {
+  return !DISABLED_SPECIAL_VIEW_TYPES.has(viewTypeId);
 }
 
 /**
