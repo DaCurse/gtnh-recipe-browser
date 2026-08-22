@@ -18,6 +18,7 @@
     "export:process": "tsx tools/data-export/process.ts",
     "export:publish": "tsx tools/data-export/publish.ts",
     "export:runtime": "tsx tools/data-export/direct-runtime-cli.ts",
+    "export:direct": "tsx tools/data-export/direct-export-cli.ts",
     "fixture:browser-policy": "tsx tools/data-export/create-browser-policy-fixture.ts",
     "smoke:deploy": "node tools/deployment-smoke.mjs"
   },

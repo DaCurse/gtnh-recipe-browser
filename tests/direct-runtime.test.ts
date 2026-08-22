@@ -161,10 +161,12 @@ describe('direct GTNH runtime resolver', () => {
       expect(resolution.patches.map((patch) => patch.order)).toEqual([-2, 3, 5, 100]);
       expect(resolution.mainClass).toBe('com.example.Wrapper');
       expect(resolution.jvmArgs).toContain('-Dexample=true');
+      expect(resolution.jvmArgs).toContain('-Djava.security.manager=allow');
       expect(resolution.gameArgs).toContain('--tweakClass');
       expect(resolution.gameArgs).toContain('OfflineUser');
       expect(resolution.gameArgs).toContain('1.7.10');
       expect(resolution.classpath).toHaveLength(3);
+      expect(resolution.classpath.every((path) => path.endsWith('.jar'))).toBe(true);
       expect(resolution.artifacts.map((artifact) => artifact.name)).toContain('com.example:native:1:natives-linux');
       expect(resolution.artifacts.map((artifact) => artifact.name)).not.toContain('com.example:native:1:natives-windows-64');
       expect(resolution.assetIndex.objects[0]?.name).toBe('minecraft/test');

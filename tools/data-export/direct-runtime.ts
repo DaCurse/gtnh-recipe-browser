@@ -207,6 +207,7 @@ export interface LaunchPlanOptions {
 export interface LaunchOptions {
   timeoutMs?: number;
   statusFile?: string;
+  signal?: AbortSignal;
   env?: NodeJS.ProcessEnv;
   onStatus?: (status: RuntimeLaunchStatus) => void;
 }
@@ -680,18 +681,32 @@ class ImmutableArtifactCache {
     this.fetcher = options.fetch ?? fetch;
   }
 
-  private destination(sha1: string, name: string): string {
-    const safeName = basename(name).replaceAll(/[^A-Za-z0-9._-]/g, '_');
+  private destination(sha1: string, name: string, url?: string): string {
+    let fileName = basename(name);
+    if (name.includes(':') || !extname(fileName)) {
+      try {
+        fileName = mavenFileName(name);
+      } catch {
+        try {
+          const urlFileName = url ? basename(new URL(url).pathname) : '';
+          if (urlFileName && extname(urlFileName)) fileName = urlFileName;
+        } catch {
+          // Keep the sanitized coordinate as a last-resort cache name.
+        }
+      }
+    }
+    const safeName = fileName.replaceAll(/[^A-Za-z0-9._-]/g, '_');
     return join(this.root, 'sha1', sha1, safeName);
   }
 
   private async tryCached(
     sha1: string | undefined,
     name: string,
-    expectedSize: number | undefined
+    expectedSize: number | undefined,
+    url: string | undefined
   ): Promise<ResolvedRuntimeArtifact | undefined> {
     if (!sha1) return undefined;
-    const path = this.destination(sha1, name);
+    const path = this.destination(sha1, name, url);
     try {
       const checked = await verifyArtifactFile(path, sha1, expectedSize, `Cached artifact ${name}`);
       return { path, cachePath: path, bytes: checked.bytes, actualSha1: checked.sha1 } as ResolvedRuntimeArtifact;
@@ -724,7 +739,7 @@ class ImmutableArtifactCache {
 
   async resolve(request: RuntimeArtifactRequest, download = true): Promise<ResolvedRuntimeArtifact> {
     await mkdir(this.root, { recursive: true });
-    const cached = await this.tryCached(request.sha1, request.name, request.size);
+    const cached = await this.tryCached(request.sha1, request.name, request.size, request.url);
     if (cached) return { ...request, ...cached };
     if (!download && request.source === 'download') {
       throw new Error(`Artifact ${request.name} is not cached and downloading is disabled`);
@@ -739,7 +754,7 @@ class ImmutableArtifactCache {
       if (request.source === 'local') await copyFile(request.localPath!, temporaryPath);
       else await this.downloadTo(request.url!, temporaryPath);
       const checked = await verifyArtifactFile(temporaryPath, request.sha1, request.size, request.name);
-      const destination = this.destination(checked.sha1, request.name);
+      const destination = this.destination(checked.sha1, request.name, request.url);
       await mkdir(dirname(destination), { recursive: true });
       try {
         const existing = await verifyArtifactFile(destination, checked.sha1, checked.bytes, `Cached artifact ${request.name}`);
@@ -1082,7 +1097,13 @@ export async function resolveRuntime(options: ResolveRuntimeOptions): Promise<Ru
     patchVersion(metadata)
   );
   const classpath = artifacts.filter((artifact) => !artifact.isNative).map((artifact) => artifact.path);
-  argumentsResult.jvmArgs.push(`-Djava.library.path=${nativesDirectory}`, `-Dorg.lwjgl.librarypath=${nativesDirectory}`);
+  argumentsResult.jvmArgs.push(
+    `-Djava.library.path=${nativesDirectory}`,
+    `-Dorg.lwjgl.librarypath=${nativesDirectory}`,
+    // Forge 1.7.10's legacy security-manager bootstrap is rejected by Java 18+
+    // unless this compatibility switch is explicitly enabled.
+    '-Djava.security.manager=allow'
+  );
   return {
     schemaVersion: 1,
     packRoot,
@@ -1150,6 +1171,11 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
     env: { ...process.env, ...options.env },
     stdio: 'inherit'
   });
+  const abortChild = () => {
+    child.kill('SIGTERM');
+  };
+  if (options.signal?.aborted) abortChild();
+  else options.signal?.addEventListener('abort', abortChild, { once: true });
   const running: RuntimeLaunchStatus = {
     schemaVersion: 1,
     state: 'running',
@@ -1185,6 +1211,7 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
     });
     child.once('exit', (exitCode, signal) => {
       if (timeout) clearTimeout(timeout);
+      options.signal?.removeEventListener('abort', abortChild);
       const finalStatus: RuntimeLaunchStatus = {
         schemaVersion: 1,
         state: timedOut ? 'timeout' : exitCode === 0 ? 'exited' : 'failed',
