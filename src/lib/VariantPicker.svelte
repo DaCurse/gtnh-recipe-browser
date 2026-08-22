@@ -1,6 +1,5 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import MinecraftText from './MinecraftText.svelte';
   import { minecraftHtmlPlainText } from './minecraftText';
@@ -16,9 +15,6 @@
 
   let query = $state('');
   let limit = $state(100);
-  let tooltipEntry = $state<CatalogEntry>();
-  let tooltipX = $state(0);
-  let tooltipY = $state(0);
   let searchInput: HTMLInputElement;
   const isGtOre = $derived(group.variantKind === 'gtOre');
   const filtered = $derived.by(() => {
@@ -36,13 +32,6 @@
     });
   });
   const visible = $derived(filtered.slice(0, limit));
-
-  function showTooltip(event: PointerEvent, entry: CatalogEntry) {
-    if (event.pointerType === 'touch') return;
-    tooltipEntry = entry;
-    tooltipX = event.clientX;
-    tooltipY = event.clientY;
-  }
 
   onMount(() => searchInput.focus());
 </script>
@@ -80,9 +69,6 @@
       {#each visible as entry (entry.id)}
         <button
           class="variant-row"
-          onpointerenter={(event) => showTooltip(event, entry)}
-          onpointermove={(event) => showTooltip(event, entry)}
-          onpointerleave={() => tooltipEntry = undefined}
           onclick={() => select(entry.id)}
         >
           <ItemIcon {entry} size={52} />
@@ -106,15 +92,6 @@
     </div>
   </div>
 </div>
-
-{#if tooltipEntry}
-  <FloatingCatalogTooltip
-    entry={tooltipEntry}
-    x={tooltipX}
-    y={tooltipY}
-    action="Click to browse this exact variant"
-  />
-{/if}
 
 <style>
   .variant-backdrop { position:fixed; inset:0; z-index:2500; display:grid; place-items:center; padding:18px; background:#08090bce; }

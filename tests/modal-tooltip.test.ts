@@ -13,4 +13,12 @@ describe('modal tooltip layering', () => {
     expect(source).toContain('if (item.oreDictionaryId && resolve(item.oreDictionaryId)) {\n      hideTooltip();');
     expect(source).toContain('{#if !chooserOpen && tooltipEntry}');
   });
+
+  it('keeps variant-picker modal rows inline-only', async () => {
+    const source = await readFile('src/lib/VariantPicker.svelte', 'utf8');
+    expect(source).not.toContain('FloatingCatalogTooltip');
+    expect(source).not.toContain('tooltipEntry');
+    expect(source).not.toContain('onpointerenter');
+    expect(source).toContain('<em><MinecraftText raw={entry.rawTooltip} fallback={entry.tooltip} /></em>');
+  });
 });
