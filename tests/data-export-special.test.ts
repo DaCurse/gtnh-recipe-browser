@@ -125,6 +125,22 @@ describe('NEI special sidecar contract', () => {
     expect(prepare).toContain('specialOverlayPatchSha256');
   });
 
+  it('pins and wires the maintained runtime adapter for every special category', async () => {
+    const adapter = await readFile('tools/data-export/overlay/RuntimeSpecialAdapter.java', 'utf8');
+    for (const category of SPECIAL_CATEGORY_IDS) {
+      expect(adapter).toContain(`category(sink, "${category}"`);
+    }
+    expect(adapter).toContain('getIndexedModList');
+    expect(adapter).toContain('implements NeiSpecialOverlay.Adapter');
+    expect(adapter).toContain('searchText("gregtech", "gt-ore-processing"');
+
+    const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
+    expect(prepare).toContain('extractPinnedRuntimeJars');
+    expect(prepare).toContain('export-automation.patch');
+    expect(prepare).toContain('NeiSpecialOverlay$Adapter');
+    expect(prepare).toContain('exportAutomationPatchSha256');
+  });
+
   it('emits the nested sourceVersions object required by the sidecar validator', async () => {
     const patch = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
     const javaSource = patch

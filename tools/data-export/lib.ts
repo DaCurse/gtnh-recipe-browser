@@ -21,6 +21,8 @@ export interface ExportSession {
     patchSha256: string;
     /** Maintained NEI-special overlay applied only to the disposable exporter copy. */
     specialOverlayPatchSha256?: string;
+    /** Opt-in unattended-client controller patch applied only to that copy. */
+    exportAutomationPatchSha256?: string;
     mainJar: string;
     mainJarSha256: string;
     dependenciesJar: string;

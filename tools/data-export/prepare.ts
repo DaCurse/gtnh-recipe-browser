@@ -17,6 +17,23 @@ const KNOWN_ARCHIVE = {
   sha256: 'adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee'
 };
 
+interface PinnedRuntimeMod {
+  jarName: string;
+  modId: string;
+  version: string;
+}
+
+const PINNED_RUNTIME_MODS: readonly PinnedRuntimeMod[] = [
+  { jarName: 'cropsnh-2.0.91.jar', modId: 'cropsnh', version: '2.0.91' },
+  { jarName: 'gregtech-5.09.54.20.jar', modId: 'gregtech', version: '5.09.54.20' },
+  { jarName: 'BloodMagic-1.9.4.jar', modId: 'AWWayofTime', version: '1.9.4' },
+  { jarName: 'EnhancedLootBags-1.3.4.jar', modId: 'enhancedlootbags', version: '1.3.4' },
+  { jarName: 'vendingmachine-0.4.95.jar', modId: 'vendingmachine', version: '0.4.95' },
+  { jarName: 'NEICustomDiagram-1.8.30.jar', modId: 'neicustomdiagram', version: '1.8.30' },
+  { jarName: 'roguelike-1.6.6-GTNH.jar', modId: 'Roguelike', version: '1.6.6-GTNH' },
+  { jarName: 'TwilightForest-2.7.36.jar', modId: 'TwilightForest', version: '2.7.36' }
+];
+
 function run(command: string, args: string[], cwd?: string): void {
   const result = spawnSync(command, args, { cwd, stdio: 'inherit' });
   if (result.error) throw result.error;
@@ -25,6 +42,60 @@ function run(command: string, args: string[], cwd?: string): void {
 
 function output(command: string, args: string[], cwd?: string): string {
   return execFileSync(command, args, { cwd, encoding: 'utf8' }).trim();
+}
+
+function metadataContainsPin(value: unknown, modId: string, version: string): boolean {
+  if (Array.isArray(value)) return value.some((entry) => metadataContainsPin(entry, modId, version));
+  if (!value || typeof value !== 'object') return false;
+  const object = value as Record<string, unknown>;
+  if (object.modid === modId && object.version === version) return true;
+  return metadataContainsPin(object.modList, modId, version);
+}
+
+async function extractPinnedRuntimeJars(archivePath: string, workDirectory: string): Promise<string> {
+  const runtimeJarsDirectory = join(workDirectory, 'runtime-jars');
+  await mkdir(runtimeJarsDirectory, { recursive: true });
+  const archiveRoot = `GT New Horizons ${KNOWN_ARCHIVE.version}/.minecraft/mods`;
+  const entries = PINNED_RUNTIME_MODS.map((mod) => `${archiveRoot}/${mod.jarName}`);
+  try {
+    run('unzip', ['-q', '-j', '-o', archivePath, ...entries, '-d', runtimeJarsDirectory]);
+  } catch (error) {
+    throw new Error(
+      `Official archive is missing one or more exact pinned mod jars: ${String(error)}`,
+      { cause: error }
+    );
+  }
+  for (const mod of PINNED_RUNTIME_MODS) {
+    const jarPath = join(runtimeJarsDirectory, mod.jarName);
+    let metadataText: string;
+    try {
+      metadataText = output('unzip', ['-p', jarPath, 'mcmod.info']);
+    } catch (error) {
+      throw new Error(
+        `Pinned runtime jar ${mod.jarName} has no readable mcmod.info: ${String(error)}`,
+        { cause: error }
+      );
+    }
+    let metadata: unknown;
+    try {
+      metadata = JSON.parse(metadataText);
+    } catch (error) {
+      throw new Error(
+        `Pinned runtime jar ${mod.jarName} has invalid mcmod.info: ${String(error)}`,
+        { cause: error }
+      );
+    }
+    if (!metadataContainsPin(metadata, mod.modId, mod.version)) {
+      throw new Error(
+        `Pinned runtime jar ${mod.jarName} does not declare ${mod.modId} ${mod.version}`
+      );
+    }
+  }
+  return runtimeJarsDirectory;
+}
+
+function gradlePath(path: string): string {
+  return path.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
 }
 
 async function onlyDirectory(directory: string): Promise<string> {
@@ -113,6 +184,7 @@ if (archiveStat.size !== KNOWN_ARCHIVE.bytes || archiveSha256 !== KNOWN_ARCHIVE.
 await assertPathMissing(workDirectory, 'Export work directory');
 await assertPathMissing(instanceDirectory, 'Prism export instance');
 await mkdir(workDirectory, { recursive: true });
+const runtimeJarsDirectory = await extractPinnedRuntimeJars(archivePath, workDirectory);
 
 const exporterRoot = join(repositoryRoot, 'nesql-exporter@ShadowTheAge');
 const patchedExporter = join(workDirectory, 'nesql-exporter');
@@ -129,7 +201,49 @@ const specialOverlayPatch = join(
 );
 run('patch', ['--dry-run', '--batch', '-p1', '-i', specialOverlayPatch], patchedExporter);
 run('patch', ['--batch', '-p1', '-i', specialOverlayPatch], patchedExporter);
-const patchedBuild = await readFile(join(patchedExporter, 'build.gradle.kts'), 'utf8');
+const exportAutomationPatch = join(
+  repositoryRoot,
+  'tools/data-export/patches/export-automation.patch'
+);
+run('patch', ['--dry-run', '--batch', '-p1', '-i', exportAutomationPatch], patchedExporter);
+run('patch', ['--batch', '-p1', '-i', exportAutomationPatch], patchedExporter);
+
+const providerTarget = join(
+  patchedExporter,
+  'src/main/java/com/github/dcysteine/nesql/exporter/special/RuntimeSpecialAdapter.java'
+);
+await cp(specialProviderSource, providerTarget);
+const automationControllerSource = join(
+  repositoryRoot,
+  'tools/data-export/overlay/ExportAutomationController.java'
+);
+const automationControllerTarget = join(
+  patchedExporter,
+  'src/main/java/com/github/dcysteine/nesql/exporter/main/ExportAutomationController.java'
+);
+await cp(automationControllerSource, automationControllerTarget);
+const serviceLoaderPath = join(
+  patchedExporter,
+  'src/main/resources/META-INF/services/com.github.dcysteine.nesql.exporter.special.NeiSpecialOverlay$Adapter'
+);
+await mkdir(dirname(serviceLoaderPath), { recursive: true });
+await writeFile(
+  serviceLoaderPath,
+  'com.github.dcysteine.nesql.exporter.special.RuntimeSpecialAdapter\n',
+  'utf8'
+);
+
+const buildPath = join(patchedExporter, 'build.gradle.kts');
+const buildBeforeRuntimeJars = await readFile(buildPath, 'utf8');
+const runtimeCompileOnly = PINNED_RUNTIME_MODS.map(
+  (mod) => `    compileOnly(files("${gradlePath(join(runtimeJarsDirectory, mod.jarName))}"))`
+).join('\n');
+await writeFile(
+  buildPath,
+  `${buildBeforeRuntimeJars}\n// Exact GTNH 2.9.0-beta-2 jars used by RuntimeSpecialAdapter.\ndependencies {\n${runtimeCompileOnly}\n}\n`,
+  'utf8'
+);
+const patchedBuild = await readFile(buildPath, 'utf8');
 const patchedItem = await readFile(
   join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/sql/base/item/Item.java'),
   'utf8'
@@ -159,6 +273,13 @@ const patchedSpecialOverlay = await readFile(
   ),
   'utf8'
 );
+const patchedMain = await readFile(
+  join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/main/Main.java'),
+  'utf8'
+);
+const copiedProvider = await readFile(providerTarget, 'utf8');
+const copiedAutomationController = await readFile(automationControllerTarget, 'utf8');
+const serviceLoader = await readFile(serviceLoaderPath, 'utf8');
 if (
   !patchedBuild.includes('retrofuturagradle") version "1.4.9"') ||
   !patchedBuild.includes('com.github.GTNewHorizons:AspectRecipeIndex:') ||
@@ -171,7 +292,12 @@ if (
   !patchedSpecialOverlay.includes('CropsNH') ||
   !patchedSpecialOverlay.includes('NEICustomDiagram') ||
   !patchedSpecialOverlay.includes('getEntityManager()') ||
-  !patchedSpecialOverlay.includes('browser-nei-special.json')
+  !patchedSpecialOverlay.includes('browser-nei-special.json') ||
+  !patchedMain.includes('ExportAutomationController.install()') ||
+  !copiedProvider.includes('implements NeiSpecialOverlay.Adapter') ||
+  !copiedAutomationController.includes('nesql.automation.enabled') ||
+  !serviceLoader.includes('RuntimeSpecialAdapter') ||
+  !patchedBuild.includes('Exact GTNH 2.9.0-beta-2 jars used by RuntimeSpecialAdapter')
 ) {
   throw new Error('Exporter compatibility or NEI special-data overlay did not produce the expected source');
 }
@@ -231,6 +357,7 @@ const session: ExportSession = {
     commit: output('git', ['rev-parse', 'HEAD'], exporterRoot),
     patchSha256: await sha256File(patchPath),
     specialOverlayPatchSha256: await sha256File(specialOverlayPatch),
+    exportAutomationPatchSha256: await sha256File(exportAutomationPatch),
     mainJar: basename(mainJar),
     mainJarSha256: await sha256File(mainJar),
     dependenciesJar: basename(dependenciesJar),

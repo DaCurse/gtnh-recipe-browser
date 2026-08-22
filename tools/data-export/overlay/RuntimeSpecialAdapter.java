@@ -1,0 +1,1304 @@
+package com.github.dcysteine.nesql.exporter.special;
+
+import net.minecraft.item.ItemStack;
+import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.util.WeightedRandomChestContent;
+import net.minecraftforge.common.ChestGenHooks;
+import net.minecraftforge.fluids.FluidStack;
+
+import java.lang.reflect.Array;
+import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
+import java.security.MessageDigest;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.Random;
+import java.util.Set;
+import java.util.TreeMap;
+
+/**
+ * Runtime provider for the ten semantic NEI pages used by the browser.
+ *
+ * <p>The provider is copied into the disposable exporter and loaded through
+ * {@code nesql.special.adapters}.  The optional mods are intentionally kept
+ * behind a small reflection boundary.  GTNH distributes production jars (and
+ * not stable API/dev jars), while the exporter is compiled in a deobfuscated
+ * Forge environment; resolving these classes only after the game has loaded
+ * the exact pinned jars keeps the source usable with both launchers.  Every
+ * reflective boundary is checked and failures include the category and live
+ * class/method that could not be read.</p>
+ *
+ * <p>This class does not invent records when a registry is unavailable.  A
+ * missing pin, registry, or required field aborts the export before the
+ * sidecar is written.  This is important because an empty special page is
+ * indistinguishable from a valid page after processing.</p>
+ */
+public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
+    private static final String CROPS = "com.gtnewhorizon.cropsnh";
+
+    private static final Map<String, String> PINNED_MODS = pinnedMods();
+
+    private static final String[] PROCESS_MAPS = {
+            "maceratorRecipes", "oreWasherRecipes", "thermalCentrifugeRecipes",
+            "centrifugeRecipes", "electroMagneticSeparatorRecipes", "chemicalBathRecipes",
+            "sifterRecipes", "furnaceRecipes", "blastFurnaceRecipes", "chemicalReactorRecipes",
+            "mixerRecipes", "autoclaveRecipes", "extractorRecipes", "fluidExtractionRecipes"
+    };
+
+    private static final String[] ORE_PREFIXES = {
+            "oreNormal", "oreSmall", "crushedCentrifuged", "crushedPurified", "crushed",
+            "rawOre", "shard", "clump", "reduced", "crystalline", "cleanGravel",
+            "dirtyGravel", "dust", "gem", "ingot"
+    };
+
+    @Override
+    public void export(NeiSpecialOverlay.Sink sink) throws Exception {
+        requirePinnedRuntime();
+        registerViewTypes(sink);
+
+        category(sink, "crop-output", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportCropOutputs(sink); }
+        });
+        category(sink, "mutation-pool", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportMutationPools(sink); }
+        });
+        category(sink, "crop-breeding", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportCropBreeding(sink); }
+        });
+        category(sink, "gt-ore-vein", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportOreVeins(sink); }
+        });
+        category(sink, "gt-small-ore", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportSmallOres(sink); }
+        });
+        category(sink, "meteor-ritual", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportMeteors(sink); }
+        });
+        category(sink, "loot-bag", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportLootBags(sink); }
+        });
+        category(sink, "vending-trade", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportVendingTrades(sink); }
+        });
+        category(sink, "worldgen-loot", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportWorldgenLoot(sink); }
+        });
+        category(sink, "gt-ore-processing", new CategoryExport() {
+            @Override
+            public void run() throws Exception { exportOreProcessing(sink); }
+        });
+    }
+
+    private interface CategoryExport { void run() throws Exception; }
+
+    private static void category(NeiSpecialOverlay.Sink sink, String category, CategoryExport export)
+            throws Exception {
+        try {
+            export.run();
+        } catch (Throwable error) {
+            Throwable cause = error instanceof InvocationTargetException
+                    ? ((InvocationTargetException) error).getCause() : error;
+            throw new IllegalStateException("NEI special category " + category + " failed: " + cause, cause);
+        }
+    }
+
+    private static void registerViewTypes(NeiSpecialOverlay.Sink sink) {
+        sink.addServiceIcon("service:crop", "CropsNH");
+        sink.addServiceIcon("service:crop-breeding", "Crop Breeding");
+        sink.addServiceIcon("service:gt-ore", "GregTech Ore");
+        sink.addServiceIcon("service:meteor", "Meteor Ritual");
+        sink.addServiceIcon("service:lootbag", "Enhanced LootBags");
+        sink.addServiceIcon("service:vending", "Vending Machine");
+        sink.addServiceIcon("service:worldgen", "World Generation");
+        sink.addServiceIcon("service:ore-processing", "GT Ore Processing");
+
+        sink.addViewType("crop-output", "Crop Outputs", "service:crop");
+        sink.addViewType("mutation-pool", "Mutation Pools", "service:crop");
+        sink.addViewType("crop-breeding", "Crop Breeding", "service:crop-breeding");
+        sink.addViewType("gt-ore-vein", "GT Ore Veins", "service:gt-ore");
+        sink.addViewType("gt-small-ore", "GT Small Ores", "service:gt-ore");
+        sink.addViewType("meteor-ritual", "Meteor Rituals", "service:meteor");
+        sink.addViewType("loot-bag", "Enhanced LootBags", "service:lootbag");
+        sink.addViewType("vending-trade", "Vending Machine", "service:vending");
+        sink.addViewType("worldgen-loot", "World-Generation Loot", "service:worldgen");
+        sink.addViewType("gt-ore-processing", "GT Ore Processing", "service:ore-processing");
+    }
+
+    /** Validate both Forge's active mod metadata and the live API classes. */
+    private static void requirePinnedRuntime() {
+        Map<?, ?> indexed;
+        try {
+            Object loader = staticCall("cpw.mods.fml.common.Loader", "instance");
+            indexed = castMap(call(loader, "getIndexedModList"));
+        } catch (Throwable error) {
+            throw new IllegalStateException("Cannot inspect Forge Loader for pinned NEI special mods", error);
+        }
+
+        for (Map.Entry<String, String> pin : PINNED_MODS.entrySet()) {
+            Object container = indexed.get(pin.getKey());
+            if (container == null) {
+                throw new IllegalStateException("Pinned NEI special mod is missing: " + pin.getKey()
+                        + " expected " + pin.getValue());
+            }
+            String version = string(call(container, "getVersion"));
+            if (!pin.getValue().equals(version)) {
+                String display = stringOrNull(callOrNull(container, "getDisplayVersion"));
+                throw new IllegalStateException("Pinned NEI special mod " + pin.getKey()
+                        + " expected " + pin.getValue() + " but Forge reported " + version
+                        + (display == null ? "" : " (display " + display + ")"));
+            }
+        }
+
+        // These are the exact live registry boundaries used below.  Keeping
+        // this list explicit makes a renamed package fail loudly at startup.
+        String[] requiredClasses = {
+                CROPS + ".farming.registries.CropRegistry",
+                CROPS + ".farming.registries.MutationRegistry",
+                CROPS + ".api.ICropCard",
+                CROPS + ".api.ICropMutation",
+                CROPS + ".api.IMutationPool",
+                "gregtech.common.WorldgenGTOreLayer",
+                "gregtech.common.WorldgenGTOreSmallPieces",
+                "gregtech.api.recipe.RecipeMaps",
+                "gregtech.api.recipe.RecipeMap",
+                "gregtech.api.util.GTRecipe",
+                "gregtech.api.interfaces.IOreMaterial",
+                "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorRegistry",
+                "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorComponent",
+                "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorReagentRegistry",
+                "eu.usrv.enhancedlootbags.EnhancedLootBags",
+                "eu.usrv.enhancedlootbags.core.serializer.LootGroups",
+                "eu.usrv.enhancedlootbags.core.serializer.LootGroups$LootGroup",
+                "eu.usrv.enhancedlootbags.core.serializer.LootGroups$LootGroup$Drop",
+                "com.cubefury.vendingmachine.trade.TradeDatabase",
+                "com.cubefury.vendingmachine.trade.TradeGroup",
+                "com.cubefury.vendingmachine.trade.Trade",
+                "com.cubefury.vendingmachine.trade.CurrencyItem",
+                "com.cubefury.vendingmachine.util.BigItemStack",
+                "com.cubefury.vendingmachine.api.trade.ICondition",
+                "net.minecraftforge.common.ChestGenHooks",
+                "greymerk.roguelike.dungeon.settings.SettingsResolver",
+                "greymerk.roguelike.dungeon.settings.DungeonSettings",
+                "greymerk.roguelike.treasure.loot.LootRuleManager",
+                "greymerk.roguelike.treasure.loot.LootRule",
+                "greymerk.roguelike.util.WeightedRandomizer",
+                "greymerk.roguelike.treasure.loot.WeightedRandomLoot",
+                "twilightforest.TFTreasure",
+                "twilightforest.TFTreasureTable",
+                "twilightforest.TFTreasureItem",
+                "com.github.dcysteine.neicustomdiagram.generators.forge.worldgenloot.ForgeWorldgenLoot"
+        };
+        for (String className : requiredClasses) {
+            try {
+                Class.forName(className);
+            } catch (Throwable error) {
+                throw new IllegalStateException("Pinned NEI special API class is unavailable: " + className, error);
+            }
+        }
+    }
+
+    private static Map<String, String> pinnedMods() {
+        Map<String, String> pins = new LinkedHashMap<>();
+        pins.put("cropsnh", "2.0.91");
+        pins.put("gregtech", "5.09.54.20");
+        pins.put("AWWayofTime", "1.9.4");
+        pins.put("enhancedlootbags", "1.3.4");
+        pins.put("vendingmachine", "0.4.95");
+        pins.put("neicustomdiagram", "1.8.30");
+        pins.put("Roguelike", "1.6.6-GTNH");
+        pins.put("TwilightForest", "2.7.36");
+        return Collections.unmodifiableMap(pins);
+    }
+
+    private static void exportCropOutputs(NeiSpecialOverlay.Sink sink) throws Exception {
+        Object registry = staticField(CROPS + ".farming.registries.CropRegistry", "instance");
+        List<Object> crops = sortedObjects(call(registry, "getAllInRegistrationOrder"), "crop id");
+        int count = 0;
+        for (Object crop : crops) {
+            if (bool(call(crop, "hideFromNEI"))) continue;
+            String cropId = string(call(crop, "getId"));
+            List<String> goods = cropGoods(sink, crop);
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("cropId", cropId);
+            payload.put("tier", number(call(crop, "getTier")));
+            payload.put("durationTicks", number(call(crop, "getGrowthDuration")));
+            payload.put("machineBreedingTier", number(call(crop, "getMachineBreedingRecipeTier")));
+            payload.put("minSeedBedTier", number(call(crop, "getMinSeedBedTier")));
+            payload.put("dropChance", number(call(crop, "getDropChance")));
+            payload.put("creator", stringOrEmpty(callOrNull(crop, "getCreator")));
+            payload.put("flavour", stringOrEmpty(callOrNull(crop, "getFlavourText")));
+            payload.put("likedBiomeTags", stringCollection(callOrNull(crop, "getLikedBiomeTags")));
+            payload.put("soils", itemPayloads(sink, callOrNull(crop, "getSoilsForNEI", false)));
+            payload.put("underBlocks", itemPayloads(sink, callOrNull(crop, "getBlocksUnderForNEI", false)));
+            payload.put("requirements", requirementDescriptions(callOrNull(crop, "getGrowthRequirements")));
+            payload.put("drops", cropDrops(sink, crop));
+            String slug = slug(cropId);
+            String title = cropTitle(crop, cropId);
+            sink.addRecord("crop:" + slug, "crop-output", title,
+                    searchText("cropsnh", "crop-output", cropId, title), goods,
+                    "special:crop:" + slug + ":recipes", "special:crop:" + slug + ":usages",
+                    "service:crop", payload);
+            count++;
+        }
+        requireRecords("crop-output", count);
+    }
+
+    private static void exportMutationPools(NeiSpecialOverlay.Sink sink) throws Exception {
+        Object registry = staticField(CROPS + ".farming.registries.MutationRegistry", "instance");
+        List<Object> pools = sortedObjects(call(registry, "getMutationPools"), "pool name");
+        int count = 0;
+        for (Object pool : pools) {
+            String poolName = string(call(pool, "getUnlocalisedName"));
+            String slug = slug(poolName);
+            List<Object> members = sortedObjects(call(pool, "getMembers"), "member crop id");
+            List<String> goods = new ArrayList<>();
+            List<Object> memberIds = new ArrayList<>();
+            for (Object crop : members) {
+                String cropId = string(call(crop, "getId"));
+                memberIds.add(cropId);
+                addAllUnique(goods, cropGoods(sink, crop));
+            }
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("poolName", poolName);
+            payload.put("members", memberIds);
+            sink.addRecord("pool:" + slug, "mutation-pool", "Mutation Pool: " + poolName,
+                    searchText("cropsnh", "mutation-pool", poolName, join(memberIds, " ")), goods,
+                    "special:pool:" + slug + ":recipes", "special:pool:" + slug + ":usages",
+                    "service:crop", payload);
+            count++;
+        }
+        requireRecords("mutation-pool", count);
+    }
+
+    private static void exportCropBreeding(NeiSpecialOverlay.Sink sink) throws Exception {
+        Object registry = staticField(CROPS + ".farming.registries.MutationRegistry", "instance");
+        List<Object> mutations = list(call(registry, "getDeterministicMutations"));
+        Collections.sort(mutations, new Comparator<Object>() {
+            @Override
+            public int compare(Object left, Object right) {
+                return mutationKey(left).compareTo(mutationKey(right));
+            }
+        });
+        int count = 0;
+        for (Object mutation : mutations) {
+            Object output = call(mutation, "getOutput");
+            String outputId = string(call(output, "getId"));
+            List<Object> parents = sortedObjects(call(mutation, "getParents"), "parent crop id");
+            List<Object> parentIds = new ArrayList<>();
+            List<String> goods = new ArrayList<>(cropGoods(sink, output));
+            for (Object parent : parents) {
+                parentIds.add(string(call(parent, "getId")));
+                addAllUnique(goods, cropGoods(sink, parent));
+            }
+            List<Object> catalysts = itemPayloads(sink, callOrNull(mutation, "getBlocksUnderForNEI", false));
+            addAllGoodsFromPayload(catalysts, goods);
+            List<Object> machineCatalysts = itemPayloadsNested(sink,
+                    callOrNull(mutation, "getBreedingMachineCatalystsForNEI", false));
+            addAllGoodsFromPayload(machineCatalysts, goods);
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("outputCrop", outputId);
+            payload.put("parentCount", number(call(mutation, "getParentCount")));
+            payload.put("parents", parentIds);
+            payload.put("blocksUnder", catalysts);
+            payload.put("machineCatalysts", machineCatalysts);
+            payload.put("requirements", requirementDescriptions(callOrNull(mutation, "getRequirements")));
+            payload.put("machineDurationTicks", number(callOrNull(mutation, "getBreedingMachineRecipeDuration")));
+            payload.put("machineEUt", number(callOrNull(mutation, "getBreedingMachineRecipeEUt")));
+            String key = outputId + ":" + join(parentIds, ",");
+            String suffix = digest(key).substring(0, 10);
+            String slug = slug(outputId);
+            sink.addRecord("breeding:" + slug + ":" + suffix, "crop-breeding",
+                    "Direct Breeding: " + outputId,
+                    searchText("cropsnh", "crop-breeding", outputId, join(parentIds, " ")), goods,
+                    "special:breeding:" + slug + ":" + suffix + ":recipes",
+                    "special:breeding:" + slug + ":" + suffix + ":usages",
+                    "service:crop-breeding", payload);
+            count++;
+        }
+        requireRecords("crop-breeding", count);
+    }
+
+    private static void exportOreVeins(NeiSpecialOverlay.Sink sink) throws Exception {
+        Object layers = staticField("gregtech.common.WorldgenGTOreLayer", "sList");
+        List<Object> sorted = sortedObjects(layers, "vein name");
+        int count = 0;
+        for (Object layer : sorted) {
+            String name = string(call(layer, "getName"));
+            List<String> goods = new ArrayList<>();
+            List<Object> layerPayload = new ArrayList<>();
+            for (String fieldName : new String[] {"mPrimary", "mSecondary", "mBetween", "mSporadic"}) {
+                Object material = fieldOrNull(layer, fieldName);
+                if (material == null) continue;
+                List<String> materialGoods = materialGoods(sink, material, "oreNormal", "ore");
+                addAllUnique(goods, materialGoods);
+                Map<String, Object> part = new LinkedHashMap<>();
+                part.put("role", fieldName.substring(1).toLowerCase(Locale.ROOT));
+                part.put("material", materialName(material));
+                part.put("goodsIds", materialGoods);
+                layerPayload.add(part);
+            }
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("layers", layerPayload);
+            payload.put("minY", number(call(layer, "getMinY", "")));
+            payload.put("maxY", number(call(layer, "getMaxY", "")));
+            payload.put("weight", number(call(layer, "getWeight")));
+            payload.put("density", number(call(layer, "getDensity")));
+            payload.put("size", number(fieldOrNull(layer, "mSize")));
+            payload.put("restrictBiome", stringOrEmpty(fieldOrNull(layer, "mRestrictBiome")));
+            payload.put("dimensions", sortedStrings(callOrNull(layer, "getAllowedDimensions")));
+            String slug = slug(name);
+            sink.addRecord("vein:" + slug, "gt-ore-vein", "GT Ore Vein: " + name,
+                    searchText("gregtech", "gt-ore-vein", name,
+                            join(sortedStrings(callOrNull(layer, "getAllowedDimensions")), " ")), goods,
+                    "special:vein:" + slug + ":recipes", "special:vein:" + slug + ":usages",
+                    "service:gt-ore", payload);
+            count++;
+        }
+        requireRecords("gt-ore-vein", count);
+    }
+
+    private static void exportSmallOres(NeiSpecialOverlay.Sink sink) throws Exception {
+        Object ores = staticField("gregtech.common.WorldgenGTOreSmallPieces", "sList");
+        List<Object> sorted = sortedObjects(ores, "small ore name");
+        int count = 0;
+        for (Object ore : sorted) {
+            String name = string(call(ore, "getName"));
+            Object material = call(ore, "getMaterial");
+            List<String> goods = materialGoods(sink, material, "oreSmall", "dust", "ore");
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("material", materialName(material));
+            payload.put("minY", number(fieldOrNull(ore, "mMinY")));
+            payload.put("maxY", number(fieldOrNull(ore, "mMaxY")));
+            payload.put("amount", number(fieldOrNull(ore, "mAmount")));
+            payload.put("biome", stringOrEmpty(fieldOrNull(ore, "mBiome")));
+            payload.put("dimensions", sortedStrings(callOrNull(ore, "getAllowedDimensions")));
+            payload.put("goodsIds", goods);
+            String slug = slug(name);
+            sink.addRecord("small-ore:" + slug, "gt-small-ore", "GT Small Ore: " + name,
+                    searchText("gregtech", "gt-small-ore", name,
+                            stringOrEmpty(fieldOrNull(ore, "mBiome"))), goods,
+                    "special:small-ore:" + slug + ":recipes", "special:small-ore:" + slug + ":usages",
+                    "service:gt-ore", payload);
+            count++;
+        }
+        requireRecords("gt-small-ore", count);
+    }
+
+    private static void exportMeteors(NeiSpecialOverlay.Sink sink) throws Exception {
+        Object meteors = staticField(
+                "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorRegistry", "meteorList");
+        List<Object> sorted = list(meteors);
+        Collections.sort(sorted, new Comparator<Object>() {
+            @Override
+            public int compare(Object left, Object right) {
+                return stableStackName(asItemStack(fieldOrNull(left, "focusItem"), "meteor focus"))
+                        .compareTo(stableStackName(asItemStack(fieldOrNull(right, "focusItem"), "meteor focus")));
+            }
+        });
+        int count = 0;
+        for (Object meteor : sorted) {
+            ItemStack focus = asItemStack(fieldOrNull(meteor, "focusItem"), "meteor focus");
+            String focusId = sink.retainItem(focus);
+            List<String> goods = new ArrayList<>();
+            addAllUnique(goods, Collections.singletonList(focusId));
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("focusGoodsId", focusId);
+            payload.put("cost", number(fieldOrNull(meteor, "cost")));
+            payload.put("radius", number(fieldOrNull(meteor, "radius")));
+            payload.put("fillerChance", number(fieldOrNull(meteor, "fillerChance")));
+            payload.put("ores", meteorComponents(sink, fieldOrNull(meteor, "ores"), goods));
+            payload.put("filler", meteorComponents(sink, fieldOrNull(meteor, "filler"), goods));
+            payload.put("reagents", meteorReagents());
+            String slug = slug(focusId);
+            sink.addRecord("meteor:" + slug, "meteor-ritual", "Meteor Ritual: " + focusId,
+                    searchText("bloodmagic", "meteor-ritual", focusId), goods,
+                    "special:meteor:" + slug + ":recipes", "special:meteor:" + slug + ":usages",
+                    "service:meteor", payload);
+            count++;
+        }
+        requireRecords("meteor-ritual", count);
+    }
+
+    private static void exportLootBags(NeiSpecialOverlay.Sink sink) throws Exception {
+        Object handler = staticField("eu.usrv.enhancedlootbags.EnhancedLootBags", "LootGroupHandler");
+        Object groups = call(handler, "getLootGroups");
+        List<Object> table = sortedObjects(call(groups, "getLootTable"), "loot group id");
+        int count = 0;
+        for (Object group : table) {
+            int groupId = intValue(call(group, "getGroupID"));
+            List<String> goods = new ArrayList<>();
+            ItemStack bag = asItemStack(callOrNull(group, "createLootBagItemStack"), "loot bag");
+            if (bag != null) addAllUnique(goods, Collections.singletonList(sink.retainItem(bag)));
+            List<Object> drops = new ArrayList<>();
+            for (Object drop : list(call(group, "getDrops"))) {
+                Map<String, Object> dropPayload = new LinkedHashMap<>();
+                dropPayload.put("identifier", stringOrEmpty(callOrNull(drop, "getIdentifier")));
+                dropPayload.put("group", stringOrEmpty(callOrNull(drop, "getItemDropGroup")));
+                dropPayload.put("itemName", stringOrEmpty(callOrNull(drop, "getItemName")));
+                dropPayload.put("amount", number(call(drop, "getAmount")));
+                dropPayload.put("chance", number(call(drop, "getChance")));
+                dropPayload.put("limitedDropCount", number(call(drop, "getLimitedDropCount")));
+                dropPayload.put("randomAmount", bool(call(drop, "getIsRandomAmount")));
+                dropPayload.put("nbt", stringOrEmpty(callOrNull(drop, "getNBTTag")));
+                ItemStack stack = asItemStack(callOrNull(drop, "getItemStack"), "loot drop");
+                if (stack != null) {
+                    String goodsId = sink.retainItem(stack);
+                    dropPayload.put("goodsId", goodsId);
+                    addAllUnique(goods, Collections.singletonList(goodsId));
+                }
+                drops.add(dropPayload);
+            }
+            sortMaps(drops, "identifier");
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("groupId", groupId);
+            payload.put("groupName", stringOrEmpty(callOrNull(group, "getGroupName")));
+            payload.put("rarity", String.valueOf(callOrNull(group, "getGroupRarity")));
+            payload.put("minItems", number(call(group, "getMinItems")));
+            payload.put("maxItems", number(call(group, "getMaxItems")));
+            payload.put("maxWeight", number(call(group, "getMaxWeight")));
+            payload.put("combineWithTrash", bool(call(group, "getCombineWithTrash")));
+            payload.put("trashGroup", number(call(group, "getTrashGroup")));
+            payload.put("drops", drops);
+            payload.put("fortuneChances", fortuneChances(handler, group, drops));
+            String slug = slug(String.valueOf(groupId));
+            String groupName = stringOrEmpty(callOrNull(group, "getGroupName"));
+            sink.addRecord("lootbag:" + slug, "loot-bag", "LootBag Group " + groupId,
+                    searchText("enhancedlootbags", "loot-bag", String.valueOf(groupId), groupName), goods,
+                    "special:lootbag:" + slug + ":recipes", "special:lootbag:" + slug + ":usages",
+                    "service:lootbag", payload);
+            count++;
+        }
+        requireRecords("loot-bag", count);
+    }
+
+    private static void exportVendingTrades(NeiSpecialOverlay.Sink sink) throws Exception {
+        Object database = staticField("com.cubefury.vendingmachine.trade.TradeDatabase", "INSTANCE");
+        Map<?, ?> groups = castMap(call(database, "getTradeGroups"));
+        List<Object> sortedGroups = new ArrayList<>(groups.values());
+        Collections.sort(sortedGroups, Comparator.comparing(RuntimeSpecialAdapter::stableObjectName));
+        int count = 0;
+        for (Object group : sortedGroups) {
+            String groupId = String.valueOf(call(group, "getId"));
+            List<Object> requirements = new ArrayList<>();
+            for (Object condition : list(callOrNull(group, "getRequirements"))) {
+                Map<String, Object> conditionPayload = new LinkedHashMap<>();
+                conditionPayload.put("type", condition.getClass().getName());
+                NBTTagCompound nbt = new NBTTagCompound();
+                Object encoded = callOrNull(condition, "writeToNBT", nbt);
+                conditionPayload.put("nbt", String.valueOf(encoded == null ? nbt : encoded));
+                requirements.add(conditionPayload);
+            }
+            sortMaps(requirements, "type");
+            List<Object> trades = list(call(group, "getTrades"));
+            int tradeIndex = 0;
+            for (Object trade : trades) {
+                List<String> goods = new ArrayList<>();
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("groupId", groupId);
+                payload.put("tradeIndex", tradeIndex);
+                payload.put("cooldown", number(fieldOrNull(group, "cooldown")));
+                payload.put("maxTrades", number(fieldOrNull(group, "maxTrades")));
+                payload.put("category", String.valueOf(callOrNull(group, "getCategory")));
+                payload.put("requirements", requirements);
+                payload.put("fromCurrency", currencyPayload(sink, fieldOrNull(trade, "fromCurrency"), goods));
+                payload.put("fromItems", bigStacks(sink, fieldOrNull(trade, "fromItems"), goods));
+                payload.put("nonConsumedItems", bigStacks(sink, fieldOrNull(trade, "nonConsumedItems"), goods));
+                payload.put("toItems", bigStacks(sink, fieldOrNull(trade, "toItems"), goods));
+                Object display = fieldOrNull(trade, "displayItem");
+                payload.put("displayItem", bigStack(sink, display, goods));
+                String slug = slug(groupId + ":" + tradeIndex);
+                sink.addRecord("vending:" + slug, "vending-trade", "Vending Trade " + (tradeIndex + 1),
+                        searchText("vendingmachine", "vending-trade", groupId,
+                                String.valueOf(callOrNull(group, "getCategory"))), goods,
+                        "special:vending:" + slug + ":recipes", "special:vending:" + slug + ":usages",
+                        "service:vending", payload);
+                tradeIndex++;
+                count++;
+            }
+        }
+        requireRecords("vending-trade", count);
+    }
+
+    private static void exportWorldgenLoot(NeiSpecialOverlay.Sink sink) throws Exception {
+        int count = 0;
+        String[][] forge = {
+                {"MINESHAFT_CORRIDOR", "mineshaft"}, {"PYRAMID_DESERT_CHEST", "desert pyramid"},
+                {"PYRAMID_JUNGLE_CHEST", "jungle pyramid"}, {"PYRAMID_JUNGLE_DISPENSER", "jungle dispenser"},
+                {"STRONGHOLD_CORRIDOR", "stronghold corridor"}, {"STRONGHOLD_LIBRARY", "stronghold library"},
+                {"STRONGHOLD_CROSSING", "stronghold crossing"}, {"VILLAGE_BLACKSMITH", "village blacksmith"},
+                {"BONUS_CHEST", "bonus chest"}, {"DUNGEON_CHEST", "dungeon"}
+        };
+        for (String[] source : forge) {
+            String category = string(staticField("net.minecraftforge.common.ChestGenHooks", source[0]));
+            WeightedRandomChestContent[] entries = ChestGenHooks.getItems(category, new Random(0x4e495f4c));
+            List<String> goods = new ArrayList<>();
+            List<Object> itemPayload = new ArrayList<>();
+            for (WeightedRandomChestContent entry : entries) {
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("min", entry.theMinimumChanceToGenerateItem);
+                payload.put("max", entry.theMaximumChanceToGenerateItem);
+                payload.put("weight", entry.itemWeight);
+                ItemStack stack = entry.theItemId;
+                if (stack != null) {
+                    String goodsId = sink.retainItem(stack);
+                    goods.add(goodsId);
+                    payload.put("goodsId", goodsId);
+                }
+                itemPayload.add(payload);
+            }
+            sortMaps(itemPayload, "goodsId");
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("source", "forge");
+            payload.put("name", source[1]);
+            payload.put("tableId", category);
+            payload.put("entries", itemPayload);
+            String slug = slug(category);
+            sink.addRecord("worldgen:forge:" + slug, "worldgen-loot", "Forge Loot: " + source[1],
+                    searchText("forge", "worldgen-loot", source[1], category), goods,
+                    "special:worldgen:forge:" + slug + ":recipes",
+                    "special:worldgen:forge:" + slug + ":usages", "service:worldgen", payload);
+            count++;
+        }
+        exportRoguelikeLoot(sink);
+        count++;
+        exportTwilightLoot(sink);
+        count++;
+        requireRecords("worldgen-loot", count);
+    }
+
+    private static void exportRoguelikeLoot(NeiSpecialOverlay.Sink sink) throws Exception {
+        Object resolver = construct("greymerk.roguelike.dungeon.settings.SettingsResolver");
+        Object settings = call(resolver, "getDefaultSettings");
+        Object rulesManager = callOrNull(settings, "getLootRules");
+        List<Object> rules = rulesManager == null ? Collections.emptyList()
+                : list(fieldOrNull(rulesManager, "rules"));
+        List<String> goods = new ArrayList<>();
+        List<Object> entries = new ArrayList<>();
+        for (Object rule : rules) {
+            Object weighted = fieldOrNull(rule, "item");
+            Map<String, Object> entry = new LinkedHashMap<>();
+            entry.put("type", String.valueOf(fieldOrNull(rule, "type")));
+            entry.put("level", number(fieldOrNull(rule, "level")));
+            entry.put("amount", number(fieldOrNull(rule, "amount")));
+            entry.put("toEach", bool(fieldOrNull(rule, "toEach")));
+            entry.put("weight", number(callOrNull(weighted, "getWeight")));
+            ItemStack sample = sampleWeighted(weighted, 0x524f475545L);
+            if (sample != null) {
+                String goodsId = sink.retainItem(sample);
+                goods.add(goodsId);
+                entry.put("goodsId", goodsId);
+            }
+            entries.add(entry);
+        }
+        sortMaps(entries, "goodsId");
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("source", "roguelike");
+        payload.put("settings", String.valueOf(settings));
+        payload.put("entries", entries);
+        sink.addRecord("worldgen:roguelike:default", "worldgen-loot", "Roguelike Dungeons",
+                searchText("roguelike", "worldgen-loot", "default"), goods,
+                "special:worldgen:roguelike:recipes", "special:worldgen:roguelike:usages",
+                "service:worldgen", payload);
+    }
+
+    private static void exportTwilightLoot(NeiSpecialOverlay.Sink sink) throws Exception {
+        Class<?> treasureClass = Class.forName("twilightforest.TFTreasure");
+        List<Field> fields = new ArrayList<>();
+        for (Field field : treasureClass.getFields()) {
+            if (Modifier.isStatic(field.getModifiers()) && treasureClass.isAssignableFrom(field.getType())) {
+                fields.add(field);
+            }
+        }
+        Collections.sort(fields, Comparator.comparing(Field::getName));
+        for (Field field : fields) {
+            Object treasure = field.get(null);
+            if (treasure == null) continue;
+            List<String> goods = new ArrayList<>();
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("source", "twilight");
+            payload.put("tableId", field.getName());
+            List<Object> tables = new ArrayList<>();
+            for (String tableName : new String[] {"useless", "common", "uncommon", "rare", "ultrarare"}) {
+                Object table = fieldOrNull(treasure, tableName);
+                if (table == null) continue;
+                List<Object> items = new ArrayList<>();
+                for (Object item : list(fieldOrNull(table, "list"))) {
+                    ItemStack sample = asItemStack(callOrNull(item, "getItemStack", new Random(0x545746)),
+                            "Twilight treasure item");
+                    if (sample == null) continue;
+                    String goodsId = sink.retainItem(sample);
+                    goods.add(goodsId);
+                    Map<String, Object> itemPayload = new LinkedHashMap<>();
+                    itemPayload.put("goodsId", goodsId);
+                    itemPayload.put("rarity", number(callOrNull(item, "getRarity")));
+                    itemPayload.put("randomEnchantmentLevel", number(callOrNull(item, "getRandomEnchantmentLevel")));
+                    items.add(itemPayload);
+                }
+                sortMaps(items, "goodsId");
+                Map<String, Object> tablePayload = new LinkedHashMap<>();
+                tablePayload.put("name", tableName);
+                tablePayload.put("items", items);
+                tables.add(tablePayload);
+            }
+            payload.put("tables", tables);
+            String slug = slug(field.getName());
+            sink.addRecord("worldgen:twilight:" + slug, "worldgen-loot",
+                    "Twilight Loot: " + field.getName(),
+                    searchText("twilightforest", "worldgen-loot", field.getName()), goods,
+                    "special:worldgen:twilight:" + slug + ":recipes",
+                    "special:worldgen:twilight:" + slug + ":usages", "service:worldgen", payload);
+        }
+    }
+
+    private static void exportOreProcessing(NeiSpecialOverlay.Sink sink) throws Exception {
+        Map<String, Graph> graphs = new TreeMap<>();
+        for (String mapName : PROCESS_MAPS) {
+            Object recipeMap = staticField("gregtech.api.recipe.RecipeMaps", mapName);
+            if (recipeMap == null) continue;
+            for (Object recipe : list(call(recipeMap, "getAllRecipes"))) {
+                List<ItemStack> inputs = stacks(fieldOrNull(recipe, "mInputs"));
+                List<ItemStack> outputs = stacks(fieldOrNull(recipe, "mOutputs"));
+                List<FluidStack> fluidInputs = fluids(fieldOrNull(recipe, "mFluidInputs"));
+                List<FluidStack> fluidOutputs = fluids(fieldOrNull(recipe, "mFluidOutputs"));
+                List<String> inputGoods = retainItems(sink, inputs);
+                List<String> outputGoods = retainItems(sink, outputs);
+                List<String> fluidInputGoods = retainFluids(sink, fluidInputs);
+                List<String> fluidOutputGoods = retainFluids(sink, fluidOutputs);
+                if (!isOreProcessingRecipe(inputGoods, outputGoods, fluidInputGoods, fluidOutputGoods)) continue;
+                String root;
+                if (!inputGoods.isEmpty()) root = inputGoods.get(0);
+                else if (!fluidInputGoods.isEmpty()) root = fluidInputGoods.get(0);
+                else if (!outputGoods.isEmpty()) root = outputGoods.get(0);
+                else if (!fluidOutputGoods.isEmpty()) root = fluidOutputGoods.get(0);
+                else continue;
+                Graph graph = graphs.get(root);
+                if (graph == null) { graph = new Graph(root); graphs.put(root, graph); }
+                graph.addRecipe(mapName, inputs, outputs, fluidInputs, fluidOutputs,
+                        inputGoods, outputGoods, fluidInputGoods, fluidOutputGoods, recipe);
+            }
+        }
+        int count = 0;
+        for (Graph graph : graphs.values()) {
+            Map<String, Object> payload = graph.payload();
+            List<String> goods = graph.goods;
+            String slug = slug(graph.root);
+            sink.addRecord("ore-processing:" + slug, "gt-ore-processing",
+                    "GT Ore Processing: " + graph.root,
+                    searchText("gregtech", "gt-ore-processing", graph.root), goods,
+                    "special:ore-processing:" + slug + ":recipes",
+                    "special:ore-processing:" + slug + ":usages", "service:ore-processing", payload);
+            count++;
+        }
+        requireRecords("gt-ore-processing", count);
+    }
+
+    private static boolean isOreProcessingRecipe(List<String> inputs, List<String> outputs,
+            List<String> fluidInputs, List<String> fluidOutputs) {
+        for (String id : concat(inputs, outputs)) {
+            String lower = id.toLowerCase(Locale.ROOT);
+            if (lower.startsWith("i:gregtech:") && containsAny(lower,
+                    "ore", "crushed", "dust", "shard", "clump", "reduced", "gravel", "gem")) return true;
+        }
+        return !fluidInputs.isEmpty() && (!inputs.isEmpty() || !outputs.isEmpty())
+                && (fluidInputs.stream().anyMatch(id -> id.toLowerCase(Locale.ROOT).contains("gregtech"))
+                || fluidOutputs.stream().anyMatch(id -> id.toLowerCase(Locale.ROOT).contains("gregtech")));
+    }
+
+    private static final class Graph {
+        private final String root;
+        private final Map<String, Map<String, Object>> nodes = new TreeMap<>();
+        private final List<Map<String, Object>> edges = new ArrayList<>();
+        private final Set<String> goodsSet = new LinkedHashSet<>();
+        private final List<String> goods = new ArrayList<>();
+
+        private Graph(String root) { this.root = root; addNode(root, 0); }
+
+        private void addRecipe(String mapName, List<ItemStack> inputs, List<ItemStack> outputs,
+                List<FluidStack> fluidInputs, List<FluidStack> fluidOutputs,
+                List<String> inputGoods, List<String> outputGoods, List<String> fluidInputGoods,
+                List<String> fluidOutputGoods, Object recipe) {
+            int rank = rank(mapName);
+            for (String id : concat(inputGoods, outputGoods, fluidInputGoods, fluidOutputGoods)) addNode(id, rank);
+            for (String from : concat(inputGoods, fluidInputGoods)) {
+                for (String to : concat(outputGoods, fluidOutputGoods)) {
+                    Map<String, Object> edge = new LinkedHashMap<>();
+                    edge.put("from", from);
+                    edge.put("to", to);
+                    edge.put("machine", mapName);
+                    edge.put("durationTicks", number(fieldOrNull(recipe, "mDuration")));
+                    edge.put("euPerTick", number(fieldOrNull(recipe, "mEUt")));
+                    edges.add(edge);
+                }
+            }
+        }
+
+        private void addNode(String goodsId, int rank) {
+            goodsSet.add(goodsId);
+            if (!nodes.containsKey(goodsId)) {
+                Map<String, Object> node = new LinkedHashMap<>();
+                node.put("id", goodsId);
+                node.put("goodsId", goodsId);
+                node.put("rank", rank);
+                nodes.put(goodsId, node);
+            }
+        }
+
+        private Map<String, Object> payload() {
+            goods.clear();
+            goods.addAll(goodsSet);
+            Collections.sort(goods);
+            sortMaps(edges, "from");
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("nodes", new ArrayList<>(nodes.values()));
+            payload.put("edges", edges);
+            payload.put("stages", Arrays.asList("maceration", "washing", "thermal-centrifuging",
+                    "centrifuging", "electromagnetic-separation", "chemical-bath", "sifting", "furnace",
+                    "blast-furnace", "reactor", "mixer", "autoclave"));
+            return payload;
+        }
+
+        private static int rank(String mapName) {
+            int index = Arrays.asList(PROCESS_MAPS).indexOf(mapName);
+            return index < 0 ? 0 : index;
+        }
+    }
+
+    private static List<String> cropGoods(NeiSpecialOverlay.Sink sink, Object crop) {
+        List<String> goods = new ArrayList<>();
+        Object drops = callOrNull(crop, "getDropTable");
+        if (drops instanceof Map) {
+            for (Object stack : ((Map<?, ?>) drops).keySet()) addItem(sink, goods, stack, "crop drop");
+        }
+        for (Object stack : list(callOrNull(crop, "getAlternateSeeds"))) addItem(sink, goods, stack, "alternate seed");
+        for (Object stack : list(callOrNull(crop, "getSoilsForNEI", false))) addItem(sink, goods, stack, "crop soil");
+        for (Object stack : list(callOrNull(crop, "getBlocksUnderForNEI", false))) addItem(sink, goods, stack, "crop block");
+        Collections.sort(goods);
+        return unique(goods);
+    }
+
+    private static List<Object> cropDrops(NeiSpecialOverlay.Sink sink, Object crop) {
+        List<Object> result = new ArrayList<>();
+        Object table = callOrNull(crop, "getDropTable");
+        if (!(table instanceof Map)) return result;
+        for (Map.Entry<?, ?> entry : ((Map<?, ?>) table).entrySet()) {
+            ItemStack stack = asItemStack(entry.getKey(), "crop drop");
+            if (stack == null) continue;
+            Map<String, Object> drop = new LinkedHashMap<>();
+            drop.put("goodsId", sink.retainItem(stack));
+            drop.put("amount", number(entry.getValue()));
+            drop.put("chance", number(callOrNull(crop, "getDropChance")));
+            result.add(drop);
+        }
+        sortMaps(result, "goodsId");
+        return result;
+    }
+
+    private static List<Object> meteorComponents(NeiSpecialOverlay.Sink sink, Object value, List<String> goods)
+            throws Exception {
+        List<Object> result = new ArrayList<>();
+        for (Object component : list(value)) {
+            ItemStack stack = asItemStack(call(component, "getBlock"), "meteor component");
+            if (stack == null) continue;
+            String goodsId = sink.retainItem(stack);
+            addAllUnique(goods, Collections.singletonList(goodsId));
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("goodsId", goodsId);
+            payload.put("weight", number(call(component, "getWeight")));
+            payload.put("requiredReagents", reagentNames(callOrNull(component, "getRequiredReagents")));
+            result.add(payload);
+        }
+        sortMaps(result, "goodsId");
+        return result;
+    }
+
+    private static List<Object> meteorReagents() {
+        List<Object> result = new ArrayList<>();
+        Object map = staticField("WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorReagentRegistry", "reagents");
+        if (map instanceof Map) {
+            for (Map.Entry<?, ?> entry : ((Map<?, ?>) map).entrySet()) {
+                Object reagent = entry.getKey();
+                Object definition = entry.getValue();
+                Map<String, Object> payload = new LinkedHashMap<>();
+                payload.put("name", stringOrEmpty(callOrNull(reagent, "name")));
+                payload.put("intensity", number(callOrNull(reagent, "intensity")));
+                payload.put("radiusChange", number(fieldOrNull(definition, "radiusChange")));
+                payload.put("fillerChanceChange", number(fieldOrNull(definition, "fillerChanceChange")));
+                payload.put("rawFillerChanceChange", number(fieldOrNull(definition, "rawFillerChanceChange")));
+                payload.put("disableExplosions", bool(fieldOrNull(definition, "disableExplosions")));
+                result.add(payload);
+            }
+        }
+        sortMaps(result, "name");
+        return result;
+    }
+
+    private static List<String> reagentNames(Object value) {
+        List<String> result = new ArrayList<>();
+        for (Object reagent : list(value)) {
+            result.add(stringOrEmpty(callOrNull(reagent, "name")));
+        }
+        Collections.sort(result);
+        return unique(result);
+    }
+
+    private static List<Object> fortuneChances(Object handler, Object group, List<Object> ignored) {
+        List<Object> result = new ArrayList<>();
+        for (String level : new String[] {"LV0", "LV1", "LV2", "LV3"}) {
+            try {
+                Object enumLevel = Enum.valueOf((Class) Class.forName(
+                        "eu.usrv.enhancedlootbags.core.LootGroupsHandler$FortuneLevel"), level);
+                double total = 0.0;
+                for (Object drop : list(call(group, "getDrops"))) {
+                    Object value = call(handler, "calcPercentageFromWeight", drop, group, enumLevel);
+                    if (value instanceof Number) total += ((Number) value).doubleValue();
+                }
+                result.add(total);
+            } catch (Throwable error) {
+                throw new IllegalStateException("Could not evaluate EnhancedLootBags fortune level " + level, error);
+            }
+        }
+        return result;
+    }
+
+    private static List<Object> currencyPayload(NeiSpecialOverlay.Sink sink, Object value, List<String> goods) {
+        List<Object> result = new ArrayList<>();
+        for (Object currency : list(value)) {
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("type", String.valueOf(fieldOrNull(currency, "type")));
+            payload.put("value", number(fieldOrNull(currency, "value")));
+            List<String> currencyGoods = retainItems(sink, stacks(callOrNull(currency, "itemize")));
+            payload.put("goodsIds", currencyGoods);
+            addAllUnique(goods, currencyGoods);
+            result.add(payload);
+        }
+        return result;
+    }
+
+    private static List<Object> bigStacks(NeiSpecialOverlay.Sink sink, Object value, List<String> goods) {
+        List<Object> result = new ArrayList<>();
+        for (Object stack : list(value)) result.add(bigStack(sink, stack, goods));
+        return result;
+    }
+
+    private static Object bigStack(NeiSpecialOverlay.Sink sink, Object value, List<String> goods) {
+        if (value == null) return null;
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("amount", number(fieldOrNull(value, "stackSize")));
+        payload.put("oreDictionary", stringOrEmpty(callOrNull(value, "getOreDict")));
+        List<String> ids = retainItems(sink, stacks(callOrNull(value, "getCombinedStacks")));
+        if (ids.isEmpty()) {
+            Object ingredient = callOrNull(value, "getOreIngredient");
+            ids.addAll(retainItems(sink, stacks(callOrNull(ingredient, "getMatchingStacks"))));
+        }
+        if (ids.isEmpty()) {
+            ItemStack base = asItemStack(callOrNull(value, "getBaseStack"), "vending item");
+            if (base != null) ids.add(sink.retainItem(base));
+        }
+        payload.put("goodsIds", ids);
+        addAllUnique(goods, ids);
+        return payload;
+    }
+
+    private static List<Object> itemPayloads(NeiSpecialOverlay.Sink sink, Object value) {
+        List<Object> result = new ArrayList<>();
+        for (Object stack : list(value)) {
+            ItemStack item = asItemStack(stack, "item payload");
+            if (item == null) continue;
+            Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("goodsId", sink.retainItem(item));
+            result.add(payload);
+        }
+        sortMaps(result, "goodsId");
+        return result;
+    }
+
+    private static List<Object> itemPayloadsNested(NeiSpecialOverlay.Sink sink, Object value) {
+        List<Object> result = new ArrayList<>();
+        for (Object nested : list(value)) result.add(itemPayloads(sink, nested));
+        return result;
+    }
+
+    private static void addAllGoodsFromPayload(List<Object> payload, List<String> goods) {
+        for (Object entry : payload) {
+            if (entry instanceof Map) {
+                Object id = ((Map<?, ?>) entry).get("goodsId");
+                if (id instanceof String) addAllUnique(goods, Collections.singletonList((String) id));
+                Object ids = ((Map<?, ?>) entry).get("goodsIds");
+                if (ids instanceof Collection) for (Object item : (Collection<?>) ids)
+                    if (item instanceof String) addAllUnique(goods, Collections.singletonList((String) item));
+            } else if (entry instanceof Collection) addAllGoodsFromPayload((List<Object>) entry, goods);
+        }
+    }
+
+    private static List<String> materialGoods(NeiSpecialOverlay.Sink sink, Object material, String... prefixes) {
+        List<String> result = new ArrayList<>();
+        if (material == null) return result;
+        Object prefixClass = null;
+        try { prefixClass = Class.forName("gregtech.api.enums.OrePrefixes"); }
+        catch (ClassNotFoundException error) { throw new IllegalStateException("GT OrePrefixes API is missing", error); }
+        for (String prefix : prefixes) {
+            Object orePrefix = fieldOrNull(prefixClass, prefix);
+            if (orePrefix == null) continue;
+            ItemStack stack = asItemStack(callOrNull(material, "getPart", orePrefix, 1),
+                    "GT material " + materialName(material));
+            if (stack != null) result.add(sink.retainItem(stack));
+        }
+        return uniqueSorted(result);
+    }
+
+    private static String materialName(Object material) {
+        return stringOrEmpty(callOrNull(material, "getInternalName"));
+    }
+
+    private static String cropTitle(Object crop, String id) {
+        String unlocalized = stringOrEmpty(callOrNull(crop, "getUnlocalizedName"));
+        return unlocalized.length() == 0 ? id : unlocalized;
+    }
+
+    private static List<String> requirementDescriptions(Object value) {
+        List<String> result = new ArrayList<>();
+        for (Object requirement : list(value)) {
+            Object description = callOrNull(requirement, "getDescriptionForNEI");
+            if (description == null) description = callOrNull(requirement, "getDescription");
+            if (description == null) description = String.valueOf(requirement);
+            result.add(String.valueOf(description));
+        }
+        Collections.sort(result);
+        return unique(result);
+    }
+
+    private static List<String> stringCollection(Object value) {
+        List<String> result = new ArrayList<>();
+        for (Object entry : list(value)) result.add(String.valueOf(entry));
+        return uniqueSorted(result);
+    }
+
+    private static List<String> sortedStrings(Object value) {
+        return stringCollection(value);
+    }
+
+    private static List<String> retainItems(NeiSpecialOverlay.Sink sink, List<ItemStack> stacks) {
+        List<String> result = new ArrayList<>();
+        for (ItemStack stack : stacks) if (stack != null) result.add(sink.retainItem(stack));
+        return uniqueSorted(result);
+    }
+
+    private static List<String> retainFluids(NeiSpecialOverlay.Sink sink, List<FluidStack> stacks) {
+        List<String> result = new ArrayList<>();
+        for (FluidStack stack : stacks) if (stack != null) result.add(sink.retainFluid(stack));
+        return uniqueSorted(result);
+    }
+
+    private static List<ItemStack> stacks(Object value) {
+        List<ItemStack> result = new ArrayList<>();
+        for (Object valueEntry : arrayOrCollection(value)) {
+            ItemStack stack = asItemStack(valueEntry, "item stack array");
+            if (stack != null) result.add(stack);
+        }
+        return result;
+    }
+
+    private static List<FluidStack> fluids(Object value) {
+        List<FluidStack> result = new ArrayList<>();
+        for (Object valueEntry : arrayOrCollection(value)) {
+            if (valueEntry instanceof FluidStack) result.add((FluidStack) valueEntry);
+        }
+        return result;
+    }
+
+    private static ItemStack sampleWeighted(Object weighted, long seed) {
+        if (weighted == null) return null;
+        Object nested = fieldOrNull(weighted, "items");
+        if (nested instanceof Collection && !((Collection<?>) nested).isEmpty()) {
+            for (Object child : (Collection<?>) nested) {
+                ItemStack sample = sampleWeighted(child, seed);
+                if (sample != null) return sample;
+            }
+        }
+        Object value = callOrNull(weighted, "get", new Random(seed));
+        return asItemStack(value, "Roguelike weighted loot");
+    }
+
+    private static void addItem(NeiSpecialOverlay.Sink sink, List<String> target, Object value, String context) {
+        ItemStack stack = asItemStack(value, context);
+        if (stack != null) addAllUnique(target, Collections.singletonList(sink.retainItem(stack)));
+    }
+
+    private static ItemStack asItemStack(Object value, String context) {
+        if (value == null) return null;
+        if (!(value instanceof ItemStack)) throw new IllegalStateException(context + " is not an ItemStack: " + value);
+        return (ItemStack) value;
+    }
+
+    private static List<Object> list(Object value) {
+        if (value == null) return Collections.emptyList();
+        if (value instanceof Collection) return new ArrayList<>((Collection<?>) value);
+        if (value.getClass().isArray()) return arrayOrCollection(value);
+        return Collections.singletonList(value);
+    }
+
+    private static List<Object> arrayOrCollection(Object value) {
+        if (value == null) return Collections.emptyList();
+        List<Object> result = new ArrayList<>();
+        if (value instanceof Collection) result.addAll((Collection<?>) value);
+        else if (value.getClass().isArray()) {
+            for (int index = 0; index < Array.getLength(value); index++) result.add(Array.get(value, index));
+        } else result.add(value);
+        return result;
+    }
+
+    private static List<Object> sortedObjects(Object value, final String key) {
+        List<Object> result = list(value);
+        Collections.sort(result, new Comparator<Object>() {
+            @Override
+            public int compare(Object left, Object right) { return stableObjectName(left).compareTo(stableObjectName(right)); }
+        });
+        return result;
+    }
+
+    private static String stableObjectName(Object value) {
+        if (value == null) return "";
+        for (String method : new String[] {
+                "getId", "getName", "getUnlocalizedName", "getUnlocalisedName", "getGroupID",
+                "getIdentifier"
+        }) {
+            Object candidate = callOrNull(value, method);
+            if (candidate != null) return String.valueOf(candidate);
+        }
+        return value.getClass().getName() + ":" + String.valueOf(value);
+    }
+
+    private static String mutationKey(Object mutation) {
+        Object output = callOrNull(mutation, "getOutput");
+        String outputId = output == null ? "" : stringOrEmpty(callOrNull(output, "getId"));
+        List<String> parents = new ArrayList<>();
+        for (Object parent : list(callOrNull(mutation, "getParents"))) {
+            parents.add(stringOrEmpty(callOrNull(parent, "getId")));
+        }
+        Collections.sort(parents);
+        return outputId + "|" + join(parents, ",");
+    }
+
+    private static String stableStackName(ItemStack stack) {
+        if (stack == null) return "";
+        Object item = callOrNull(stack, "getItem");
+        return stringOrEmpty(callOrNull(item, "getUnlocalizedName"))
+                + ":" + number(callOrNull(stack, "getItemDamage"));
+    }
+
+    private static Object construct(String className) throws Exception {
+        return Class.forName(className).getDeclaredConstructor().newInstance();
+    }
+
+    private static Object staticField(String className, String fieldName) {
+        try { return field(Class.forName(className), fieldName, null); }
+        catch (Throwable error) { throw new IllegalStateException("Cannot read " + className + "." + fieldName, error); }
+    }
+
+    private static Object fieldOrNull(Object receiver, String fieldName) {
+        if (receiver == null) return null;
+        Class<?> owner = receiver instanceof Class ? (Class<?>) receiver : receiver.getClass();
+        Object target = receiver instanceof Class ? null : receiver;
+        try { return field(owner, fieldName, target); }
+        catch (NoSuchFieldException error) { return null; }
+        catch (ReflectiveOperationException error) { throw new IllegalStateException("Cannot read " + owner.getName()
+                + "." + fieldName, error); }
+    }
+
+    private static Object field(Class<?> type, String fieldName, Object receiver)
+            throws NoSuchFieldException, IllegalAccessException {
+        Class<?> current = type;
+        while (current != null) {
+            try {
+                Field field = current.getDeclaredField(fieldName);
+                field.setAccessible(true);
+                return field.get(receiver);
+            } catch (NoSuchFieldException error) { current = current.getSuperclass(); }
+        }
+        throw new NoSuchFieldException(type.getName() + "." + fieldName);
+    }
+
+    private static Object staticCall(String className, String method, Object... args) throws Exception {
+        return call(Class.forName(className), method, args);
+    }
+
+    private static Object callOrNull(Object receiver, String method, Object... args) {
+        if (receiver == null) return null;
+        try { return call(receiver, method, args); }
+        catch (MissingMethodException error) { return null; }
+    }
+
+    private static Object call(Object receiver, String method, Object... args) {
+        try {
+            Class<?> type = receiver instanceof Class ? (Class<?>) receiver : receiver.getClass();
+            Method selected = findMethod(type, method, args);
+            if (selected == null) throw new MissingMethodException(
+                    type.getName() + "." + method + "/" + args.length);
+            selected.setAccessible(true);
+            return selected.invoke(receiver instanceof Class ? null : receiver, args);
+        } catch (InvocationTargetException error) {
+            Throwable cause = error.getCause() == null ? error : error.getCause();
+            if (cause instanceof RuntimeException) throw (RuntimeException) cause;
+            throw new IllegalStateException("Invocation failed for " + receiver + "." + method, cause);
+        } catch (ReflectiveOperationException error) {
+            throw new IllegalStateException("Invocation failed for " + receiver + "." + method, error);
+        }
+    }
+
+    /** Optional API calls use this distinct runtime exception, not a wrapped failure. */
+    private static final class MissingMethodException extends RuntimeException {
+        private MissingMethodException(String message) { super(message); }
+    }
+
+    private static Method findMethod(Class<?> type, String name, Object[] args) {
+        Class<?> current = type;
+        while (current != null) {
+            for (Method method : current.getDeclaredMethods()) {
+                if (method.getName().equals(name) && compatible(method.getParameterTypes(), args)) return method;
+            }
+            current = current.getSuperclass();
+        }
+        for (Method method : type.getMethods()) {
+            if (method.getName().equals(name) && compatible(method.getParameterTypes(), args)) return method;
+        }
+        return null;
+    }
+
+    private static boolean compatible(Class<?>[] types, Object[] args) {
+        if (types.length != args.length) return false;
+        for (int index = 0; index < types.length; index++) {
+            if (args[index] == null) continue;
+            Class<?> expected = box(types[index]);
+            if (!expected.isAssignableFrom(args[index].getClass())) return false;
+        }
+        return true;
+    }
+
+    private static Class<?> box(Class<?> type) {
+        if (!type.isPrimitive()) return type;
+        if (type == int.class) return Integer.class;
+        if (type == long.class) return Long.class;
+        if (type == float.class) return Float.class;
+        if (type == double.class) return Double.class;
+        if (type == boolean.class) return Boolean.class;
+        if (type == byte.class) return Byte.class;
+        if (type == short.class) return Short.class;
+        if (type == char.class) return Character.class;
+        return type;
+    }
+
+    private static Map<?, ?> castMap(Object value) {
+        if (!(value instanceof Map)) throw new IllegalStateException("Expected map but got " + value);
+        return (Map<?, ?>) value;
+    }
+
+    private static String string(Object value) {
+        if (value == null) throw new IllegalStateException("Expected non-null string value");
+        return String.valueOf(value);
+    }
+
+    private static String stringOrNull(Object value) { return value == null ? null : String.valueOf(value); }
+    private static String stringOrEmpty(Object value) { return value == null ? "" : String.valueOf(value); }
+
+    /** Build stable, plain-text search terms without leaking payload markup. */
+    private static String searchText(String... terms) {
+        LinkedHashSet<String> words = new LinkedHashSet<>();
+        for (String term : terms) {
+            if (term == null) continue;
+            String normalized = term.trim().replaceAll("\\s+", " ");
+            if (normalized.length() > 0) words.add(normalized.toLowerCase(Locale.ROOT));
+        }
+        if (words.isEmpty()) throw new IllegalArgumentException("special record search text is empty");
+        return join(new ArrayList<>(words), " ");
+    }
+
+    private static Number number(Object value) {
+        if (value == null) return 0;
+        if (!(value instanceof Number)) throw new IllegalStateException("Expected numeric value but got " + value);
+        return (Number) value;
+    }
+    private static int intValue(Object value) { return number(value).intValue(); }
+    private static boolean bool(Object value) { return value instanceof Boolean && (Boolean) value; }
+
+    private static List<String> concat(List<String>... values) {
+        List<String> result = new ArrayList<>();
+        for (List<String> value : values) result.addAll(value);
+        return result;
+    }
+
+    private static boolean containsAny(String value, String... terms) {
+        for (String term : terms) if (value.contains(term)) return true;
+        return false;
+    }
+
+    private static void addAllUnique(List<String> target, Collection<String> values) {
+        for (String value : values) if (value != null && !target.contains(value)) target.add(value);
+    }
+
+    private static List<String> unique(List<String> values) {
+        return new ArrayList<>(new LinkedHashSet<>(values));
+    }
+
+    private static List<String> uniqueSorted(List<String> values) {
+        List<String> result = unique(values);
+        Collections.sort(result);
+        return result;
+    }
+
+    private static <T> void sortMaps(List<T> maps, final String key) {
+        Collections.sort(maps, new Comparator<T>() {
+            @Override
+            public int compare(T left, T right) {
+                Object a = left instanceof Map ? ((Map<?, ?>) left).get(key) : null;
+                Object b = right instanceof Map ? ((Map<?, ?>) right).get(key) : null;
+                int primary = String.valueOf(a).compareTo(String.valueOf(b));
+                return primary == 0 ? String.valueOf(left).compareTo(String.valueOf(right)) : primary;
+            }
+        });
+    }
+
+    private static String slug(String value) {
+        String result = value == null ? "" : value.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]+", "-");
+        result = result.replaceAll("^-+|-+$", "");
+        return result.length() == 0 ? "unknown-" + digest(String.valueOf(value)).substring(0, 10) : result;
+    }
+
+    private static String digest(String value) {
+        try {
+            byte[] bytes = MessageDigest.getInstance("SHA-256").digest(value.getBytes("UTF-8"));
+            StringBuilder result = new StringBuilder();
+            for (byte valueByte : bytes) result.append(String.format("%02x", valueByte & 0xff));
+            return result.toString();
+        } catch (Exception error) { throw new IllegalStateException("Cannot hash special record key", error); }
+    }
+
+    private static String join(List<?> values, String separator) {
+        List<String> strings = new ArrayList<>();
+        for (Object value : values) strings.add(String.valueOf(value));
+        return String.join(separator, strings);
+    }
+
+    private static void requireRecords(String category, int count) {
+        if (count == 0) throw new IllegalStateException("Pinned runtime registry produced no " + category + " records");
+    }
+}
