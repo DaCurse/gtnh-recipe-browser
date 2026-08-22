@@ -136,6 +136,7 @@ describe('NEI special sidecar contract', () => {
     expect(javaSource).toContain('versions.put("overlay", overlay)');
     expect(javaSource).toContain('versions.put("mods", mods)');
     expect(javaSource).toContain('exporter.put("repository", "https://github.com/ShadowTheAge/nesql-exporter")');
+    expect(javaSource).toContain('exporter.put("commit", "b9279b39f2f439da78eebd70fab272b028947371")');
     expect(javaSource).not.toContain('versions.put("gtnh",');
     expect(javaSource).not.toContain('versions.put("overlay", "nei-special-v1")');
   });

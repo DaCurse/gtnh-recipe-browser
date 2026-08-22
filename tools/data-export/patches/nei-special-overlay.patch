@@ -96,7 +96,7 @@ new file mode 100644
 +        mods.put("TwilightForest", "2.7.36");
 +        Map<String, Object> exporter = new LinkedHashMap<>();
 +        exporter.put("repository", "https://github.com/ShadowTheAge/nesql-exporter");
-+        exporter.put("commit", System.getProperty("nesql.special.exporterCommit", "runtime"));
++        exporter.put("commit", "b9279b39f2f439da78eebd70fab272b028947371");
 +        Map<String, Object> overlay = new LinkedHashMap<>();
 +        overlay.put("version", "nei-special-v1");
 +        Map<String, Object> versions = new LinkedHashMap<>();
