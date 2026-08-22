@@ -86,8 +86,22 @@
 
   function chanceLabel(item: SpecialGoods): string {
     if (item.chance === undefined) return '';
-    const chance = item.chance <= 1 ? item.chance * 100 : item.chance;
-    return `${Number(chance.toFixed(2))}%`;
+    return `${percentValue(item.chance)}%`;
+  }
+
+  function percentValue(value: number): string {
+    const percent = value <= 1 ? value * 100 : value;
+    const bounded = Math.min(100, Math.max(0, percent));
+    return String(Number(bounded.toFixed(2)));
+  }
+
+  function fortuneLabel(item: SpecialGoods): string {
+    const fortune = 'fortune' in item && Array.isArray(item.fortune)
+      ? item.fortune.filter((value): value is number => typeof value === 'number').slice(0, 4)
+      : [];
+    return fortune.length === 4
+      ? `F0–F3 ${fortune.map(percentValue).join(' · ')}%`
+      : '';
   }
 
   function hideTooltip() {
@@ -99,8 +113,9 @@
   <section class="special-goods" aria-label={label ?? 'Goods'}>
     {#if label}<div class="special-goods-label">{label}</div>{/if}
     <div class="special-goods-grid">
-      {#each visible as item (`${item.goodsId}:${item.role ?? ''}:${item.amount ?? ''}`)}
+      {#each visible as item, itemIndex (`${itemIndex}:${item.goodsId}:${item.role ?? ''}:${item.amount ?? ''}`)}
         {@const entry = resolve(displayId(item))}
+        {@const fortune = fortuneLabel(item)}
         {#if entry}
           <button
             class="special-good"
@@ -129,6 +144,7 @@
               <span class="special-weight">w {item.weight}</span>
             {/if}
             <small>{item.label ?? entry.name}</small>
+            {#if fortune}<small class="special-fortune">{fortune}</small>{/if}
           </button>
         {:else}
           <div class="special-good unresolved" title={item.goodsId}>
@@ -192,6 +208,7 @@
   .special-good,.unresolved { position:relative; min-width:64px; min-height:76px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2px; padding:2px; border:1px solid transparent; border-radius:6px; background:transparent; color:#d9dcdf; cursor:pointer; }
   .special-good:hover,.special-good:focus-visible { border-color:#5b6167; background:#303338; filter:brightness(1.08); outline:0; }
   .special-good small,.unresolved small { width:100%; overflow:hidden; color:#a6abb0; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+  .special-good .special-fortune { color:#d8ca75; font-size:8px; }
   .special-amount,.special-chance { position:absolute; z-index:2; padding:2px 3px; border-radius:3px; background:#17181be8; color:#fff; font:700 11px/1 ui-sans-serif,system-ui,sans-serif; text-shadow:1px 1px #000; }
   .special-amount { right:3px; bottom:20px; }
   .special-chance { left:3px; top:3px; color:#ffff55; font-family:Minecraft,monospace; text-shadow:2px 2px #342c34; }

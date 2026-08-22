@@ -2,6 +2,7 @@ package com.github.dcysteine.nesql.exporter.special;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Item;
+import net.minecraft.block.Block;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -252,15 +253,24 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         }
     }
 
-    private static void registerViewTypes(NeiSpecialOverlay.Sink sink) {
-        sink.addServiceIcon("service:crop", "CropsNH");
-        sink.addServiceIcon("service:crop-breeding", "Crop Breeding");
+    private static void registerViewTypes(NeiSpecialOverlay.Sink sink) throws Exception {
+        // Resolve the same live stacks used by the mods' NEI handlers.  The
+        // sink then persists them through the normal ItemFactory, so the tab
+        // sprite follows the runtime atlas instead of a guessed goods ID.
+        String cropIconGoodsId = sink.retainItem(cropsNhIconStack());
+        String lootBagIconGoodsId = sink.retainItem(enhancedLootBagIconStack());
+        String meteorIconGoodsId = sink.retainItem(blockIcon(
+                "WayofTime.alchemicalWizardry.ModBlocks", "blockMasterStone", "Blood Magic master ritual stone"));
+        String oreProcessingIconGoodsId = sink.retainItem(registryItemIcon(
+                "minecraft", "diamond_block", "GregTech ore-processing category"));
+        sink.addServiceIcon("service:crop", "CropsNH", cropIconGoodsId);
+        sink.addServiceIcon("service:crop-breeding", "Crop Breeding", cropIconGoodsId);
         sink.addServiceIcon("service:gt-ore", "GregTech Ore");
-        sink.addServiceIcon("service:meteor", "Meteor Ritual");
-        sink.addServiceIcon("service:lootbag", "Enhanced LootBags");
+        sink.addServiceIcon("service:meteor", "Meteor Ritual", meteorIconGoodsId);
+        sink.addServiceIcon("service:lootbag", "Enhanced LootBags", lootBagIconGoodsId);
         sink.addServiceIcon("service:vending", "Vending Machine");
         sink.addServiceIcon("service:worldgen", "World Generation");
-        sink.addServiceIcon("service:ore-processing", "GT Ore Processing");
+        sink.addServiceIcon("service:ore-processing", "GT Ore Processing", oreProcessingIconGoodsId);
 
         sink.addViewType("crop-output", "Crop Outputs", "service:crop");
         sink.addViewType("mutation-pool", "Mutation Pools", "service:crop");
@@ -272,6 +282,50 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         sink.addViewType("vending-trade", "Vending Machine", "service:vending");
         sink.addViewType("worldgen-loot", "World-Generation Loot", "service:worldgen");
         sink.addViewType("gt-ore-processing", "GT Ore Processing", "service:ore-processing");
+    }
+
+    private static ItemStack cropsNhIconStack() {
+        Object cropSticks = staticField(CROPS + ".api.CropsNHItemList", "cropSticks");
+        ItemStack stack = asItemStack(callOrNull(cropSticks, "getInternalStack_unsafe"), "CropsNH crop sticks icon");
+        if (stack == null) {
+            throw new IllegalStateException("CropsNH cropSticks did not expose a registered icon stack");
+        }
+        return stack;
+    }
+
+    private static ItemStack enhancedLootBagIconStack() throws Exception {
+        // The NEI addon registers the unqualified item name
+        // `enhancedlootbags:lootbag`, which is the default (meta 0) sprite.
+        // LootGroup#createLootBagItemStack intentionally uses the group ID as
+        // damage and would therefore select an arbitrary coloured bag when
+        // the first group changes. Resolve the actual registered item through
+        // the mod's own handler, then construct only the default stack state.
+        Object item = staticCall("eu.usrv.enhancedlootbags.core.LootGroupsHandler", "getLootBagItem");
+        if (!(item instanceof Item)) {
+            throw new IllegalStateException("EnhancedLootBags did not expose its registered loot-bag item");
+        }
+        return new ItemStack((Item) item, 1, 0);
+    }
+
+    private static ItemStack blockIcon(String className, String fieldName, String context) {
+        Object value = staticField(className, fieldName);
+        if (!(value instanceof Block)) {
+            throw new IllegalStateException(context + " did not expose a registered block");
+        }
+        Item item = Item.getItemFromBlock((Block) value);
+        if (item == null) throw new IllegalStateException(context + " has no registered item form");
+        return new ItemStack(item, 1, 0);
+    }
+
+    /** Resolve a vanilla/mod item through Forge's live registry when its
+     * deobfuscated Blocks/Items field is not available in the runtime jar. */
+    private static ItemStack registryItemIcon(String modId, String itemName, String context) {
+        ItemStack stack = GameRegistry.findItemStack(modId, itemName, 1);
+        if (stack == null || stack.getItem() == null) {
+            throw new IllegalStateException(context + " did not expose registered item "
+                    + modId + ":" + itemName);
+        }
+        return stack;
     }
 
     /** Validate both Forge's active mod metadata and the live API classes. */
@@ -410,14 +464,20 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             List<Object> members = sortedObjects(call(pool, "getMembers"), "member crop id");
             List<String> goods = new ArrayList<>();
             List<Object> memberIds = new ArrayList<>();
+            List<Object> memberSeeds = new ArrayList<>();
             for (Object crop : members) {
                 String cropId = string(call(crop, "getId"));
                 memberIds.add(cropId);
                 addAllUnique(goods, cropGoods(sink, crop));
+                Map<String, Object> seed = new LinkedHashMap<>();
+                seed.put("goodsId", cropSeedGoodsId(sink, crop));
+                seed.put("label", cropId);
+                memberSeeds.add(seed);
             }
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("poolName", poolName);
             payload.put("members", memberIds);
+            payload.put("memberSeeds", memberSeeds);
             sink.addRecord("pool:" + slug, "mutation-pool", "Mutation Pool: " + poolName,
                     searchText("cropsnh", "mutation-pool", poolName, join(memberIds, " ")), goods,
                     "special:pool:" + slug + ":recipes", "special:pool:" + slug + ":usages",
@@ -442,9 +502,15 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             String outputId = string(call(output, "getId"));
             List<Object> parents = sortedObjects(call(mutation, "getParents"), "parent crop id");
             List<Object> parentIds = new ArrayList<>();
+            List<Object> parentSeeds = new ArrayList<>();
             List<String> goods = new ArrayList<>(cropGoods(sink, output));
             for (Object parent : parents) {
-                parentIds.add(string(call(parent, "getId")));
+                String parentId = string(call(parent, "getId"));
+                parentIds.add(parentId);
+                Map<String, Object> seed = new LinkedHashMap<>();
+                seed.put("goodsId", cropSeedGoodsId(sink, parent));
+                seed.put("label", parentId);
+                parentSeeds.add(seed);
                 addAllUnique(goods, cropGoods(sink, parent));
             }
             List<Object> catalysts = itemPayloads(sink, callOrNull(mutation, "getBlocksUnderForNEI", false));
@@ -454,8 +520,13 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             addAllGoodsFromPayload(machineCatalysts, goods);
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("outputCrop", outputId);
+            Map<String, Object> outputSeed = new LinkedHashMap<>();
+            outputSeed.put("goodsId", cropSeedGoodsId(sink, output));
+            outputSeed.put("label", outputId);
+            payload.put("outputSeed", outputSeed);
             payload.put("parentCount", number(call(mutation, "getParentCount")));
-            payload.put("parents", parentIds);
+            payload.put("parents", parentSeeds);
+            payload.put("parentCropIds", parentIds);
             payload.put("blocksUnder", catalysts);
             payload.put("machineCatalysts", machineCatalysts);
             payload.put("requirements", requirementDescriptions(callOrNull(mutation, "getRequirements")));
@@ -644,8 +715,9 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             int groupId = intValue(call(group, "getGroupID"));
             List<String> goods = new ArrayList<>();
             ItemStack bag = asItemStack(callOrNull(group, "createLootBagItemStack"), "loot bag");
+            String bagId = null;
             if (bag != null) {
-                String bagId = retainItemOrNull(sink, bag, "loot bag");
+                bagId = retainItemOrNull(sink, bag, "loot bag");
                 if (bagId != null) addAllUnique(goods, Collections.singletonList(bagId));
             }
             List<Object> drops = new ArrayList<>();
@@ -655,10 +727,17 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 dropPayload.put("group", stringOrEmpty(callOrNull(drop, "getItemDropGroup")));
                 dropPayload.put("itemName", stringOrEmpty(callOrNull(drop, "getItemName")));
                 dropPayload.put("amount", number(call(drop, "getAmount")));
-                dropPayload.put("chance", number(call(drop, "getChance")));
+                // EnhancedLootBags stores getChance() as a weight. Preserve it
+                // explicitly, but expose the same Fortune probabilities NEI
+                // writes into the bag tooltip instead of rendering that raw
+                // weight as a percentage.
+                dropPayload.put("weight", number(call(drop, "getChance")));
                 dropPayload.put("limitedDropCount", number(call(drop, "getLimitedDropCount")));
                 dropPayload.put("randomAmount", bool(call(drop, "getIsRandomAmount")));
                 dropPayload.put("nbt", stringOrEmpty(callOrNull(drop, "getNBTTag")));
+                List<Object> fortune = fortuneChances(handler, group, drop);
+                if (!fortune.isEmpty()) dropPayload.put("chance", fortune.get(0));
+                dropPayload.put("fortune", fortune);
                 ItemStack stack = asItemStack(callOrNull(drop, "getItemStack"), "loot drop");
                 if (stack != null) {
                     String goodsId = retainItemOrNull(sink, stack, "loot drop");
@@ -671,6 +750,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             }
             sortMaps(drops, "identifier");
             Map<String, Object> payload = new LinkedHashMap<>();
+            if (bagId != null) payload.put("bagGoodsId", bagId);
             payload.put("groupId", groupId);
             payload.put("groupName", stringOrEmpty(callOrNull(group, "getGroupName")));
             payload.put("rarity", String.valueOf(callOrNull(group, "getGroupRarity")));
@@ -680,7 +760,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             payload.put("combineWithTrash", bool(call(group, "getCombineWithTrash")));
             payload.put("trashGroup", number(call(group, "getTrashGroup")));
             payload.put("drops", drops);
-            payload.put("fortuneChances", fortuneChances(handler, group, drops));
+            // Keep a compact compatibility summary for older clients. New
+            // clients render the per-drop `fortune` vectors above; summing
+            // them would describe expected reward count, not a probability,
+            // and routinely produces values above 100%.
+            payload.put("fortuneChances", fortuneSummary(drops));
             String slug = slug(String.valueOf(groupId));
             String groupName = stringOrEmpty(callOrNull(group, "getGroupName"));
             sink.addRecord("lootbag:" + slug, "loot-bag", "LootBag Group " + groupId,
@@ -1270,14 +1354,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         // NEICropsNHCropHandler.CachedCropRecipe. Without it, looking up a
         // literal CropsNH generic seed cannot reach the crop, pool, or
         // breeding records even though all three records were exported.
-        Object defaultStats = staticField(CROPS + ".farming.SeedStats", "DEFAULT_ANALYZED");
-        Object defaultSeed = call(crop, "getSeedItem", defaultStats);
-        if (defaultSeed == null) {
-            throw new IllegalStateException("CropsNH crop "
-                    + stringOrEmpty(callOrNull(crop, "getId"))
-                    + " returned no DEFAULT_ANALYZED seed item");
-        }
-        addItem(sink, goods, defaultSeed, "crop seed");
+        addAllUnique(goods, Collections.singletonList(cropSeedGoodsId(sink, crop)));
         Object drops = callOrNull(crop, "getDropTable");
         if (drops instanceof Map) {
             for (Object stack : ((Map<?, ?>) drops).keySet()) addItem(sink, goods, stack, "crop drop");
@@ -1287,6 +1364,23 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         for (Object stack : list(callOrNull(crop, "getBlocksUnderForNEI", true))) addItem(sink, goods, stack, "crop block");
         Collections.sort(goods);
         return unique(goods);
+    }
+
+    private static String cropSeedGoodsId(NeiSpecialOverlay.Sink sink, Object crop) {
+        Object defaultStats = staticField(CROPS + ".farming.SeedStats", "DEFAULT_ANALYZED");
+        Object defaultSeed = call(crop, "getSeedItem", defaultStats);
+        if (defaultSeed == null) {
+            throw new IllegalStateException("CropsNH crop "
+                    + stringOrEmpty(callOrNull(crop, "getId"))
+                    + " returned no DEFAULT_ANALYZED seed item");
+        }
+        String goodsId = retainItemOrNull(sink, asItemStack(defaultSeed, "crop seed"), "crop seed");
+        if (goodsId == null) {
+            throw new IllegalStateException("CropsNH crop "
+                    + stringOrEmpty(callOrNull(crop, "getId"))
+                    + " returned an unresolvable DEFAULT_ANALYZED seed item");
+        }
+        return goodsId;
     }
 
     private static List<Object> cropDrops(NeiSpecialOverlay.Sink sink, Object crop) {
@@ -1441,22 +1535,39 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         return unique(result);
     }
 
-    private static List<Object> fortuneChances(Object handler, Object group, List<Object> ignored) {
+    private static List<Object> fortuneChances(Object handler, Object group, Object drop) {
         List<Object> result = new ArrayList<>();
         for (String level : new String[] {"LV0", "LV1", "LV2", "LV3"}) {
             try {
                 Object enumLevel = Enum.valueOf((Class) Class.forName(
                         "eu.usrv.enhancedlootbags.core.LootGroupsHandler$FortuneLevel"), level);
-                double total = 0.0;
-                for (Object drop : list(call(group, "getDrops"))) {
-                    Object value = call(handler, "calcPercentageFromWeight", drop, group, enumLevel);
-                    if (value instanceof Number) total += ((Number) value).doubleValue();
-                }
-                result.add(total);
+                Object value = call(handler, "calcPercentageFromWeight", drop, group, enumLevel);
+                result.add(value instanceof Number ? ((Number) value).doubleValue() : 0.0);
             } catch (Throwable error) {
                 throw new IllegalStateException("Could not evaluate EnhancedLootBags fortune level " + level, error);
             }
         }
+        return result;
+    }
+
+    private static List<Object> fortuneSummary(List<Object> drops) {
+        // A summary is retained only as a safe compatibility hint. It is the
+        // maximum per-drop probability for each Fortune level, never a sum of
+        // mutually exclusive alternatives. This keeps legacy renderers from
+        // displaying impossible percentages while the new UI uses `fortune`.
+        double[] maximum = {0.0, 0.0, 0.0, 0.0};
+        for (Object value : drops) {
+            if (!(value instanceof Map)) continue;
+            Object raw = ((Map<?, ?>) value).get("fortune");
+            if (!(raw instanceof List)) continue;
+            List<?> values = (List<?>) raw;
+            for (int index = 0; index < maximum.length && index < values.size(); index++) {
+                Object chance = values.get(index);
+                if (chance instanceof Number) maximum[index] = Math.max(maximum[index], ((Number) chance).doubleValue());
+            }
+        }
+        List<Object> result = new ArrayList<>();
+        for (double value : maximum) result.add(value);
         return result;
     }
 

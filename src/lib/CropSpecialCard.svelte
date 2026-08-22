@@ -38,6 +38,10 @@
       ? payload.drops
       : rawPayload.outputs ?? record.outputs ?? []
   ));
+  const poolMembers = $derived(toSpecialGoodsList(
+    Array.isArray(rawPayload.memberSeeds) ? rawPayload.memberSeeds : []
+  ));
+  const outputSeed = $derived(toSpecialGoods(rawPayload.outputSeed));
   const rawParentValues = $derived(Array.isArray(rawPayload.parents) ? rawPayload.parents : []);
   const parentGroups = $derived((rawParentValues.some(Array.isArray)
     ? rawParentValues.flatMap((group) => Array.isArray(group) ? [toSpecialGoodsList(group)] : [])
@@ -68,6 +72,12 @@
     {/each}
   {:else if parents.length}
     <SpecialGoods goods={parents} resolve={resolve} {navigate} label={`${payload.parentCount ?? parents.length}-parent breeding`} showAmounts={false} showChance={false} />
+  {/if}
+  {#if outputSeed}
+    <SpecialGoods goods={[outputSeed]} resolve={resolve} {navigate} label="Result crop" showAmounts={false} showChance={false} />
+  {/if}
+  {#if poolMembers.length}
+    <SpecialGoods goods={poolMembers} resolve={resolve} {navigate} label="Pool members" showAmounts={false} showChance={false} />
   {/if}
   <SpecialGoods goods={drops} resolve={resolve} {navigate} label={payload.poolLabel ?? (payload.poolId ? `Pool · ${payload.poolId}` : 'Crop outputs')} />
 </div>

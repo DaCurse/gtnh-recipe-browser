@@ -42,12 +42,24 @@
   } {
     const raw = value as unknown as Record<string, unknown>;
     const rawNodes = Array.isArray(raw.nodes) ? raw.nodes : [];
-    const nodes = rawNodes.map((candidate, index) => {
+    const nodes: Array<{ id: string; label: string; kind?: string; goodsId?: string; rank?: number; branch?: string }> = [];
+    const seenNodeIds = new Set<string>();
+    rawNodes.forEach((candidate, index) => {
       const node = candidate as Record<string, unknown>;
+      const id = String(node.id ?? `node:${index}`);
+      // Some older NEI Custom Diagram exports repeated a goods node once per
+      // route. The semantic graph uses the goods ID as its identity; merge
+      // those repeated rows before mounting the keyed Svelte block.
+      if (seenNodeIds.has(id)) return;
+      seenNodeIds.add(id);
       const rank = typeof node.rank === 'number' ? node.rank : index;
-      return {
-        id: String(node.id ?? `node:${index}`),
-        label: String(node.label ?? node.goodsId ?? node.id ?? `Node ${index + 1}`),
+      nodes.push({
+        id,
+        label: typeof node.label === 'string'
+          ? node.label
+          : typeof node.goodsId === 'string'
+            ? resolve(node.goodsId)?.name ?? node.goodsId
+            : String(node.id ?? `Node ${index + 1}`),
         goodsId: typeof node.goodsId === 'string' ? node.goodsId : undefined,
         rank,
         kind: typeof node.kind === 'string'
@@ -55,7 +67,7 @@
           : rank === 0
             ? 'source'
             : 'result'
-      };
+      });
     });
     const known = new Set(nodes.map((node) => node.id));
     const edges: Array<{ from: string; to: string; chance?: number; label?: string; branch?: string }> = [];
@@ -117,6 +129,26 @@
     layout = layoutOreProcessingGraph(graph);
     panX = 0;
     panY = 0;
+  });
+
+  // Dense materials (for example the any-iron graph) can be several thousand
+  // pixels tall. Center the initial viewport on the semantic canvas so it
+  // opens with nodes visible instead of the empty top-left corner.
+  $effect(() => {
+    const width = layout.width;
+    const height = layout.height;
+    if (!viewport || width <= 0 || height <= 0) return;
+    const frame = requestAnimationFrame(() => {
+      [panX, panY] = clampOreGraphPan(
+        (viewport.clientWidth - width) / 2,
+        (viewport.clientHeight - height) / 2,
+        width,
+        height,
+        viewport.clientWidth,
+        viewport.clientHeight
+      );
+    });
+    return () => cancelAnimationFrame(frame);
   });
 
   function clampPan(nextX: number, nextY: number): [number, number] {

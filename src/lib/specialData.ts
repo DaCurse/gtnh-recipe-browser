@@ -69,6 +69,7 @@ export interface SpecialDrop extends SpecialGoods {
   estimatedAmount?: number;
   groupId?: string;
   groupLabel?: string;
+  randomAmount?: boolean;
 }
 
 export interface CropSpecialPayload {
@@ -431,8 +432,15 @@ function toSpecialDrop(value: unknown): SpecialDrop | undefined {
         ? object.max
         : undefined,
     weight: typeof object.weight === 'number' ? object.weight : undefined,
-    limit: typeof object.limit === 'number' ? object.limit : undefined,
+    limit: typeof object.limit === 'number'
+      ? object.limit
+      : typeof object.limitedDropCount === 'number'
+        ? object.limitedDropCount
+        : undefined,
     estimatedAmount: typeof object.estimatedAmount === 'number' ? object.estimatedAmount : undefined,
+    groupId: typeof object.group === 'string' && object.group.length > 0 ? object.group : undefined,
+    groupLabel: typeof object.groupLabel === 'string' ? object.groupLabel : undefined,
+    randomAmount: object.randomAmount === true,
     fortune: Array.isArray(object.fortune)
       ? object.fortune.filter((entry): entry is number => typeof entry === 'number').slice(0, 4) as [number, number, number, number]
       : undefined

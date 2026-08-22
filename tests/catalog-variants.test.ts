@@ -94,7 +94,7 @@ describe('catalog variant families', () => {
     expect(resolveCatalogVariant(family!, exactEntries, 2).id).toBe('ichorium');
   });
 
-  it('collapses only reordered NBT duplicates and keeps the richest catalog row', () => {
+  it('collapses visibly identical CropsNH seed NBT rows and keeps the richest catalog row', () => {
     const unscanned = entry({
       id: 'rubyne-unscanned',
       name: 'Rubyne Seeds',
@@ -102,7 +102,8 @@ describe('catalog variant families', () => {
       internalName: 'genericSeed',
       damage: 0,
       nbt: '{crop:"cropsnh:rubyne",scan:1b}',
-      productionCount: 1
+      productionCount: 1,
+      rawTooltip: 'Growth 1 · Gain 1 · Resistance 1'
     });
     const scannedA = entry({
       id: 'rubyne-scanned-a',
@@ -112,23 +113,35 @@ describe('catalog variant families', () => {
       damage: 0,
       nbt: '{re:1b,scan:1b,gr:1b,crop:"cropsnh:rubyne",ga:1b}',
       productionCount: 1,
-      specialProductionCount: 3
+      specialProductionCount: 3,
+      rawTooltip: 'Growth 1 · Gain 1 · Resistance 1'
     });
     const scannedB = entry({
       ...scannedA,
       id: 'rubyne-scanned-b',
       nbt: '{re:1b,scan:1b,crop:"cropsnh:rubyne",gr:1b,ga:1b}',
-      specialProductionCount: 1
+      specialProductionCount: 1,
+      rawTooltip: 'Growth 1 · Gain 1 · Resistance 1'
     });
 
     expect(canonicalVariantNbt(scannedA.nbt)).toBe(canonicalVariantNbt(scannedB.nbt));
     expect(variantNbtLabel(unscanned)).toBe('Analyzed · Stats not recorded');
     expect(variantNbtLabel(scannedA)).toBe('Analyzed · Growth · Gain · Resistance');
     const variants = deduplicateVariantMembers([unscanned, scannedB, scannedA]);
-    expect(variants).toHaveLength(2);
-    expect(variants[0]?.entry.id).toBe(unscanned.id);
-    expect(variants[1]?.entry.id).toBe(scannedA.id);
-    expect(variants[1]?.duplicateCount).toBe(2);
+    expect(variants).toHaveLength(1);
+    expect(variants[0]?.entry.id).toBe(scannedA.id);
+    expect(variants[0]?.duplicateCount).toBe(3);
+
+    const levelTen = entry({
+      id: 'rubyne-level-ten',
+      name: 'Rubyne Seeds',
+      mod: 'cropsnh',
+      internalName: 'genericSeed',
+      damage: 0,
+      nbt: '{crop:"cropsnh:rubyne",scan:1b,gr:10b,ga:10b,re:10b}',
+      rawTooltip: 'Growth 10 · Gain 10 · Resistance 10'
+    });
+    expect(deduplicateVariantMembers([scannedA, levelTen])).toHaveLength(2);
   });
 });
 

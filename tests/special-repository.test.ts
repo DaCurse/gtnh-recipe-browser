@@ -61,13 +61,35 @@ describe('format-4 DatasetRepository special shards', () => {
       goods: [{
         id: goodsId,
         name: 'Fixture',
-        mod: 'Fixture',
+        mod: 'cropsnh',
         kind: 'item',
         tooltip: null,
-        internalName: 'fixture',
+        internalName: 'genericSeed',
         unlocalizedName: 'fixture',
-        nbt: null,
+        nbt: '{crop:"cropsnh:fixture",scan:1b}',
         numericId: 1,
+        searchMask: [],
+        searchable: true,
+        icon: null,
+        productionShards: [],
+        usageShards: [],
+        productionCount: 0,
+        usageCount: 0,
+        specialProductionShards: [specialId],
+        specialUsageShards: [specialId],
+        specialProductionCount: 1,
+        specialUsageCount: 1
+      }, {
+        id: 'i:cropsnh:genericSeed:0:variant',
+        name: 'Fixture Seed',
+        mod: 'cropsnh',
+        kind: 'item',
+        tooltip: null,
+        internalName: 'genericSeed',
+        unlocalizedName: 'fixture.seed',
+        nbt: '{crop:"cropsnh:fixture",scan:1b,gr:1b,ga:1b,re:1b}',
+        numericId: 2,
+        damage: 0,
         searchMask: [],
         searchable: true,
         icon: null,
@@ -156,6 +178,13 @@ describe('format-4 DatasetRepository special shards', () => {
     expect(records).toHaveLength(1);
     expect(records[0]?.lookupId).toBe('special:fixture:recipes');
     expect(progress.at(-1)).toEqual({ loadedShards: 1, totalShards: 1 });
+
+    const variantRecords = await repository.specialFor(
+      'i:cropsnh:genericSeed:0:variant',
+      'recipes',
+      'crop-outputs'
+    );
+    expect(variantRecords).toHaveLength(1);
 
     const controller = new AbortController();
     controller.abort();

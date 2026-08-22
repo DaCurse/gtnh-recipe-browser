@@ -105,11 +105,37 @@ function variantRichness(entry: CatalogEntry): number {
     + (entry.productionCount ?? 0) + (entry.usageCount ?? 0);
 }
 
+/**
+ * CropsNH serializes several seed-stat NBT states for the same visible seed.
+ * The state is useful to the runtime recipe matcher, but the catalog picker
+ * should not show multiple rows when the rendered name and tooltip are the
+ * same (the common case for analyzed seeds such as Rubyne).
+ */
+function cropsNhVisibleVariantKey(entry: CatalogEntry): string | undefined {
+  if (
+    entry.kind !== 'item'
+    || entry.mod.toLocaleLowerCase() !== 'cropsnh'
+    || entry.internalName !== 'genericSeed'
+    || !entry.nbt
+  ) return undefined;
+  const crop = entry.nbt.match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/i)?.[1]?.toLocaleLowerCase();
+  if (!crop) return undefined;
+  return JSON.stringify([
+    'cropsnh-visible-seed',
+    crop,
+    entry.name,
+    entry.mod,
+    entry.internalName,
+    entry.damage,
+    entry.rawTooltip
+  ]);
+}
+
 /** Collapse only serialized-NBT duplicates; all semantically different stacks remain. */
 export function deduplicateVariantMembers(entries: readonly CatalogEntry[]): DeduplicatedVariant[] {
   const groups = new Map<string, { firstIndex: number; entries: CatalogEntry[] }>();
   entries.forEach((entry, index) => {
-    const key = duplicateVariantKey(entry) ?? `unique:${index}`;
+    const key = cropsNhVisibleVariantKey(entry) ?? duplicateVariantKey(entry) ?? `unique:${index}`;
     const group = groups.get(key) ?? { firstIndex: index, entries: [] };
     group.entries.push(entry);
     groups.set(key, group);

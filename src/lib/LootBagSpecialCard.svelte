@@ -13,7 +13,21 @@
   const visibleGroups = $derived(boundedSpecialPage(groups, groupPage, groupPageSize));
   const drops = $derived(toSpecialDrops(payload.drops ?? rawPayload.drops ?? record.outputs ?? []));
   const fortuneChances = $derived(Array.isArray(rawPayload.fortuneChances) ? rawPayload.fortuneChances.filter((value): value is number => typeof value === 'number') : []);
+  const hasPerDropFortune = $derived(
+    drops.some((drop) => drop.fortune?.length === 4)
+      || groups.some((group) => {
+        const value = group as Record<string, unknown>;
+        const alternatives = toSpecialDrops(value.alternatives ?? value.drops ?? []);
+        return alternatives.some((drop) => drop.fortune?.length === 4);
+      })
+  );
   const limits = $derived(rawPayload.limits as Record<string, unknown> | undefined);
+
+  function percentLabel(value: number): string {
+    const percent = value <= 1 ? value * 100 : value;
+    const bounded = Math.min(100, Math.max(0, percent));
+    return `${Number(bounded.toFixed(2))}%`;
+  }
 
   $effect(() => {
     if (groupPage >= groupPageCount) groupPage = groupPageCount - 1;
@@ -39,10 +53,20 @@
     </nav>
   {/if}
   <SpecialGoods goods={drops} resolve={resolve} {navigate} label="Drops" />
-  {#if fortuneChances.length}<p class="special-line"><b>Fortune 0–3 chances</b> {fortuneChances.map((chance) => `${Math.round(chance * 100)}%`).join(' · ')}</p>{/if}
+  {#if fortuneChances.length && !hasPerDropFortune}
+    <section class="fortune-summary" aria-label="Legacy Fortune reference">
+      <b>Legacy Fortune reference</b>
+      <div class="fortune-grid">
+        {#each fortuneChances.slice(0, 4) as chance, index (`fortune:${index}`)}
+          <span><small>Fortune {index}</small><strong>{percentLabel(chance)}</strong></span>
+        {/each}
+      </div>
+      <small class="fortune-note">Older export summary; current drop counts and player effects are unavailable. New records show Fortune 0–3 beside each drop.</small>
+    </section>
+  {/if}
   {#if limits && Object.keys(limits).length}<p class="special-line"><b>Static limits</b> {Object.entries(limits).map(([id, limit]) => `${id}: ${String(limit)}`).join(' · ')}</p>{/if}
 </div>
 
 <style>
-  .loot-card { display:flex; flex-direction:column; gap:10px; }.loot-group { padding:9px; border:1px solid #45494e; border-radius:7px; background:#24272b; }.loot-group.inherited { border-style:dashed; }.loot-group header { display:flex; align-items:center; gap:8px; margin-bottom:7px; color:#d9dcdf; font-size:12px; }.loot-group header span { color:#969ba0; font-size:10px; }.loot-group-pages { display:flex; align-items:center; justify-content:center; gap:9px; }.loot-group-pages button { min-height:38px; padding:0 9px; border:1px solid #50555a; border-radius:6px; background:#292c30; color:#d2d5d8; cursor:pointer; }.loot-group-pages button:disabled { opacity:.4; cursor:default; }.loot-group-pages span { color:#92979c; font-size:11px; }.special-line { margin:0; color:#b8bdc1; font-size:12px; }.special-line b { color:#90959a; font-size:10px; text-transform:uppercase; }
+  .loot-card { display:flex; flex-direction:column; gap:10px; }.loot-group { padding:9px; border:1px solid #45494e; border-radius:7px; background:#24272b; }.loot-group.inherited { border-style:dashed; }.loot-group header { display:flex; align-items:center; gap:8px; margin-bottom:7px; color:#d9dcdf; font-size:12px; }.loot-group header span { color:#969ba0; font-size:10px; }.loot-group-pages { display:flex; align-items:center; justify-content:center; gap:9px; }.loot-group-pages button { min-height:38px; padding:0 9px; border:1px solid #50555a; border-radius:6px; background:#292c30; color:#d2d5d8; cursor:pointer; }.loot-group-pages button:disabled { opacity:.4; cursor:default; }.loot-group-pages span { color:#92979c; font-size:11px; }.special-line { margin:0; color:#b8bdc1; font-size:12px; }.special-line b,.fortune-summary>b { color:#90959a; font-size:10px; text-transform:uppercase; }.fortune-summary { padding:9px; border:1px solid #45494e; border-radius:7px; background:#24272b; }.fortune-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-top:7px; }.fortune-grid span { display:flex; flex-direction:column; gap:3px; padding:6px; border-radius:5px; background:#1c1e21; text-align:center; }.fortune-grid small { color:#999fa4; font-size:10px; }.fortune-grid strong { color:#ffff55; font:13px Minecraft,monospace; text-shadow:2px 2px #342c34; }.fortune-note { display:block; margin-top:7px; color:#92979c; font-size:10px; line-height:1.35; }
 </style>

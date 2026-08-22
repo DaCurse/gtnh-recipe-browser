@@ -118,6 +118,17 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 
+function cropsNhSeedKey(goods: PackedGoods | undefined): string | undefined {
+  if (
+    !goods
+    || goods.kind !== 'item'
+    || goods.mod.toLocaleLowerCase() !== 'cropsnh'
+    || goods.internalName !== 'genericSeed'
+    || !goods.nbt
+  ) return undefined;
+  return goods.nbt.match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/i)?.[1]?.toLocaleLowerCase();
+}
+
 export interface DatasetLoadProgress {
   percent: number;
   stage: string;
@@ -619,8 +630,20 @@ export class DatasetRepository {
     if (fluidScope) return new Set(fluidScope.memberIds);
     if (!this.packedGoods.has(entryId)) return null;
     const productionFallback = this.productionFallbacks.get(entryId);
-    if (view === 'recipes' && productionFallback) return new Set(productionFallback.itemIds);
-    return new Set([entryId]);
+    const result = view === 'recipes' && productionFallback
+      ? new Set(productionFallback.itemIds)
+      : new Set([entryId]);
+    // CropsNH's NEI handlers resolve every literal genericSeed stack through
+    // the crop identity, while the sidecar retains the canonical analyzed
+    // stack. Expand the lookup set at read time so a visible variant cannot
+    // advertise a special tab whose shard then filters to zero records.
+    const crop = cropsNhSeedKey(this.packedGoods.get(entryId));
+    if (crop) {
+      for (const goods of this.packedGoods.values()) {
+        if (cropsNhSeedKey(goods) === crop) result.add(goods.id);
+      }
+    }
+    return result;
   }
 
   private specialShardIds(entryIds: ReadonlySet<string>, view: RecipeView): string[] {

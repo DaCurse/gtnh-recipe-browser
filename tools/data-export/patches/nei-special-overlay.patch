@@ -26,7 +26,7 @@ diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecia
 new file mode 100644
 --- /dev/null
 +++ b/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java
-@@ -0,0 +1,461 @@
+@@ -0,0 +1,467 @@
 +package com.github.dcysteine.nesql.exporter.special;
 +
 +import com.github.dcysteine.nesql.exporter.main.Logger;
@@ -240,12 +240,18 @@ new file mode 100644
 +        }
 +
 +        public void addServiceIcon(String id, String label) {
++            addServiceIcon(id, label, null);
++        }
++
++        public void addServiceIcon(String id, String label, String goodsId) {
 +            requireId(id, "service icon");
 +            requireId(label, "service icon label");
++            if (goodsId != null) requireId(goodsId, "service icon goods ID");
 +            Map<String, Object> icon = new LinkedHashMap<>();
 +            icon.put("id", id);
 +            icon.put("label", label);
 +            icon.put("searchable", false);
++            if (goodsId != null) icon.put("goodsId", goodsId);
 +            serviceIcons.put(id, icon);
 +        }
 +
