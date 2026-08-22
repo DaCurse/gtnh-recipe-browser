@@ -158,42 +158,44 @@
         {@const oreIcon = entry ? oreDictionaryIcon(entry) : undefined}
         {@const fortune = fortuneLabel(item)}
         {#if entry}
-          <button
-            class:ore-dictionary={Boolean(item.oreDictionaryId)}
-            class="special-good"
-            aria-label={`${entry.name}${item.amount !== undefined ? `, ${item.amount}` : ''}`}
-            onpointerenter={(event) => showPointerTooltip(event, item)}
-            onpointermove={movePointerTooltip}
-            onpointerleave={hideTooltip}
-            onfocus={(event) => showFocusTooltip(event, item)}
-            onblur={hideTooltip}
-            onclick={() => inspect(item, 'recipes')}
-            oncontextmenu={(event) => {
-              event.preventDefault();
-              inspect(item, 'usages');
-            }}
-          >
-            <div class="special-slot">
-              {#if oreIcon}
-                <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={56} />
-              {:else}
-                <ItemIcon entry={entry} size={56} />
-              {/if}
-              {#if showAmounts && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
-                <span class="special-amount">{item.minAmount !== undefined || item.maxAmount !== undefined
-                  ? `${item.minAmount ?? item.maxAmount}–${item.maxAmount ?? item.minAmount}`
-                  : displaySpecialAmount(item.amount, entry.kind === 'fluid')}</span>
-              {/if}
-              {#if showChance && item.chance !== undefined}
-                <span class="special-chance">{chanceLabel(item)}</span>
-              {/if}
-              {#if item.weight !== undefined}
-                <span class="special-weight">w {item.weight}</span>
-              {/if}
-            </div>
-            <small>{displayLabel(item, entry)}</small>
+          <div class="special-good-cell">
+            <button
+              class:ore-dictionary={Boolean(item.oreDictionaryId)}
+              class="special-good"
+              aria-label={`${entry.name}${item.amount !== undefined ? `, ${item.amount}` : ''}`}
+              onpointerenter={(event) => showPointerTooltip(event, item)}
+              onpointermove={movePointerTooltip}
+              onpointerleave={hideTooltip}
+              onfocus={(event) => showFocusTooltip(event, item)}
+              onblur={hideTooltip}
+              onclick={() => inspect(item, 'recipes')}
+              oncontextmenu={(event) => {
+                event.preventDefault();
+                inspect(item, 'usages');
+              }}
+            >
+              <div class="special-slot">
+                {#if oreIcon}
+                  <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={56} />
+                {:else}
+                  <ItemIcon entry={entry} size={56} />
+                {/if}
+                {#if showAmounts && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
+                  <span class="special-amount">{item.minAmount !== undefined || item.maxAmount !== undefined
+                    ? `${item.minAmount ?? item.maxAmount}–${item.maxAmount ?? item.minAmount}`
+                    : displaySpecialAmount(item.amount, entry.kind === 'fluid')}</span>
+                {/if}
+                {#if showChance && item.chance !== undefined}
+                  <span class="special-chance">{chanceLabel(item)}</span>
+                {/if}
+                {#if item.weight !== undefined}
+                  <span class="special-weight">w {item.weight}</span>
+                {/if}
+              </div>
+            </button>
+            <small class="special-good-label">{displayLabel(item, entry)}</small>
             {#if fortune}<small class="special-fortune">{fortune}</small>{/if}
-          </button>
+          </div>
         {:else}
           <div class:compact class="special-good unresolved" title={item.goodsId}>
             <span>?</span>
@@ -253,17 +255,18 @@
   .special-goods { min-width:0; }
   .special-goods-label { margin-bottom:6px; color:#8d9297; font-size:10px; font-weight:700; letter-spacing:.65px; text-transform:uppercase; }
   .special-goods-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:7px; min-width:0; }
-  .special-good,.unresolved { position:relative; min-width:64px; min-height:76px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2px; padding:2px; border:1px solid transparent; border-radius:6px; background:transparent; color:#d9dcdf; cursor:pointer; }
+  .special-good-cell { width:72px; min-width:64px; display:flex; flex-direction:column; align-items:center; justify-self:center; gap:2px; text-align:center; }
+  .special-good,.unresolved { position:relative; width:56px; height:56px; min-width:56px; min-height:56px; display:flex; align-items:center; justify-content:center; padding:0; border:1px solid transparent; border-radius:6px; background:transparent; color:#d9dcdf; cursor:pointer; }
   .special-slot { position:relative; width:56px; height:56px; flex:0 0 56px; }
   .special-good.ore-dictionary { border-color:#7565a2; box-shadow:0 0 0 1px #7565a255,0 0 8px #8b78ce66; animation:ore-dictionary-pulse 1.8s ease-in-out infinite; }
   .special-good:hover,.special-good:focus-visible { border-color:#5b6167; background:#303338; filter:brightness(1.08); outline:0; }
-  .special-good small,.unresolved small { width:100%; overflow:hidden; color:#a6abb0; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
-  .special-good .special-fortune { color:#d8ca75; font-size:8px; }
+  .special-good-label,.unresolved small { width:100%; overflow:hidden; color:#a6abb0; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+  .special-good-cell .special-fortune { width:100%; overflow:hidden; color:#d8ca75; font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
   .special-amount,.special-chance { position:absolute; z-index:2; padding:2px 3px; border-radius:3px; background:#17181be8; color:#fff; font:700 11px/1 ui-sans-serif,system-ui,sans-serif; text-shadow:1px 1px #000; }
   .special-amount { right:1px; bottom:1px; }
   .special-chance { left:1px; top:1px; color:#ffff55; font-family:Minecraft,monospace; text-shadow:2px 2px #342c34; }
   .special-weight { right:1px; top:1px; color:#d0d4d8; font:10px Minecraft,monospace; text-shadow:2px 2px #342c34; }
-  .unresolved { justify-content:center; border-color:#4a4d51; color:#b7bbbf; cursor:default; }
+  .unresolved { flex-direction:column; justify-content:center; border-color:#4a4d51; color:#b7bbbf; cursor:default; }
   .unresolved>span { font-size:27px; }
   .special-goods-pages { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px; }
   .special-goods-pages button { min-width:38px; min-height:38px; border:1px solid #50555a; border-radius:6px; background:#292c30; color:#d2d5d8; font-size:20px; cursor:pointer; }
@@ -271,7 +274,7 @@
   .special-goods-pages span { color:#92979c; font-size:11px; }
   .special-goods.compact .special-goods-label { margin-bottom:3px; }
   .special-goods.compact .special-goods-grid { gap:2px; }
-  .special-goods.compact .special-good { min-height:68px; padding:0; }
+  .special-goods.compact .special-good-cell { width:64px; min-width:56px; }
   .special-choice-scrim { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }.special-choice { position:relative; width:min(560px,100%); padding:26px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }.special-choice>p { margin:0 40px 7px 0; color:#a5aaaf; font:12px Minecraft,monospace; letter-spacing:.08em; }.special-choice h2 { margin:0 40px 18px 0; color:#f0f1f2; font:20px Minecraft,monospace; }.special-choice-close { position:absolute; top:8px; right:8px; width:40px; height:40px; border:0; background:none; color:#b3b8bd; font-size:25px; cursor:pointer; }.special-choice-option { display:grid; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; gap:10px; padding:10px; border:1px solid #464a4f; border-radius:8px; background:#292c30; }.special-choice-option+.special-choice-option { margin-top:9px; }.special-choice-option b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.special-choice-option span { display:flex; gap:6px; }.special-choice-option button { min-height:40px; padding:0 9px; border:1px solid #5a5f65; border-radius:6px; background:#35393d; color:#e3e5e7; cursor:pointer; }.special-choice-option button:first-child { background:#d1d4d7; color:#17191b; }
   @keyframes ore-dictionary-pulse { 0%,100% { box-shadow:0 0 0 1px #7565a255,0 0 5px #8b78ce44; } 50% { box-shadow:0 0 0 1px #b49bf4aa,0 0 13px #a58ce999; } }
   @media (prefers-reduced-motion: reduce) { .special-good.ore-dictionary { animation:none; } }
