@@ -57,29 +57,29 @@
 
 <div class="crop-card">
   {#if drops.length}
-    <SpecialGoods goods={drops} resolve={resolve} {navigate} label={payload.poolLabel ?? (payload.poolId ? `Pool · ${payload.poolId}` : 'Crop outputs')} />
+    <SpecialGoods goods={drops} resolve={resolve} {navigate} compact label={payload.poolLabel ?? (payload.poolId ? `Pool · ${payload.poolId}` : 'Crop outputs')} />
   {/if}
   {#if outputSeed}
-    <SpecialGoods goods={[outputSeed]} resolve={resolve} {navigate} label="Result crop" showAmounts={false} showChance={false} />
+    <SpecialGoods goods={[outputSeed]} resolve={resolve} {navigate} compact label="Result crop" showAmounts={false} showChance={false} />
   {/if}
   {#if soils.length}
-    <SpecialGoods goods={soils} resolve={resolve} {navigate} label="Soil block" showAmounts={false} showChance={false} />
+    <SpecialGoods goods={soils} resolve={resolve} {navigate} compact label="Soil block" showAmounts={false} showChance={false} />
   {/if}
   {#if underBlocks.length}
-    <SpecialGoods goods={underBlocks} resolve={resolve} {navigate} label="Subsoil / under block" showAmounts={false} showChance={false} />
+    <SpecialGoods goods={underBlocks} resolve={resolve} {navigate} compact label="Subsoil / under block" showAmounts={false} showChance={false} />
   {/if}
   {#if parentGroups.length > 1}
     {#each parentGroups as group, index (`${index}:${group.length}`)}
-      <SpecialGoods goods={group} resolve={resolve} {navigate} label={`${group.length}-parent breeding`} showAmounts={false} showChance={false} />
+      <SpecialGoods goods={group} resolve={resolve} {navigate} compact label={`${group.length}-parent breeding`} showAmounts={false} showChance={false} />
     {/each}
   {:else if parents.length}
-    <SpecialGoods goods={parents} resolve={resolve} {navigate} label={`${payload.parentCount ?? parents.length}-parent breeding`} showAmounts={false} showChance={false} />
+    <SpecialGoods goods={parents} resolve={resolve} {navigate} compact label={`${payload.parentCount ?? parents.length}-parent breeding`} showAmounts={false} showChance={false} />
   {/if}
   {#if poolMembers.length}
-    <SpecialGoods goods={poolMembers} resolve={resolve} {navigate} label="Pool members" showAmounts={false} showChance={false} />
+    <SpecialGoods goods={poolMembers} resolve={resolve} {navigate} compact label="Pool members" showAmounts={false} showChance={false} />
   {/if}
   {#if machineCatalysts.length}
-    <SpecialGoods goods={machineCatalysts} resolve={resolve} {navigate} label="Machine catalysts" showAmounts={false} showChance={false} />
+    <SpecialGoods goods={machineCatalysts} resolve={resolve} {navigate} compact label="Machine catalysts" showAmounts={false} showChance={false} />
   {/if}
   <div class="crop-notes">
     <div class="special-stat-grid">
@@ -96,10 +96,10 @@
 </div>
 
 <style>
-  .crop-card { display:flex; flex-direction:column; gap:11px; }
-  .crop-notes { display:flex; flex-direction:column; gap:8px; margin-top:2px; padding-top:9px; border-top:1px solid #3b3f44; }
-  .special-stat-grid { display:flex; flex-wrap:wrap; gap:7px; }
-  .special-stat-grid span { display:flex; flex-direction:column; gap:2px; min-width:92px; padding:7px 9px; border:1px solid #45494e; border-radius:6px; background:#292c30; color:#d8dbde; font-size:12px; }
+  .crop-card { display:flex; flex-direction:column; gap:6px; }
+  .crop-notes { display:flex; flex-direction:column; gap:5px; margin-top:1px; padding-top:6px; border-top:1px solid #3b3f44; }
+  .special-stat-grid { display:flex; flex-wrap:wrap; gap:5px; }
+  .special-stat-grid span { display:flex; flex-direction:column; gap:1px; min-width:84px; padding:5px 7px; border:1px solid #45494e; border-radius:6px; background:#292c30; color:#d8dbde; font-size:11px; }
   .special-stat-grid b,.special-line b { color:#90959a; font-size:10px; letter-spacing:.05em; text-transform:uppercase; }
   .special-stat-grid .warning { color:#f0d782; border-color:#675b32; }
   .special-line { margin:0; color:#b8bdc1; font-size:12px; line-height:1.4; }

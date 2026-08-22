@@ -12,7 +12,8 @@
     label,
     pageSize = 12,
     showChance = true,
-    showAmounts = true
+    showAmounts = true,
+    compact = false
   }: {
     goods: readonly SpecialGoods[];
     resolve: SpecialResolver;
@@ -21,6 +22,8 @@
     pageSize?: number;
     showChance?: boolean;
     showAmounts?: boolean;
+    /** Use the denser presentation used by the CropsNH cards. */
+    compact?: boolean;
   } = $props();
 
   let page = $state(0);
@@ -147,7 +150,7 @@
 </script>
 
 {#if goods.length > 0}
-  <section class="special-goods" aria-label={label ?? 'Goods'}>
+  <section class:compact class="special-goods" aria-label={label ?? 'Goods'}>
     {#if label}<div class="special-goods-label">{label}</div>{/if}
     <div class="special-goods-grid">
       {#each visible as item, itemIndex (`${itemIndex}:${item.goodsId}:${item.role ?? ''}:${item.amount ?? ''}`)}
@@ -171,9 +174,9 @@
             }}
           >
             {#if oreIcon}
-              <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={56} />
+              <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={compact ? 44 : 56} />
             {:else}
-              <ItemIcon entry={entry} size={56} />
+              <ItemIcon entry={entry} size={compact ? 44 : 56} />
             {/if}
             {#if showAmounts && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
               <span class="special-amount">{item.minAmount !== undefined || item.maxAmount !== undefined
@@ -190,7 +193,7 @@
             {#if fortune}<small class="special-fortune">{fortune}</small>{/if}
           </button>
         {:else}
-          <div class="special-good unresolved" title={item.goodsId}>
+          <div class:compact class="special-good unresolved" title={item.goodsId}>
             <span>?</span>
             <small>{item.label ?? item.goodsId}</small>
           </div>
@@ -263,6 +266,14 @@
   .special-goods-pages button { min-width:38px; min-height:38px; border:1px solid #50555a; border-radius:6px; background:#292c30; color:#d2d5d8; font-size:20px; cursor:pointer; }
   .special-goods-pages button:disabled { opacity:.4; cursor:default; }
   .special-goods-pages span { color:#92979c; font-size:11px; }
+  .special-goods.compact .special-goods-label { margin-bottom:2px; }
+  .special-goods.compact .special-goods-grid { gap:4px; }
+  .special-goods.compact .special-good { min-width:54px; min-height:60px; gap:1px; padding:1px; }
+  .special-goods.compact .special-good small,.special-goods.compact .unresolved small { font-size:8px; }
+  .special-goods.compact .special-amount { right:2px; bottom:16px; font-size:10px; }
+  .special-goods.compact .special-chance { left:2px; top:2px; font-size:10px; }
+  .special-goods.compact .special-weight { right:2px; top:2px; font-size:9px; }
+  .special-goods.compact .special-fortune { font-size:7px; }
   .special-choice-scrim { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }.special-choice { position:relative; width:min(560px,100%); padding:26px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }.special-choice>p { margin:0 40px 7px 0; color:#a5aaaf; font:12px Minecraft,monospace; letter-spacing:.08em; }.special-choice h2 { margin:0 40px 18px 0; color:#f0f1f2; font:20px Minecraft,monospace; }.special-choice-close { position:absolute; top:8px; right:8px; width:40px; height:40px; border:0; background:none; color:#b3b8bd; font-size:25px; cursor:pointer; }.special-choice-option { display:grid; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; gap:10px; padding:10px; border:1px solid #464a4f; border-radius:8px; background:#292c30; }.special-choice-option+.special-choice-option { margin-top:9px; }.special-choice-option b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.special-choice-option span { display:flex; gap:6px; }.special-choice-option button { min-height:40px; padding:0 9px; border:1px solid #5a5f65; border-radius:6px; background:#35393d; color:#e3e5e7; cursor:pointer; }.special-choice-option button:first-child { background:#d1d4d7; color:#17191b; }
   @keyframes ore-dictionary-pulse { 0%,100% { box-shadow:0 0 0 1px #7565a255,0 0 5px #8b78ce44; } 50% { box-shadow:0 0 0 1px #b49bf4aa,0 0 13px #a58ce999; } }
   @media (prefers-reduced-motion: reduce) { .special-good.ore-dictionary { animation:none; } }
