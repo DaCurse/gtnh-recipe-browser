@@ -2,8 +2,11 @@ package com.github.dcysteine.nesql.exporter.special;
 
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Item;
+import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.nbt.NBTTagList;
 import net.minecraft.util.WeightedRandomChestContent;
+import cpw.mods.fml.common.registry.GameRegistry;
 import net.minecraftforge.common.ChestGenHooks;
 import net.minecraftforge.fluids.FluidStack;
 
@@ -19,6 +22,7 @@ import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -51,6 +55,9 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     private static final Map<String, String> PINNED_MODS = pinnedMods();
     private static final Map<String, List<String>> ORE_SEMANTIC_CACHE = new TreeMap<>();
+    private static final Map<Item, String> ITEM_UNIQUE_NAMES = new IdentityHashMap<>();
+    private static final Map<Item, String> ITEM_REGISTRATION_PROBLEMS = new IdentityHashMap<>();
+    private static final Set<String> SKIPPED_ITEM_DIAGNOSTICS = new TreeSet<>();
 
     private static final String[] PROCESS_MAPS = {
             "maceratorRecipes", "oreWasherRecipes", "thermalCentrifugeRecipes",
@@ -61,6 +68,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     @Override
     public void export(NeiSpecialOverlay.Sink sink) throws Exception {
+        resetItemValidation();
         requirePinnedRuntime();
         registerViewTypes(sink);
 
@@ -116,6 +124,120 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             Throwable cause = error instanceof InvocationTargetException
                     ? ((InvocationTargetException) error).getCause() : error;
             throw new IllegalStateException("NEI special category " + category + " failed: " + cause, cause);
+        }
+    }
+
+    /**
+     * The GT recipe registries contain a small number of synthetic stacks.  A
+     * stack whose Item is not in Forge's live registry cannot be represented by
+     * the base exporter: ItemFactory ultimately calls
+     * {@code GameRegistry.findUniqueIdentifierFor}, which throws from the
+     * UniqueIdentifier parser when the registry name is null.  Validate the
+     * exact same identity before handing a stack to the sink, and keep the
+     * result by Item identity because the recipe tables contain many repeated
+     * metaitem instances.
+     */
+    private static void resetItemValidation() {
+        ORE_SEMANTIC_CACHE.clear();
+        ITEM_UNIQUE_NAMES.clear();
+        ITEM_REGISTRATION_PROBLEMS.clear();
+        SKIPPED_ITEM_DIAGNOSTICS.clear();
+    }
+
+    private static String itemRegistrationProblem(ItemStack stack) {
+        if (stack == null) return "null ItemStack";
+        Item item = stack.getItem();
+        if (item == null) return "ItemStack has a null Item";
+        String cachedProblem = ITEM_REGISTRATION_PROBLEMS.get(item);
+        if (cachedProblem != null) return cachedProblem;
+        if (ITEM_UNIQUE_NAMES.containsKey(item)) return null;
+
+        try {
+            GameRegistry.UniqueIdentifier unique = GameRegistry.findUniqueIdentifierFor(item);
+            if (unique == null) return rememberItemProblem(item, "Forge returned no UniqueIdentifier");
+            if (blank(unique.modId) || blank(unique.name)) {
+                return rememberItemProblem(item, "Forge returned an incomplete UniqueIdentifier");
+            }
+            ITEM_UNIQUE_NAMES.put(item, unique.modId + ":" + unique.name);
+            return null;
+        } catch (NullPointerException error) {
+            String registryName = vanillaRegistryName(item);
+            return rememberItemProblem(item,
+                    "GameRegistry.findUniqueIdentifierFor failed for registry name "
+                            + (registryName == null ? "<null>" : registryName) + ": " + error.getMessage());
+        }
+    }
+
+    private static String rememberItemProblem(Item item, String problem) {
+        ITEM_REGISTRATION_PROBLEMS.put(item, problem);
+        return problem;
+    }
+
+    private static boolean blank(String value) {
+        return value == null || value.trim().length() == 0;
+    }
+
+    private static String retainItemOrNull(NeiSpecialOverlay.Sink sink, ItemStack stack, String context) {
+        String problem = itemRegistrationProblem(stack);
+        if (problem != null) {
+            noteSkippedItem(context, stack, problem);
+            return null;
+        }
+        try {
+            String goodsId = sink.retainItem(stack);
+            if (blank(goodsId)) throw new IllegalStateException("sink returned an empty goods ID");
+            return goodsId;
+        } catch (RuntimeException error) {
+            if (!isUnregisteredItemFailure(error)) throw error;
+            Item item = stack.getItem();
+            String reason = "sink rejected the registered Item while resolving its Forge identity: "
+                    + error.getMessage();
+            if (item != null) rememberItemProblem(item, reason);
+            noteSkippedItem(context, stack, reason);
+            return null;
+        }
+    }
+
+    private static boolean isUnregisteredItemFailure(Throwable error) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            String message = current.getMessage();
+            if (message != null && message.contains("String.split")
+                    && message.contains("string") && message.contains("null")) return true;
+            for (StackTraceElement frame : current.getStackTrace()) {
+                if (frame.getClassName().contains("GameRegistry")
+                        && frame.getMethodName().contains("findUniqueIdentifierFor")) return true;
+            }
+        }
+        return false;
+    }
+
+    private static void noteSkippedItem(String context, ItemStack stack, String problem) {
+        String diagnostic = "[RuntimeSpecialAdapter] Skipping unresolvable ItemStack in " + context
+                + ": " + describeStack(stack) + " (" + problem + ")";
+        if (SKIPPED_ITEM_DIAGNOSTICS.add(diagnostic)) System.err.println(diagnostic);
+    }
+
+    private static String describeStack(ItemStack stack) {
+        if (stack == null) return "<null>";
+        Item item = stack.getItem();
+        if (item == null) return "<null-item> damage=" + stack.getItemDamage();
+        String registryName = vanillaRegistryName(item);
+        String unlocalized;
+        try {
+            unlocalized = item.getUnlocalizedName();
+        } catch (Throwable error) {
+            unlocalized = "<unavailable:" + error.getClass().getSimpleName() + ">";
+        }
+        return (registryName == null ? item.getClass().getName() : registryName)
+                + " (" + unlocalized + ") damage=" + stack.getItemDamage();
+    }
+
+    private static String vanillaRegistryName(Item item) {
+        try {
+            return Item.itemRegistry == null ? null : Item.itemRegistry.getNameForObject(item);
+        } catch (RuntimeException ignored) {
+            // The diagnostic must remain safe even for malformed Item classes.
+            return null;
         }
     }
 
@@ -449,10 +571,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 : new ItemStack((Item) activationCrystal, 1, crystalLevel == 1 ? 0 : 1);
         for (Object meteor : sorted) {
             ItemStack focus = asItemStack(fieldOrNull(meteor, "focusItem"), "meteor focus");
-            String focusId = sink.retainItem(focus);
+            String focusId = retainItemOrNull(sink, focus, "meteor focus");
+            if (focusId == null) continue;
             List<String> goods = new ArrayList<>();
             addAllUnique(goods, Collections.singletonList(focusId));
-            String crystalGoodsId = crystal == null ? null : sink.retainItem(crystal);
+            String crystalGoodsId = crystal == null ? null : retainItemOrNull(sink, crystal, "meteor activation crystal");
             if (crystalGoodsId != null) addAllUnique(goods, Collections.singletonList(crystalGoodsId));
             List<Object> ores = meteorComponents(sink, fieldOrNull(meteor, "ores"), goods,
                     intValue(number(fieldOrNull(meteor, "radius"))),
@@ -507,7 +630,10 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             int groupId = intValue(call(group, "getGroupID"));
             List<String> goods = new ArrayList<>();
             ItemStack bag = asItemStack(callOrNull(group, "createLootBagItemStack"), "loot bag");
-            if (bag != null) addAllUnique(goods, Collections.singletonList(sink.retainItem(bag)));
+            if (bag != null) {
+                String bagId = retainItemOrNull(sink, bag, "loot bag");
+                if (bagId != null) addAllUnique(goods, Collections.singletonList(bagId));
+            }
             List<Object> drops = new ArrayList<>();
             for (Object drop : list(call(group, "getDrops"))) {
                 Map<String, Object> dropPayload = new LinkedHashMap<>();
@@ -521,9 +647,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 dropPayload.put("nbt", stringOrEmpty(callOrNull(drop, "getNBTTag")));
                 ItemStack stack = asItemStack(callOrNull(drop, "getItemStack"), "loot drop");
                 if (stack != null) {
-                    String goodsId = sink.retainItem(stack);
-                    dropPayload.put("goodsId", goodsId);
-                    addAllUnique(goods, Collections.singletonList(goodsId));
+                    String goodsId = retainItemOrNull(sink, stack, "loot drop");
+                    if (goodsId != null) {
+                        dropPayload.put("goodsId", goodsId);
+                        addAllUnique(goods, Collections.singletonList(goodsId));
+                    }
                 }
                 drops.add(dropPayload);
             }
@@ -619,9 +747,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 payload.put("weight", entry.itemWeight);
                 ItemStack stack = entry.theItemId;
                 if (stack != null) {
-                    String goodsId = sink.retainItem(stack);
-                    addAllUnique(goods, Collections.singletonList(goodsId));
-                    payload.put("goodsId", goodsId);
+                    String goodsId = retainItemOrNull(sink, stack, "Forge chest loot " + category);
+                    if (goodsId != null) {
+                        addAllUnique(goods, Collections.singletonList(goodsId));
+                        payload.put("goodsId", goodsId);
+                    }
                 }
                 itemPayload.add(payload);
             }
@@ -663,9 +793,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             entry.put("weight", number(callOrNull(weighted, "getWeight")));
             ItemStack sample = sampleWeighted(weighted, 0x524f475545L);
             if (sample != null) {
-                String goodsId = sink.retainItem(sample);
-                addAllUnique(goods, Collections.singletonList(goodsId));
-                entry.put("goodsId", goodsId);
+                String goodsId = retainItemOrNull(sink, sample, "Roguelike weighted loot");
+                if (goodsId != null) {
+                    addAllUnique(goods, Collections.singletonList(goodsId));
+                    entry.put("goodsId", goodsId);
+                }
             }
             entries.add(entry);
         }
@@ -705,7 +837,8 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                     ItemStack sample = asItemStack(callOrNull(item, "getItemStack", new Random(0x545746)),
                             "Twilight treasure item");
                     if (sample == null) continue;
-                    String goodsId = sink.retainItem(sample);
+                    String goodsId = retainItemOrNull(sink, sample, "Twilight treasure item");
+                    if (goodsId == null) continue;
                     addAllUnique(goods, Collections.singletonList(goodsId));
                     Map<String, Object> itemPayload = new LinkedHashMap<>();
                     itemPayload.put("goodsId", goodsId);
@@ -736,10 +869,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             if (recipeMap == null) continue;
             for (Object recipe : list(call(recipeMap, "getAllRecipes"))) {
                 RecipeInfo info = new RecipeInfo(mapName, recipe,
-                        stacks(fieldOrNull(recipe, "mInputs")),
-                        stacks(fieldOrNull(recipe, "mOutputs")),
-                        fluids(fieldOrNull(recipe, "mFluidInputs")),
-                        fluids(fieldOrNull(recipe, "mFluidOutputs")));
+                        recipeStacks(fieldOrNull(recipe, "mInputs"), mapName + " inputs"),
+                        recipeStacks(fieldOrNull(recipe, "mOutputs"), mapName + " outputs"),
+                        recipeFluids(fieldOrNull(recipe, "mFluidInputs")),
+                        recipeFluids(fieldOrNull(recipe, "mFluidOutputs")));
+                if (!info.hasResolvableItemStacks()) continue;
                 if (!info.hasInputsOrOutputs()) continue;
                 recipes.add(info);
             }
@@ -865,16 +999,68 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             this.fluidOutputs = fluidOutputs;
             this.inputKeys = new ArrayList<>();
             this.outputKeys = new ArrayList<>();
-            for (ItemStack stack : inputs) inputKeys.add("item:" + stableStackName(stack));
-            for (FluidStack stack : fluidInputs) inputKeys.add("fluid:" + fluidName(stack));
-            for (ItemStack stack : outputs) outputKeys.add("item:" + stableStackName(stack));
-            for (FluidStack stack : fluidOutputs) outputKeys.add("fluid:" + fluidName(stack));
+            for (ItemStack stack : inputs) if (stack != null) inputKeys.add("item:" + stableStackName(stack));
+            for (FluidStack stack : fluidInputs) if (stack != null) inputKeys.add("fluid:" + fluidName(stack));
+            for (ItemStack stack : outputs) if (stack != null) outputKeys.add("item:" + stableStackName(stack));
+            for (FluidStack stack : fluidOutputs) if (stack != null) outputKeys.add("fluid:" + fluidName(stack));
             this.semanticMaterials = new TreeSet<>();
             semanticMaterials.addAll(oreSeedMaterials(concatStacks(inputs, outputs)));
         }
 
         private boolean hasInputsOrOutputs() {
             return !inputKeys.isEmpty() || !outputKeys.isEmpty();
+        }
+
+        private boolean hasResolvableItemStacks() {
+            if (!hasCompactSlots(inputs, "item input") || !hasCompactSlots(outputs, "item output")
+                    || !hasCompactFluidSlots(fluidInputs, "fluid input")
+                    || !hasCompactFluidSlots(fluidOutputs, "fluid output")) return false;
+            for (ItemStack stack : inputs) {
+                if (stack == null) continue;
+                if (itemRegistrationProblem(stack) != null) {
+                    noteSkippedItem("GT ore-processing " + mapName + " input", stack,
+                            itemRegistrationProblem(stack));
+                    return false;
+                }
+            }
+            for (ItemStack stack : outputs) {
+                if (stack == null) continue;
+                if (itemRegistrationProblem(stack) != null) {
+                    noteSkippedItem("GT ore-processing " + mapName + " output", stack,
+                            itemRegistrationProblem(stack));
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        /** GT's normal builder removes trailing nulls; interior holes are not chance-indexable. */
+        private boolean hasCompactSlots(List<ItemStack> slots, String context) {
+            boolean nullSeen = false;
+            for (ItemStack stack : slots) {
+                if (stack == null) {
+                    nullSeen = true;
+                } else if (nullSeen) {
+                    noteDiagnostic("[RuntimeSpecialAdapter] Skipping " + mapName + " recipe with interior null "
+                            + context + "; GT chance indexes would be ambiguous");
+                    return false;
+                }
+            }
+            return true;
+        }
+
+        private boolean hasCompactFluidSlots(List<FluidStack> slots, String context) {
+            boolean nullSeen = false;
+            for (FluidStack stack : slots) {
+                if (stack == null) {
+                    nullSeen = true;
+                } else if (nullSeen) {
+                    noteDiagnostic("[RuntimeSpecialAdapter] Skipping " + mapName + " recipe with interior null "
+                            + context + "; GT chance indexes would be ambiguous");
+                    return false;
+                }
+            }
+            return true;
         }
 
         private String sortKey() {
@@ -900,6 +1086,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             int rank = rank(info.mapName);
             List<String> inputGoods = retainItemSlots(sink, info.inputs);
             List<String> outputGoods = retainItemSlots(sink, info.outputs);
+            if (inputGoods == null || outputGoods == null) return;
             List<String> fluidInputGoods = retainFluidSlots(sink, info.fluidInputs);
             List<String> fluidOutputGoods = retainFluidSlots(sink, info.fluidOutputs);
             List<String> from = concat(inputGoods, fluidInputGoods);
@@ -993,8 +1180,10 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         for (Map.Entry<?, ?> entry : ((Map<?, ?>) table).entrySet()) {
             ItemStack stack = asItemStack(entry.getKey(), "crop drop");
             if (stack == null) continue;
+            String goodsId = retainItemOrNull(sink, stack, "crop drop");
+            if (goodsId == null) continue;
             Map<String, Object> drop = new LinkedHashMap<>();
-            drop.put("goodsId", sink.retainItem(stack));
+            drop.put("goodsId", goodsId);
             drop.put("amount", number(entry.getValue()));
             drop.put("chance", number(callOrNull(crop, "getDropChance")));
             result.add(drop);
@@ -1014,7 +1203,8 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         for (Object component : list(value)) {
             ItemStack stack = asItemStack(call(component, "getBlock"), "meteor component");
             if (stack == null) continue;
-            String goodsId = sink.retainItem(stack);
+            String goodsId = retainItemOrNull(sink, stack, "meteor component");
+            if (goodsId == null) continue;
             addAllUnique(goods, Collections.singletonList(goodsId));
             int weight = intValue(call(component, "getWeight"));
             double probability = totalWeight <= 0 ? 0.0 : (weight / (double) totalWeight) * roleRatio;
@@ -1186,7 +1376,10 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         }
         if (ids.isEmpty()) {
             ItemStack base = asItemStack(callOrNull(value, "getBaseStack"), "vending item");
-            if (base != null) ids.add(sink.retainItem(base));
+            if (base != null) {
+                String baseId = retainItemOrNull(sink, base, "vending item");
+                if (baseId != null) ids.add(baseId);
+            }
         }
         payload.put("goodsIds", ids);
         addAllUnique(goods, ids);
@@ -1198,8 +1391,10 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         for (Object stack : list(value)) {
             ItemStack item = asItemStack(stack, "item payload");
             if (item == null) continue;
+            String goodsId = retainItemOrNull(sink, item, "item payload");
+            if (goodsId == null) continue;
             Map<String, Object> payload = new LinkedHashMap<>();
-            payload.put("goodsId", sink.retainItem(item));
+            payload.put("goodsId", goodsId);
             result.add(payload);
         }
         sortMaps(result, "goodsId");
@@ -1233,11 +1428,36 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         for (String prefix : prefixes) {
             Object orePrefix = fieldOrNull(prefixClass, prefix);
             if (orePrefix == null) continue;
-            ItemStack stack = asItemStack(callOrNull(material, "getPart", orePrefix, 1),
-                    "GT material " + materialName(material));
-            if (stack != null) result.add(sink.retainItem(stack));
+            ItemStack stack = materialPart(material, orePrefix, "GT material " + materialName(material));
+            if (stack != null) {
+                String goodsId = retainItemOrNull(sink, stack, "GT material " + materialName(material));
+                if (goodsId != null) result.add(goodsId);
+            }
         }
         return uniqueSorted(result);
+    }
+
+    private static ItemStack materialPart(Object material, Object orePrefix, String context) {
+        try {
+            return asItemStack(callOrNull(material, "getPart", orePrefix, 1), context);
+        } catch (RuntimeException error) {
+            if (!containsCauseText(error, "NO SUCH ITEM")
+                    && !containsCauseText(error, "getCorrespondingItemStack")) throw error;
+            noteDiagnostic("[RuntimeSpecialAdapter] Skipping unavailable " + context + ": "
+                    + error.getMessage());
+            return null;
+        }
+    }
+
+    private static boolean containsCauseText(Throwable error, String text) {
+        for (Throwable current = error; current != null; current = current.getCause()) {
+            if (String.valueOf(current.getMessage()).contains(text)) return true;
+        }
+        return false;
+    }
+
+    private static void noteDiagnostic(String diagnostic) {
+        if (SKIPPED_ITEM_DIAGNOSTICS.add(diagnostic)) System.err.println(diagnostic);
     }
 
     private static String materialName(Object material) {
@@ -1302,7 +1522,8 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         Map<String, Integer> counts = new TreeMap<>();
         for (ItemStack stack : stacks) {
             if (stack == null) continue;
-            String goodsId = sink.retainItem(stack);
+            String goodsId = retainItemOrNull(sink, stack, "GT small-ore potential drop");
+            if (goodsId == null) continue;
             addAllUnique(goods, Collections.singletonList(goodsId));
             Integer count = counts.get(goodsId);
             counts.put(goodsId, count == null ? 1 : count + 1);
@@ -1362,13 +1583,26 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     private static List<String> retainItems(NeiSpecialOverlay.Sink sink, List<ItemStack> stacks) {
         List<String> result = new ArrayList<>();
-        for (ItemStack stack : stacks) if (stack != null) result.add(sink.retainItem(stack));
+        for (ItemStack stack : stacks) {
+            if (stack == null) continue;
+            String goodsId = retainItemOrNull(sink, stack, "item collection");
+            if (goodsId != null) result.add(goodsId);
+        }
         return uniqueSorted(result);
     }
 
     private static List<String> retainItemSlots(NeiSpecialOverlay.Sink sink, List<ItemStack> stacks) {
         List<String> result = new ArrayList<>();
-        for (ItemStack stack : stacks) if (stack != null) result.add(sink.retainItem(stack));
+        for (ItemStack stack : stacks) {
+            if (stack == null) continue;
+            String goodsId = retainItemOrNull(sink, stack, "GT ore-processing recipe slot");
+            // Do not compact a partially retained recipe: the edge builder
+            // indexes chances and amounts by the original slot positions.
+            // Rejecting the whole recipe is the only safe representation when
+            // Forge cannot assign one slot a goods ID.
+            if (goodsId == null) return null;
+            result.add(goodsId);
+        }
         return result;
     }
 
@@ -1393,10 +1627,38 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         return result;
     }
 
+    /** Preserve recipe-array positions so chance indexes cannot shift silently. */
+    private static List<ItemStack> recipeStacks(Object value, String context) {
+        List<Object> entries = arrayOrCollection(value);
+        int end = entries.size();
+        while (end > 0 && entries.get(end - 1) == null) end--;
+        List<ItemStack> result = new ArrayList<>();
+        for (int index = 0; index < end; index++) {
+            result.add(asItemStack(entries.get(index), context + " slot " + index));
+        }
+        return result;
+    }
+
     private static List<FluidStack> fluids(Object value) {
         List<FluidStack> result = new ArrayList<>();
         for (Object valueEntry : arrayOrCollection(value)) {
             if (valueEntry instanceof FluidStack) result.add((FluidStack) valueEntry);
+        }
+        return result;
+    }
+
+    /** Preserve non-trailing fluid slots for the same reason as recipeStacks. */
+    private static List<FluidStack> recipeFluids(Object value) {
+        List<Object> entries = arrayOrCollection(value);
+        int end = entries.size();
+        while (end > 0 && entries.get(end - 1) == null) end--;
+        List<FluidStack> result = new ArrayList<>();
+        for (int index = 0; index < end; index++) {
+            Object entry = entries.get(index);
+            if (entry != null && !(entry instanceof FluidStack)) {
+                throw new IllegalStateException("recipe fluid slot " + index + " is not a FluidStack: " + entry);
+            }
+            result.add((FluidStack) entry);
         }
         return result;
     }
@@ -1416,7 +1678,10 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     private static void addItem(NeiSpecialOverlay.Sink sink, List<String> target, Object value, String context) {
         ItemStack stack = asItemStack(value, context);
-        if (stack != null) addAllUnique(target, Collections.singletonList(sink.retainItem(stack)));
+        if (stack != null) {
+            String goodsId = retainItemOrNull(sink, stack, context);
+            if (goodsId != null) addAllUnique(target, Collections.singletonList(goodsId));
+        }
     }
 
     private static ItemStack asItemStack(Object value, String context) {
@@ -1476,7 +1741,58 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     private static String stableStackName(ItemStack stack) {
         if (stack == null) return "";
-        return stringOrEmpty(stack.getItem().getUnlocalizedName()) + ":" + stack.getItemDamage();
+        Item item = stack.getItem();
+        String uniqueName = item == null ? null : ITEM_UNIQUE_NAMES.get(item);
+        if (uniqueName == null && item != null && itemRegistrationProblem(stack) == null) {
+            uniqueName = ITEM_UNIQUE_NAMES.get(item);
+        }
+        if (uniqueName == null) {
+            String unlocalized;
+            try {
+                unlocalized = item == null ? "null-item" : stringOrEmpty(item.getUnlocalizedName());
+            } catch (Throwable error) {
+                unlocalized = item == null ? "null-item" : item.getClass().getName();
+            }
+            uniqueName = "unregistered:" + unlocalized;
+        }
+        return uniqueName + ":" + stack.getItemDamage() + stableTagName(stack.getTagCompound());
+    }
+
+    private static String stableTagName(NBTTagCompound tag) {
+        if (tag == null || tag.hasNoTags()) return "";
+        return stableTagValue(tag);
+    }
+
+    private static String stableTagValue(NBTBase value) {
+        if (value == null) return "null";
+        if (!(value instanceof NBTTagCompound) && !(value instanceof NBTTagList)) {
+            return String.valueOf(value);
+        }
+        if (value instanceof NBTTagList) {
+            Object raw = fieldOrNull(value, "tagList");
+            StringBuilder listValue = new StringBuilder("[");
+            if (raw instanceof Collection) {
+                boolean first = true;
+                for (Object entry : (Collection<?>) raw) {
+                    if (!first) listValue.append(';');
+                    first = false;
+                    listValue.append(stableTagValue((NBTBase) entry));
+                }
+            }
+            return listValue.append(']').toString();
+        }
+        NBTTagCompound compound = (NBTTagCompound) value;
+        List<String> keys = new ArrayList<>();
+        for (Object key : compound.func_150296_c()) keys.add(String.valueOf(key));
+        Collections.sort(keys);
+        StringBuilder result = new StringBuilder("{");
+        boolean first = true;
+        for (String key : keys) {
+            if (!first) result.append(';');
+            first = false;
+            result.append(key).append('=').append(stableTagValue(compound.getTag(key)));
+        }
+        return result.append('}').toString();
     }
 
     private static String fluidName(FluidStack stack) {
@@ -1501,6 +1817,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         }
         for (ItemStack stack : stacks) {
             if (stack == null) continue;
+            if (itemRegistrationProblem(stack) != null) continue;
             String stackKey = stableStackName(stack);
             List<String> cached = ORE_SEMANTIC_CACHE.get(stackKey);
             if (cached != null) {

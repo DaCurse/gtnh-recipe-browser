@@ -141,6 +141,15 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('SmallOreDrops');
     expect(adapter).toContain('recipeChance');
     expect(adapter).toContain('machineLabel');
+    expect(adapter).toContain('GameRegistry.findUniqueIdentifierFor');
+    expect(adapter).toContain('GameRegistry.findUniqueIdentifierFor failed for registry name');
+    expect(adapter).toContain('Skipping unresolvable ItemStack');
+    expect(adapter).toContain('if (inputGoods == null || outputGoods == null) return;');
+    expect(adapter).toContain('recipeStacks');
+    expect(adapter).toContain('hasCompactSlots');
+    expect(adapter).toContain('stableTagName');
+    expect(adapter).toContain('stableTagValue');
+    expect(adapter).toContain('materialPart');
 
     const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
     expect(prepare).toContain('extractPinnedRuntimeJars');
