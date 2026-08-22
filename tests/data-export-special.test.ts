@@ -133,6 +133,13 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('getIndexedModList');
     expect(adapter).toContain('implements NeiSpecialOverlay.Adapter');
     expect(adapter).toContain('searchText("gregtech", "gt-ore-processing"');
+    expect(adapter).toContain('detectPrefix');
+    expect(adapter).toContain('getTotalListWeight');
+    expect(adapter).toContain('estimatedMeteorAmounts');
+    expect(adapter).toContain('dimensionOverrides');
+    expect(adapter).toContain('SmallOreDrops');
+    expect(adapter).toContain('recipeChance');
+    expect(adapter).toContain('machineLabel');
 
     const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
     expect(prepare).toContain('extractPinnedRuntimeJars');

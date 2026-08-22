@@ -1,6 +1,7 @@
 package com.github.dcysteine.nesql.exporter.special;
 
 import net.minecraft.item.ItemStack;
+import net.minecraft.item.Item;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.util.WeightedRandomChestContent;
 import net.minecraftforge.common.ChestGenHooks;
@@ -26,6 +27,7 @@ import java.util.Map;
 import java.util.Random;
 import java.util.Set;
 import java.util.TreeMap;
+import java.util.TreeSet;
 
 /**
  * Runtime provider for the ten semantic NEI pages used by the browser.
@@ -48,18 +50,13 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
     private static final String CROPS = "com.gtnewhorizon.cropsnh";
 
     private static final Map<String, String> PINNED_MODS = pinnedMods();
+    private static final Map<String, List<String>> ORE_SEMANTIC_CACHE = new TreeMap<>();
 
     private static final String[] PROCESS_MAPS = {
             "maceratorRecipes", "oreWasherRecipes", "thermalCentrifugeRecipes",
             "centrifugeRecipes", "electroMagneticSeparatorRecipes", "chemicalBathRecipes",
             "sifterRecipes", "furnaceRecipes", "blastFurnaceRecipes", "chemicalReactorRecipes",
             "mixerRecipes", "autoclaveRecipes", "extractorRecipes", "fluidExtractionRecipes"
-    };
-
-    private static final String[] ORE_PREFIXES = {
-            "oreNormal", "oreSmall", "crushedCentrifuged", "crushedPurified", "crushed",
-            "rawOre", "shard", "clump", "reduced", "crystalline", "cleanGravel",
-            "dirtyGravel", "dust", "gem", "ingot"
     };
 
     @Override
@@ -183,9 +180,13 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 "gregtech.api.recipe.RecipeMap",
                 "gregtech.api.util.GTRecipe",
                 "gregtech.api.interfaces.IOreMaterial",
+                "gregtech.api.enums.OrePrefixes",
+                "gregtech.common.ores.SmallOreDrops",
                 "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorRegistry",
                 "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorComponent",
                 "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorReagentRegistry",
+                "WayofTime.alchemicalWizardry.api.rituals.Rituals",
+                "WayofTime.alchemicalWizardry.ModItems",
                 "eu.usrv.enhancedlootbags.EnhancedLootBags",
                 "eu.usrv.enhancedlootbags.core.serializer.LootGroups",
                 "eu.usrv.enhancedlootbags.core.serializer.LootGroups$LootGroup",
@@ -355,6 +356,9 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 part.put("role", fieldName.substring(1).toLowerCase(Locale.ROOT));
                 part.put("material", materialName(material));
                 part.put("goodsIds", materialGoods);
+                if (!materialGoods.isEmpty()) part.put("oreGoodsId", materialGoods.get(0));
+                part.put("chance", oreLayerChance(fieldName));
+                part.put("weight", oreLayerWeight(fieldName));
                 layerPayload.add(part);
             }
             Map<String, Object> payload = new LinkedHashMap<>();
@@ -365,11 +369,15 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             payload.put("density", number(call(layer, "getDensity")));
             payload.put("size", number(fieldOrNull(layer, "mSize")));
             payload.put("restrictBiome", stringOrEmpty(fieldOrNull(layer, "mRestrictBiome")));
-            payload.put("dimensions", sortedStrings(callOrNull(layer, "getAllowedDimensions")));
+            List<String> dimensions = sortedStrings(callOrNull(layer, "getAllowedDimensions"));
+            payload.put("dimensions", dimensions);
+            payload.put("dimensionHeights", dimensionHeights(layer, dimensions));
+            payload.put("overrides", dimensionOverrides(layer));
+            payload.put("dimensionChance", dimensionChance(layer, dimensions));
             String slug = slug(name);
             sink.addRecord("vein:" + slug, "gt-ore-vein", "GT Ore Vein: " + name,
                     searchText("gregtech", "gt-ore-vein", name,
-                            join(sortedStrings(callOrNull(layer, "getAllowedDimensions")), " ")), goods,
+                            join(dimensions, " ")), goods,
                     "special:vein:" + slug + ":recipes", "special:vein:" + slug + ":usages",
                     "service:gt-ore", payload);
             count++;
@@ -384,14 +392,26 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         for (Object ore : sorted) {
             String name = string(call(ore, "getName"));
             Object material = call(ore, "getMaterial");
-            List<String> goods = materialGoods(sink, material, "oreSmall", "dust", "ore");
+            List<String> representativeOres = materialGoods(sink, material, "oreSmall", "ore");
+            List<String> representativeDusts = materialGoods(sink, material, "dust", "dustImpure", "crushed",
+                    "gem", "gemChipped", "gemFlawed", "gemFlawless", "gemExquisite");
+            List<String> goods = new ArrayList<>();
+            addAllUnique(goods, representativeOres);
+            addAllUnique(goods, representativeDusts);
+            List<Object> potentialDrops = smallOrePotentialDrops(sink, material, goods);
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("material", materialName(material));
             payload.put("minY", number(fieldOrNull(ore, "mMinY")));
             payload.put("maxY", number(fieldOrNull(ore, "mMaxY")));
             payload.put("amount", number(fieldOrNull(ore, "mAmount")));
             payload.put("biome", stringOrEmpty(fieldOrNull(ore, "mBiome")));
-            payload.put("dimensions", sortedStrings(callOrNull(ore, "getAllowedDimensions")));
+            List<String> dimensions = sortedStrings(callOrNull(ore, "getAllowedDimensions"));
+            payload.put("dimensions", dimensions);
+            payload.put("dimensionHeights", dimensionHeights(ore, dimensions));
+            payload.put("dimensionChance", binaryDimensionChance(dimensions));
+            payload.put("representativeOres", representativeOres);
+            payload.put("representativeDusts", representativeDusts);
+            payload.put("potentialDrops", potentialDrops);
             payload.put("goodsIds", goods);
             String slug = slug(name);
             sink.addRecord("small-ore:" + slug, "gt-small-ore", "GT Small Ore: " + name,
@@ -416,22 +436,61 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             }
         });
         int count = 0;
+        final String ritualId = "AW019FallingTower";
+        Object ritual = ritualDefinition(ritualId);
+        int ritualCost = intValue(call(Class.forName(
+                "WayofTime.alchemicalWizardry.api.rituals.Rituals"), "getCostForActivation", ritualId));
+        int crystalLevel = intValue(fieldOrNull(ritual, "crystalLevel"));
+        Object activationCrystal = staticField("WayofTime.alchemicalWizardry.ModItems", "activationCrystal");
+        if (activationCrystal != null && !(activationCrystal instanceof Item)) {
+            throw new IllegalStateException("Blood Magic activationCrystal is not an Item: " + activationCrystal);
+        }
+        ItemStack crystal = activationCrystal == null ? null
+                : new ItemStack((Item) activationCrystal, 1, crystalLevel == 1 ? 0 : 1);
         for (Object meteor : sorted) {
             ItemStack focus = asItemStack(fieldOrNull(meteor, "focusItem"), "meteor focus");
             String focusId = sink.retainItem(focus);
             List<String> goods = new ArrayList<>();
             addAllUnique(goods, Collections.singletonList(focusId));
+            String crystalGoodsId = crystal == null ? null : sink.retainItem(crystal);
+            if (crystalGoodsId != null) addAllUnique(goods, Collections.singletonList(crystalGoodsId));
+            List<Object> ores = meteorComponents(sink, fieldOrNull(meteor, "ores"), goods,
+                    intValue(number(fieldOrNull(meteor, "radius"))),
+                    number(fieldOrNull(meteor, "fillerChance")).doubleValue(), false);
+            List<Object> filler = meteorComponents(sink, fieldOrNull(meteor, "filler"), goods,
+                    intValue(number(fieldOrNull(meteor, "radius"))),
+                    number(fieldOrNull(meteor, "fillerChance")).doubleValue(), true);
+            List<Object> outputs = new ArrayList<>();
+            outputs.addAll(ores);
+            outputs.addAll(filler);
+            sortMaps(outputs, "goodsId");
+            Map<String, Object> estimatedAmounts = estimatedMeteorAmounts(outputs);
+            List<String> requirements = meteorRequirements(outputs);
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("focusGoodsId", focusId);
+            payload.put("ritual", ritualId);
+            payload.put("ritualName", stringOrEmpty(callOrNull(ritual, "getLocalizedName")));
+            payload.put("lpCost", ritualCost);
             payload.put("cost", number(fieldOrNull(meteor, "cost")));
             payload.put("radius", number(fieldOrNull(meteor, "radius")));
-            payload.put("fillerChance", number(fieldOrNull(meteor, "fillerChance")));
-            payload.put("ores", meteorComponents(sink, fieldOrNull(meteor, "ores"), goods));
-            payload.put("filler", meteorComponents(sink, fieldOrNull(meteor, "filler"), goods));
+            Number fillerChance = number(fieldOrNull(meteor, "fillerChance"));
+            payload.put("fillerChance", fillerChance);
+            payload.put("fillerRatio", fillerChance.doubleValue() / 100.0);
+            payload.put("crystalLevel", crystalLevel);
+            payload.put("crystal", crystalLevel == 1 ? "weak-activation-crystal" : "activation-crystal-level-" + crystalLevel);
+            if (crystalGoodsId != null) payload.put("crystalGoodsId", crystalGoodsId);
+            payload.put("oreTotalWeight", meteorTotalWeight(fieldOrNull(meteor, "ores")));
+            payload.put("fillerTotalWeight", meteorTotalWeight(fieldOrNull(meteor, "filler")));
+            payload.put("ores", ores);
+            payload.put("filler", filler);
+            payload.put("outputs", outputs);
+            payload.put("estimatedAmounts", estimatedAmounts);
+            payload.put("requirements", requirements);
             payload.put("reagents", meteorReagents());
             String slug = slug(focusId);
             sink.addRecord("meteor:" + slug, "meteor-ritual", "Meteor Ritual: " + focusId,
-                    searchText("bloodmagic", "meteor-ritual", focusId), goods,
+                    searchText("bloodmagic", "meteor-ritual", focusId, ritualId,
+                            String.valueOf(crystalLevel)), goods,
                     "special:meteor:" + slug + ":recipes", "special:meteor:" + slug + ":usages",
                     "service:meteor", payload);
             count++;
@@ -671,32 +730,99 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
     }
 
     private static void exportOreProcessing(NeiSpecialOverlay.Sink sink) throws Exception {
-        Map<String, Graph> graphs = new TreeMap<>();
+        List<RecipeInfo> recipes = new ArrayList<>();
         for (String mapName : PROCESS_MAPS) {
             Object recipeMap = staticField("gregtech.api.recipe.RecipeMaps", mapName);
             if (recipeMap == null) continue;
             for (Object recipe : list(call(recipeMap, "getAllRecipes"))) {
-                List<ItemStack> inputs = stacks(fieldOrNull(recipe, "mInputs"));
-                List<ItemStack> outputs = stacks(fieldOrNull(recipe, "mOutputs"));
-                List<FluidStack> fluidInputs = fluids(fieldOrNull(recipe, "mFluidInputs"));
-                List<FluidStack> fluidOutputs = fluids(fieldOrNull(recipe, "mFluidOutputs"));
-                List<String> inputGoods = retainItems(sink, inputs);
-                List<String> outputGoods = retainItems(sink, outputs);
-                List<String> fluidInputGoods = retainFluids(sink, fluidInputs);
-                List<String> fluidOutputGoods = retainFluids(sink, fluidOutputs);
-                if (!isOreProcessingRecipe(inputGoods, outputGoods, fluidInputGoods, fluidOutputGoods)) continue;
-                String root;
-                if (!inputGoods.isEmpty()) root = inputGoods.get(0);
-                else if (!fluidInputGoods.isEmpty()) root = fluidInputGoods.get(0);
-                else if (!outputGoods.isEmpty()) root = outputGoods.get(0);
-                else if (!fluidOutputGoods.isEmpty()) root = fluidOutputGoods.get(0);
-                else continue;
-                Graph graph = graphs.get(root);
-                if (graph == null) { graph = new Graph(root); graphs.put(root, graph); }
-                graph.addRecipe(mapName, inputs, outputs, fluidInputs, fluidOutputs,
-                        inputGoods, outputGoods, fluidInputGoods, fluidOutputGoods, recipe);
+                RecipeInfo info = new RecipeInfo(mapName, recipe,
+                        stacks(fieldOrNull(recipe, "mInputs")),
+                        stacks(fieldOrNull(recipe, "mOutputs")),
+                        fluids(fieldOrNull(recipe, "mFluidInputs")),
+                        fluids(fieldOrNull(recipe, "mFluidOutputs")));
+                if (!info.hasInputsOrOutputs()) continue;
+                recipes.add(info);
             }
         }
+        Collections.sort(recipes, new Comparator<RecipeInfo>() {
+            @Override
+            public int compare(RecipeInfo left, RecipeInfo right) {
+                return left.sortKey().compareTo(right.sortKey());
+            }
+        });
+
+        // A recipe is a seed when GT's own ore-dictionary parser identifies an
+        // actual ore-prefix/material stack.  Numeric gt.metaitem IDs therefore
+        // work exactly like named ore-dictionary entries.  From every seed,
+        // follow item and fluid outputs until no supported map consumes them;
+        // this is the closure that keeps washing/sifting/chemical-bath branches
+        // in the same graph instead of grouping by the first input slot.
+        Set<RecipeInfo> included = new LinkedHashSet<>();
+        Set<String> frontier = new LinkedHashSet<>();
+        for (RecipeInfo info : recipes) {
+            if (!info.semanticMaterials.isEmpty()) {
+                included.add(info);
+                frontier.addAll(info.outputKeys);
+            }
+        }
+        boolean changed = true;
+        while (changed) {
+            changed = false;
+            for (RecipeInfo info : recipes) {
+                if (included.contains(info)) continue;
+                if (!intersects(info.inputKeys, frontier)) continue;
+                included.add(info);
+                if (frontier.addAll(info.outputKeys)) changed = true;
+                else changed = true;
+            }
+        }
+
+        Map<String, Set<String>> materialByKey = new TreeMap<>();
+        boolean labelsChanged = true;
+        while (labelsChanged) {
+            labelsChanged = false;
+            for (RecipeInfo info : included) {
+                Set<String> roots = new TreeSet<>();
+                roots.addAll(info.semanticMaterials);
+                for (String key : concat(info.inputKeys, info.outputKeys)) {
+                    Set<String> known = materialByKey.get(key);
+                    if (known != null) roots.addAll(known);
+                }
+                for (String key : concat(info.inputKeys, info.outputKeys)) {
+                    Set<String> materials = materialByKey.get(key);
+                    if (materials == null) {
+                    materials = new TreeSet<>();
+                        materialByKey.put(key, materials);
+                    }
+                    if (materials.addAll(roots)) labelsChanged = true;
+                }
+            }
+        }
+
+        Map<String, Graph> graphs = new TreeMap<>();
+        for (RecipeInfo info : included) {
+            Set<String> roots = new TreeSet<>();
+            roots.addAll(info.semanticMaterials);
+            if (roots.isEmpty()) {
+                for (String key : concat(info.inputKeys, info.outputKeys)) {
+                    Set<String> known = materialByKey.get(key);
+                    if (known != null) roots.addAll(known);
+                }
+            }
+            if (roots.isEmpty()) continue;
+            // A recipe that genuinely bridges two materials is included in
+            // both semantic graphs; this preserves byproduct branches without
+            // inventing a first-slot root.
+            for (String root : roots) {
+                Graph graph = graphs.get(root);
+                if (graph == null) {
+                    graph = new Graph(root);
+                    graphs.put(root, graph);
+                }
+                graph.addRecipe(sink, info);
+            }
+        }
+
         int count = 0;
         for (Graph graph : graphs.values()) {
             Map<String, Object> payload = graph.payload();
@@ -704,7 +830,8 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             String slug = slug(graph.root);
             sink.addRecord("ore-processing:" + slug, "gt-ore-processing",
                     "GT Ore Processing: " + graph.root,
-                    searchText("gregtech", "gt-ore-processing", graph.root), goods,
+                    searchText("gregtech", "gt-ore-processing", graph.root,
+                            join(new ArrayList<String>(graph.machines), " ")), goods,
                     "special:ore-processing:" + slug + ":recipes",
                     "special:ore-processing:" + slug + ":usages", "service:ore-processing", payload);
             count++;
@@ -712,16 +839,49 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         requireRecords("gt-ore-processing", count);
     }
 
-    private static boolean isOreProcessingRecipe(List<String> inputs, List<String> outputs,
-            List<String> fluidInputs, List<String> fluidOutputs) {
-        for (String id : concat(inputs, outputs)) {
-            String lower = id.toLowerCase(Locale.ROOT);
-            if (lower.startsWith("i:gregtech:") && containsAny(lower,
-                    "ore", "crushed", "dust", "shard", "clump", "reduced", "gravel", "gem")) return true;
+    private static boolean intersects(Collection<String> left, Collection<String> right) {
+        for (String value : left) if (right.contains(value)) return true;
+        return false;
+    }
+
+    private static final class RecipeInfo {
+        private final String mapName;
+        private final Object recipe;
+        private final List<ItemStack> inputs;
+        private final List<ItemStack> outputs;
+        private final List<FluidStack> fluidInputs;
+        private final List<FluidStack> fluidOutputs;
+        private final List<String> inputKeys;
+        private final List<String> outputKeys;
+        private final Set<String> semanticMaterials;
+
+        private RecipeInfo(String mapName, Object recipe, List<ItemStack> inputs,
+                List<ItemStack> outputs, List<FluidStack> fluidInputs, List<FluidStack> fluidOutputs) {
+            this.mapName = mapName;
+            this.recipe = recipe;
+            this.inputs = inputs;
+            this.outputs = outputs;
+            this.fluidInputs = fluidInputs;
+            this.fluidOutputs = fluidOutputs;
+            this.inputKeys = new ArrayList<>();
+            this.outputKeys = new ArrayList<>();
+            for (ItemStack stack : inputs) inputKeys.add("item:" + stableStackName(stack));
+            for (FluidStack stack : fluidInputs) inputKeys.add("fluid:" + fluidName(stack));
+            for (ItemStack stack : outputs) outputKeys.add("item:" + stableStackName(stack));
+            for (FluidStack stack : fluidOutputs) outputKeys.add("fluid:" + fluidName(stack));
+            this.semanticMaterials = new TreeSet<>();
+            semanticMaterials.addAll(oreSeedMaterials(concatStacks(inputs, outputs)));
         }
-        return !fluidInputs.isEmpty() && (!inputs.isEmpty() || !outputs.isEmpty())
-                && (fluidInputs.stream().anyMatch(id -> id.toLowerCase(Locale.ROOT).contains("gregtech"))
-                || fluidOutputs.stream().anyMatch(id -> id.toLowerCase(Locale.ROOT).contains("gregtech")));
+
+        private boolean hasInputsOrOutputs() {
+            return !inputKeys.isEmpty() || !outputKeys.isEmpty();
+        }
+
+        private String sortKey() {
+            return mapName + "|" + join(inputKeys, ",") + "->" + join(outputKeys, ",")
+                    + "|" + number(fieldOrNull(recipe, "mDuration")) + ":"
+                    + number(fieldOrNull(recipe, "mEUt"));
+        }
     }
 
     private static final class Graph {
@@ -729,24 +889,52 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         private final Map<String, Map<String, Object>> nodes = new TreeMap<>();
         private final List<Map<String, Object>> edges = new ArrayList<>();
         private final Set<String> goodsSet = new LinkedHashSet<>();
+        private final Set<String> machines = new TreeSet<>();
         private final List<String> goods = new ArrayList<>();
 
-        private Graph(String root) { this.root = root; addNode(root, 0); }
+        private Graph(String root) {
+            this.root = root;
+        }
 
-        private void addRecipe(String mapName, List<ItemStack> inputs, List<ItemStack> outputs,
-                List<FluidStack> fluidInputs, List<FluidStack> fluidOutputs,
-                List<String> inputGoods, List<String> outputGoods, List<String> fluidInputGoods,
-                List<String> fluidOutputGoods, Object recipe) {
-            int rank = rank(mapName);
-            for (String id : concat(inputGoods, outputGoods, fluidInputGoods, fluidOutputGoods)) addNode(id, rank);
-            for (String from : concat(inputGoods, fluidInputGoods)) {
-                for (String to : concat(outputGoods, fluidOutputGoods)) {
+        private void addRecipe(NeiSpecialOverlay.Sink sink, RecipeInfo info) {
+            int rank = rank(info.mapName);
+            List<String> inputGoods = retainItemSlots(sink, info.inputs);
+            List<String> outputGoods = retainItemSlots(sink, info.outputs);
+            List<String> fluidInputGoods = retainFluidSlots(sink, info.fluidInputs);
+            List<String> fluidOutputGoods = retainFluidSlots(sink, info.fluidOutputs);
+            List<String> from = concat(inputGoods, fluidInputGoods);
+            List<String> to = concat(outputGoods, fluidOutputGoods);
+            for (String id : concat(from, to)) addNode(id, rank);
+            String machine = machineLabel(info.mapName);
+            machines.add(machine);
+            for (int inputIndex = 0; inputIndex < from.size(); inputIndex++) {
+                for (int outputIndex = 0; outputIndex < to.size(); outputIndex++) {
                     Map<String, Object> edge = new LinkedHashMap<>();
-                    edge.put("from", from);
-                    edge.put("to", to);
-                    edge.put("machine", mapName);
-                    edge.put("durationTicks", number(fieldOrNull(recipe, "mDuration")));
-                    edge.put("euPerTick", number(fieldOrNull(recipe, "mEUt")));
+                    edge.put("from", from.get(inputIndex));
+                    edge.put("to", to.get(outputIndex));
+                    edge.put("machine", machine);
+                    edge.put("durationTicks", number(fieldOrNull(info.recipe, "mDuration")));
+                    edge.put("euPerTick", number(fieldOrNull(info.recipe, "mEUt")));
+                    int itemInputCount = info.inputs.size();
+                    int itemOutputCount = info.outputs.size();
+                    boolean inputIsFluid = inputIndex >= itemInputCount;
+                    boolean outputIsFluid = outputIndex >= itemOutputCount;
+                    int actualInputIndex = inputIsFluid ? inputIndex - itemInputCount : inputIndex;
+                    int actualOutputIndex = outputIsFluid ? outputIndex - itemOutputCount : outputIndex;
+                    int inputChance = inputIsFluid
+                            ? recipeChance(info.recipe, "getFluidInputChance", actualInputIndex,
+                                    "mFluidInputChances")
+                            : recipeChance(info.recipe, "getInputChance", actualInputIndex, "mInputChances");
+                    int outputChance = outputIsFluid
+                            ? recipeChance(info.recipe, "getFluidOutputChance", actualOutputIndex,
+                                    "mFluidOutputChances")
+                            : recipeChance(info.recipe, "getOutputChance", actualOutputIndex, "mOutputChances");
+                    edge.put("inputChance", inputChance);
+                    edge.put("outputChance", outputChance);
+                    edge.put("inputProbability", inputChance / 10000.0);
+                    edge.put("probability", outputChance / 10000.0);
+                    if (!inputIsFluid) edge.put("inputAmount", info.inputs.get(actualInputIndex).stackSize);
+                    if (!outputIsFluid) edge.put("outputAmount", info.outputs.get(actualOutputIndex).stackSize);
                     edges.add(edge);
                 }
             }
@@ -769,11 +957,13 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             Collections.sort(goods);
             sortMaps(edges, "from");
             Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("material", root);
             payload.put("nodes", new ArrayList<>(nodes.values()));
             payload.put("edges", edges);
+            payload.put("machines", new ArrayList<>(machines));
             payload.put("stages", Arrays.asList("maceration", "washing", "thermal-centrifuging",
                     "centrifuging", "electromagnetic-separation", "chemical-bath", "sifting", "furnace",
-                    "blast-furnace", "reactor", "mixer", "autoclave"));
+                    "blast-furnace", "reactor", "mixer", "autoclave", "extractor", "fluid-extraction"));
             return payload;
         }
 
@@ -813,17 +1003,28 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         return result;
     }
 
-    private static List<Object> meteorComponents(NeiSpecialOverlay.Sink sink, Object value, List<String> goods)
-            throws Exception {
+    private static List<Object> meteorComponents(NeiSpecialOverlay.Sink sink, Object value, List<String> goods,
+            int radius, double fillerChance, boolean filler) throws Exception {
         List<Object> result = new ArrayList<>();
+        int totalWeight = intValue(call(Class.forName(
+                "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorComponent"),
+                "getTotalListWeight", value));
+        double roleRatio = filler ? fillerChance / 100.0 : 1.0 - (fillerChance / 100.0);
+        double volume = 4.1887903296220665 * Math.pow(radius + 0.5, 3.0);
         for (Object component : list(value)) {
             ItemStack stack = asItemStack(call(component, "getBlock"), "meteor component");
             if (stack == null) continue;
             String goodsId = sink.retainItem(stack);
             addAllUnique(goods, Collections.singletonList(goodsId));
+            int weight = intValue(call(component, "getWeight"));
+            double probability = totalWeight <= 0 ? 0.0 : (weight / (double) totalWeight) * roleRatio;
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("goodsId", goodsId);
-            payload.put("weight", number(call(component, "getWeight")));
+            payload.put("weight", weight);
+            payload.put("chance", probability);
+            payload.put("probability", probability);
+            payload.put("estimatedAmount", (int) Math.ceil(volume * probability));
+            payload.put("role", filler ? "filler" : "ore");
             payload.put("requiredReagents", reagentNames(callOrNull(component, "getRequiredReagents")));
             result.add(payload);
         }
@@ -831,7 +1032,48 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         return result;
     }
 
-    private static List<Object> meteorReagents() {
+    private static int meteorTotalWeight(Object value) throws Exception {
+        return intValue(call(Class.forName(
+                "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorComponent"),
+                "getTotalListWeight", value));
+    }
+
+    private static Map<String, Object> estimatedMeteorAmounts(List<Object> outputs) {
+        Map<String, Double> sums = new TreeMap<>();
+        for (Object value : outputs) {
+            if (!(value instanceof Map)) continue;
+            Object goodsId = ((Map<?, ?>) value).get("goodsId");
+            Object amount = ((Map<?, ?>) value).get("estimatedAmount");
+            if (!(goodsId instanceof String) || !(amount instanceof Number)) continue;
+            Double previous = sums.get(goodsId);
+            sums.put((String) goodsId, (previous == null ? 0.0 : previous) + ((Number) amount).doubleValue());
+        }
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (Map.Entry<String, Double> entry : sums.entrySet()) result.put(entry.getKey(), entry.getValue().intValue());
+        return result;
+    }
+
+    private static List<String> meteorRequirements(List<Object> outputs) {
+        List<String> result = new ArrayList<>();
+        for (Object value : outputs) {
+            if (!(value instanceof Map)) continue;
+            Object required = ((Map<?, ?>) value).get("requiredReagents");
+            if (required instanceof Collection) {
+                for (Object reagent : (Collection<?>) required) result.add(String.valueOf(reagent));
+            }
+        }
+        return uniqueSorted(result);
+    }
+
+    private static Object ritualDefinition(String ritualId) {
+        Object raw = staticField("WayofTime.alchemicalWizardry.api.rituals.Rituals", "ritualMap");
+        if (!(raw instanceof Map)) throw new IllegalStateException("Blood Magic ritualMap is not a map");
+        Object ritual = ((Map<?, ?>) raw).get(ritualId);
+        if (ritual == null) throw new IllegalStateException("Blood Magic ritual is missing: " + ritualId);
+        return ritual;
+    }
+
+    private static List<Object> meteorReagents() throws Exception {
         List<Object> result = new ArrayList<>();
         Object map = staticField("WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorReagentRegistry", "reagents");
         if (map instanceof Map) {
@@ -845,10 +1087,42 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 payload.put("fillerChanceChange", number(fieldOrNull(definition, "fillerChanceChange")));
                 payload.put("rawFillerChanceChange", number(fieldOrNull(definition, "rawFillerChanceChange")));
                 payload.put("disableExplosions", bool(fieldOrNull(definition, "disableExplosions")));
+                payload.put("invertExplosionBlockDamage", bool(fieldOrNull(definition, "invertExplosionBlockDamage")));
+                payload.put("destroysBlocks", bool(callOrNull(Class.forName(
+                        "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorReagentRegistry"),
+                        "doMeteorsDestroyBlocks", Collections.singletonList(reagent))));
+                payload.put("effect", meteorReagentEffect(payload));
+                payload.put("filler", meteorReagentFiller(definition));
                 result.add(payload);
             }
         }
         sortMaps(result, "name");
+        return result;
+    }
+
+    private static String meteorReagentEffect(Map<String, Object> payload) {
+        List<String> effects = new ArrayList<>();
+        effects.add("radius " + payload.get("radiusChange"));
+        effects.add("filler chance " + payload.get("fillerChanceChange"));
+        effects.add("raw filler chance " + payload.get("rawFillerChanceChange"));
+        if (Boolean.TRUE.equals(payload.get("disableExplosions"))) effects.add("disable explosions");
+        if (Boolean.TRUE.equals(payload.get("invertExplosionBlockDamage"))) effects.add("invert explosion damage");
+        if (Boolean.TRUE.equals(payload.get("destroysBlocks"))) effects.add("destroy blocks");
+        return join(effects, ", ");
+    }
+
+    private static List<Object> meteorReagentFiller(Object definition) {
+        List<Object> result = new ArrayList<>();
+        for (Object component : list(fieldOrNull(definition, "filler"))) {
+            ItemStack stack = asItemStack(callOrNull(component, "getBlock"), "meteor reagent filler");
+            if (stack == null) continue;
+            Map<String, Object> value = new LinkedHashMap<>();
+            value.put("stack", stableStackName(stack));
+            value.put("weight", number(callOrNull(component, "getWeight")));
+            value.put("requiredReagents", reagentNames(callOrNull(component, "getRequiredReagents")));
+            result.add(value);
+        }
+        sortMaps(result, "stack");
         return result;
     }
 
@@ -970,6 +1244,95 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         return stringOrEmpty(callOrNull(material, "getInternalName"));
     }
 
+    private static double oreLayerChance(String fieldName) {
+        if ("mSporadic".equals(fieldName)) return 1.0 / 7.0;
+        return 2.0 / 7.0;
+    }
+
+    private static int oreLayerWeight(String fieldName) {
+        return "mSporadic".equals(fieldName) ? 1 : 2;
+    }
+
+    private static Map<String, Object> dimensionChance(Object layer, List<String> dimensions) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        Number weight = number(callOrNull(layer, "getWeight"));
+        for (String dimension : dimensions) {
+            // GTNH 2.9.0-beta-2 has one global mWeight; the dimension gate is
+            // binary. Keep that exact weight beside each allowed dimension so
+            // consumers do not mistake an omitted dimension for zero chance.
+            result.put(dimension, weight);
+        }
+        return result;
+    }
+
+    private static Map<String, Object> binaryDimensionChance(List<String> dimensions) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (String dimension : dimensions) result.put(dimension, 1.0);
+        return result;
+    }
+
+    private static List<Object> dimensionOverrides(Object layer) {
+        List<Object> result = new ArrayList<>();
+        Object raw = fieldOrNull(layer, "dimVeinHeights");
+        if (!(raw instanceof Map)) return result;
+        List<String> dimensions = new ArrayList<>();
+        for (Object key : ((Map<?, ?>) raw).keySet()) dimensions.add(String.valueOf(key));
+        Collections.sort(dimensions);
+        for (String dimension : dimensions) {
+            Object pair = ((Map<?, ?>) raw).get(dimension);
+            Map<String, Object> override = new LinkedHashMap<>();
+            override.put("dimension", dimension);
+            override.put("minY", pairShort(pair, "leftShort", "left"));
+            override.put("maxY", pairShort(pair, "rightShort", "right"));
+            result.add(override);
+        }
+        return result;
+    }
+
+    private static Number pairShort(Object pair, String method, String fallback) {
+        Object value = callOrNull(pair, method);
+        if (value == null) value = callOrNull(pair, fallback);
+        return number(value);
+    }
+
+    private static List<Object> smallOrePotentialDrops(NeiSpecialOverlay.Sink sink, Object material,
+            List<String> goods) throws Exception {
+        Object raw = staticCall("gregtech.common.ores.SmallOreDrops", "getDropList", material);
+        List<ItemStack> stacks = stacks(raw);
+        Map<String, Integer> counts = new TreeMap<>();
+        for (ItemStack stack : stacks) {
+            if (stack == null) continue;
+            String goodsId = sink.retainItem(stack);
+            addAllUnique(goods, Collections.singletonList(goodsId));
+            Integer count = counts.get(goodsId);
+            counts.put(goodsId, count == null ? 1 : count + 1);
+        }
+        int total = 0;
+        for (Integer count : counts.values()) total += count;
+        List<Object> result = new ArrayList<>();
+        for (Map.Entry<String, Integer> entry : counts.entrySet()) {
+            Map<String, Object> drop = new LinkedHashMap<>();
+            drop.put("goodsId", entry.getKey());
+            drop.put("chance", total == 0 ? 0.0 : entry.getValue() / (double) total);
+            drop.put("min", 1);
+            drop.put("max", 1);
+            result.add(drop);
+        }
+        return result;
+    }
+
+    private static Map<String, Object> dimensionHeights(Object layer, List<String> dimensions)
+            throws Exception {
+        Map<String, Object> result = new LinkedHashMap<>();
+        for (String dimension : dimensions) {
+            Map<String, Object> range = new LinkedHashMap<>();
+            range.put("minY", number(call(layer, "getMinY", dimension)));
+            range.put("maxY", number(call(layer, "getMaxY", dimension)));
+            result.put(dimension, range);
+        }
+        return result;
+    }
+
     private static String cropTitle(Object crop, String id) {
         String unlocalized = stringOrEmpty(callOrNull(crop, "getUnlocalizedName"));
         return unlocalized.length() == 0 ? id : unlocalized;
@@ -1003,10 +1366,22 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         return uniqueSorted(result);
     }
 
+    private static List<String> retainItemSlots(NeiSpecialOverlay.Sink sink, List<ItemStack> stacks) {
+        List<String> result = new ArrayList<>();
+        for (ItemStack stack : stacks) if (stack != null) result.add(sink.retainItem(stack));
+        return result;
+    }
+
     private static List<String> retainFluids(NeiSpecialOverlay.Sink sink, List<FluidStack> stacks) {
         List<String> result = new ArrayList<>();
         for (FluidStack stack : stacks) if (stack != null) result.add(sink.retainFluid(stack));
         return uniqueSorted(result);
+    }
+
+    private static List<String> retainFluidSlots(NeiSpecialOverlay.Sink sink, List<FluidStack> stacks) {
+        List<String> result = new ArrayList<>();
+        for (FluidStack stack : stacks) if (stack != null) result.add(sink.retainFluid(stack));
+        return result;
     }
 
     private static List<ItemStack> stacks(Object value) {
@@ -1102,6 +1477,88 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
     private static String stableStackName(ItemStack stack) {
         if (stack == null) return "";
         return stringOrEmpty(stack.getItem().getUnlocalizedName()) + ":" + stack.getItemDamage();
+    }
+
+    private static String fluidName(FluidStack stack) {
+        if (stack == null || stack.getFluid() == null) return "";
+        return stringOrEmpty(stack.getFluid().getName());
+    }
+
+    private static List<ItemStack> concatStacks(List<ItemStack> left, List<ItemStack> right) {
+        List<ItemStack> result = new ArrayList<>();
+        result.addAll(left);
+        result.addAll(right);
+        return result;
+    }
+
+    private static List<String> oreSeedMaterials(List<ItemStack> stacks) {
+        List<String> result = new ArrayList<>();
+        Class<?> prefixes;
+        try {
+            prefixes = Class.forName("gregtech.api.enums.OrePrefixes");
+        } catch (ClassNotFoundException error) {
+            throw new IllegalStateException("GT OrePrefixes API is missing while building ore graph", error);
+        }
+        for (ItemStack stack : stacks) {
+            if (stack == null) continue;
+            String stackKey = stableStackName(stack);
+            List<String> cached = ORE_SEMANTIC_CACHE.get(stackKey);
+            if (cached != null) {
+                result.addAll(cached);
+                continue;
+            }
+            List<String> parsedMaterials = new ArrayList<>();
+            Object parsed = call(prefixes, "detectPrefix", stack);
+            for (Object entry : list(parsed)) {
+                Object prefix = fieldOrNull(entry, "prefix");
+                String prefixName = stringOrEmpty(fieldOrNull(prefix, "name"));
+                if (!isOreSeedPrefix(prefixName)) continue;
+                String material = stringOrEmpty(fieldOrNull(entry, "material"));
+                if (material.length() > 0) parsedMaterials.add(material.toLowerCase(Locale.ROOT));
+            }
+            List<String> immutable = Collections.unmodifiableList(uniqueSorted(parsedMaterials));
+            ORE_SEMANTIC_CACHE.put(stackKey, immutable);
+            result.addAll(immutable);
+        }
+        return uniqueSorted(result);
+    }
+
+    private static boolean isOreSeedPrefix(String prefixName) {
+        return prefixName.startsWith("ore") || prefixName.startsWith("crushed")
+                || prefixName.startsWith("rawOre") || prefixName.startsWith("shard")
+                || prefixName.startsWith("clump") || prefixName.startsWith("reduced")
+                || prefixName.startsWith("crystalline") || prefixName.startsWith("cleanGravel")
+                || prefixName.startsWith("dirtyGravel") || prefixName.startsWith("dust")
+                || prefixName.startsWith("gem");
+    }
+
+    private static int recipeChance(Object recipe, String getter, int index, String fieldName) {
+        Object value = callOrNull(recipe, getter, index);
+        if (value instanceof Number) return ((Number) value).intValue();
+        Object values = fieldOrNull(recipe, fieldName);
+        List<Object> entries = arrayOrCollection(values);
+        if (index >= 0 && index < entries.size() && entries.get(index) instanceof Number) {
+            return ((Number) entries.get(index)).intValue();
+        }
+        return 10000;
+    }
+
+    private static String machineLabel(String mapName) {
+        if ("maceratorRecipes".equals(mapName)) return "maceration";
+        if ("oreWasherRecipes".equals(mapName)) return "washing";
+        if ("thermalCentrifugeRecipes".equals(mapName)) return "thermal-centrifuging";
+        if ("centrifugeRecipes".equals(mapName)) return "centrifuging";
+        if ("electroMagneticSeparatorRecipes".equals(mapName)) return "electromagnetic-separation";
+        if ("chemicalBathRecipes".equals(mapName)) return "chemical-bath";
+        if ("sifterRecipes".equals(mapName)) return "sifting";
+        if ("furnaceRecipes".equals(mapName)) return "furnace";
+        if ("blastFurnaceRecipes".equals(mapName)) return "blast-furnace";
+        if ("chemicalReactorRecipes".equals(mapName)) return "reactor";
+        if ("mixerRecipes".equals(mapName)) return "mixer";
+        if ("autoclaveRecipes".equals(mapName)) return "autoclave";
+        if ("extractorRecipes".equals(mapName)) return "extractor";
+        if ("fluidExtractionRecipes".equals(mapName)) return "fluid-extraction";
+        return mapName;
     }
 
     private static Object construct(String className) throws Exception {
