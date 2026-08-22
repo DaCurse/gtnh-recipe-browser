@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-08-22T18:25:09.469Z",
+  "generatedAt": "2026-08-22T18:33:42.237Z",
   "versions": [
     {
-      "datasetId": "2.9.0-beta-2-r4ede96d62d3b",
+      "datasetId": "2.9.0-beta-2-r3c5a3483575d",
       "gtnhVersion": "2.9.0-beta-2",
-      "revision": "4ede96d62d3b",
-      "publishedAt": "2026-08-22T18:25:09.469Z",
-      "packManifestUrl": "./data/2.9.0-beta-2-r4ede96d62d3b/pack-manifest.json",
-      "catalogBytes": 8609976,
-      "offlineBytes": 58538150
+      "revision": "3c5a3483575d",
+      "publishedAt": "2026-08-22T18:33:42.237Z",
+      "packManifestUrl": "./data/2.9.0-beta-2-r3c5a3483575d/pack-manifest.json",
+      "catalogBytes": 8609988,
+      "offlineBytes": 58542134
     },
     {
       "datasetId": "2.8.0-r6d351536",

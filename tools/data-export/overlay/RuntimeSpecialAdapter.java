@@ -1542,7 +1542,12 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 Object enumLevel = Enum.valueOf((Class) Class.forName(
                         "eu.usrv.enhancedlootbags.core.LootGroupsHandler$FortuneLevel"), level);
                 Object value = call(handler, "calcPercentageFromWeight", drop, group, enumLevel);
-                result.add(value instanceof Number ? ((Number) value).doubleValue() : 0.0);
+                // calcPercentageFromWeight returns a human-facing percentage
+                // (for example 1.44), while the sidecar contract stores all
+                // probabilities as fractions (0.0144). Normalize here so a
+                // literal one-percent drop cannot be confused with 100% by
+                // clients that accept both legacy forms.
+                result.add(value instanceof Number ? ((Number) value).doubleValue() / 100.0 : 0.0);
             } catch (Throwable error) {
                 throw new IllegalStateException("Could not evaluate EnhancedLootBags fortune level " + level, error);
             }
