@@ -325,38 +325,94 @@ function validateSpecialOreDictionaries(
   }
 }
 
-function specialShardsForGoods(
-  goodsId: string,
-  records: readonly SpecialRecord[],
-  shardByRecordId: Map<string, string>,
-  direction: 'recipes' | 'usages'
-): string[] {
-  return records
-    .filter((record) => specialGoodsForDirection(record, direction).includes(goodsId))
-    .map((record) => shardByRecordId.get(record.id))
-    .filter((id): id is string => id !== undefined)
-    .filter((id, index, all) => all.indexOf(id) === index)
-    .sort();
+export interface SpecialGoodsDirectionIndex {
+  shardIds: string[];
+  lookupIds: string[];
+  recordCount: number;
 }
 
-function specialRecordCountForGoods(
-  goodsId: string,
-  records: readonly SpecialRecord[],
-  direction: 'recipes' | 'usages'
-): number {
-  return records.filter((record) => specialGoodsForDirection(record, direction).includes(goodsId)).length;
+export interface SpecialGoodsIndexEntry {
+  recipes: SpecialGoodsDirectionIndex;
+  usages: SpecialGoodsDirectionIndex;
 }
 
-function specialLookupIdsForGoods(
-  goodsId: string,
+interface MutableSpecialGoodsDirectionIndex {
+  shardIds: Set<string>;
+  lookupIds: Set<string>;
+  recordCount: number;
+}
+
+interface MutableSpecialGoodsIndexEntry {
+  recipes: MutableSpecialGoodsDirectionIndex;
+  usages: MutableSpecialGoodsDirectionIndex;
+}
+
+function mutableDirectionIndex(): MutableSpecialGoodsDirectionIndex {
+  return { shardIds: new Set(), lookupIds: new Set(), recordCount: 0 };
+}
+
+function mutableGoodsIndexEntry(): MutableSpecialGoodsIndexEntry {
+  return { recipes: mutableDirectionIndex(), usages: mutableDirectionIndex() };
+}
+
+function finalizeSpecialDirectionIndex(
+  index: MutableSpecialGoodsDirectionIndex
+): SpecialGoodsDirectionIndex {
+  return {
+    shardIds: [...index.shardIds].sort(),
+    lookupIds: [...index.lookupIds].sort(),
+    recordCount: index.recordCount
+  };
+}
+
+/**
+ * Build all special per-goods catalog projections once, before catalog goods
+ * are mapped.  The old implementation rescanned every record (and its
+ * payload) four times for every item/fluid, which made a large live catalog
+ * needlessly quadratic in the number of special records.
+ */
+export function buildSpecialGoodsIndex(
   records: readonly SpecialRecord[],
-  direction: 'recipes' | 'usages'
-): string[] {
-  return records
-    .filter((record) => specialGoodsForDirection(record, direction).includes(goodsId))
-    .map((record) => direction === 'recipes' ? record.recipesLookupId : record.usagesLookupId)
-    .filter((id, index, all) => all.indexOf(id) === index)
-    .sort();
+  shardByRecordId: ReadonlyMap<string, string>
+): ReadonlyMap<string, SpecialGoodsIndexEntry> {
+  const mutable = new Map<string, MutableSpecialGoodsIndexEntry>();
+  for (const record of records) {
+    const directions = [
+      {
+        name: 'recipes' as const,
+        goodsIds: specialGoodsForDirection(record, 'recipes'),
+        lookupId: record.recipesLookupId
+      },
+      {
+        name: 'usages' as const,
+        goodsIds: specialGoodsForDirection(record, 'usages'),
+        lookupId: record.usagesLookupId
+      }
+    ];
+    const shardId = shardByRecordId.get(record.id);
+    for (const direction of directions) {
+      for (const goodsId of direction.goodsIds) {
+        let entry = mutable.get(goodsId);
+        if (!entry) {
+          entry = mutableGoodsIndexEntry();
+          mutable.set(goodsId, entry);
+        }
+        const projection = entry[direction.name];
+        projection.recordCount++;
+        projection.lookupIds.add(direction.lookupId);
+        if (shardId !== undefined) projection.shardIds.add(shardId);
+      }
+    }
+  }
+  return new Map(
+    [...mutable.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([goodsId, entry]) => [
+      goodsId,
+      {
+        recipes: finalizeSpecialDirectionIndex(entry.recipes),
+        usages: finalizeSpecialDirectionIndex(entry.usages)
+      }
+    ])
+  );
 }
 
 function buildCatalog(
@@ -366,21 +422,13 @@ function buildCatalog(
   specialShardByRecordId: Map<string, string>
 ) {
   const specialRecords = specialData?.records ?? [];
+  const specialGoodsIndex = buildSpecialGoodsIndex(specialRecords, specialShardByRecordId);
   const allGoods = [...repository.items, ...repository.fluids];
   const goods = allGoods.map((entry) => {
     const { productionRecipeIds, usageRecipeIds, ...catalogEntry } = entry;
-    const specialProductionShards = specialShardsForGoods(
-      entry.id,
-      specialRecords,
-      specialShardByRecordId,
-      'recipes'
-    );
-    const specialUsageShards = specialShardsForGoods(
-      entry.id,
-      specialRecords,
-      specialShardByRecordId,
-      'usages'
-    );
+    const special = specialGoodsIndex.get(entry.id);
+    const specialProduction = special?.recipes;
+    const specialUsage = special?.usages;
     return {
       ...catalogEntry,
       icon: iconReference(entry.iconId),
@@ -388,12 +436,12 @@ function buildCatalog(
       usageShards: uniqueShards(usageRecipeIds, shardByRecipeId, `${entry.id} usage`),
       productionCount: productionRecipeIds.length,
       usageCount: usageRecipeIds.length,
-      specialProductionShards,
-      specialUsageShards,
-      specialProductionLookupIds: specialLookupIdsForGoods(entry.id, specialRecords, 'recipes'),
-      specialUsageLookupIds: specialLookupIdsForGoods(entry.id, specialRecords, 'usages'),
-      specialProductionCount: specialRecordCountForGoods(entry.id, specialRecords, 'recipes'),
-      specialUsageCount: specialRecordCountForGoods(entry.id, specialRecords, 'usages')
+      specialProductionShards: specialProduction?.shardIds ?? [],
+      specialUsageShards: specialUsage?.shardIds ?? [],
+      specialProductionLookupIds: specialProduction?.lookupIds ?? [],
+      specialUsageLookupIds: specialUsage?.lookupIds ?? [],
+      specialProductionCount: specialProduction?.recordCount ?? 0,
+      specialUsageCount: specialUsage?.recordCount ?? 0
     };
   });
   return {
