@@ -483,7 +483,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             payload.put("poolName", poolName);
             payload.put("members", memberIds);
             payload.put("memberSeeds", memberSeeds);
-            sink.addRecord("pool:" + slug, "mutation-pool", "Mutation Pool: " + poolName,
+            sink.addRecord("pool:" + slug, "mutation-pool", poolName,
                     searchText("cropsnh", "mutation-pool", poolName, join(memberIds, " ")), goods,
                     "special:pool:" + slug + ":recipes", "special:pool:" + slug + ":usages",
                     "service:crop", payload);

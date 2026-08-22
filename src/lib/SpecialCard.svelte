@@ -22,6 +22,12 @@
   const title = $derived(specialTitle(record, category, resolve));
 
   function specialTitle(value: SpecialRecord, valueCategory: string, resolver: SpecialResolver): string {
+    if (valueCategory === 'cropPool') {
+      // Older sidecars included this category label in every card title. The
+      // tab already supplies that context, so keep only the pool's name while
+      // remaining compatible with those packs.
+      return value.title.replace(/^Mutation Pool:\s*/i, '');
+    }
     if (valueCategory !== 'cropBreeding') return value.title;
     const payload = value.payload as unknown as Record<string, unknown>;
     const outputSeed = toSpecialGoods(payload.outputSeed);
