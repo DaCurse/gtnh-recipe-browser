@@ -247,6 +247,10 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('getTotalListWeight');
     expect(adapter).toContain('estimatedMeteorAmounts');
     expect(adapter).toContain('dimensionOverrides');
+    expect(adapter).toContain('dimensionDisplayGoods');
+    expect(adapter).toContain('getDimAbbreviatedName');
+    expect(adapter).toContain('oreVeinToProbabilityInDimension');
+    expect(adapter).toContain('retainMaterialOreDictionary');
     expect(adapter).toContain('getSeedItem');
     expect(adapter).toContain('SeedStats", "DEFAULT_ANALYZED"');
     expect(adapter).toContain('StatCollector.translateToLocal');

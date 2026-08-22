@@ -7,7 +7,7 @@
   import VeinSpecialCard from './VeinSpecialCard.svelte';
   import VendingSpecialCard from './VendingSpecialCard.svelte';
   import WorldgenLootSpecialCard from './WorldgenLootSpecialCard.svelte';
-  import { humanizeSpecialName, specialCategory, toSpecialGoods, type SpecialRecord, type SpecialResolver, type SpecialViewType } from './specialData';
+  import { humanizeGtOreName, humanizeSpecialName, specialCategory, toSpecialGoods, type SpecialRecord, type SpecialResolver, type SpecialViewType } from './specialData';
   import type { RecipeView } from './types';
 
   let { record, viewType, resolve, navigate }: {
@@ -34,6 +34,18 @@
       if (seedEntry?.name) return seedEntry.name.replace(/\s+Seeds?$/i, '');
       const cropId = typeof payload.cropId === 'string' ? payload.cropId : value.title;
       return humanizeSpecialName(cropId);
+    }
+    if (valueCategory === 'gtOreVein' || valueCategory === 'gtSmallOre') {
+      const payload = value.payload as unknown as Record<string, unknown>;
+      const material = typeof payload.material === 'string' ? payload.material : undefined;
+      if (valueCategory === 'gtSmallOre' && material) {
+        return `Small ${humanizeGtOreName(material)} Ore`;
+      }
+      const source = typeof payload.veinName === 'string' ? payload.veinName : value.title;
+      const name = humanizeGtOreName(source);
+      return valueCategory === 'gtSmallOre' && !/\bore$/i.test(name)
+        ? `Small ${name} Ore`
+        : name;
     }
     if (valueCategory !== 'cropBreeding') return value.title;
     const payload = value.payload as unknown as Record<string, unknown>;

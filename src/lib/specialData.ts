@@ -99,19 +99,35 @@ export interface CropSpecialPayload {
 
 export interface VeinSpecialPayload {
   veinName?: string;
+  /** Small-ore material and amount fields use the same renderer contract. */
+  material?: string;
+  amount?: number;
+  biome?: string;
   layers?: Array<{
     name?: string;
+    role?: string;
+    material?: string;
+    goodsIds?: string[];
+    oreDictionaryId?: string;
+    oreDictionary?: string;
     minHeight?: number;
     maxHeight?: number;
     weight?: number;
+    chance?: number;
     ores?: SpecialGoods[];
   }>;
   minHeight?: number;
   maxHeight?: number;
   weight?: number;
   dimensions?: Array<string | number>;
+  /** Runtime-retained gtneioreplugin dimension-display item IDs by dimension. */
+  dimensionGoodsIds?: Record<string, string>;
+  /** Per-dimension generation height overrides from GT's vein registry. */
+  dimensionHeights?: Record<string, { minY?: number; maxY?: number } | string>;
   dimensionChance?: Record<string, number>;
   ores?: SpecialGoods[];
+  representativeOres?: Array<string | SpecialGoods>;
+  representativeDusts?: Array<string | SpecialGoods>;
   overrides?: string[];
   potentialDrops?: SpecialDrop[];
 }
@@ -350,12 +366,139 @@ export function humanizeSpecialName(value: string): string {
     .replace(/^Mutation Pool:\s*/i, '')
     .replace(/^cropsnh_(?:crops|mutationPool)\./i, '')
     .replace(/^cropsnh:/i, '')
-    .replace(/[_-]+/g, ' ')
+    .replace(/[._-]+/g, ' ')
     .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
     .replace(/\s+/g, ' ')
     .trim();
   if (!candidate) return value;
   return candidate.replace(/(^|\s)([a-z])/g, (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
+}
+
+/**
+ * GT5-Unofficial names veins and small ores with registry keys such as
+ * `ore.mix.copper` and `ore.small.copper`.  NEI's GT Ore Plugin removes that
+ * registry prefix and displays the localized material name, so keep the
+ * browser's legacy sidecar titles readable even when no localized title was
+ * emitted by the exporter.
+ */
+export function humanizeGtOreName(value: string): string {
+  const candidate = value.trim()
+    .replace(/^GT\s+(?:Small\s+)?Ore(?:\s+Vein)?\s*:\s*/i, '')
+    .replace(/^ore\.(?:mix|small)\./i, '')
+    .replace(/^ore(?:Mix|Small)[._-]/i, '')
+    .trim();
+  return humanizeSpecialName(candidate || value);
+}
+
+/**
+ * GT NEI's dimension-display item is keyed by the plugin's abbreviation, not
+ * by the full/internal world name carried in the special sidecar.  New
+ * exports provide `dimensionGoodsIds` directly; this registry-backed fallback
+ * keeps the published pre-rework pack correct without inventing an icon.
+ */
+const GT_DIMENSION_DISPLAY_ABBREVIATIONS: Record<string, string> = {
+  '-1': 'Ne',
+  '0': 'Ow',
+  '1': 'ED',
+  an: 'An',
+  anubis: 'An',
+  asteroids: 'As',
+  barnardc: 'BC',
+  barnarde: 'BE',
+  barnardf: 'BF',
+  barnarda2: 'BC',
+  barnarda4: 'BE',
+  barnarda5: 'BF',
+  alphacentauribb: 'CB',
+  centauribb: 'CB',
+  callisto: 'Ca',
+  ceres: 'Ce',
+  t10deepdark: 'DD',
+  underdark: 'DD',
+  dimensiondarkworld: 'Eg',
+  toxic: 'Eg',
+  toxiceverglades: 'Eg',
+  deimos: 'De',
+  farendasteroids: 'EA',
+  endasteroid: 'EA',
+  theend: 'ED',
+  end: 'ED',
+  ed: 'ED',
+  enceladus: 'En',
+  europa: 'Eu',
+  ganymede: 'Ga',
+  ganymed: 'Ga',
+  haumea: 'Ha',
+  horus: 'Ho',
+  io: 'Io',
+  iojupiter: 'Io',
+  kuiperbelt: 'KB',
+  asteroidbeltmehen: 'MB',
+  mehenbelt: 'MB',
+  makemake: 'MM',
+  mars: 'Ma',
+  mercury: 'Me',
+  maahes: 'Mh',
+  miranda: 'Mi',
+  moon: 'Mo',
+  nether: 'Ne',
+  ne: 'Ne',
+  neper: 'Np',
+  oberon: 'Ob',
+  overworld: 'Ow',
+  ow: 'Ow',
+  phobos: 'Ph',
+  pluto: 'Pl',
+  proteus: 'Pr',
+  ross128ba: 'Ra',
+  ross128b: 'Rb',
+  seth: 'Se',
+  tcetie: 'TE',
+  twilight: 'TF',
+  twilightforest: 'TF',
+  tf: 'TF',
+  titan: 'Ti',
+  triton: 'Tr',
+  vegab: 'VB',
+  vega1: 'VB',
+  venus: 'Ve'
+};
+
+function normalizedDimensionKey(value: string): string {
+  return value.toLocaleLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+const GT_DIMENSION_DISPLAY_ORDER = [
+  'Ow', 'Ne', 'TF', 'ED', 'EA', 'Eg', 'Mo', 'De', 'Ma', 'Ph', 'As', 'Ca', 'Ce', 'Eu', 'Ga',
+  'Rb', 'Io', 'Me', 'Ve', 'En', 'Mi', 'Ob', 'Ti', 'Ra', 'Pr', 'Tr', 'Ha', 'KB', 'MM', 'Pl',
+  'BC', 'BE', 'BF', 'CB', 'TE', 'VB', 'An', 'Ho', 'Mh', 'MB', 'Np', 'Se', 'DD'
+] as const;
+
+export function gtDimensionDisplayOrder(dimension: string): number {
+  const rawKey = dimension.trim().toLocaleLowerCase();
+  const abbreviation = GT_DIMENSION_DISPLAY_ABBREVIATIONS[rawKey]
+    ?? GT_DIMENSION_DISPLAY_ABBREVIATIONS[normalizedDimensionKey(dimension)];
+  const index = abbreviation
+    ? GT_DIMENSION_DISPLAY_ORDER.indexOf(abbreviation as typeof GT_DIMENSION_DISPLAY_ORDER[number])
+    : -1;
+  return index < 0 ? Number.MAX_SAFE_INTEGER : index;
+}
+
+export function gtDimensionDisplayGoodsId(
+  dimension: string,
+  resolve: SpecialResolver,
+  explicitId?: string
+): string | undefined {
+  const rawDimensionKey = dimension.trim().toLocaleLowerCase();
+  const abbreviation = GT_DIMENSION_DISPLAY_ABBREVIATIONS[rawDimensionKey]
+    ?? GT_DIMENSION_DISPLAY_ABBREVIATIONS[normalizedDimensionKey(dimension)];
+  const candidates = [
+    explicitId,
+    dimension.startsWith('i:') ? dimension : undefined,
+    `i:gtneioreplugin:blockDimensionDisplay_${dimension}:0`,
+    `i:gtneioreplugin:blockDimensionDisplay_${abbreviation ?? ''}:0`
+  ].filter((candidate): candidate is string => Boolean(candidate));
+  return candidates.find((candidate) => resolve(candidate)?.kind === 'item');
 }
 
 export function specialSearchText(record: SpecialRecord): string {
@@ -410,7 +553,10 @@ function canonicalSpecialGoodsId(value: string): string {
 export function toSpecialGoods(value: unknown): SpecialGoods | undefined {
   if (typeof value === 'string') {
     const goodsId = canonicalSpecialGoodsId(value);
-    return { goodsId, label: goodsId };
+    // Resolve the catalog name at render time. Storing the opaque ID as a
+    // label made legacy special cards expose `i:mod:item:meta` instead of the
+    // same display name used everywhere else in the browser.
+    return { goodsId };
   }
   const object = objectValue(value);
   if (!object) return undefined;

@@ -371,6 +371,8 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 "gregtech.api.interfaces.IOreMaterial",
                 "gregtech.api.enums.OrePrefixes",
                 "gregtech.common.ores.SmallOreDrops",
+                "gtneioreplugin.plugin.item.ItemDimensionDisplay",
+                "gtneioreplugin.util.DimensionHelper",
                 "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorRegistry",
                 "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorComponent",
                 "WayofTime.alchemicalWizardry.common.summoning.meteor.MeteorReagentRegistry",
@@ -576,6 +578,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 part.put("material", materialName(material));
                 part.put("goodsIds", materialGoods);
                 if (!materialGoods.isEmpty()) part.put("oreGoodsId", materialGoods.get(0));
+                String oreDictionaryId = retainMaterialOreDictionary(sink, materialName(material), goods);
+                if (oreDictionaryId != null) {
+                    part.put("oreDictionaryId", oreDictionaryId);
+                    part.put("oreDictionary", "ore" + materialName(material));
+                }
                 part.put("chance", oreLayerChance(fieldName));
                 part.put("weight", oreLayerWeight(fieldName));
                 layerPayload.add(part);
@@ -591,6 +598,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             List<String> dimensions = sortedStrings(callOrNull(layer, "getAllowedDimensions"));
             payload.put("dimensions", dimensions);
             payload.put("dimensionHeights", dimensionHeights(layer, dimensions));
+            payload.put("dimensionGoodsIds", dimensionDisplayGoods(sink, dimensions, goods));
             payload.put("overrides", dimensionOverrides(layer));
             payload.put("dimensionChance", dimensionChance(layer, dimensions));
             String slug = slug(name);
@@ -627,7 +635,13 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             List<String> dimensions = sortedStrings(callOrNull(ore, "getAllowedDimensions"));
             payload.put("dimensions", dimensions);
             payload.put("dimensionHeights", dimensionHeights(ore, dimensions));
+            payload.put("dimensionGoodsIds", dimensionDisplayGoods(sink, dimensions, goods));
             payload.put("dimensionChance", binaryDimensionChance(dimensions));
+            String oreDictionaryId = retainMaterialOreDictionary(sink, materialName(material), goods);
+            if (oreDictionaryId != null) {
+                payload.put("oreDictionaryId", oreDictionaryId);
+                payload.put("oreDictionary", "ore" + materialName(material));
+            }
             payload.put("representativeOres", representativeOres);
             payload.put("representativeDusts", representativeDusts);
             payload.put("potentialDrops", potentialDrops);
@@ -1816,6 +1830,22 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         return uniqueSorted(result);
     }
 
+    /**
+     * GT's small and normal ore stacks are registered under the generic
+     * `ore<Material>` dictionary.  Retain that group beside the representative
+     * stack so the browser can cycle the same host-stone variants as NEI.
+     */
+    private static String retainMaterialOreDictionary(NeiSpecialOverlay.Sink sink,
+            String material, List<String> goods) {
+        if (material == null || material.isEmpty()) return null;
+        String name = "ore" + material;
+        List<ItemStack> stacks = OreDictionary.getOres(name, false);
+        if (stacks == null || stacks.isEmpty()) return null;
+        String goodsId = sink.retainOreDictionary(name, stacks);
+        if (goodsId != null) addAllUnique(goods, Collections.singletonList(goodsId));
+        return goodsId;
+    }
+
     private static ItemStack materialPart(Object material, Object orePrefix, String context) {
         try {
             return asItemStack(callOrNull(material, "getPart", orePrefix, 1), context);
@@ -1854,12 +1884,37 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     private static Map<String, Object> dimensionChance(Object layer, List<String> dimensions) {
         Map<String, Object> result = new LinkedHashMap<>();
-        Number weight = number(callOrNull(layer, "getWeight"));
+        String veinName = stringOrEmpty(callOrNull(layer, "getName"));
+        Object helper = null;
+        Object wrapper = null;
+        try {
+            helper = Class.forName("gtneioreplugin.util.GT5OreLayerHelper");
+            wrapper = call(helper, "getVeinByName", veinName);
+        } catch (Throwable error) {
+            throw new IllegalStateException("GT NEI Ore Plugin could not resolve vein " + veinName
+                    + " while calculating per-dimension chance", error);
+        }
+        if (wrapper == null) {
+            throw new IllegalStateException("GT NEI Ore Plugin has no wrapper for vein " + veinName);
+        }
         for (String dimension : dimensions) {
-            // GTNH 2.9.0-beta-2 has one global mWeight; the dimension gate is
-            // binary. Keep that exact weight beside each allowed dimension so
-            // consumers do not mistake an omitted dimension for zero chance.
-            result.put(dimension, weight);
+            Object normalDimension;
+            try {
+                Object abbreviation = call(helper, "getDimAbbreviatedName", dimension);
+                normalDimension = call(helper, "getVeinByDim", abbreviation);
+            } catch (Throwable error) {
+                throw new IllegalStateException("GT NEI Ore Plugin could not resolve dimension "
+                        + dimension + " for vein " + veinName, error);
+            }
+            Map<?, ?> probabilities = normalDimension == null
+                    ? Collections.emptyMap()
+                    : castMap(fieldOrNull(normalDimension, "oreVeinToProbabilityInDimension"));
+            Object probability = probabilities.get(wrapper);
+            if (!(probability instanceof Number)) {
+                throw new IllegalStateException("GT NEI Ore Plugin has no per-dimension probability for vein "
+                        + veinName + " in " + dimension);
+            }
+            result.put(dimension, ((Number) probability).doubleValue());
         }
         return result;
     }
@@ -1867,6 +1922,39 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
     private static Map<String, Object> binaryDimensionChance(List<String> dimensions) {
         Map<String, Object> result = new LinkedHashMap<>();
         for (String dimension : dimensions) result.put(dimension, 1.0);
+        return result;
+    }
+
+    /** Retain the exact GT NEI Ore Plugin dimension-display stacks. */
+    private static Map<String, String> dimensionDisplayGoods(NeiSpecialOverlay.Sink sink,
+            List<String> dimensions, List<String> goods) {
+        Map<String, String> result = new LinkedHashMap<>();
+        Object helper;
+        try {
+            helper = Class.forName("gtneioreplugin.util.DimensionHelper");
+        } catch (ClassNotFoundException error) {
+            throw new IllegalStateException("GT NEI Ore Plugin DimensionHelper is missing", error);
+        }
+        Object itemDisplay;
+        try {
+            itemDisplay = Class.forName("gtneioreplugin.plugin.item.ItemDimensionDisplay");
+        } catch (ClassNotFoundException error) {
+            throw new IllegalStateException("GT NEI Ore Plugin ItemDimensionDisplay is missing", error);
+        }
+        for (String dimension : dimensions) {
+            Object abbreviation = call(helper, "getDimAbbreviatedName", dimension);
+            if (!(abbreviation instanceof String) || ((String) abbreviation).isEmpty()) {
+                throw new IllegalStateException("GT NEI Ore Plugin has no abbreviation for dimension " + dimension);
+            }
+            Object raw = call(itemDisplay, "getItem", abbreviation);
+            ItemStack stack = asItemStack(raw, "GT dimension display " + dimension);
+            String goodsId = retainItemOrNull(sink, stack, "GT dimension display " + dimension);
+            if (goodsId == null) {
+                throw new IllegalStateException("Unable to retain GT dimension display " + dimension);
+            }
+            result.put(dimension, goodsId);
+            addAllUnique(goods, Collections.singletonList(goodsId));
+        }
         return result;
     }
 

@@ -29,6 +29,11 @@ Stateful feature workflows use Svelte 5 rune modules:
 - `specialData.ts` defines and normalizes the discriminated display records
   used by the special cards and ore-processing graph.
 
+GregTech ore special pages follow the embedded GTNEIOrePlugin in
+GT5-Unofficial. See [`gtneioreplugin-integration.md`](gtneioreplugin-integration.md)
+for the reusable handler/helper map, dimension-display IDs, and probability
+semantics; future GT ore or dimension-stat requests should start there.
+
 The service worker precaches only the application shell. Immutable dataset bytes,
 on-demand icon sheets, and the decoded catalog snapshot stay in IndexedDB so
 dataset deletion and storage accounting remain explicit. Recipe shards remain

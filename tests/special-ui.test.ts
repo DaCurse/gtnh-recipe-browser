@@ -3,6 +3,8 @@ import { describe, expect, it } from 'vitest';
 import { layoutOreProcessingGraph, stagesToOreGraph } from '../src/lib/oreProcessingGraph';
 import {
   boundedSpecialPage,
+  gtDimensionDisplayGoodsId,
+  humanizeGtOreName,
   isSpecialViewEnabled,
   specialCategory,
   humanizeSpecialName,
@@ -48,6 +50,40 @@ describe('NEI special browser presentation', () => {
     expect(humanizeSpecialName('cropsnh_crops.aluminiumOreBerry')).toBe('Aluminium Ore Berry');
     expect(humanizeSpecialName('cropsnh_mutationPool.danger')).toBe('Danger');
     expect(humanizeSpecialName('Mutation Pool: cropsnh_mutationPool.oreBerry')).toBe('Ore Berry');
+  });
+
+  it('humanizes GT vein and small-ore registry names', () => {
+    expect(humanizeGtOreName('GT Ore Vein: ore.mix.copper')).toBe('Copper');
+    expect(humanizeGtOreName('GT Small Ore: ore.small.amber')).toBe('Amber');
+    expect(humanizeGtOreName('ore.mix.brownLimonite')).toBe('Brown Limonite');
+  });
+
+  it('resolves GTNEIOrePlugin dimension-display aliases to real catalog goods', () => {
+    const resolver = (id: string) => /blockDimensionDisplay_(?:Ow|Ga|Ne):0$/.test(id)
+      ? { id, kind: 'item', name: id, mod: 'gtneioreplugin' } as never
+      : undefined;
+    expect(gtDimensionDisplayGoodsId('Overworld', resolver)).toBe(
+      'i:gtneioreplugin:blockDimensionDisplay_Ow:0'
+    );
+    expect(gtDimensionDisplayGoodsId('ganymed', resolver)).toBe(
+      'i:gtneioreplugin:blockDimensionDisplay_Ga:0'
+    );
+    expect(gtDimensionDisplayGoodsId('0', resolver)).toBe(
+      'i:gtneioreplugin:blockDimensionDisplay_Ow:0'
+    );
+    expect(gtDimensionDisplayGoodsId('-1', resolver)).toBe(
+      'i:gtneioreplugin:blockDimensionDisplay_Ne:0'
+    );
+  });
+
+  it('keeps the GT stat card aligned with the embedded NEI page structure', async () => {
+    const source = await readFile('src/lib/VeinSpecialCard.svelte', 'utf8');
+    for (const label of ['Primary', 'Secondary', 'Between', 'Sporadic', 'Generated World']) {
+      expect(source).toContain(label);
+    }
+    expect(source).toContain('dimensionGoodsIds');
+    expect(source).toContain('smallOreDrops');
+    expect(source).toContain('per chunk');
   });
 
   it('normalizes object-shaped crop soil references without stringifying objects', () => {

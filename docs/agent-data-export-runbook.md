@@ -28,6 +28,12 @@ runtime pins are:
 - Roguelike Dungeons 1.6.6-GTNH
 - Twilight Forest 2.7.36
 
+For GregTech ore pages, the source of truth is the embedded GTNEIOrePlugin in
+GT5-Unofficial, not an old standalone checkout. Its four-layer vein model,
+small-ore/drop model, dimension-display item mapping, and normalized
+per-dimension vein probabilities are documented in
+[`gtneioreplugin-integration.md`](gtneioreplugin-integration.md).
+
 The special adapter must emit crop output/mutation/breeding, GT vein/small-ore/processing, meteor ritual, loot-bag,
 vending-trade, and worldgen-loot records. It runs before normal plugin processing so referenced goods, fluids, ore
 dictionaries, tooltips, and service icons enter the existing factories. Missing categories, duplicate IDs, unknown

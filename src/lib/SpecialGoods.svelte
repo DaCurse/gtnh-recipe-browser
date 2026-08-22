@@ -14,7 +14,9 @@
     showChance = true,
     showAmounts = true,
     compact = false,
-    wrapLabels = false
+    wrapLabels = false,
+    horizontal = false,
+    hideLabels = false
   }: {
     goods: readonly SpecialGoods[];
     resolve: SpecialResolver;
@@ -27,6 +29,10 @@
     compact?: boolean;
     /** Keep long loot-table names and Fortune summaries readable instead of ellipsizing them. */
     wrapLabels?: boolean;
+    /** Render a single goods slot and its caption on one line for stat rows. */
+    horizontal?: boolean;
+    /** Omit the caption under the slot when the parent supplies row text. */
+    hideLabels?: boolean;
   } = $props();
 
   let page = $state(0);
@@ -41,7 +47,7 @@
   const visible = $derived(boundedSpecialPage(goods, page, safePageSize));
   const tooltipGoods = $derived(goods.find((item) => item.goodsId === tooltipId));
   const tooltipEntry = $derived(tooltipGoods ? resolve(
-    tooltipGoods.alternatives?.[0] ?? tooltipGoods.goodsId
+    tooltipGoods.oreDictionaryId ?? tooltipGoods.alternatives?.[0] ?? tooltipGoods.goodsId
   ) : undefined);
   const chosenItem = $derived(chosenItemId ? resolve(chosenItemId) : undefined);
   const chosenGroup = $derived(chosenGroupId ? resolve(chosenGroupId) : undefined);
@@ -74,6 +80,10 @@
     return item.alternatives?.[0] ?? item.goodsId;
   }
 
+  function iconId(item: SpecialGoods): string {
+    return item.oreDictionaryId ?? displayId(item);
+  }
+
   function oreDictionaryIcon(entry: CatalogEntry): {
     browse: CatalogBrowseEntry;
     exactEntries: ReadonlyMap<string, CatalogEntry>;
@@ -100,7 +110,8 @@
     // Older sidecars stored CropsNH's internal crop ID as an explicit label.
     // Prefer the resolved catalog display name for those IDs while preserving
     // meaningful labels on loot groups, dimensions, and machine roles.
-    if (!item.label || /^cropsnh(?:[:_]|$)/i.test(item.label)) return entry.name;
+    if (!item.label || item.label === item.goodsId || /^(?:[ifo]):/i.test(item.label)
+      || /^cropsnh(?:[:_]|$)/i.test(item.label)) return entry.name;
     return item.label;
   }
 
@@ -153,12 +164,13 @@
 </script>
 
 {#if goods.length > 0}
-  <section class:compact class:wrap-labels={wrapLabels} class="special-goods" aria-label={label ?? 'Goods'}>
+  <section class:compact class:wrap-labels={wrapLabels} class:horizontal class:hide-labels={hideLabels} class="special-goods" aria-label={label ?? 'Goods'}>
     {#if label}<div class="special-goods-label">{label}</div>{/if}
-    <div class="special-goods-grid">
+      <div class="special-goods-grid">
       {#each visible as item, itemIndex (`${itemIndex}:${item.goodsId}:${item.role ?? ''}:${item.amount ?? ''}`)}
         {@const entry = resolve(displayId(item))}
-        {@const oreIcon = entry ? oreDictionaryIcon(entry) : undefined}
+        {@const iconEntry = resolve(iconId(item)) ?? entry}
+        {@const oreIcon = iconEntry ? oreDictionaryIcon(iconEntry) : undefined}
         {@const fortune = fortuneLabel(item)}
         {#if entry}
           <div class="special-good-cell">
@@ -196,8 +208,8 @@
                 {/if}
               </div>
             </button>
-            <small class="special-good-label">{displayLabel(item, entry)}</small>
-            {#if fortune}<small class="special-fortune">{fortune}</small>{/if}
+            {#if !hideLabels}<small class="special-good-label">{displayLabel(item, entry)}</small>{/if}
+            {#if fortune && !hideLabels}<small class="special-fortune">{fortune}</small>{/if}
           </div>
         {:else}
           <div class:compact class="special-good unresolved" title={item.goodsId}>
@@ -291,6 +303,12 @@
     overflow-wrap:anywhere;
     line-height:1.2;
   }
+  .special-goods.horizontal .special-goods-grid { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:0; }
+  .special-goods.horizontal .special-good-cell { width:auto; min-width:56px; max-width:none; flex-direction:row; justify-self:initial; }
+  .special-goods.horizontal .special-good { flex:0 0 56px; }
+  .special-goods.horizontal .special-good-label { display:none; }
+  .special-goods.horizontal .special-fortune { display:none; }
+  .special-goods.horizontal.hide-labels .special-good-cell { min-width:56px; }
   .special-choice-scrim { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }.special-choice { position:relative; width:min(560px,100%); padding:26px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }.special-choice>p { margin:0 40px 7px 0; color:#a5aaaf; font:12px Minecraft,monospace; letter-spacing:.08em; }.special-choice h2 { margin:0 40px 18px 0; color:#f0f1f2; font:20px Minecraft,monospace; }.special-choice-close { position:absolute; top:8px; right:8px; width:40px; height:40px; border:0; background:none; color:#b3b8bd; font-size:25px; cursor:pointer; }.special-choice-option { display:grid; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; gap:10px; padding:10px; border:1px solid #464a4f; border-radius:8px; background:#292c30; }.special-choice-option+.special-choice-option { margin-top:9px; }.special-choice-option b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.special-choice-option span { display:flex; gap:6px; }.special-choice-option button { min-height:40px; padding:0 9px; border:1px solid #5a5f65; border-radius:6px; background:#35393d; color:#e3e5e7; cursor:pointer; }.special-choice-option button:first-child { background:#d1d4d7; color:#17191b; }
   @keyframes ore-dictionary-pulse { 0%,100% { box-shadow:0 0 0 1px #7565a255,0 0 5px #8b78ce44; } 50% { box-shadow:0 0 0 1px #b49bf4aa,0 0 13px #a58ce999; } }
   @media (prefers-reduced-motion: reduce) { .special-good.ore-dictionary { animation:none; } }
