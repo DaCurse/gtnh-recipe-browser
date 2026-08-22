@@ -11,7 +11,7 @@ export interface CanonicalGoodsId {
   kind: 'item' | 'fluid';
 }
 
-export interface GoodsIdMapResult {
+interface GoodsIdMapResult {
   mappings: Map<string, CanonicalGoodsId>;
   itemRows: number;
   fluidRows: number;
@@ -115,7 +115,7 @@ function addMapping(
  * streaming is intentional: a real 2.9 export's script is hundreds of MB and
  * must not be duplicated in memory just to recover the already-exported JSON.
  */
-export async function readCanonicalGoodsIds(
+async function readCanonicalGoodsIds(
   scriptPath: string,
   requestedIds?: ReadonlySet<string>
 ): Promise<GoodsIdMapResult> {

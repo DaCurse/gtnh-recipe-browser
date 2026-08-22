@@ -325,7 +325,7 @@ function validateSpecialOreDictionaries(
   }
 }
 
-export interface SpecialGoodsDirectionIndex {
+interface SpecialGoodsDirectionIndex {
   shardIds: string[];
   lookupIds: string[];
   recordCount: number;

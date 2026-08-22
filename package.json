@@ -9,7 +9,7 @@
     "build": "vite build && node tools/verify-precache.mjs",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint .",
-    "deadcode": "knip --no-config-hints",
+    "deadcode": "node --max-old-space-size=6144 node_modules/knip/bin/knip.js --no-config-hints",
     "quality": "npm run lint && npm run deadcode && npm run check && npm test && npm run build",
     "test": "vitest run",
     "pack": "tsx tools/pack-builder/cli.ts",
