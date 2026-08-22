@@ -173,22 +173,24 @@
               inspect(item, 'usages');
             }}
           >
-            {#if oreIcon}
-              <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={56} />
-            {:else}
-              <ItemIcon entry={entry} size={56} />
-            {/if}
-            {#if showAmounts && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
-              <span class="special-amount">{item.minAmount !== undefined || item.maxAmount !== undefined
-                ? `${item.minAmount ?? item.maxAmount}–${item.maxAmount ?? item.minAmount}`
-                : displaySpecialAmount(item.amount, entry.kind === 'fluid')}</span>
-            {/if}
-            {#if showChance && item.chance !== undefined}
-              <span class="special-chance">{chanceLabel(item)}</span>
-            {/if}
-            {#if item.weight !== undefined}
-              <span class="special-weight">w {item.weight}</span>
-            {/if}
+            <div class="special-slot">
+              {#if oreIcon}
+                <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={56} />
+              {:else}
+                <ItemIcon entry={entry} size={56} />
+              {/if}
+              {#if showAmounts && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
+                <span class="special-amount">{item.minAmount !== undefined || item.maxAmount !== undefined
+                  ? `${item.minAmount ?? item.maxAmount}–${item.maxAmount ?? item.minAmount}`
+                  : displaySpecialAmount(item.amount, entry.kind === 'fluid')}</span>
+              {/if}
+              {#if showChance && item.chance !== undefined}
+                <span class="special-chance">{chanceLabel(item)}</span>
+              {/if}
+              {#if item.weight !== undefined}
+                <span class="special-weight">w {item.weight}</span>
+              {/if}
+            </div>
             <small>{displayLabel(item, entry)}</small>
             {#if fortune}<small class="special-fortune">{fortune}</small>{/if}
           </button>
@@ -252,14 +254,15 @@
   .special-goods-label { margin-bottom:6px; color:#8d9297; font-size:10px; font-weight:700; letter-spacing:.65px; text-transform:uppercase; }
   .special-goods-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:7px; min-width:0; }
   .special-good,.unresolved { position:relative; min-width:64px; min-height:76px; display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:2px; padding:2px; border:1px solid transparent; border-radius:6px; background:transparent; color:#d9dcdf; cursor:pointer; }
+  .special-slot { position:relative; width:56px; height:56px; flex:0 0 56px; }
   .special-good.ore-dictionary { border-color:#7565a2; box-shadow:0 0 0 1px #7565a255,0 0 8px #8b78ce66; animation:ore-dictionary-pulse 1.8s ease-in-out infinite; }
   .special-good:hover,.special-good:focus-visible { border-color:#5b6167; background:#303338; filter:brightness(1.08); outline:0; }
   .special-good small,.unresolved small { width:100%; overflow:hidden; color:#a6abb0; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
   .special-good .special-fortune { color:#d8ca75; font-size:8px; }
   .special-amount,.special-chance { position:absolute; z-index:2; padding:2px 3px; border-radius:3px; background:#17181be8; color:#fff; font:700 11px/1 ui-sans-serif,system-ui,sans-serif; text-shadow:1px 1px #000; }
-  .special-amount { right:3px; bottom:20px; }
-  .special-chance { left:3px; top:3px; color:#ffff55; font-family:Minecraft,monospace; text-shadow:2px 2px #342c34; }
-  .special-weight { right:3px; top:3px; color:#d0d4d8; font:10px Minecraft,monospace; text-shadow:2px 2px #342c34; }
+  .special-amount { right:1px; bottom:1px; }
+  .special-chance { left:1px; top:1px; color:#ffff55; font-family:Minecraft,monospace; text-shadow:2px 2px #342c34; }
+  .special-weight { right:1px; top:1px; color:#d0d4d8; font:10px Minecraft,monospace; text-shadow:2px 2px #342c34; }
   .unresolved { justify-content:center; border-color:#4a4d51; color:#b7bbbf; cursor:default; }
   .unresolved>span { font-size:27px; }
   .special-goods-pages { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px; }
