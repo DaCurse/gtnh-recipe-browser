@@ -11,7 +11,7 @@ describe('unattended NESQL export overlay', () => {
     expect(source).toContain('nesql.automation.enabled');
     expect(source).toContain('nesql.automation.seed');
     expect(source).toContain('8675309');
-    expect(source).toContain('"  \\\"worldSeed\\\": " + worldSeed');
+    expect(source).toContain('"  \\"worldSeed\\": " + worldSeed');
     expect(source).toContain('if (!Boolean.parseBoolean');
     expect(source).toContain('minecraft.launchIntegratedServer');
     expect(source).toContain('minecraft.isIntegratedServerRunning()');
