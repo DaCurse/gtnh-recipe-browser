@@ -46,6 +46,9 @@ export interface CatalogEntry {
   /** NEI sidecar shards which produce or consume this goods entry. */
   specialProductionShards?: string[];
   specialUsageShards?: string[];
+  /** Per-category lookup IDs used to decide which NEI special tabs apply. */
+  specialProductionLookupIds?: string[];
+  specialUsageLookupIds?: string[];
   specialProductionCount?: number;
   specialUsageCount?: number;
   /** Ore dictionary used when this item has no direct production recipes. */

@@ -163,6 +163,8 @@ export function materializeCatalog(
       usageCount: fluidScope ? undefined : goods.usageCount,
       specialProductionShards: goods.specialProductionShards,
       specialUsageShards: goods.specialUsageShards,
+      specialProductionLookupIds: goods.specialProductionLookupIds,
+      specialUsageLookupIds: goods.specialUsageLookupIds,
       specialProductionCount: goods.specialProductionCount,
       specialUsageCount: goods.specialUsageCount,
       productionOreDictionaryId: fluidScope ? undefined : productionFallback?.id,
@@ -183,6 +185,8 @@ export function materializeCatalog(
     const usageShards = new Set<string>();
     const specialProductionShards = new Set<string>();
     const specialUsageShards = new Set<string>();
+    const specialProductionLookupIds = new Set<string>();
+    const specialUsageLookupIds = new Set<string>();
     let specialProductionCount = 0;
     let specialUsageCount = 0;
     for (const memberId of group.itemIds) {
@@ -191,6 +195,8 @@ export function materializeCatalog(
       member?.usageShards.forEach((id) => usageShards.add(id));
       member?.specialProductionShards?.forEach((id) => specialProductionShards.add(id));
       member?.specialUsageShards?.forEach((id) => specialUsageShards.add(id));
+      member?.specialProductionLookupIds?.forEach((id) => specialProductionLookupIds.add(id));
+      member?.specialUsageLookupIds?.forEach((id) => specialUsageLookupIds.add(id));
       specialProductionCount += member?.specialProductionCount ?? 0;
       specialUsageCount += member?.specialUsageCount ?? 0;
     }
@@ -213,6 +219,8 @@ export function materializeCatalog(
       usageShards: [...usageShards].sort(),
       specialProductionShards: [...specialProductionShards].sort(),
       specialUsageShards: [...specialUsageShards].sort(),
+      specialProductionLookupIds: [...specialProductionLookupIds].sort(),
+      specialUsageLookupIds: [...specialUsageLookupIds].sort(),
       specialProductionCount,
       specialUsageCount,
       members: group.itemIds,
