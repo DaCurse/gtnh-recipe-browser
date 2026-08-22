@@ -99,6 +99,16 @@ describe('NEI special browser presentation', () => {
     expect(boundedSpecialPage(records, 11, 12)).toHaveLength(5);
   });
 
+  it('wraps loot-table names and Fortune summaries instead of ellipsizing them', async () => {
+    const source = await readFile('src/lib/SpecialGoods.svelte', 'utf8');
+    expect(source).toContain('wrapLabels = false');
+    expect(source).toContain('class:wrap-labels={wrapLabels}');
+    expect(source).toContain('.special-goods.wrap-labels .special-goods-grid');
+    expect(source).toContain('text-overflow:clip;');
+    const lootSource = await readFile('src/lib/LootBagSpecialCard.svelte', 'utf8');
+    expect(lootSource).toContain('wrapLabels label="Drops"');
+  });
+
   it('builds semantic stage nodes, including reagent and branch outputs', () => {
     const graph = stagesToOreGraph([
       {

@@ -42,7 +42,7 @@
     {@const alternatives = toSpecialDrops(group.alternatives ?? group.drops ?? [])}
     <section class:inherited={group.inherited === true} class="loot-group">
       <header><b>{typeof group.label === 'string' ? group.label : typeof group.id === 'string' ? group.id : 'Drop group'}</b>{#if typeof group.weight === 'number'}<span>weight {group.weight}</span>{/if}{#if typeof group.limit === 'number'}<span>limit {group.limit}</span>{/if}</header>
-      <SpecialGoods goods={alternatives} resolve={resolve} {navigate} label={group.inherited === true ? 'Inherited alternatives' : undefined} />
+      <SpecialGoods goods={alternatives} resolve={resolve} {navigate} wrapLabels label={group.inherited === true ? 'Inherited alternatives' : undefined} />
     </section>
   {/each}
   {#if groupPageCount > 1}
@@ -52,7 +52,7 @@
       <button disabled={groupPage >= groupPageCount - 1} onclick={() => groupPage += 1}>Next groups</button>
     </nav>
   {/if}
-  <SpecialGoods goods={drops} resolve={resolve} {navigate} label="Drops" />
+  <SpecialGoods goods={drops} resolve={resolve} {navigate} wrapLabels label="Drops" />
   {#if fortuneChances.length && !hasPerDropFortune}
     <section class="fortune-summary" aria-label="Legacy Fortune reference">
       <b>Legacy Fortune reference</b>
