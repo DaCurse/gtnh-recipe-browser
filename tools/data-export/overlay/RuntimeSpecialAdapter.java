@@ -1101,9 +1101,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     private static String stableStackName(ItemStack stack) {
         if (stack == null) return "";
-        Object item = callOrNull(stack, "getItem");
-        return stringOrEmpty(callOrNull(item, "getUnlocalizedName"))
-                + ":" + number(callOrNull(stack, "getItemDamage"));
+        return stringOrEmpty(stack.getItem().getUnlocalizedName()) + ":" + stack.getItemDamage();
     }
 
     private static Object construct(String className) throws Exception {
