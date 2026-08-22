@@ -66,6 +66,17 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             "mixerRecipes", "autoclaveRecipes", "extractorRecipes", "fluidExtractionRecipes"
     };
 
+    // Keep a malformed/shared-input closure from multiplying the same recipe
+    // into every material graph until the sidecar encoder exhausts the heap.
+    // These are deliberately checked before retaining the next recipe's
+    // stacks, and the failure includes the material and deterministic counts.
+    private static final int MAX_ORE_GRAPH_RECIPES = 4096;
+    private static final int MAX_ORE_GRAPH_NODES = 8192;
+    private static final int MAX_ORE_GRAPH_EDGES = 32768;
+    private static final int MAX_ORE_GRAPH_COUNT = 2048;
+    private static final int MAX_ORE_TOTAL_RECIPES = 200000;
+    private static final int MAX_ORE_TOTAL_EDGES = 1000000;
+
     @Override
     public void export(NeiSpecialOverlay.Sink sink) throws Exception {
         resetItemValidation();
@@ -885,80 +896,86 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             }
         });
 
-        // A recipe is a seed when GT's own ore-dictionary parser identifies an
-        // actual ore-prefix/material stack.  Numeric gt.metaitem IDs therefore
-        // work exactly like named ore-dictionary entries.  From every seed,
-        // follow item and fluid outputs until no supported map consumes them;
-        // this is the closure that keeps washing/sifting/chemical-bath branches
-        // in the same graph instead of grouping by the first input slot.
-        Set<RecipeInfo> included = new LinkedHashSet<>();
-        Set<String> frontier = new LinkedHashSet<>();
-        for (RecipeInfo info : recipes) {
-            if (!info.semanticMaterials.isEmpty()) {
-                included.add(info);
-                frontier.addAll(info.outputKeys);
-            }
-        }
+        // Build a directional provenance closure.  Roots originate only from
+        // material-carrying inputs.  A recipe's auxiliary inputs (water, acid,
+        // cells, catalysts, and so on) remain visible in its graph, but never
+        // acquire the root merely because they co-occur in that recipe.
+        // Outputs carry a root forward only when GT's prefix parser or a
+        // material-shaped item/fluid identity says that output belongs to it.
+        Map<String, Set<RecipeInfo>> recipesByRoot = new TreeMap<>();
+        Map<String, Set<String>> provenanceByKey = new TreeMap<>();
+        int rootRecipeAssignments = 0;
         boolean changed = true;
         while (changed) {
             changed = false;
             for (RecipeInfo info : recipes) {
-                if (included.contains(info)) continue;
-                if (!intersects(info.inputKeys, frontier)) continue;
-                included.add(info);
-                if (frontier.addAll(info.outputKeys)) changed = true;
-                else changed = true;
-            }
-        }
-
-        Map<String, Set<String>> materialByKey = new TreeMap<>();
-        boolean labelsChanged = true;
-        while (labelsChanged) {
-            labelsChanged = false;
-            for (RecipeInfo info : included) {
-                Set<String> roots = new TreeSet<>();
-                roots.addAll(info.semanticMaterials);
-                for (String key : concat(info.inputKeys, info.outputKeys)) {
-                    Set<String> known = materialByKey.get(key);
-                    if (known != null) roots.addAll(known);
-                }
-                for (String key : concat(info.inputKeys, info.outputKeys)) {
-                    Set<String> materials = materialByKey.get(key);
-                    if (materials == null) {
-                    materials = new TreeSet<>();
-                        materialByKey.put(key, materials);
+                Set<String> roots = info.rootCandidates(provenanceByKey);
+                for (String root : roots) {
+                    Set<RecipeInfo> rootRecipes = recipesByRoot.get(root);
+                    if (rootRecipes == null) {
+                        if (recipesByRoot.size() >= MAX_ORE_GRAPH_COUNT) {
+                            throw oreGraphLimit("graph count during provenance closure", root,
+                                    recipesByRoot.size() + 1, MAX_ORE_GRAPH_COUNT);
+                        }
+                        rootRecipes = new LinkedHashSet<>();
+                        recipesByRoot.put(root, rootRecipes);
                     }
-                    if (materials.addAll(roots)) labelsChanged = true;
+                    if (rootRecipes.size() >= MAX_ORE_GRAPH_RECIPES
+                            && !rootRecipes.contains(info)) {
+                        throw oreGraphLimit("recipe count during provenance closure", root,
+                                rootRecipes.size() + 1, MAX_ORE_GRAPH_RECIPES);
+                    }
+                    if (!rootRecipes.add(info)) continue;
+                    rootRecipeAssignments++;
+                    if (rootRecipeAssignments > MAX_ORE_TOTAL_RECIPES) {
+                        throw oreGraphLimit("total recipe assignments during provenance closure", root,
+                                rootRecipeAssignments, MAX_ORE_TOTAL_RECIPES);
+                    }
+                    changed = true;
+                    for (String outputKey : info.outputKeys) {
+                        if (!info.outputBelongsTo(root, outputKey)) continue;
+                        Set<String> outputRoots = provenanceByKey.get(outputKey);
+                        if (outputRoots == null) {
+                            outputRoots = new TreeSet<>();
+                            provenanceByKey.put(outputKey, outputRoots);
+                        }
+                        if (outputRoots.add(root)) changed = true;
+                    }
                 }
             }
         }
 
-        Map<String, Graph> graphs = new TreeMap<>();
-        for (RecipeInfo info : included) {
-            Set<String> roots = new TreeSet<>();
-            roots.addAll(info.semanticMaterials);
-            if (roots.isEmpty()) {
-                for (String key : concat(info.inputKeys, info.outputKeys)) {
-                    Set<String> known = materialByKey.get(key);
-                    if (known != null) roots.addAll(known);
-                }
-            }
-            if (roots.isEmpty()) continue;
-            // A recipe that genuinely bridges two materials is included in
-            // both semantic graphs; this preserves byproduct branches without
-            // inventing a first-slot root.
-            for (String root : roots) {
-                Graph graph = graphs.get(root);
-                if (graph == null) {
-                    graph = new Graph(root);
-                    graphs.put(root, graph);
-                }
-                graph.addRecipe(sink, info);
-            }
-        }
-
+        System.err.println("[RuntimeSpecialAdapter] GT ore provenance closure recipes=" + recipes.size()
+                + " assignments=" + rootRecipeAssignments + " roots=" + recipesByRoot.size()
+                + " propagatedKeys=" + provenanceByKey.size());
+        int graphCount = 0;
+        int totalRecipes = 0;
+        int totalEdges = 0;
         int count = 0;
-        for (Graph graph : graphs.values()) {
+        for (Map.Entry<String, Set<RecipeInfo>> entry : recipesByRoot.entrySet()) {
+            if (graphCount >= MAX_ORE_GRAPH_COUNT) {
+                throw oreGraphLimit("graph count", entry.getKey(), graphCount + 1, MAX_ORE_GRAPH_COUNT);
+            }
+            Graph graph = new Graph(entry.getKey());
+            List<RecipeInfo> rootRecipes = new ArrayList<>(entry.getValue());
+            Collections.sort(rootRecipes, new Comparator<RecipeInfo>() {
+                @Override
+                public int compare(RecipeInfo left, RecipeInfo right) {
+                    return left.sortKey().compareTo(right.sortKey());
+                }
+            });
+            for (RecipeInfo info : rootRecipes) graph.addRecipe(sink, info);
+            totalRecipes += graph.recipeCount;
+            totalEdges += graph.edges.size();
+            if (totalRecipes > MAX_ORE_TOTAL_RECIPES) {
+                throw oreGraphLimit("total recipe count", entry.getKey(), totalRecipes,
+                        MAX_ORE_TOTAL_RECIPES);
+            }
+            if (totalEdges > MAX_ORE_TOTAL_EDGES) {
+                throw oreGraphLimit("total edge count", entry.getKey(), totalEdges, MAX_ORE_TOTAL_EDGES);
+            }
+            graphCount++;
+            System.err.println("[RuntimeSpecialAdapter] GT ore graph " + graph.summary());
             Map<String, Object> payload = graph.payload();
             List<String> goods = graph.goods;
             String slug = slug(graph.root);
@@ -973,9 +990,9 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         requireRecords("gt-ore-processing", count);
     }
 
-    private static boolean intersects(Collection<String> left, Collection<String> right) {
-        for (String value : left) if (right.contains(value)) return true;
-        return false;
+    private static IllegalStateException oreGraphLimit(String kind, String material, long actual, long limit) {
+        return new IllegalStateException("GT ore graph " + material + " exceeded " + kind
+                + " guardrail: " + actual + " > " + limit);
     }
 
     private static final class RecipeInfo {
@@ -987,7 +1004,8 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         private final List<FluidStack> fluidOutputs;
         private final List<String> inputKeys;
         private final List<String> outputKeys;
-        private final Set<String> semanticMaterials;
+        private final Map<String, Set<String>> inputMaterialLabels;
+        private final Map<String, Set<String>> outputMaterialLabels;
 
         private RecipeInfo(String mapName, Object recipe, List<ItemStack> inputs,
                 List<ItemStack> outputs, List<FluidStack> fluidInputs, List<FluidStack> fluidOutputs) {
@@ -999,16 +1017,58 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             this.fluidOutputs = fluidOutputs;
             this.inputKeys = new ArrayList<>();
             this.outputKeys = new ArrayList<>();
-            for (ItemStack stack : inputs) if (stack != null) inputKeys.add("item:" + stableStackName(stack));
+            this.inputMaterialLabels = new TreeMap<>();
+            this.outputMaterialLabels = new TreeMap<>();
+            for (ItemStack stack : inputs) {
+                if (stack == null) continue;
+                String key = "item:" + stableStackName(stack);
+                inputKeys.add(key);
+                List<String> labels = oreSeedMaterials(Collections.singletonList(stack));
+                addMaterialLabels(inputMaterialLabels, key, labels);
+            }
             for (FluidStack stack : fluidInputs) if (stack != null) inputKeys.add("fluid:" + fluidName(stack));
-            for (ItemStack stack : outputs) if (stack != null) outputKeys.add("item:" + stableStackName(stack));
+            for (ItemStack stack : outputs) {
+                if (stack == null) continue;
+                String key = "item:" + stableStackName(stack);
+                outputKeys.add(key);
+                addMaterialLabels(outputMaterialLabels, key,
+                        oreSeedMaterials(Collections.singletonList(stack)));
+            }
             for (FluidStack stack : fluidOutputs) if (stack != null) outputKeys.add("fluid:" + fluidName(stack));
-            this.semanticMaterials = new TreeSet<>();
-            semanticMaterials.addAll(oreSeedMaterials(concatStacks(inputs, outputs)));
+        }
+
+        private static void addMaterialLabels(Map<String, Set<String>> labelsByKey, String key,
+                Collection<String> labels) {
+            if (labels.isEmpty()) return;
+            Set<String> labelsForKey = labelsByKey.get(key);
+            if (labelsForKey == null) {
+                labelsForKey = new TreeSet<>();
+                labelsByKey.put(key, labelsForKey);
+            }
+            labelsForKey.addAll(labels);
         }
 
         private boolean hasInputsOrOutputs() {
             return !inputKeys.isEmpty() || !outputKeys.isEmpty();
+        }
+
+        private Set<String> rootCandidates(Map<String, Set<String>> provenanceByKey) {
+            Set<String> roots = new TreeSet<>();
+            for (Set<String> labels : inputMaterialLabels.values()) roots.addAll(labels);
+            for (String key : inputKeys) {
+                Set<String> known = provenanceByKey.get(key);
+                if (known != null) roots.addAll(known);
+            }
+            return roots;
+        }
+
+        private boolean outputBelongsTo(String root, String outputKey) {
+            Set<String> directLabels = outputMaterialLabels.get(outputKey);
+            // A direct parser label is authoritative.  In particular, a gold
+            // byproduct from an iron recipe must not gain iron provenance just
+            // because its identity happens to contain a shared token.
+            if (directLabels != null && !directLabels.isEmpty()) return directLabels.contains(root);
+            return normalizedIdentityMatches(outputKey, root);
         }
 
         private boolean hasResolvableItemStacks() {
@@ -1077,12 +1137,28 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         private final Set<String> goodsSet = new LinkedHashSet<>();
         private final Set<String> machines = new TreeSet<>();
         private final List<String> goods = new ArrayList<>();
+        private int recipeCount;
 
         private Graph(String root) {
             this.root = root;
         }
 
         private void addRecipe(NeiSpecialOverlay.Sink sink, RecipeInfo info) {
+            if (recipeCount >= MAX_ORE_GRAPH_RECIPES) {
+                throw oreGraphLimit("recipe count", root, recipeCount + 1, MAX_ORE_GRAPH_RECIPES);
+            }
+            int potentialNodes = info.inputs.size() + info.outputs.size()
+                    + info.fluidInputs.size() + info.fluidOutputs.size();
+            long potentialEdges = (long) (info.inputs.size() + info.fluidInputs.size())
+                    * (info.outputs.size() + info.fluidOutputs.size());
+            if (nodes.size() + potentialNodes > MAX_ORE_GRAPH_NODES) {
+                throw oreGraphLimit("potential node count", root, nodes.size() + potentialNodes,
+                        MAX_ORE_GRAPH_NODES);
+            }
+            if (edges.size() + potentialEdges > MAX_ORE_GRAPH_EDGES) {
+                throw oreGraphLimit("potential edge count", root, edges.size() + potentialEdges,
+                        MAX_ORE_GRAPH_EDGES);
+            }
             int rank = rank(info.mapName);
             List<String> inputGoods = retainItemSlots(sink, info.inputs);
             List<String> outputGoods = retainItemSlots(sink, info.outputs);
@@ -1091,9 +1167,20 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             List<String> fluidOutputGoods = retainFluidSlots(sink, info.fluidOutputs);
             List<String> from = concat(inputGoods, fluidInputGoods);
             List<String> to = concat(outputGoods, fluidOutputGoods);
+            int newNodes = 0;
+            Set<String> unseen = new HashSet<>();
+            for (String id : concat(from, to)) if (!nodes.containsKey(id) && unseen.add(id)) newNodes++;
+            if (nodes.size() + newNodes > MAX_ORE_GRAPH_NODES) {
+                throw oreGraphLimit("node count", root, nodes.size() + newNodes, MAX_ORE_GRAPH_NODES);
+            }
+            long newEdges = (long) from.size() * to.size();
+            if (edges.size() + newEdges > MAX_ORE_GRAPH_EDGES) {
+                throw oreGraphLimit("edge count", root, edges.size() + newEdges, MAX_ORE_GRAPH_EDGES);
+            }
             for (String id : concat(from, to)) addNode(id, rank);
             String machine = machineLabel(info.mapName);
             machines.add(machine);
+            recipeCount++;
             for (int inputIndex = 0; inputIndex < from.size(); inputIndex++) {
                 for (int outputIndex = 0; outputIndex < to.size(); outputIndex++) {
                     Map<String, Object> edge = new LinkedHashMap<>();
@@ -1139,12 +1226,21 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         }
 
         private Map<String, Object> payload() {
+            if (recipeCount > MAX_ORE_GRAPH_RECIPES)
+                throw oreGraphLimit("recipe count", root, recipeCount, MAX_ORE_GRAPH_RECIPES);
+            if (nodes.size() > MAX_ORE_GRAPH_NODES)
+                throw oreGraphLimit("node count", root, nodes.size(), MAX_ORE_GRAPH_NODES);
+            if (edges.size() > MAX_ORE_GRAPH_EDGES)
+                throw oreGraphLimit("edge count", root, edges.size(), MAX_ORE_GRAPH_EDGES);
             goods.clear();
             goods.addAll(goodsSet);
             Collections.sort(goods);
             sortMaps(edges, "from");
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("material", root);
+            payload.put("recipeCount", recipeCount);
+            payload.put("nodeCount", nodes.size());
+            payload.put("edgeCount", edges.size());
             payload.put("nodes", new ArrayList<>(nodes.values()));
             payload.put("edges", edges);
             payload.put("machines", new ArrayList<>(machines));
@@ -1152,6 +1248,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                     "centrifuging", "electromagnetic-separation", "chemical-bath", "sifting", "furnace",
                     "blast-furnace", "reactor", "mixer", "autoclave", "extractor", "fluid-extraction"));
             return payload;
+        }
+
+        private String summary() {
+            return "material=" + root + " recipes=" + recipeCount + " nodes=" + nodes.size()
+                    + " edges=" + edges.size();
         }
 
         private static int rank(String mapName) {
@@ -1800,13 +1901,6 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         return stringOrEmpty(stack.getFluid().getName());
     }
 
-    private static List<ItemStack> concatStacks(List<ItemStack> left, List<ItemStack> right) {
-        List<ItemStack> result = new ArrayList<>();
-        result.addAll(left);
-        result.addAll(right);
-        return result;
-    }
-
     private static List<String> oreSeedMaterials(List<ItemStack> stacks) {
         List<String> result = new ArrayList<>();
         Class<?> prefixes;
@@ -1846,7 +1940,76 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 || prefixName.startsWith("clump") || prefixName.startsWith("reduced")
                 || prefixName.startsWith("crystalline") || prefixName.startsWith("cleanGravel")
                 || prefixName.startsWith("dirtyGravel") || prefixName.startsWith("dust")
-                || prefixName.startsWith("gem");
+                || prefixName.startsWith("gem") || prefixName.startsWith("ingot")
+                || prefixName.startsWith("nugget") || prefixName.startsWith("plate")
+                || prefixName.startsWith("block") || prefixName.startsWith("rod")
+                || prefixName.startsWith("wire") || prefixName.startsWith("foil")
+                || prefixName.startsWith("ring") || prefixName.startsWith("screw")
+                || prefixName.startsWith("bolt") || prefixName.startsWith("stick")
+                || prefixName.startsWith("gear") || prefixName.startsWith("spring")
+                || prefixName.startsWith("round") || prefixName.startsWith("frame")
+                || prefixName.startsWith("casing") || prefixName.startsWith("rotor")
+                || prefixName.startsWith("lens") || prefixName.startsWith("pipe");
+    }
+
+    /** Match only a material-shaped identity when the prefix parser has no label. */
+    private static boolean normalizedIdentityMatches(String key, String root) {
+        if (key == null || root == null) return false;
+        boolean fluid = key.startsWith("fluid:");
+        if (!fluid && !key.startsWith("item:")) return false;
+        String identity = key.substring(key.indexOf(':') + 1);
+        if (fluid) return containsMaterialToken(identity, root);
+
+        // Item keys are mod:name:damage.  Avoid treating a generic container
+        // named after a material as a processing output; only familiar
+        // material-bearing prefixes can use this fallback.
+        int modSeparator = identity.indexOf(':');
+        if (modSeparator < 0 || modSeparator + 1 >= identity.length()) return false;
+        String itemName = identity.substring(modSeparator + 1);
+        int damageSeparator = itemName.indexOf(':');
+        if (damageSeparator >= 0) itemName = itemName.substring(0, damageSeparator);
+        if (!hasMaterialIdentityPrefix(itemName)) return false;
+        return containsMaterialToken(itemName, root);
+    }
+
+    private static boolean hasMaterialIdentityPrefix(String value) {
+        String lower = value.toLowerCase(Locale.ROOT);
+        for (String prefix : new String[] {
+                "ore", "raw", "crushed", "purified", "washed", "centrifuged", "dust", "gem",
+                "ingot", "nugget", "plate", "block", "shard", "clump", "reduced", "crystalline",
+                "gravel", "powder", "rod", "wire", "foil", "ring", "screw", "bolt"
+        }) {
+            if (lower.startsWith(prefix) || lower.contains("_" + prefix)
+                    || lower.contains("." + prefix)) return true;
+        }
+        return false;
+    }
+
+    private static boolean containsMaterialToken(String identity, String root) {
+        String normalizedRoot = root.toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9]", "");
+        if (normalizedRoot.length() == 0) return false;
+        String lower = identity.toLowerCase(Locale.ROOT);
+        String[] tokens = lower.split("[^a-z0-9]+");
+        for (String token : tokens) if (normalizedRoot.equals(token)) return true;
+        String compact = lower.replaceAll("[^a-z0-9]", "");
+        if (compact.equals(normalizedRoot)) return true;
+        // GT item and fluid names commonly concatenate the material with a
+        // representation prefix (ingotIron, moltenIron).  Strip only known
+        // representation prefixes; arbitrary substring matches would bridge
+        // unrelated materials (for example steel and stainlesssteel).
+        for (String prefix : new String[] {
+                "molten", "liquid", "plasma", "fluid", "steam", "gas", "hot", "cold",
+                "ore", "rawore", "crushed", "purified", "washed", "centrifuged", "dust",
+                "gem", "ingot", "nugget", "plate", "block", "shard", "clump", "reduced",
+                "crystalline", "gravel", "powder", "rod", "wire", "foil", "ring", "screw",
+                "bolt", "stick", "gear", "spring", "round", "frame", "casing", "rotor",
+                "lens", "pipe"
+        }) {
+            if (compact.startsWith(prefix) && compact.substring(prefix.length()).equals(normalizedRoot)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static int recipeChance(Object recipe, String getter, int index, String fieldName) {

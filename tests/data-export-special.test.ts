@@ -201,6 +201,12 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('stableTagName');
     expect(adapter).toContain('stableTagValue');
     expect(adapter).toContain('materialPart');
+    expect(adapter).toContain('provenanceByKey');
+    expect(adapter).toContain('rootCandidates');
+    expect(adapter).toContain('outputBelongsTo');
+    expect(adapter).toContain('MAX_ORE_GRAPH_EDGES');
+    expect(adapter).toContain('GT ore provenance closure recipes=');
+    expect(adapter).not.toContain('materialByKey');
 
     const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
     expect(prepare).toContain('extractPinnedRuntimeJars');
