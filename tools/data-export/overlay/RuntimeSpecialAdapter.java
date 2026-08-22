@@ -382,8 +382,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             payload.put("creator", stringOrEmpty(callOrNull(crop, "getCreator")));
             payload.put("flavour", stringOrEmpty(callOrNull(crop, "getFlavourText")));
             payload.put("likedBiomeTags", stringCollection(callOrNull(crop, "getLikedBiomeTags")));
-            payload.put("soils", itemPayloads(sink, callOrNull(crop, "getSoilsForNEI", false)));
-            payload.put("underBlocks", itemPayloads(sink, callOrNull(crop, "getBlocksUnderForNEI", false)));
+            // NEI asks for the cached form. This is semantically identical to
+            // the uncached form, but avoids rebuilding the full soil/block
+            // lists once for the payload and again while retaining goods IDs.
+            payload.put("soils", itemPayloads(sink, callOrNull(crop, "getSoilsForNEI", true)));
+            payload.put("underBlocks", itemPayloads(sink, callOrNull(crop, "getBlocksUnderForNEI", true)));
             payload.put("requirements", requirementDescriptions(callOrNull(crop, "getGrowthRequirements")));
             payload.put("drops", cropDrops(sink, crop));
             String slug = slug(cropId);
@@ -1263,13 +1266,25 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     private static List<String> cropGoods(NeiSpecialOverlay.Sink sink, Object crop) {
         List<String> goods = new ArrayList<>();
+        // This is the exact stack placed in the first slot of
+        // NEICropsNHCropHandler.CachedCropRecipe. Without it, looking up a
+        // literal CropsNH generic seed cannot reach the crop, pool, or
+        // breeding records even though all three records were exported.
+        Object defaultStats = staticField(CROPS + ".farming.SeedStats", "DEFAULT_ANALYZED");
+        Object defaultSeed = call(crop, "getSeedItem", defaultStats);
+        if (defaultSeed == null) {
+            throw new IllegalStateException("CropsNH crop "
+                    + stringOrEmpty(callOrNull(crop, "getId"))
+                    + " returned no DEFAULT_ANALYZED seed item");
+        }
+        addItem(sink, goods, defaultSeed, "crop seed");
         Object drops = callOrNull(crop, "getDropTable");
         if (drops instanceof Map) {
             for (Object stack : ((Map<?, ?>) drops).keySet()) addItem(sink, goods, stack, "crop drop");
         }
         for (Object stack : list(callOrNull(crop, "getAlternateSeeds"))) addItem(sink, goods, stack, "alternate seed");
-        for (Object stack : list(callOrNull(crop, "getSoilsForNEI", false))) addItem(sink, goods, stack, "crop soil");
-        for (Object stack : list(callOrNull(crop, "getBlocksUnderForNEI", false))) addItem(sink, goods, stack, "crop block");
+        for (Object stack : list(callOrNull(crop, "getSoilsForNEI", true))) addItem(sink, goods, stack, "crop soil");
+        for (Object stack : list(callOrNull(crop, "getBlocksUnderForNEI", true))) addItem(sink, goods, stack, "crop block");
         Collections.sort(goods);
         return unique(goods);
     }

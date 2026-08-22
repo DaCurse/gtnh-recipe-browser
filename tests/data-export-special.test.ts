@@ -8,6 +8,7 @@ import {
   serializeSpecialData,
   specialDataSha256,
   specialGoodsIds,
+  validateCropsNhSeedReferences,
   type SpecialData
 } from '../tools/data-export/special';
 
@@ -178,6 +179,23 @@ describe('NEI special sidecar contract', () => {
     expect(serializeSpecialData(data)).toMatch(/\n$/);
   });
 
+  it('audits CropsNH lookup goods across outputs, pools, and breeding records', async () => {
+    const data = await fixture();
+    const seed = 'i:cropsnh:genericSeed:0:0000000000000000000000000000000000000000';
+    for (const record of data.records) {
+      if (['crop-output', 'mutation-pool', 'crop-breeding'].includes(record.category)) {
+        record.goodsIds.push(seed);
+      }
+    }
+    expect(() => validateCropsNhSeedReferences(data)).not.toThrow();
+
+    const missing = data.records.find((record) => record.category === 'crop-output')!;
+    missing.goodsIds = missing.goodsIds.filter((goodsId) => goodsId !== seed);
+    expect(() => validateCropsNhSeedReferences(data)).toThrow(
+      /CropsNH records are missing DEFAULT_ANALYZED generic-seed goods IDs: crop:blazereed/
+    );
+  });
+
   it('keeps the maintained overlay outside both read-only upstream submodules', async () => {
     const patch = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
     expect(patch).toContain('NeiSpecialOverlay.export(repositoryDirectory, exporterState, activePlugins)');
@@ -214,6 +232,11 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('getTotalListWeight');
     expect(adapter).toContain('estimatedMeteorAmounts');
     expect(adapter).toContain('dimensionOverrides');
+    expect(adapter).toContain('getSeedItem');
+    expect(adapter).toContain('SeedStats", "DEFAULT_ANALYZED"');
+    expect(adapter).toContain('getSoilsForNEI", true');
+    expect(adapter).toContain('getBlocksUnderForNEI", true');
+    expect(adapter).toContain('returned no DEFAULT_ANALYZED seed item');
     expect(adapter).toContain('SmallOreDrops');
     expect(adapter).toContain('recipeChance');
     expect(adapter).toContain('machineLabel');
@@ -233,6 +256,9 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('GT ore provenance closure recipes=');
     expect(adapter).toContain('if (!oreDictionary.isEmpty()) payload.put("oreDictionary", oreDictionary);');
     expect(adapter).not.toContain('materialByKey');
+
+    const overlay = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
+    expect(overlay).toContain('serviceIcon.put("goodsId", references.get(0))');
 
     const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
     expect(prepare).toContain('extractPinnedRuntimeJars');
@@ -293,6 +319,7 @@ describe('NEI special sidecar contract', () => {
     expect(process).toContain("await access(sidecarPath)");
     expect(process).not.toContain('allow-missing-special');
     expect(process).toContain("item.mod.toLowerCase() === 'gregtech'");
+    expect(process).toContain('validateCropsNhSeedReferences(specialData)');
     expect(process).not.toContain('filter((item) => (item) =>');
   });
 

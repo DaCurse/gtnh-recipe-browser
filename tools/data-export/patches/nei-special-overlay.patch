@@ -297,6 +297,16 @@ new file mode 100644
 +            requireId(serviceIconId, "record service icon");
 +            if (payload == null) throw new IllegalArgumentException("record payload is required for " + id);
 +            List<String> references = sortedUnique(goodsIds, "goods IDs for " + id);
++            // The NEI tab itself is a service object, but its display stack is
++            // a normal catalog goods entry. Use the first retained category
++            // reference as a deterministic fallback when the adapter has not
++            // supplied a more specific handler icon. This keeps the icon
++            // searchable through normal factories without making the service
++            // object searchable.
++            Map<String, Object> serviceIcon = serviceIcons.get(serviceIconId);
++            if (serviceIcon != null && !serviceIcon.containsKey("goodsId") && !references.isEmpty()) {
++                serviceIcon.put("goodsId", references.get(0));
++            }
 +            Map<String, Object> lookup = new LinkedHashMap<>();
 +            // The explicit IDs are retained for the sidecar identity.  The
 +            // lookup arrays are the normal goods indexes used by the pack

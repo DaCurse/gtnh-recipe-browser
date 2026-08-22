@@ -509,6 +509,32 @@ export function specialGoodsIds(data: SpecialData): string[] {
   ])].sort();
 }
 
+/**
+ * Check the lookup identity used by CropsNH's NEI crop handler.
+ *
+ * CropsNH does not look up a crop from its drop item.  The first ingredient
+ * in its cached recipe is the generic seed produced by
+ * {@code getSeedItem(SeedStats.DEFAULT_ANALYZED)}. Every semantic crop page
+ * that can be reached from that page (outputs, mutation pools, and direct
+ * breeding) therefore has to retain at least one generic-seed goods ID. Keep
+ * this as a process-boundary audit so a stale sidecar cannot be packed and
+ * published silently.
+ */
+export function validateCropsNhSeedReferences(data: SpecialData): void {
+  const categories = new Set(['crop-output', 'mutation-pool', 'crop-breeding']);
+  const missing = data.records
+    .filter((record) => categories.has(record.category))
+    .filter((record) => !record.goodsIds.some((goodsId) => goodsId.startsWith('i:cropsnh:genericSeed:')))
+    .map((record) => record.id);
+  if (missing.length > 0) {
+    const preview = missing.slice(0, 20).join(', ');
+    const suffix = missing.length > 20 ? ` (+${missing.length - 20} more)` : '';
+    throw new SpecialDataError(
+      `CropsNH records are missing DEFAULT_ANALYZED generic-seed goods IDs: ${preview}${suffix}`
+    );
+  }
+}
+
 export function buildSpecialViewTypes(data: SpecialData): SpecialViewType[] {
   if (data.specialViewTypes) return data.specialViewTypes.map((view) => ({ ...view }));
   const iconByCategory = new Map<string, string>();

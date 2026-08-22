@@ -17,7 +17,7 @@ import {
   auditRenderedItemPaths,
   validateCombinedTooltipSchema
 } from './lib';
-import { readSpecialSidecar } from './special';
+import { readSpecialSidecar, validateCropsNhSeedReferences } from './special';
 
 function run(
   command: string,
@@ -80,7 +80,8 @@ try {
 }
 // Fail malformed or incomplete special exports before the expensive .NET
 // conversion. Cross-checking against processed goods happens during build.
-await readSpecialSidecar(sidecarPath);
+const specialData = await readSpecialSidecar(sidecarPath);
+validateCropsNhSeedReferences(specialData);
 const specialDataPath = sidecarPath;
 
 const processedDirectory = join(outputWorkDirectory, 'processed');
