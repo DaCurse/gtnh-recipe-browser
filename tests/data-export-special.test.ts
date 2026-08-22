@@ -123,6 +123,23 @@ describe('NEI special sidecar contract', () => {
     expect(prepare).toContain('specialOverlayPatchSha256');
   });
 
+  it('emits the nested sourceVersions object required by the sidecar validator', async () => {
+    const patch = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
+    const javaSource = patch
+      .split('\n')
+      .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
+      .map((line) => line.slice(1))
+      .join('\n');
+    expect(javaSource).toContain('Map<String, Object> SOURCE_VERSIONS');
+    expect(javaSource).toContain('versions.put("gtnhVersion", "2.9.0-beta-2")');
+    expect(javaSource).toContain('versions.put("exporter", exporter)');
+    expect(javaSource).toContain('versions.put("overlay", overlay)');
+    expect(javaSource).toContain('versions.put("mods", mods)');
+    expect(javaSource).toContain('exporter.put("repository", "https://github.com/ShadowTheAge/nesql-exporter")');
+    expect(javaSource).not.toContain('versions.put("gtnh",');
+    expect(javaSource).not.toContain('versions.put("overlay", "nei-special-v1")');
+  });
+
   it('requires the sidecar for special exports and preserves the GT-tool sanity predicate', async () => {
     const process = await readFile('tools/data-export/process.ts', 'utf8');
     expect(process).toContain('NESQL export is missing ${sidecarPath}');

@@ -26,7 +26,7 @@ diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecia
 new file mode 100644
 --- /dev/null
 +++ b/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java
-@@ -0,0 +1,374 @@
+@@ -0,0 +1,382 @@
 +package com.github.dcysteine.nesql.exporter.special;
 +
 +import com.github.dcysteine.nesql.exporter.main.Logger;
@@ -82,20 +82,28 @@ new file mode 100644
 +            "meteor-ritual", "loot-bag", "vending-trade", "worldgen-loot", "gt-ore-processing"));
 +
 +    /** Exact source versions are part of the sidecar provenance contract. */
-+    private static final Map<String, String> SOURCE_VERSIONS;
++    private static final Map<String, Object> SOURCE_VERSIONS;
 +
 +    static {
-+        Map<String, String> versions = new HashMap<>();
-+        versions.put("gtnh", "2.9.0-beta-2");
-+        versions.put("CropsNH", "2.0.91");
-+        versions.put("GT5-Unofficial", "5.09.54.20");
-+        versions.put("BloodMagic", "1.9.4");
-+        versions.put("EnhancedLootBags", "1.3.4");
-+        versions.put("VendingMachine", "0.4.95");
-+        versions.put("NEICustomDiagram", "1.8.30");
-+        versions.put("RoguelikeDungeons", "1.6.6-GTNH");
-+        versions.put("TwilightForest", "2.7.36");
-+        versions.put("overlay", "nei-special-v1");
++        Map<String, String> mods = new HashMap<>();
++        mods.put("CropsNH", "2.0.91");
++        mods.put("GT5-Unofficial", "5.09.54.20");
++        mods.put("BloodMagic", "1.9.4");
++        mods.put("EnhancedLootBags", "1.3.4");
++        mods.put("VendingMachine", "0.4.95");
++        mods.put("NEICustomDiagram", "1.8.30");
++        mods.put("RoguelikeDungeons", "1.6.6-GTNH");
++        mods.put("TwilightForest", "2.7.36");
++        Map<String, Object> exporter = new LinkedHashMap<>();
++        exporter.put("repository", "https://github.com/ShadowTheAge/nesql-exporter");
++        exporter.put("commit", System.getProperty("nesql.special.exporterCommit", "runtime"));
++        Map<String, Object> overlay = new LinkedHashMap<>();
++        overlay.put("version", "nei-special-v1");
++        Map<String, Object> versions = new LinkedHashMap<>();
++        versions.put("gtnhVersion", "2.9.0-beta-2");
++        versions.put("exporter", exporter);
++        versions.put("overlay", overlay);
++        versions.put("mods", mods);
 +        SOURCE_VERSIONS = Collections.unmodifiableMap(versions);
 +    }
 +
