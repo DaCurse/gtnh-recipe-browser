@@ -188,6 +188,11 @@ describe('NEI special sidecar contract', () => {
     expect(prepare).toContain('implements NeiSpecialOverlay.Adapter');
   });
 
+  it('builds the disposable exporter without leaving a Gradle daemon behind', async () => {
+    const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
+    expect(prepare).toContain("run('bash', ['./gradlew', '--no-daemon', 'build'], patchedExporter);");
+  });
+
   it('retains sidecar item/fluid and ore-dictionary references before projection', async () => {
     const retention = await readFile('tools/data-export/patches/SpecialRetention.cs', 'utf8');
     expect(retention).toContain('item.touched = true');

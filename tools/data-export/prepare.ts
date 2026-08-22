@@ -301,7 +301,9 @@ if (
 ) {
   throw new Error('Exporter compatibility or NEI special-data overlay did not produce the expected source');
 }
-run('bash', ['./gradlew', 'build'], patchedExporter);
+// Do not leave a Gradle daemon/worker behind after the disposable exporter
+// build; the one-command orchestrator must be safe to retry in the same host.
+run('bash', ['./gradlew', '--no-daemon', 'build'], patchedExporter);
 
 const libs = join(patchedExporter, 'build/libs');
 const mainJar = await builtJar(libs);

@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   DIRECT_EXPORT_PROFILES,
@@ -23,6 +23,10 @@ import type { ExportSession } from '../tools/data-export/lib';
 
 function digest(value: string): string {
   return createHash('sha256').update(value).digest('hex');
+}
+
+function sha1Digest(value: string): string {
+  return createHash('sha1').update(value).digest('hex');
 }
 
 function tinyProfile(content: string): DirectExportProfile {
@@ -192,9 +196,23 @@ describe('direct export orchestration', () => {
       }));
       let prepared = false;
       let processed = false;
+      const cacheDirectory = join(root, 'cache');
+      const seededContent = 'seeded asset';
+      const seededHash = sha1Digest(seededContent);
+      const seededCachePath = join(
+        cacheDirectory,
+        'asset-director',
+        profile.sha256,
+        'assets',
+        'objects',
+        seededHash.slice(0, 2),
+        seededHash
+      );
+      await mkdir(dirname(seededCachePath), { recursive: true });
+      await writeFile(seededCachePath, seededContent);
       const result = await orchestrateDirectExport({
         profile,
-        cacheDirectory: join(root, 'cache'),
+        cacheDirectory,
         archiveSourcePath: sourcePath,
         workDirectory,
         statusFile: join(statusDirectory, 'orchestrator.json'),
@@ -232,6 +250,14 @@ describe('direct export orchestration', () => {
           resolveRuntime: async ({ root: runtimeRoot }) => fakeResolution(runtimeRoot),
           launchRuntime: async (plan, launchOptions) => {
             const launchConfig = launchOptions!;
+            const assetDirectorRoot = join(plan.gameDirectory, 'assets', 'asset_director');
+            await expect(readFile(join(
+              assetDirectorRoot,
+              'assets',
+              'objects',
+              seededHash.slice(0, 2),
+              seededHash
+            ), 'utf8')).resolves.toBe(seededContent);
             expect(plan.command[0]).toBe('xvfb-run');
             expect(plan.command).toContain('/usr/bin/java');
             expect(plan.command).toContain('example.Main');
@@ -245,6 +271,18 @@ describe('direct export orchestration', () => {
             expect(plan.statusFile).toBe(launchConfig.statusFile);
             await expect(readFile(launchConfig.statusFile!)).rejects.toThrow();
             await expect(readFile(join(statusDirectory, 'automation.json'))).rejects.toThrow();
+            const persistedContent = 'persisted asset';
+            const persistedHash = sha1Digest(persistedContent);
+            const persistedDirectory = join(
+              assetDirectorRoot,
+              'assets',
+              'objects',
+              persistedHash.slice(0, 2)
+            );
+            await mkdir(persistedDirectory, { recursive: true });
+            await writeFile(join(persistedDirectory, persistedHash), persistedContent);
+            await writeFile(join(persistedDirectory, `${persistedHash}.part`), 'partial');
+            await writeFile(join(persistedDirectory, '0'.repeat(40)), 'invalid digest');
             await writeFile(launchConfig.statusFile!, JSON.stringify({
               schemaVersion: 1,
               state: 'exited',
@@ -274,6 +312,17 @@ describe('direct export orchestration', () => {
       expect(result.launcherStatusFile).not.toBe(result.automationStatusFile);
       await expect(readFile(result.statusFile, 'utf8')).resolves.toMatch(/"phase"\s*:\s*"complete"/);
       await expect(readFile(result.automationStatusFile, 'utf8')).resolves.toMatch(/"phase"\s*:\s*"complete"/);
+      const persistedContent = 'persisted asset';
+      const persistedHash = sha1Digest(persistedContent);
+      const sharedAssetRoot = join(cacheDirectory, 'asset-director', profile.sha256, 'assets', 'objects');
+      await expect(readFile(join(sharedAssetRoot, seededHash.slice(0, 2), seededHash), 'utf8'))
+        .resolves.toBe(seededContent);
+      await expect(readFile(join(sharedAssetRoot, persistedHash.slice(0, 2), persistedHash), 'utf8'))
+        .resolves.toBe(persistedContent);
+      await expect(readFile(join(sharedAssetRoot, persistedHash.slice(0, 2), `${persistedHash}.part`)))
+        .rejects.toThrow();
+      await expect(readFile(join(sharedAssetRoot, persistedHash.slice(0, 2), '0'.repeat(40))))
+        .rejects.toThrow();
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -288,10 +337,11 @@ describe('direct export orchestration', () => {
       await writeFile(sourcePath, content);
       const workDirectory = join(root, 'work');
       const statusDirectory = join(root, 'status');
+      const cacheDirectory = join(root, 'cache');
       let processed = false;
       await expect(orchestrateDirectExport({
         profile,
-        cacheDirectory: join(root, 'cache'),
+        cacheDirectory,
         archiveSourcePath: sourcePath,
         workDirectory,
         statusFile: join(statusDirectory, 'orchestrator.json'),
@@ -307,7 +357,20 @@ describe('direct export orchestration', () => {
             ));
           },
           resolveRuntime: async ({ root: runtimeRoot }) => fakeResolution(runtimeRoot),
-          launchRuntime: async (_plan, launchOptions) => {
+          launchRuntime: async (plan, launchOptions) => {
+            const persistedContent = 'failure asset';
+            const persistedHash = sha1Digest(persistedContent);
+            const persistedDirectory = join(
+              plan.gameDirectory,
+              'assets',
+              'asset_director',
+              'assets',
+              'objects',
+              persistedHash.slice(0, 2)
+            );
+            await mkdir(persistedDirectory, { recursive: true });
+            await writeFile(join(persistedDirectory, persistedHash), persistedContent);
+            await writeFile(join(persistedDirectory, `${persistedHash}.part`), 'partial');
             await writeFile(launchOptions!.statusFile!, JSON.stringify({
               schemaVersion: 1,
               state: 'exited',
@@ -335,6 +398,13 @@ describe('direct export orchestration', () => {
       })).rejects.toThrow(/ExportAutomationController failed/);
       expect(processed).toBe(false);
       await expect(readFile(join(statusDirectory, 'orchestrator.json'), 'utf8')).resolves.toMatch(/"phase"\s*:\s*"failed"/);
+      const persistedContent = 'failure asset';
+      const persistedHash = sha1Digest(persistedContent);
+      const sharedFailureRoot = join(cacheDirectory, 'asset-director', profile.sha256, 'assets', 'objects');
+      await expect(readFile(join(sharedFailureRoot, persistedHash.slice(0, 2), persistedHash), 'utf8'))
+        .resolves.toBe(persistedContent);
+      await expect(readFile(join(sharedFailureRoot, persistedHash.slice(0, 2), `${persistedHash}.part`)))
+        .rejects.toThrow();
     } finally {
       await rm(root, { recursive: true, force: true });
     }

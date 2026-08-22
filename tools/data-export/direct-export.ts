@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
-import { copyFile, chmod, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, chmod, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { createReadStream, createWriteStream, existsSync } from 'node:fs';
-import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -27,6 +27,7 @@ const DEFAULT_LAUNCH_TIMEOUT_MS = 45 * 60 * 1_000;
 const DEFAULT_AUTOMATION_TIMEOUT_MS = 45 * 60 * 1_000;
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
+const SHA1_PATTERN = /^[a-f0-9]{40}$/i;
 const SAFE_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 export interface DirectExportProfile {
@@ -205,7 +206,7 @@ export function getDirectExportProfile(version = '2.9.0-beta-2'): DirectExportPr
   return profileFromInput(version);
 }
 
-async function digestFile(path: string, algorithm: 'sha256'): Promise<{ bytes: number; digest: string }> {
+async function digestFile(path: string, algorithm: 'sha1' | 'sha256'): Promise<{ bytes: number; digest: string }> {
   const hash = createHash(algorithm);
   let bytes = 0;
   for await (const chunk of createReadStream(path)) {
@@ -213,6 +214,104 @@ async function digestFile(path: string, algorithm: 'sha256'): Promise<{ bytes: n
     hash.update(chunk);
   }
   return { bytes, digest: hash.digest('hex') };
+}
+
+interface AssetDirectorFile {
+  path: string;
+  relativePath: string;
+}
+
+async function isValidatedAssetDirectorFile(path: string, relativePath: string): Promise<boolean> {
+  const parts = relativePath.split(sep);
+  if (parts[0] === 'assets' && parts[1] === 'objects') {
+    if (
+      parts.length !== 4
+      || !SHA1_PATTERN.test(parts[3] ?? '')
+      || parts[2] !== parts[3]!.slice(0, 2)
+    ) return false;
+    const actual = await digestFile(path, 'sha1');
+    return actual.digest === parts[3]!.toLowerCase();
+  }
+  if (relativePath.toLowerCase().endsWith('.json')) {
+    try {
+      JSON.parse(await readFile(path, 'utf8'));
+    } catch {
+      return false;
+    }
+  }
+  return true;
+}
+
+async function listAssetDirectorFiles(root: string): Promise<AssetDirectorFile[]> {
+  const files: AssetDirectorFile[] = [];
+  const visit = async (directory: string, prefix: string): Promise<void> => {
+    let entries;
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw error;
+    }
+    entries.sort((left, right) => left.name.localeCompare(right.name));
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue;
+      const relativePath = prefix ? join(prefix, entry.name) : entry.name;
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        await visit(path, relativePath);
+      } else if (
+        entry.isFile()
+        && !entry.name.endsWith('.part')
+        && await isValidatedAssetDirectorFile(path, relativePath)
+      ) {
+        files.push({ path, relativePath });
+      }
+    }
+  };
+  await visit(resolve(root), '');
+  files.sort((left, right) => left.relativePath.localeCompare(right.relativePath));
+  return files;
+}
+
+async function removeAssetDirectorPartFiles(root: string): Promise<void> {
+  const visit = async (directory: string): Promise<void> => {
+    let entries;
+    try {
+      entries = await readdir(directory, { withFileTypes: true });
+    } catch (error) {
+      if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+      throw error;
+    }
+    for (const entry of entries) {
+      if (entry.isSymbolicLink()) continue;
+      const path = join(directory, entry.name);
+      if (entry.isDirectory()) await visit(path);
+      else if (entry.isFile() && entry.name.endsWith('.part')) await rm(path, { force: true });
+    }
+  };
+  await visit(resolve(root));
+}
+
+async function copyAssetDirectorFiles(sourceRoot: string, destinationRoot: string): Promise<number> {
+  const files = await listAssetDirectorFiles(sourceRoot);
+  for (const file of files) {
+    const destination = join(destinationRoot, file.relativePath);
+    await mkdir(dirname(destination), { recursive: true });
+    await copyFile(file.path, destination);
+  }
+  return files.length;
+}
+
+async function seedAssetDirectorCache(cacheRoot: string, instanceRoot: string): Promise<number> {
+  await removeAssetDirectorPartFiles(cacheRoot);
+  return copyAssetDirectorFiles(cacheRoot, instanceRoot);
+}
+
+async function persistAssetDirectorCache(instanceRoot: string, cacheRoot: string): Promise<number> {
+  await removeAssetDirectorPartFiles(cacheRoot);
+  const copied = await copyAssetDirectorFiles(instanceRoot, cacheRoot);
+  await removeAssetDirectorPartFiles(cacheRoot);
+  return copied;
 }
 
 async function verifyPinnedArchive(path: string, profile: DirectExportProfile): Promise<ArchiveDownloadResult> {
@@ -566,6 +665,14 @@ export async function orchestrateDirectExport(options: DirectExportOptions = {})
       archivePath: archive.path,
       sessionPath
     });
+    const assetDirectorCacheRoot = join(cacheDirectory, 'asset-director', profile.sha256);
+    const assetDirectorInstanceRoot = join(
+      session.instanceDirectory,
+      '.minecraft',
+      'assets',
+      'asset_director'
+    );
+    await seedAssetDirectorCache(assetDirectorCacheRoot, assetDirectorInstanceRoot);
     const resolution = await (dependencies.resolveRuntime ?? resolveRuntime)({
       root: session.instanceDirectory,
       cacheDirectory: join(cacheDirectory, 'runtime'),
@@ -619,8 +726,10 @@ export async function orchestrateDirectExport(options: DirectExportOptions = {})
     } catch (error) {
       launchAbort.abort();
       await launch.catch(() => undefined);
+      await persistAssetDirectorCache(assetDirectorInstanceRoot, assetDirectorCacheRoot);
       throw error;
     }
+    await persistAssetDirectorCache(assetDirectorInstanceRoot, assetDirectorCacheRoot);
     await writeStatus('processing', 'Automation completed; validating and processing the NESQL export', {
       archivePath: archive.path,
       sessionPath,
