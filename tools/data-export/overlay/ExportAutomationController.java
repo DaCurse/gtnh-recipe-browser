@@ -215,6 +215,7 @@ public final class ExportAutomationController {
                 + "  \"updatedAt\": \"" + Instant.now().toString() + "\",\n"
                 + "  \"repository\": \"" + escape(repositoryName) + "\",\n"
                 + "  \"world\": \"" + escape(worldName) + "\",\n"
+                + "  \"worldSeed\": " + worldSeed + ",\n"
                 + "  \"neiItemCount\": " + ItemList.items.size() + ",\n"
                 + "  \"message\": \"" + escape(message) + "\""
                 + (errorText == null ? "\n" : ",\n  \"error\": \"" + escape(errorText) + "\"\n")
