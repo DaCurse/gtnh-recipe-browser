@@ -279,7 +279,7 @@
   .special-good-cell .special-fortune { width:max-content; max-width:100%; overflow:hidden; color:#d8ca75; font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
   .special-amount,.special-chance,.special-weight { position:absolute; z-index:2; padding:2px 3px; border-radius:3px; background:#17181be8; color:#fff; font:700 11px/1 ui-sans-serif,system-ui,sans-serif; text-shadow:1px 1px #000; }
   .special-amount { right:1px; bottom:1px; }
-  .special-chance { left:1px; top:1px; color:#ffff55; font-family:Minecraft,monospace; text-shadow:2px 2px #342c34; }
+  .special-chance { left:1px; top:1px; color:#ffff55; font-family:Minecraft,monospace; font-weight:400; text-shadow:2px 2px #342c34; }
   .special-weight { left:1px; bottom:1px; color:#d0d4d8; font:9px Minecraft,monospace; text-shadow:2px 2px #342c34; }
   .unresolved { flex-direction:column; justify-content:center; border-color:#4a4d51; color:#b7bbbf; cursor:default; }
   .unresolved>span { font-size:27px; }

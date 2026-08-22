@@ -162,6 +162,7 @@ describe('NEI special browser presentation', () => {
     expect(source).toContain('class:wrap-labels={wrapLabels}');
     expect(source).toContain('.special-goods.wrap-labels .special-goods-grid');
     expect(source).toContain('text-overflow:clip;');
+    expect(source).toContain('font-weight:400;');
     const lootSource = await readFile('src/lib/LootBagSpecialCard.svelte', 'utf8');
     expect(lootSource).toContain('wrapLabels label="Drops"');
   });
