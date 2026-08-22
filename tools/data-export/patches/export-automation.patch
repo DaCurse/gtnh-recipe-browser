@@ -1,0 +1,11 @@
+diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/main/Main.java b/src/main/java/com/github/dcysteine/nesql/exporter/main/Main.java
+--- a/src/main/java/com/github/dcysteine/nesql/exporter/main/Main.java
++++ b/src/main/java/com/github/dcysteine/nesql/exporter/main/Main.java
+@@ -51,6 +51,7 @@ public final class Main {
+         FMLCommonHandler.instance().bus().register(Renderer.INSTANCE);
+         FMLCommonHandler.instance().bus().register(this);
+ 
++        ExportAutomationController.install();
+         Logger.MOD.info("Mod initialization complete!");
+     }
+ 
