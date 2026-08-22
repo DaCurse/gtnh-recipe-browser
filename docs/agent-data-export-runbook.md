@@ -65,6 +65,16 @@ category payloads. Missing required categories, duplicate IDs, unknown goods,
 unknown ore dictionaries, and unresolvable service icons are fatal; never delete
 a bad record to make processing pass.
 
+Current checkpoint: the committed overlay provides the validated adapter SPI,
+but `tools/data-export/overlay/RuntimeSpecialAdapter.java` has not yet been
+implemented. `npm run export:prepare` therefore fails before reading the archive
+or mutating a work/Prism directory. Do not bypass that preflight or ask the user
+to run Prism until a maintained provider covers all ten categories against the
+pinned jars. The relevant live boundaries are CropsNH's crop/mutation registries,
+GT worldgen and recipe maps, BloodMagic's meteor/reagent registries,
+EnhancedLootBags' group/drop registry, VendingMachine's trade database, and the
+Forge/Roguelike/Twilight loot registries.
+
 Use `patch --dry-run -p1` followed by `patch -p1`. Do not substitute `git apply` inside the ignored temporary copy:
 Git discovers the parent repository and interprets paths from the wrong root.
 

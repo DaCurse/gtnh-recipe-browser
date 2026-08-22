@@ -242,3 +242,10 @@ ordering, all required category payloads, indexing, sharding, offline behavior, 
 condition remains manual: prepare a fresh disposable Prism instance, perform a new NESQL export, compare every
 category against in-game NEI, build twice with identical digests, verify the deployed immutable assets, and only
 then activate the new revision.
+
+The current blocker is the live `RuntimeSpecialAdapter` implementation. The
+exporter bridge, processor retention, fixture, pack format, and browser are in
+place, but preparation intentionally stops before creating a Prism instance while
+that provider is absent. No format-4 real-data revision should be staged or
+activated until the provider reads all ten pinned runtime registries and the
+manual comparisons above pass.
