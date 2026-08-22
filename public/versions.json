@@ -3,13 +3,13 @@
   "generatedAt": "2026-08-22T23:18:46.000Z",
   "versions": [
     {
-      "datasetId": "2.9.0-beta-2-r5b1f4d8b3f45",
+      "datasetId": "2.9.0-beta-2-r2e44dca28916",
       "gtnhVersion": "2.9.0-beta-2",
-      "revision": "5b1f4d8b3f45",
-      "publishedAt": "2026-08-22T23:18:46.000Z",
-      "packManifestUrl": "./data/2.9.0-beta-2-r5b1f4d8b3f45/pack-manifest.json",
-      "catalogBytes": 8900434,
-      "offlineBytes": 58834179
+      "revision": "2e44dca28916",
+      "publishedAt": "2026-08-22T23:38:57.000Z",
+      "packManifestUrl": "./data/2.9.0-beta-2-r2e44dca28916/pack-manifest.json",
+      "catalogBytes": 8900407,
+      "offlineBytes": 58834064
     },
     {
       "datasetId": "2.8.0-r6d351536",

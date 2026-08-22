@@ -263,6 +263,9 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         String lootBagIconGoodsId = sink.retainItem(enhancedLootBagIconStack());
         String meteorIconGoodsId = sink.retainItem(blockIcon(
                 "WayofTime.alchemicalWizardry.ModBlocks", "blockMasterStone", "Blood Magic master ritual stone"));
+        String vendingIconGoodsId = sink.retainItem(vendingMachineIconStack());
+        String worldgenIconGoodsId = sink.retainItem(blockIcon(
+                "net.minecraft.init.Blocks", "chest", "Forge world-generation chest"));
         String oreProcessingIconGoodsId = sink.retainItem(registryItemIcon(
                 "minecraft", "diamond_block", "GregTech ore-processing category"));
         sink.addServiceIcon("service:crop", "CropsNH", cropIconGoodsId);
@@ -270,8 +273,8 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         sink.addServiceIcon("service:gt-ore", "GregTech Ore");
         sink.addServiceIcon("service:meteor", "Meteor Ritual", meteorIconGoodsId);
         sink.addServiceIcon("service:lootbag", "Enhanced LootBags", lootBagIconGoodsId);
-        sink.addServiceIcon("service:vending", "Vending Machine");
-        sink.addServiceIcon("service:worldgen", "World Generation");
+        sink.addServiceIcon("service:vending", "Vending Machine", vendingIconGoodsId);
+        sink.addServiceIcon("service:worldgen", "World Generation", worldgenIconGoodsId);
         sink.addServiceIcon("service:ore-processing", "GT Ore Processing", oreProcessingIconGoodsId);
 
         sink.addViewType("crop-output", "Crop Outputs", "service:crop");
@@ -307,6 +310,21 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             throw new IllegalStateException("EnhancedLootBags did not expose its registered loot-bag item");
         }
         return new ItemStack((Item) item, 1, 0);
+    }
+
+    /**
+     * VendingMachine's NEI handler uses the same live stack registered by
+     * {@code VMItems.registerMultis()} as the machine's catalyst/recipe
+     * identity.  Resolve that field after the mod has initialized rather than
+     * guessing a GregTech machine meta value.
+     */
+    private static ItemStack vendingMachineIconStack() {
+        Object value = staticField("com.cubefury.vendingmachine.items.VMItems", "vendingMachine");
+        ItemStack stack = asItemStack(value, "VendingMachine machine icon");
+        if (stack == null || stack.getItem() == null) {
+            throw new IllegalStateException("VendingMachine did not expose its registered machine stack");
+        }
+        return stack;
     }
 
     private static ItemStack blockIcon(String className, String fieldName, String context) {
@@ -865,11 +883,13 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             WeightedRandomChestContent[] entries = ChestGenHooks.getItems(category, new Random(0x4e495f4c));
             List<String> goods = new ArrayList<>();
             List<Object> itemPayload = new ArrayList<>();
+            int totalWeight = 0;
             for (WeightedRandomChestContent entry : entries) {
                 Map<String, Object> payload = new LinkedHashMap<>();
                 payload.put("min", entry.theMinimumChanceToGenerateItem);
                 payload.put("max", entry.theMaximumChanceToGenerateItem);
                 payload.put("weight", entry.itemWeight);
+                totalWeight += Math.max(0, entry.itemWeight);
                 ItemStack stack = entry.theItemId;
                 if (stack != null) {
                     String goodsId = retainItemOrNull(sink, stack, "Forge chest loot " + category);
@@ -885,9 +905,10 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             payload.put("source", "forge");
             payload.put("name", source[1]);
             payload.put("tableId", category);
+            payload.put("totalWeight", totalWeight);
             payload.put("entries", itemPayload);
             String slug = slug(category);
-            sink.addRecord("worldgen:forge:" + slug, "worldgen-loot", "Forge Loot: " + source[1],
+            sink.addRecord("worldgen:forge:" + slug, "worldgen-loot", source[1],
                     searchText("neicustomdiagram", "forge", "worldgen-loot", source[1], category), goods,
                     "special:worldgen:forge:" + slug + ":recipes",
                     "special:worldgen:forge:" + slug + ":usages", "service:worldgen", payload);
@@ -908,6 +929,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 : list(fieldOrNull(rulesManager, "rules"));
         List<String> goods = new ArrayList<>();
         List<Object> entries = new ArrayList<>();
+        int totalWeight = 0;
         for (Object rule : rules) {
             Object weighted = fieldOrNull(rule, "item");
             Map<String, Object> entry = new LinkedHashMap<>();
@@ -915,7 +937,9 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             entry.put("level", number(fieldOrNull(rule, "level")));
             entry.put("amount", number(fieldOrNull(rule, "amount")));
             entry.put("toEach", bool(fieldOrNull(rule, "toEach")));
-            entry.put("weight", number(callOrNull(weighted, "getWeight")));
+            Number weight = number(callOrNull(weighted, "getWeight"));
+            entry.put("weight", weight);
+            if (weight != null) totalWeight += Math.max(0, weight.intValue());
             ItemStack sample = sampleWeighted(weighted, 0x524f475545L);
             if (sample != null) {
                 String goodsId = retainItemOrNull(sink, sample, "Roguelike weighted loot");
@@ -930,6 +954,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("source", "roguelike");
         payload.put("settings", String.valueOf(settings));
+        payload.put("totalWeight", totalWeight);
         payload.put("entries", entries);
         sink.addRecord("worldgen:roguelike:default", "worldgen-loot", "Roguelike Dungeons",
                 searchText("roguelike", "worldgen-loot", "default"), goods,
@@ -958,6 +983,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 Object table = fieldOrNull(treasure, tableName);
                 if (table == null) continue;
                 List<Object> items = new ArrayList<>();
+                int totalWeight = 0;
                 for (Object item : list(fieldOrNull(table, "list"))) {
                     ItemStack sample = asItemStack(callOrNull(item, "getItemStack", new Random(0x545746)),
                             "Twilight treasure item");
@@ -967,20 +993,23 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                     addAllUnique(goods, Collections.singletonList(goodsId));
                     Map<String, Object> itemPayload = new LinkedHashMap<>();
                     itemPayload.put("goodsId", goodsId);
-                    itemPayload.put("rarity", number(callOrNull(item, "getRarity")));
+                    Number rarity = number(callOrNull(item, "getRarity"));
+                    itemPayload.put("rarity", rarity);
+                    if (rarity != null) totalWeight += Math.max(0, rarity.intValue());
                     itemPayload.put("randomEnchantmentLevel", number(callOrNull(item, "getRandomEnchantmentLevel")));
                     items.add(itemPayload);
                 }
                 sortMaps(items, "goodsId");
                 Map<String, Object> tablePayload = new LinkedHashMap<>();
                 tablePayload.put("name", tableName);
+                tablePayload.put("totalWeight", totalWeight);
                 tablePayload.put("items", items);
                 tables.add(tablePayload);
             }
             payload.put("tables", tables);
             String slug = slug(field.getName());
             sink.addRecord("worldgen:twilight:" + slug, "worldgen-loot",
-                    "Twilight Loot: " + field.getName(),
+                    field.getName(),
                     searchText("twilightforest", "worldgen-loot", field.getName()), goods,
                     "special:worldgen:twilight:" + slug + ":recipes",
                     "special:worldgen:twilight:" + slug + ":usages", "service:worldgen", payload);

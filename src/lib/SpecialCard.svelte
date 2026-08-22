@@ -47,6 +47,13 @@
         ? `Small ${name} Ore`
         : name;
     }
+    if (valueCategory === 'worldgenLoot') {
+      // The first sidecar copied Forge/NEI's handler title into the record,
+      // producing "Forge Loot: ..." and "Twilight Loot: ..." in the browser.
+      // Keep old packs readable while new runtime exports already emit the
+      // clean table name.
+      return value.title.replace(/^(?:Forge|Twilight) Loot:\s*/i, '');
+    }
     if (valueCategory !== 'cropBreeding') return value.title;
     const payload = value.payload as unknown as Record<string, unknown>;
     const outputSeed = toSpecialGoods(payload.outputSeed);

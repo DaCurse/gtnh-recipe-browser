@@ -35,6 +35,7 @@ import {
   type SpecialViewType
 } from './special';
 import { expandGtOreSpecialData } from './specialOreAliases';
+import { repairSpecialServiceIcons } from './specialServiceIcons';
 
 const PACK_FORMAT_VERSION = 4;
 const DEFAULT_MAX_SHARD_BYTES = 2 * 1024 * 1024;
@@ -778,7 +779,10 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   } else if (options.specialData !== undefined) {
     specialData = normalizeBrowserNeiSpecial(options.specialData);
   }
-  if (specialData) specialData = expandGtOreSpecialData(specialData, repository);
+  if (specialData) {
+    specialData = repairSpecialServiceIcons(specialData, repository);
+    specialData = expandGtOreSpecialData(specialData, repository);
+  }
   if (specialData) {
     const repositoryGoodsIds = new Set([
       ...repository.items.map((entry) => entry.id),

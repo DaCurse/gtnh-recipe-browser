@@ -282,6 +282,11 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('retainMaterialOreDictionary');
     expect(adapter).toContain('getSeedItem');
     expect(adapter).toContain('SeedStats", "DEFAULT_ANALYZED"');
+    expect(adapter).toContain('VMItems", "vendingMachine"');
+    expect(adapter).toContain('net.minecraft.init.Blocks", "chest"');
+    expect(adapter).toContain('payload.put("totalWeight", totalWeight)');
+    expect(adapter).not.toContain('"Forge Loot: " + source[1]');
+    expect(adapter).not.toContain('"Twilight Loot: " + field.getName()');
     expect(adapter).toContain('StatCollector.translateToLocal');
     expect(adapter).toContain('payload.put("poolId", poolId)');
     expect(adapter).toContain('getSoilsForNEI", true');

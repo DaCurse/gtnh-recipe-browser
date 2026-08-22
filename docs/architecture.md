@@ -33,6 +33,8 @@ GregTech ore special pages follow the embedded GTNEIOrePlugin in
 GT5-Unofficial. See [`gtneioreplugin-integration.md`](gtneioreplugin-integration.md)
 for the reusable handler/helper map, dimension-display IDs, and probability
 semantics; future GT ore or dimension-stat requests should start there.
+For the other NEI special categories, use the handler/icon anchors in
+[`nei-special-integrations.md`](nei-special-integrations.md).
 
 The service worker precaches only the application shell. Immutable dataset bytes,
 on-demand icon sheets, and the decoded catalog snapshot stay in IndexedDB so

@@ -13,6 +13,7 @@ import {
   splitSpecialRecords
 } from '../tools/pack-builder/builder';
 import { expandGtOreSpecialData } from '../tools/pack-builder/specialOreAliases';
+import { isVendingMachineItem, repairSpecialServiceIcons } from '../tools/pack-builder/specialServiceIcons';
 import { specialGoodsForDirection } from '../tools/pack-builder/special';
 import type { DecodedItem, DecodedOreDictionary, DecodedRepository } from '../tools/pack-builder/model';
 
@@ -24,6 +25,32 @@ describe('format-4 special-data packing', () => {
     expect(buildSpecialViewTypes(data).map((view) => view.id)).toEqual(data.categories);
     expect(specialGoodsIds(data)).toContain('f:gregtech:hydrogen');
     expect(serializeSpecialData(data)).toBe(serializeSpecialData(JSON.parse(serializeSpecialData(data))));
+  });
+
+  it('repairs stale worldgen and vending service sprites from catalog anchors', async () => {
+    const data = await readSpecialSidecar(fixturePath, { requireNonEmptyCategories: true });
+    data.serviceIcons = data.serviceIcons.map((icon) => icon.id === 'service:worldgen'
+      || icon.id === 'service:vending' ? { ...icon, goodsId: 'i:wrong:placeholder:0' } : icon);
+    const item = (fields: Partial<DecodedItem>): DecodedItem => ({
+      id: 'i:test:item:0', name: 'Test', mod: 'test', internalName: 'item', numericId: 1,
+      iconId: 1, tooltip: null, unlocalizedName: 'item.test', nbt: null, searchMask: [],
+      productionRecipeIds: [], usageRecipeIds: [], searchable: true, kind: 'item', stackSize: 64,
+      damage: 0, container: null, ...fields
+    });
+    const chest = item({
+      id: 'i:minecraft:chest:0', mod: 'minecraft', internalName: 'chest', name: 'Chest'
+    });
+    const vending = item({
+      id: 'i:gregtech:gt.blockmachines:2741', mod: 'gregtech', internalName: 'gt.blockmachines',
+      name: 'Vending Machine', unlocalizedName: 'gt.blockmachines.multimachine.vendingmachine', damage: 2741
+    });
+    const repository = { items: [chest, vending] } as unknown as DecodedRepository;
+    const repaired = repairSpecialServiceIcons(data, repository);
+    expect(repaired.serviceIcons.find((icon) => icon.id === 'service:worldgen')?.goodsId)
+      .toBe(chest.id);
+    expect(repaired.serviceIcons.find((icon) => icon.id === 'service:vending')?.goodsId)
+      .toBe(vending.id);
+    expect(isVendingMachineItem(vending)).toBe(true);
   });
 
   it('splits special records deterministically and preserves sorted IDs', async () => {

@@ -33,6 +33,9 @@ GT5-Unofficial, not an old standalone checkout. Its four-layer vein model,
 small-ore/drop model, dimension-display item mapping, and normalized
 per-dimension vein probabilities are documented in
 [`gtneioreplugin-integration.md`](gtneioreplugin-integration.md).
+The corresponding icon and slot-layout anchors for world-generation loot,
+VendingMachine, CropsNH, LootBags, and Meteor Rituals are kept in
+[`nei-special-integrations.md`](nei-special-integrations.md).
 
 The special adapter must emit crop output/mutation/breeding, GT vein/small-ore/processing, meteor ritual, loot-bag,
 vending-trade, and worldgen-loot records. It runs before normal plugin processing so referenced goods, fluids, ore

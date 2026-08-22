@@ -166,6 +166,28 @@ describe('NEI special browser presentation', () => {
     expect(lootSource).toContain('wrapLabels label="Drops"');
   });
 
+  it('renders world-generation tables as chance grids and vending trades as NEI slots', async () => {
+    const worldgenSource = await readFile('src/lib/WorldgenLootSpecialCard.svelte', 'utf8');
+    expect(worldgenSource).toContain('entry.weight ?? entry.rarity');
+    expect(worldgenSource).toContain('Math.max(0, weight) / totalWeight');
+    expect(worldgenSource).toContain('table.entries ?? table.items ?? table.drops');
+    expect(worldgenSource).toContain('Possible loot');
+    expect(worldgenSource).toContain('Previous tables');
+
+    const vendingSource = await readFile('src/lib/VendingSpecialCard.svelte', 'utf8');
+    expect(vendingSource).toContain('rawPayload.fromCurrency');
+    expect(vendingSource).toContain('rawPayload.fromItems');
+    expect(vendingSource).toContain('rawPayload.toItems');
+    expect(vendingSource).toContain('trade-layout');
+    expect(vendingSource).toContain('Requirements');
+    expect(vendingSource).toContain('Better Questing quest');
+  });
+
+  it('removes legacy world-generation title prefixes at the card boundary', async () => {
+    const source = await readFile('src/lib/SpecialCard.svelte', 'utf8');
+    expect(source).toContain('^(?:Forge|Twilight) Loot:');
+  });
+
   it('builds semantic stage nodes, including reagent and branch outputs', () => {
     const graph = stagesToOreGraph([
       {
