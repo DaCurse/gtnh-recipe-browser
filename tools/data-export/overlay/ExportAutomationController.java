@@ -37,6 +37,8 @@ public final class ExportAutomationController {
 
     private static final Pattern SAFE_NAME = Pattern.compile("[A-Za-z0-9._-]+");
     private static final int WORLD_START_DELAY_TICKS = 80;
+    private static final int WORLD_FAILURE_GRACE_TICKS = 200;
+    private static final int WORLD_JOIN_TIMEOUT_TICKS = 6_000;
     private static final int PLAYER_SETTLE_TICKS = 100;
     private static final int THAUMCRAFT_SETTLE_TICKS = 600;
 
@@ -112,6 +114,13 @@ public final class ExportAutomationController {
                             false,
                             WorldType.FLAT).enableCommands();
                     minecraft.launchIntegratedServer(worldName, worldName, settings);
+                }
+                if (worldStarted && ticks >= WORLD_START_DELAY_TICKS + WORLD_FAILURE_GRACE_TICKS
+                        && !minecraft.isIntegratedServerRunning()) {
+                    throw new IllegalStateException("Disposable integrated server stopped before player join");
+                }
+                if (worldStarted && ticks >= WORLD_START_DELAY_TICKS + WORLD_JOIN_TIMEOUT_TICKS) {
+                    throw new IllegalStateException("Timed out waiting to join disposable integrated world");
                 }
                 return;
             }

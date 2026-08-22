@@ -13,6 +13,8 @@ describe('unattended NESQL export overlay', () => {
     expect(source).toContain('8675309');
     expect(source).toContain('if (!Boolean.parseBoolean');
     expect(source).toContain('minecraft.launchIntegratedServer');
+    expect(source).toContain('minecraft.isIntegratedServerRunning()');
+    expect(source).toContain('stopped before player join');
     expect(source).toContain('WorldSettings.GameType.CREATIVE');
     expect(source).toContain('WorldType.FLAT');
     expect(source).toContain('ItemList.loadItems()');
