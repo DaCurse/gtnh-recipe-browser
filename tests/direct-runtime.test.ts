@@ -212,6 +212,123 @@ describe('direct GTNH runtime resolver', () => {
     }
   });
 
+  it('applies later Maven GA overrides while retaining distinct classifiers and selected natives', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'gtnh-direct-runtime-library-merge-'));
+    try {
+      const clientPath = join(root, 'client.jar');
+      const guava15Path = join(root, 'guava-15.jar');
+      const guava17Path = join(root, 'guava-17.jar');
+      const nativeOldPath = join(root, 'selector-old-linux.jar');
+      const nativeNewPath = join(root, 'selector-new-linux.jar');
+      const nativeWindowsPath = join(root, 'selector-old-windows.jar');
+      const testsPath = join(root, 'tool-tests.jar');
+      const runtimePath = join(root, 'tool-runtime.jar');
+      const assetIndexPath = join(root, 'asset-index.json');
+      await writeFile(clientPath, 'client');
+      await writeFile(guava15Path, 'guava 15');
+      await writeFile(guava17Path, 'guava 17');
+      await writeFile(nativeOldPath, 'old linux native');
+      await writeFile(nativeNewPath, 'new linux native');
+      await writeFile(nativeWindowsPath, 'old windows native');
+      await writeFile(testsPath, 'tests classifier');
+      await writeFile(runtimePath, 'runtime classifier');
+      await writeFile(assetIndexPath, JSON.stringify({ objects: {} }));
+      const client = await fileArtifact(clientPath);
+      const guava15 = await fileArtifact(guava15Path);
+      const guava17 = await fileArtifact(guava17Path);
+      const nativeOld = await fileArtifact(nativeOldPath);
+      const nativeNew = await fileArtifact(nativeNewPath);
+      const nativeWindows = await fileArtifact(nativeWindowsPath);
+      const testsClassifier = await fileArtifact(testsPath);
+      const runtimeClassifier = await fileArtifact(runtimePath);
+      const assetIndex = await fileArtifact(assetIndexPath);
+      await writeFile(join(root, 'mmc-pack.json'), JSON.stringify({
+        formatVersion: 1,
+        components: [
+          { uid: 'net.minecraft', version: '1.7.10' },
+          { uid: 'com.example.old', version: '1' },
+          { uid: 'com.example.new', version: '2' }
+        ]
+      }));
+      await writePatch(root, 'minecraft.json', {
+        uid: 'net.minecraft',
+        version: '1.7.10',
+        order: -2,
+        mainClass: 'example.Main',
+        mainJar: {
+          name: 'com.example:client:1',
+          downloads: { artifact: client }
+        },
+        assetIndex: { id: '1.7.10', ...assetIndex }
+      });
+      await writePatch(root, 'old.json', {
+        uid: 'com.example.old',
+        order: 1,
+        libraries: [
+          {
+            name: 'com.example:guava:15',
+            downloads: { artifact: guava15 }
+          },
+          {
+            name: 'com.example:selector:1',
+            natives: {
+              linux: 'natives-linux',
+              windows: 'natives-windows-${arch}'
+            },
+            downloads: {
+              classifiers: {
+                'natives-linux': nativeOld,
+                'natives-windows-64': nativeWindows
+              }
+            }
+          },
+          {
+            name: 'com.example:tool:1:tests',
+            downloads: { artifact: testsClassifier }
+          }
+        ]
+      });
+      await writePatch(root, 'new.json', {
+        uid: 'com.example.new',
+        order: 2,
+        libraries: [
+          {
+            name: 'com.example:guava:17',
+            downloads: { artifact: guava17 }
+          },
+          {
+            name: 'com.example:selector:2',
+            natives: { linux: 'natives-linux' },
+            downloads: { classifiers: { 'natives-linux': nativeNew } }
+          },
+          {
+            name: 'com.example:tool:2:runtime',
+            downloads: { artifact: runtimeClassifier }
+          }
+        ]
+      });
+
+      const resolution = await resolveRuntime({
+        root,
+        cacheDirectory: join(root, 'cache'),
+        extractNatives: false,
+        identity: { username: 'OfflineUser' }
+      });
+      const names = resolution.artifacts.map((artifact) => artifact.name);
+      expect(names).toContain('com.example:guava:17');
+      expect(names).not.toContain('com.example:guava:15');
+      expect(names).toContain('com.example:selector:2:natives-linux');
+      expect(names).not.toContain('com.example:selector:1:natives-linux');
+      expect(names).not.toContain('com.example:selector:1:natives-windows-64');
+      expect(names).toContain('com.example:tool:1:tests');
+      expect(names).toContain('com.example:tool:2:runtime');
+      expect(resolution.artifacts.find((artifact) => artifact.name === 'com.example:guava:17')?.patchUid)
+        .toBe('com.example.new');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   it('rejects a remote artifact whose declared digest does not match its bytes', async () => {
     const root = await mkdtemp(join(tmpdir(), 'gtnh-direct-runtime-bad-cache-'));
     try {

@@ -457,6 +457,23 @@ function mavenRelativePath(name: string): string {
   return join(parts.group.replaceAll('.', sep), parts.artifact, parts.version, mavenFileName(name));
 }
 
+/**
+ * MultiMC resolves component libraries by Maven identity rather than by the
+ * complete versioned coordinate. Keep classifiers and extensions in the key:
+ * a native/test classifier is a distinct artifact, while a later version of
+ * the unclassified library replaces the earlier one.
+ */
+function runtimeLibraryIdentity(name: string): string {
+  try {
+    const parts = mavenCoordinateParts(name);
+    return [parts.group, parts.artifact, parts.classifier ?? '', parts.extension].join(':');
+  } catch {
+    // Preserve support for non-Maven/local names without allowing unrelated
+    // entries to collide with a parseable Maven coordinate.
+    return `raw:${name}`;
+  }
+}
+
 function fallbackMavenUrl(name: string): string {
   return `https://libraries.minecraft.net/${mavenRelativePath(name).split(sep).join('/')}`;
 }
@@ -533,10 +550,6 @@ function nativeClassifierForPlatform(
   return undefined;
 }
 
-function requestKey(request: RuntimeArtifactRequest): string {
-  return [request.name, request.classifier ?? '', request.url ?? '', request.localPath ?? ''].join('\0');
-}
-
 async function collectArtifactRequest(
   library: RuntimeLibrary,
   artifact: RuntimeLibraryArtifact | undefined,
@@ -577,7 +590,7 @@ async function collectArtifactRequests(
   platform: RuntimePlatform
 ): Promise<{ requests: RuntimeArtifactRequest[]; mainJar?: RuntimeArtifactRequest; assetIndex?: RuntimePatch['assetIndex'] }> {
   const requests: RuntimeArtifactRequest[] = [];
-  const seen = new Set<string>();
+  const librariesByIdentity = new Map<string, { library: RuntimeLibrary; patchUid?: string }>();
   let mainJar: RuntimeArtifactRequest | undefined;
   let assetIndex: RuntimePatch['assetIndex'];
   for (const { patch } of metadata.patches) {
@@ -603,41 +616,41 @@ async function collectArtifactRequests(
     if (patch.assetIndex) assetIndex = patch.assetIndex;
     if (!patch.libraries) continue;
     for (const library of patch.libraries) {
-      if (!isAllowedByRuntimeRules(normalizedRules(library.rules), platform)) continue;
-      const artifact = library.downloads?.artifact;
-      const localHint = library['MMC-hint'] === 'local' || library['mmc-hint'] === 'local';
-      if (artifact || localHint) {
-        const request = await collectArtifactRequest(library, artifact, undefined, patchUid, packRoot, platform);
-        const key = requestKey(request);
-        if (!seen.has(key)) {
-          seen.add(key);
-          requests.push(request);
-        }
-      }
-      // Launcher classifiers are native variants. Select only the classifier
-      // named by natives[platform], never every OS payload in the map.
-      const classifier = nativeClassifierForPlatform(library.natives, platform);
-      const classifierArtifact = classifier ? library.downloads?.classifiers?.[classifier] : undefined;
-      if (classifier && classifierArtifact) {
-        if (!isAllowedByRuntimeRules(normalizedRules(classifierArtifact.rules), platform)) continue;
-        const classifierName = library.name.includes(':')
-          ? `${library.name}:${classifier}`
-          : `${library.name}-${classifier}`;
-        const classifierLibrary = { ...library, name: classifierName };
-        const request = await collectArtifactRequest(
-          classifierLibrary,
-          classifierArtifact,
-          classifier,
-          patchUid,
-          packRoot,
-          platform
-        );
-        const key = requestKey(request);
-        if (!seen.has(key)) {
-          seen.add(key);
-          requests.push(request);
-        }
-      }
+      // Component patches are already ordered. A later library with the same
+      // Maven group/artifact identity replaces the earlier version; retain a
+      // classifier in the identity so tests/native variants do not collide.
+      const identity = runtimeLibraryIdentity(library.name);
+      librariesByIdentity.delete(identity);
+      librariesByIdentity.set(identity, { library, patchUid });
+    }
+  }
+  for (const { library, patchUid } of librariesByIdentity.values()) {
+    if (!isAllowedByRuntimeRules(normalizedRules(library.rules), platform)) continue;
+    const artifact = library.downloads?.artifact;
+    const localHint = library['MMC-hint'] === 'local' || library['mmc-hint'] === 'local';
+    if (artifact || localHint) {
+      const request = await collectArtifactRequest(library, artifact, undefined, patchUid, packRoot, platform);
+      requests.push(request);
+    }
+    // Launcher classifiers are native variants. Select only the classifier
+    // named by natives[platform], never every OS payload in the map.
+    const classifier = nativeClassifierForPlatform(library.natives, platform);
+    const classifierArtifact = classifier ? library.downloads?.classifiers?.[classifier] : undefined;
+    if (classifier && classifierArtifact) {
+      if (!isAllowedByRuntimeRules(normalizedRules(classifierArtifact.rules), platform)) continue;
+      const classifierName = library.name.includes(':')
+        ? `${library.name}:${classifier}`
+        : `${library.name}-${classifier}`;
+      const classifierLibrary = { ...library, name: classifierName };
+      const request = await collectArtifactRequest(
+        classifierLibrary,
+        classifierArtifact,
+        classifier,
+        patchUid,
+        packRoot,
+        platform
+      );
+      requests.push(request);
     }
   }
   return { requests, mainJar, assetIndex };
