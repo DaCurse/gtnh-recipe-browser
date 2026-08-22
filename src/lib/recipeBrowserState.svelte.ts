@@ -281,12 +281,14 @@ export class RecipeBrowserState {
   }
 
   selectRecipeType(type: string) {
+    const wasSpecial = this.showingSpecial;
     this.specialType = '';
     this.type = type;
     this.recipePage = 0;
     this.specialPage = 0;
     this.specialQuery = '';
     this.specialFilter = '';
+    if (wasSpecial) void this.refresh();
   }
 
   selectSpecialType(type: string) {
@@ -315,13 +317,15 @@ export class RecipeBrowserState {
       ? this.specialType
       : '';
     this.specialType = specialType;
-    this.allRecipes = [];
     this.specialRecords = [];
-    this.type = '';
+    if (!specialType) {
+      this.allRecipes = [];
+      this.type = '';
+    }
     this.recipeQuery = '';
     this.recipeFilter = '';
     this.recipePage = 0;
-    this.resetRecipeSearch();
+    if (!specialType) this.resetRecipeSearch();
     this.recipeError = '';
     this.specialError = '';
     this.recipeLoading = true;
@@ -400,9 +404,11 @@ export class RecipeBrowserState {
       if (error instanceof DOMException && error.name === 'AbortError') return;
       console.error('Unable to load recipes', error);
       if (request === this.recipeRequest) {
-        this.allRecipes = [];
         this.specialRecords = [];
-        this.resetRecipeSearch();
+        if (!specialType) {
+          this.allRecipes = [];
+          this.resetRecipeSearch();
+        }
         if (specialType) this.specialError = error instanceof Error ? error.message : String(error);
         else this.recipeError = error instanceof Error ? error.message : String(error);
       }
