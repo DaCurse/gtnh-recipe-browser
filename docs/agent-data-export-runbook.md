@@ -7,7 +7,7 @@ failure lessons.
 ## Non-negotiable invariants
 
 - Treat `gtnh@ShadowTheAge/` and `nesql-exporter@ShadowTheAge/` as pinned, read-only submodules.
-- Never use or modify an existing player instance. Prepare a clearly named disposable Prism instance.
+- Never use or modify an existing player instance. Launch only the disposable client prepared under `.export-work/`.
 - Use native WSL tools. Do not discover or invoke Java, .NET, Gradle, or Node installations from Windows.
 - Keep raw NESQL output private and generated work under ignored `.export-work/`.
 - Never bypass archive, schema, hash, determinism, sprite, or size validation to make an export pass.
@@ -26,9 +26,20 @@ RetroFuturaGradle requires JDK 8 for its launcher compiler, JDK 17 for Fernflowe
 Install all three side by side; leave Java 21 as the default. The processor currently requires the .NET 8 SDK.
 The exporter uses `./gradlew`, so system Gradle is not required.
 
-Run `npm run export:prepare` with the official archive and a new Prism instance path. The preparation profile pins
-the archive byte size and SHA-256. For a later GTNH release, deliberately update that profile after independently
-verifying the official download—never weaken the check.
+Use `npm run export:direct -- --version <version>` for an unattended export. The
+reviewed profile pins the official archive URL, byte size, and SHA-256. For a
+later GTNH release, add a new profile only after independently verifying the
+official download—never weaken the check or silently retarget an existing
+profile. `export:prepare` and `export:runtime` remain lower-level diagnostic
+commands, not operator checkpoints.
+
+The direct resolver reads `mmc-pack.json` and ordered component patches from the
+archive. It evaluates Linux x86_64 rules, selects only the matching native
+classifier, verifies all library and asset SHA-1/size metadata, preserves JAR
+filenames in its immutable cache, materializes virtual assets when requested,
+and launches the declared main class under Xvfb. Do not replace this with
+hardcoded Forge or LWJGL classpaths. Forge 1.7.10 on Java 18+ requires
+`-Djava.security.manager=allow`; keep the live-boot regression for that flag.
 
 The committed compatibility patch is applied only to `.export-work/<version>/nesql-exporter`. It currently:
 
@@ -65,20 +76,19 @@ category payloads. Missing required categories, duplicate IDs, unknown goods,
 unknown ore dictionaries, and unresolvable service icons are fatal; never delete
 a bad record to make processing pass.
 
-Current checkpoint: the committed overlay provides the validated adapter SPI,
-but `tools/data-export/overlay/RuntimeSpecialAdapter.java` has not yet been
-implemented. `npm run export:prepare` therefore fails before reading the archive
-or mutating a work/Prism directory. Do not bypass that preflight or ask the user
-to run Prism until a maintained provider covers all ten categories against the
-pinned jars. The relevant live boundaries are CropsNH's crop/mutation registries,
-GT worldgen and recipe maps, BloodMagic's meteor/reagent registries,
-EnhancedLootBags' group/drop registry, VendingMachine's trade database, and the
-Forge/Roguelike/Twilight loot registries.
+`tools/data-export/overlay/RuntimeSpecialAdapter.java` is copied only into the
+disposable exporter and registered through the adapter service file. Preparation
+extracts and verifies the exact production jars before compiling it. The live
+boundaries are CropsNH's crop/mutation registries, GT worldgen and recipe maps,
+BloodMagic's meteor/reagent registries, EnhancedLootBags' group/drop registry,
+VendingMachine's trade database, and the Forge/Roguelike/Twilight loot
+registries. A missing registry, version mismatch, empty category, or unresolved
+reference must abort the run.
 
 Use `patch --dry-run -p1` followed by `patch -p1`. Do not substitute `git apply` inside the ignored temporary copy:
 Git discovers the parent repository and interprets paths from the wrong root.
 
-The official Windows ZIP contains BetterQuesting paths differing only by case. Extraction to NTFS must use
+The official ZIP contains BetterQuesting paths differing only by case. Extraction must use
 `unzip -o` so the last ZIP entry wins deterministically without an interactive prompt. Install the unclassified
 production exporter jar and `-deps.jar`; never install the `-dev.jar`. Move BugTorch only within the disposable
 instance.
@@ -121,24 +131,28 @@ the copied processor markers, source schema, decoded counts, deterministic pack 
 it only avoids repeating SQL conversion and atlas generation. Never use it after modifying the applied processor
 source or against incomplete processed files.
 
-## Manual checkpoint
+## Automated client checkpoint
 
-After preparation, inspect the instance name, both exporter jars, disabled BugTorch jar, absence of staging
-directories, and `export-session.json`. Then stop and ask the user to perform the Prism steps. The user must create
-a fresh creative world, populate NEI, read a Creative Thaumonomicon, clear all three warp kinds, run the named
-`/nesql` export, and wait for its explicit completion message. Confirm that the completion log also names
-`browser-nei-special.json` and reports every required special category. Do not process a partial database or a
-sidecar copied from a different export.
+The opt-in `ExportAutomationController` creates a flat creative integrated world,
+waits for a non-empty completed NEI registry, grants static Thaumcraft research
+and aspects, clears all three warp kinds, waits for the server state to settle,
+then runs the overwriting exporter. It validates the database script, image ZIP,
+and special sidecar before writing `complete` and shutting down the client.
 
-When an export fails, inspect output sizes to confirm whether the transaction committed. Fully exit Minecraft before
-replacing its locked jar. Preserve the failed jar outside `mods/` for audit, then retry the same repository name with
-`/nesqlf`; unlike `/nesql`, it explicitly deletes that failed named output first.
+Launcher, controller, and orchestrator status files must be distinct and cleared
+for each launch. Treat a missing controller status, `failed` controller phase,
+timeout, nonzero JVM exit, or JVM exit before controller completion as failure.
+Legacy Forge can terminate with exit code zero after an early bootstrap
+exception, so process exit alone is never sufficient. Keep the failed disposable
+workspace and logs for audit; retry in a new work directory rather than mutating
+or deleting broad paths.
 
 ## Processing and release
 
-Once the user confirms completion:
+After the unattended controller confirms completion:
 
-1. Run `npm run export:process -- --session <export-session.json>`.
+1. Let `npm run export:direct` invoke processing. For diagnosis only, the equivalent lower-level command is
+   `npm run export:process -- --session <export-session.json>`.
 2. Confirm the processor hashes the sidecar into the revision, validates every goods/ore-dictionary/service-icon
    reference, and reports nonzero records for every required category. Investigate any schema or sanity failure
    generally; never special-case an item or recipe.
@@ -156,5 +170,5 @@ Once the user confirms completion:
    deployed-origin verification succeeds.
 
 If preparation fails, inspect the exact generated work and staging paths before removing only those paths. Never
-delete broadly under Prism’s `instances/` directory. Keep the pinned format-v5 fixture network-independent even
+delete broadly under `.export-work/` or a launcher’s instances directory. Keep the pinned format-v5 fixture network-independent even
 after newer production data is published.

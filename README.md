@@ -39,11 +39,21 @@ npm run smoke:deploy -- https://<site>.netlify.app/
 ## Data pipeline
 
 `gtnh@ShadowTheAge` and `nesql-exporter@ShadowTheAge` are read-only MIT-licensed upstream submodules. The
-reproducible release workflow prepares a disposable Prism instance, processes its private NESQL output twice,
+reproducible release workflow directly launches a disposable client from the official archive, processes its private NESQL output twice,
 verifies the format-v5 source and deterministic chunked browser pack, and publishes it without removing historical
 datasets. The disposable processor applies the documented
 [`browser catalog retention policy`](docs/browser-catalog-policy.md) so valid tools and configurable variants
 filtered from the upstream production calculator remain browseable.
+
+Run the pinned unattended client export and processing pipeline without Prism or
+an existing player instance:
+
+```sh
+npm run export:direct -- --version 2.9.0-beta-2
+```
+
+See [`docs/exporting-current-data.md`](docs/exporting-current-data.md) for
+toolchain, status, verification, staging, and activation details.
 
 Build and verify an already processed deterministic chunked pack with:
 

@@ -196,7 +196,7 @@ Never update `versions.json` until all assets are remotely readable and their do
 Implemented:
 
 - The pinned NESQL exporter is built from a patched disposable copy; both upstream submodules remain read-only.
-- Preparation verifies the official GTNH archive and creates a separate Prism export instance with BugTorch disabled.
+- Preparation verifies the official GTNH archive and creates a separate disposable client with BugTorch disabled.
 - Processing validates tooltip compatibility, restores recipe-connected catalog families excluded by the upstream
   calculator policy, builds twice, compares deterministic digests, and verifies every asset.
 - Publishing stages the immutable pack before atomically prepending its version entry while retaining older datasets.
@@ -238,14 +238,15 @@ boxes, routed connectors, and touch panning rather than an exported image. Playe
 current loot counts are never inferred from static exports.
 
 The network-independent `nei-special-v1` fixture is the compatibility boundary for schema rejection, stable
-ordering, all required category payloads, indexing, sharding, offline behavior, and graph layout. The release exit
-condition remains manual: prepare a fresh disposable Prism instance, perform a new NESQL export, compare every
-category against in-game NEI, build twice with identical digests, verify the deployed immutable assets, and only
-then activate the new revision.
+ordering, all required category payloads, indexing, sharding, offline behavior, and graph layout. The direct export
+pipeline now verifies and downloads a reviewed official archive, prepares an isolated client, resolves its embedded
+Forge/LWJGL/assets metadata, boots it under Xvfb, creates an integrated creative world, waits for NEI, normalizes the
+static Thaumcraft state, exports, and processes without Prism or player action. Separate launcher and in-client
+status files prevent an early JVM exit from being mistaken for success.
 
-The current blocker is the live `RuntimeSpecialAdapter` implementation. The
-exporter bridge, processor retention, fixture, pack format, and browser are in
-place, but preparation intentionally stops before creating a Prism instance while
-that provider is absent. No format-4 real-data revision should be staged or
-activated until the provider reads all ten pinned runtime registries and the
-manual comparisons above pass.
+The remaining release exit condition is a successful live run whose adapter
+reads all ten pinned registries, whose representative records match the same
+runtime data presented by NEI (including complete Meteor metadata and a branched
+chemical-bath/sifter ore graph), whose two builds have identical digests, and
+whose staged immutable assets pass deployed-origin verification. No format-4
+real-data revision should be activated before those checks pass.

@@ -12,46 +12,46 @@ uses its Gradle wrapper; a system Gradle installation is optional. Initialize bo
 git submodule update --init --recursive
 ```
 
-## Prepare the export instance
+## Run the direct export
 
-For the pinned official GTNH 2.9.0-beta-2 archive:
+The normal path downloads the reviewed official archive, verifies its byte size
+and SHA-256, prepares a disposable client, launches the embedded GTNH/Forge main
+class under Xvfb, creates an integrated creative world, waits for NEI, normalizes
+Thaumcraft research and warp, exports, and processes the result:
 
 ```sh
-npm run export:prepare -- \
-  --archive ./GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip \
+npm run export:direct -- --version 2.9.0-beta-2
+```
+
+To reuse a previously downloaded archive, supply it explicitly; it is still
+verified against the profile before preparation:
+
+```sh
+npm run export:direct -- \
   --version 2.9.0-beta-2 \
-  --instance-dir '/mnt/c/Users/<user>/AppData/Roaming/PrismLauncher/instances/GTNH_2.9.0-beta-2_NESQL_Export'
+  --archive ./GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip
 ```
 
-Preparation verifies the official archive digest, patches a temporary exporter copy for format-v5 tooltip
-compatibility and immutable persisted image paths, disables BugTorch, installs the production exporter jars, and writes
-`.export-work/2.9.0-beta-2/export-session.json`. It refuses to replace an existing work directory or Prism instance.
+No launcher installation or account is required. The direct resolver reads the
+ordered component patches, libraries, native classifiers, launch arguments, and
+asset index embedded in the official client archive. It uses a deterministic
+offline identity and never opens an existing player instance.
 
-Restart Prism Launcher, launch the clearly named export instance, and create a new creative single-player world.
-Open the inventory and let the NEI item list populate. Read a creative Thaumonomicon, then clear all warp:
+The command refuses to reuse its disposable work directory. Launcher,
+in-client exporter, and orchestration status are separate JSON files under
+`.export-work/direct-export-cache/status/`; inspect all three on failure. A JVM
+exit is not success unless the in-client controller reached `complete` and the
+processor subsequently wrote and verified `process-result.json`.
 
-```text
-/tc warp @p set 0
-/tc warp @p set 0 PERM
-/tc warp @p set 0 TEMP
-```
-
-Run `/nesql gtnh_2_9_0_beta_2`, pause the game if desired, and wait for the completion message. Do not process a
-partial export. The log’s “Active plugins” list must include `thaumcraft`; the processor rejects an export that
-silently omitted its aspects and native recipes.
-
-If an export fails after creating its repository, fully exit Minecraft before replacing exporter jars. Relaunch
-and retry with `/nesqlf gtnh_2_9_0_beta_2`; the `f` command deletes and recreates only that named export repository.
-Plain `/nesql` intentionally refuses to overwrite it.
+Preparation still remains available as a diagnostic primitive with
+`npm run export:prepare`, and `npm run export:runtime -- --dry-run` can emit the
+resolved JVM launch plan. They are not manual release checkpoints.
 
 ## Process, verify, and publish
 
 ```sh
-npm run export:process -- \
-  --session .export-work/2.9.0-beta-2/export-session.json
-
 npm run export:publish -- \
-  --pack .export-work/2.9.0-beta-2/pack \
+  --pack .export-work/2.9.0-beta-2-direct/pack \
   --mode stage
 
 npm run check
@@ -76,7 +76,7 @@ Only after that succeeds, activate the already staged bytes and deploy the small
 
 ```sh
 npm run export:publish -- \
-  --pack .export-work/2.9.0-beta-2/pack \
+  --pack .export-work/2.9.0-beta-2-direct/pack \
   --mode activate
 ```
 

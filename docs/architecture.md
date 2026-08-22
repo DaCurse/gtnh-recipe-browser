@@ -49,6 +49,27 @@ orthogonal connector routing can be tested without mounting Svelte.
 
 UI code should depend on `DatasetRepository` and `types.ts`, not packed wire interfaces. Pack-generation code under `tools/` remains independent from browser storage and UI modules.
 
+## Export runtime boundary
+
+`tools/data-export/direct-runtime.ts` resolves the ordered MultiMC component
+metadata embedded in an official GTNH archive into a direct JVM launch: verified
+libraries, the platform-native classifier, assets, natives, JVM arguments, game
+arguments, and main class. It does not depend on a locally installed launcher.
+The reviewed version profile pins only the official archive URL, byte size, and
+SHA-256; runtime components continue to come from that signed-off archive shape.
+
+`direct-export.ts` composes archive verification, disposable exporter
+preparation, headless client launch, in-client automation, and deterministic pack
+processing. The JVM launcher and the in-client controller write distinct atomic
+status files. The orchestrator requires both a successful JVM exit and an
+explicit `complete` controller phase, preventing a legacy Forge bootstrap error
+with exit code zero from being accepted as an export.
+
+The exporter overlay remains source-controlled outside both read-only
+submodules. `RuntimeSpecialAdapter.java` reads the pinned live mod registries;
+`ExportAutomationController.java` creates a disposable integrated world and
+starts NESQL only after the client player and NEI item registry are ready.
+
 ## Maintenance rules
 
 - Keep worker lifecycle and cancellation with the feature that consumes the worker.
