@@ -27,6 +27,14 @@ interface IconSheetAsset extends DatasetAsset {
   columns: number;
 }
 
+interface SpecialDataShardAsset extends DatasetAsset {
+  kind: 'specialData';
+  specialViewTypeId: string;
+  specialViewTypeOrder: number;
+  part: number;
+  recordCount: number;
+}
+
 export interface DatasetManifest {
   formatVersion: number;
   datasetId: string;
@@ -36,9 +44,11 @@ export interface DatasetManifest {
   catalogAssets: CatalogAsset[];
   recipeShards: RecipeShardAsset[];
   iconSheets: IconSheetAsset[];
+  specialDataShards?: SpecialDataShardAsset[];
   totals?: {
     assets: number;
     offlineBytes: number;
+    specialRecords?: number;
   };
 }
 
@@ -60,6 +70,12 @@ export interface PackedGoods {
   usageShards: string[];
   productionCount: number;
   usageCount: number;
+  specialProductionShards?: string[];
+  specialUsageShards?: string[];
+  specialProductionLookupIds?: string[];
+  specialUsageLookupIds?: string[];
+  specialProductionCount?: number;
+  specialUsageCount?: number;
   container?: {
     fluidId: string;
     amount: number;
@@ -99,15 +115,28 @@ export interface PackedCatalog {
   ingredientGroups?: PackedIngredientGroup[];
   serviceItemIds?: string[];
   obsoleteRecipeRemaps?: Record<string, string>;
+  specialViewTypes?: Array<{
+    id: string;
+    label: string;
+    serviceIconId: string;
+    recordCount?: number;
+  }>;
+  specialServiceIcons?: Array<{
+    id: string;
+    label: string;
+    goodsId?: string;
+    searchable: false;
+    icon: { sheetId: string; index: number } | null;
+  }>;
 }
 
 export interface PackedCatalogCore extends Omit<PackedCatalog, 'goods'> {
-  schemaVersion: 2 | 3;
+  schemaVersion: 2 | 3 | 4;
   kind: 'core';
 }
 
 export interface PackedCatalogGoods {
-  schemaVersion: 2 | 3;
+  schemaVersion: 2 | 3 | 4;
   datasetId: string;
   kind: 'goods';
   part: number;
@@ -141,4 +170,29 @@ export interface PackedRecipe {
 export interface PackedShard {
   datasetId: string;
   recipes: PackedRecipe[];
+}
+
+export interface PackedSpecialRecord {
+  id: string;
+  category: string;
+  title: string;
+  searchText: string;
+  goodsIds: string[];
+  recipesLookupId: string;
+  usagesLookupId: string;
+  serviceIconId: string;
+  payload: Record<string, unknown>;
+  productionGoodsIds?: string[];
+  usageGoodsIds?: string[];
+  [key: string]: unknown;
+}
+
+export interface PackedSpecialShard {
+  schemaVersion: 4;
+  datasetId: string;
+  kind: 'special';
+  specialViewTypeId: string;
+  specialViewTypeOrder: number;
+  part: number;
+  records: PackedSpecialRecord[];
 }

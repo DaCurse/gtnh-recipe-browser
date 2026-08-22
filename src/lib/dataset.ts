@@ -24,6 +24,8 @@ import type {
   PackedRecipe,
   PackedRecipeType,
   PackedShard,
+  PackedSpecialRecord,
+  PackedSpecialShard,
   VersionsIndex
 } from './datasetSchema';
 import { ingredientMatchesEntry } from './oreDictionary';
@@ -55,6 +57,65 @@ import type {
   Recipe,
   RecipeView
 } from './types';
+import type { SpecialRecord, SpecialViewType } from './specialData';
+
+function specialRecordGoodsIds(record: PackedSpecialRecord): string[] {
+  const result = new Set<string>([
+    ...record.goodsIds,
+    ...(record.productionGoodsIds ?? []),
+    ...(record.usageGoodsIds ?? [])
+  ]);
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (value === null || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const normalizedKey = key.toLowerCase();
+      if (normalizedKey.endsWith('goodsid') && typeof child === 'string') result.add(child);
+      if (normalizedKey.endsWith('goodsids') && Array.isArray(child)) {
+        child.filter((candidate): candidate is string => typeof candidate === 'string')
+          .forEach((candidate) => result.add(candidate));
+      }
+      visit(child);
+    }
+  };
+  visit(record.payload);
+  return [...result].sort();
+}
+
+function specialRecordGoodsForDirection(
+  record: PackedSpecialRecord,
+  view: RecipeView
+): string[] {
+  const extension = view === 'recipes' ? record.productionGoodsIds : record.usageGoodsIds;
+  const result = new Set<string>(
+    Array.isArray(extension) ? extension : record.goodsIds
+  );
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (value === null || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const normalizedKey = key.toLowerCase();
+      if (normalizedKey.endsWith('goodsid') && typeof child === 'string') result.add(child);
+      if (normalizedKey.endsWith('goodsids') && Array.isArray(child)) {
+        child.filter((candidate): candidate is string => typeof candidate === 'string')
+          .forEach((candidate) => result.add(candidate));
+      }
+      visit(child);
+    }
+  };
+  visit(record.payload);
+  return [...result];
+}
+
+function isStringArray(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
 
 export interface DatasetLoadProgress {
   percent: number;
@@ -85,7 +146,7 @@ async function loadCatalog(
     if (catalog.datasetId !== manifest.datasetId) throw new Error('Catalog dataset identity mismatch');
     return { catalog, hashes: [asset.sha256] };
   }
-  if (manifest.formatVersion !== 2 && manifest.formatVersion !== 3) {
+  if (manifest.formatVersion !== 2 && manifest.formatVersion !== 3 && manifest.formatVersion !== 4) {
     throw new Error(`Unsupported pack manifest format ${manifest.formatVersion}`);
   }
 
@@ -133,7 +194,9 @@ async function loadCatalog(
       oreDictionaries: core.oreDictionaries,
       ingredientGroups: core.ingredientGroups ?? [],
       serviceItemIds: core.serviceItemIds,
-      obsoleteRecipeRemaps: core.obsoleteRecipeRemaps
+      obsoleteRecipeRemaps: core.obsoleteRecipeRemaps,
+      specialViewTypes: core.specialViewTypes,
+      specialServiceIcons: core.specialServiceIcons
     },
     hashes: manifest.catalogAssets.map((asset) => asset.sha256)
   };
@@ -146,6 +209,16 @@ export class DatasetRepository {
   readonly datasetId: string;
   readonly gtnhVersion: string;
   readonly revision: string;
+  /** Format-4 NEI tabs; empty for legacy format-1--3 packs. */
+  readonly specialViewTypes: readonly SpecialViewType[];
+  /** Service icons are deliberately not searchable catalog goods. */
+  readonly specialServiceIcons: ReadonlyArray<{
+    id: string;
+    label: string;
+    goodsId?: string;
+    searchable: false;
+    icon: CatalogEntry['icon'] | null;
+  }>;
   private readonly manifest: DatasetManifest;
   private readonly manifestUrl: string;
   private readonly packedGoods: Map<string, PackedGoods>;
@@ -153,9 +226,15 @@ export class DatasetRepository {
   private readonly ingredientGroups: Map<string, PackedOreDictionary | PackedIngredientGroup>;
   private readonly productionFallbacks: Map<string, PackedOreDictionary>;
   private readonly shards = new Map<string, Promise<PackedRecipe[]>>();
+  private readonly specialShards = new Map<string, Promise<PackedSpecialRecord[]>>();
 
   private get assets(): DatasetAsset[] {
-    return [...this.manifest.catalogAssets, ...this.manifest.recipeShards, ...this.manifest.iconSheets];
+    return [
+      ...this.manifest.catalogAssets,
+      ...this.manifest.recipeShards,
+      ...(this.manifest.specialDataShards ?? []),
+      ...this.manifest.iconSheets
+    ];
   }
 
   get displayName(): string {
@@ -188,6 +267,26 @@ export class DatasetRepository {
     this.types = resolved.recipeTypes;
     this.ingredientGroups = resolved.ingredientGroups;
     this.productionFallbacks = resolved.productionFallbacks;
+    this.specialViewTypes = (catalog.specialViewTypes ?? []).map((viewType, order) => ({
+      ...viewType,
+      order
+    }));
+    const entriesById = new Map(this.entries.map((entry) => [entry.id, entry]));
+    this.specialServiceIcons = (catalog.specialServiceIcons ?? []).map((icon) => ({
+      ...icon,
+      icon: icon.goodsId ? entriesById.get(icon.goodsId)?.icon ?? null : null
+    }));
+    const serviceIconIds = new Set(this.specialServiceIcons.map((icon) => icon.id));
+    for (const icon of this.specialServiceIcons) {
+      if (icon.goodsId && !entriesById.has(icon.goodsId)) {
+        throw new Error(`Special service icon ${icon.id} references unknown goods ${icon.goodsId}`);
+      }
+    }
+    for (const viewType of this.specialViewTypes) {
+      if (!viewType.serviceIconId || !serviceIconIds.has(viewType.serviceIconId)) {
+        throw new Error(`Special view ${viewType.id} references unknown service icon ${viewType.serviceIconId}`);
+      }
+    }
   }
 
   static async availableVersions(): Promise<DatasetVersion[]> {
@@ -233,7 +332,7 @@ export class DatasetRepository {
       `manifest:${manifestUrl}`
     );
     const manifest = manifestResult.value;
-    if (![1, 2, 3].includes(manifest.formatVersion)) {
+    if (![1, 2, 3, 4].includes(manifest.formatVersion)) {
       throw new Error(`Unsupported pack manifest format ${manifest.formatVersion}`);
     }
     if (manifest.datasetId !== selected.datasetId) throw new Error('Manifest dataset identity mismatch');
@@ -436,6 +535,195 @@ export class DatasetRepository {
     this.shards.set(id, pending);
     void pending.catch(() => this.shards.delete(id));
     return pending;
+  }
+
+  private loadSpecialShard(id: string): Promise<PackedSpecialRecord[]> {
+    let pending = this.specialShards.get(id);
+    if (pending) return pending;
+    pending = (async () => {
+      const descriptor = this.manifest.specialDataShards?.find((shard) => shard.id === id);
+      if (!descriptor) throw new Error(`Unknown special-data shard ${id}`);
+      if (this.manifest.formatVersion !== 4) {
+        throw new Error(`Special-data shard ${id} requires format 4`);
+      }
+      const bytes = await fetchVerified(descriptor, this.manifestUrl);
+      await this.recordAsset(descriptor);
+      const decompressed = await decompress(bytes);
+      await yieldToBrowser();
+      const shard = decode(decompressed) as PackedSpecialShard;
+      if (
+        shard.schemaVersion !== 4
+        || shard.datasetId !== this.datasetId
+        || shard.kind !== 'special'
+        || shard.specialViewTypeId !== descriptor.specialViewTypeId
+        || shard.specialViewTypeOrder !== descriptor.specialViewTypeOrder
+        || shard.part !== descriptor.part
+      ) {
+        throw new Error(`${id}: special-data identity mismatch`);
+      }
+      if (!Array.isArray(shard.records) || shard.records.length !== descriptor.recordCount) {
+        throw new Error(`${id}: special-data record count mismatch`);
+      }
+      const serviceIconIds = new Set(this.specialServiceIcons.map((icon) => icon.id));
+      let previousId: string | undefined;
+      for (const record of shard.records) {
+        if (
+          !record
+          || typeof record.id !== 'string'
+          || typeof record.category !== 'string'
+          || typeof record.title !== 'string'
+          || typeof record.searchText !== 'string'
+          || !isStringArray(record.goodsIds)
+          || (record.productionGoodsIds !== undefined && !isStringArray(record.productionGoodsIds))
+          || (record.usageGoodsIds !== undefined && !isStringArray(record.usageGoodsIds))
+          || typeof record.recipesLookupId !== 'string'
+          || typeof record.usagesLookupId !== 'string'
+          || typeof record.serviceIconId !== 'string'
+          || record.payload === null
+          || typeof record.payload !== 'object'
+          || Array.isArray(record.payload)
+      ) {
+          throw new Error(`${id}: invalid special record`);
+        }
+        if (record.category !== descriptor.specialViewTypeId) {
+          throw new Error(`${id}: record ${record.id} has the wrong special category`);
+        }
+        if (previousId !== undefined && record.id.localeCompare(previousId) < 0) {
+          throw new Error(`${id}: special records are not sorted`);
+        }
+        previousId = record.id;
+        if (!serviceIconIds.has(record.serviceIconId)) {
+          throw new Error(`${id}: record ${record.id} references unknown service icon ${record.serviceIconId}`);
+        }
+        if (record.recipesLookupId.length === 0 || record.usagesLookupId.length === 0) {
+          throw new Error(`${id}: record ${record.id} has an empty lookup ID`);
+        }
+        for (const goodsId of specialRecordGoodsIds(record)) {
+          if (!this.packedGoods.has(goodsId)) {
+            throw new Error(`${id}: record ${record.id} references unknown goods ${goodsId}`);
+          }
+        }
+      }
+      return shard.records;
+    })();
+    this.specialShards.set(id, pending);
+    void pending.catch(() => this.specialShards.delete(id));
+    return pending;
+  }
+
+  private specialRecordIds(entryId: string, view: RecipeView): Set<string> | null {
+    if (view === 'machineUsages') return null;
+    const selectedGroup = this.ingredientGroups.get(entryId);
+    const fluidScope = fluidRecipeScope(entryId, this.packedGoods);
+    if (selectedGroup) return new Set(selectedGroup.itemIds);
+    if (fluidScope) return new Set(fluidScope.memberIds);
+    if (!this.packedGoods.has(entryId)) return null;
+    const productionFallback = this.productionFallbacks.get(entryId);
+    if (view === 'recipes' && productionFallback) return new Set(productionFallback.itemIds);
+    return new Set([entryId]);
+  }
+
+  private specialShardIds(entryIds: ReadonlySet<string>, view: RecipeView): string[] {
+    const field = view === 'recipes' ? 'specialProductionShards' : 'specialUsageShards';
+    const result = new Set<string>();
+    for (const entryId of entryIds) {
+      for (const shardId of this.packedGoods.get(entryId)?.[field] ?? []) result.add(shardId);
+    }
+    return [...result].sort((left, right) => {
+      const a = this.manifest.specialDataShards?.find((shard) => shard.id === left);
+      const b = this.manifest.specialDataShards?.find((shard) => shard.id === right);
+      return (a?.specialViewTypeOrder ?? 0) - (b?.specialViewTypeOrder ?? 0)
+        || (a?.part ?? 0) - (b?.part ?? 0)
+        || left.localeCompare(right);
+    });
+  }
+
+  private materializeSpecialRecord(
+    record: PackedSpecialRecord,
+    view: RecipeView,
+    order: number
+  ): SpecialRecord {
+    return {
+      ...record,
+      category: record.category,
+      title: record.title,
+      searchText: record.searchText,
+      lookupId: view === 'recipes' ? record.recipesLookupId : record.usagesLookupId,
+      recipesLookupId: record.recipesLookupId,
+      usagesLookupId: record.usagesLookupId,
+      goodsIds: record.goodsIds,
+      productionGoodsIds: record.productionGoodsIds ?? record.goodsIds,
+      usageGoodsIds: record.usageGoodsIds ?? record.goodsIds,
+      serviceIconId: record.serviceIconId,
+      payload: record.payload as SpecialRecord['payload'],
+      order
+    };
+  }
+
+  async specialFor(
+    entryId: string,
+    view: RecipeView,
+    viewType: string,
+    onProgress?: (progress: {
+      loadedShards: number;
+      totalShards: number;
+      batch: SpecialRecord[];
+    }) => void,
+    signal?: AbortSignal
+  ): Promise<SpecialRecord[]> {
+    const entryIds = this.specialRecordIds(entryId, view);
+    if (!entryIds) {
+      onProgress?.({ loadedShards: 0, totalShards: 0, batch: [] });
+      return [];
+    }
+    const shardIds = this.specialShardIds(entryIds, view).filter((id) => {
+      const descriptor = this.manifest.specialDataShards?.find((shard) => shard.id === id);
+      return descriptor?.specialViewTypeId === viewType;
+    });
+    onProgress?.({ loadedShards: 0, totalShards: shardIds.length, batch: [] });
+    const batches = await mapProgressively(
+      shardIds,
+      2,
+      async (shardId, shardIndex) => {
+        const records = await this.loadSpecialShard(shardId);
+        const batch = records
+          .filter((record) => record.category === viewType)
+          .filter((record) => {
+            const goodsIds = specialRecordGoodsForDirection(record, view);
+            return goodsIds.some((goodsId) => entryIds.has(goodsId));
+          })
+          .map((record, recordIndex) => this.materializeSpecialRecord(
+            record,
+            view,
+            shardIndex * 1_000_000 + recordIndex
+          ));
+        await yieldToBrowser();
+        return batch;
+      },
+      ({ completed, total, value }) => {
+        onProgress?.({ loadedShards: completed, totalShards: total, batch: value });
+      },
+      signal
+    );
+    const unique = new Map<string, SpecialRecord>();
+    for (const record of batches.flat()) unique.set(record.id, record);
+    return [...unique.values()].sort((left, right) =>
+      (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id)
+    );
+  }
+
+  specialRecordsFor(
+    entryId: string,
+    view: RecipeView,
+    viewType: string,
+    onProgress?: (progress: {
+      loadedShards: number;
+      totalShards: number;
+      batch: SpecialRecord[];
+    }) => void,
+    signal?: AbortSignal
+  ): Promise<SpecialRecord[]> {
+    return this.specialFor(entryId, view, viewType, onProgress, signal);
   }
 
   async recipesFor(

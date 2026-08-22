@@ -161,6 +161,10 @@ export function materializeCatalog(
       usageShards,
       productionCount: recipeScopeIds ? undefined : goods.productionCount,
       usageCount: fluidScope ? undefined : goods.usageCount,
+      specialProductionShards: goods.specialProductionShards,
+      specialUsageShards: goods.specialUsageShards,
+      specialProductionCount: goods.specialProductionCount,
+      specialUsageCount: goods.specialUsageCount,
       productionOreDictionaryId: fluidScope ? undefined : productionFallback?.id,
       oreDictionaryIds: (itemOres.get(goods.id) ?? []).map((ore) => ore.id),
       container: goods.container,
@@ -177,10 +181,18 @@ export function materializeCatalog(
     const representative = members[0];
     const productionShards = new Set<string>();
     const usageShards = new Set<string>();
+    const specialProductionShards = new Set<string>();
+    const specialUsageShards = new Set<string>();
+    let specialProductionCount = 0;
+    let specialUsageCount = 0;
     for (const memberId of group.itemIds) {
       const member = goodsById.get(memberId);
       member?.productionShards.forEach((id) => productionShards.add(id));
       member?.usageShards.forEach((id) => usageShards.add(id));
+      member?.specialProductionShards?.forEach((id) => specialProductionShards.add(id));
+      member?.specialUsageShards?.forEach((id) => specialUsageShards.add(id));
+      specialProductionCount += member?.specialProductionCount ?? 0;
+      specialUsageCount += member?.specialUsageCount ?? 0;
     }
     const namedDictionary = group.id.startsWith('o:');
     const dictionaryName = namedDictionary ? group.id.slice(2) : '';
@@ -199,6 +211,10 @@ export function materializeCatalog(
       icon: representative?.icon,
       productionShards: [...productionShards].sort(),
       usageShards: [...usageShards].sort(),
+      specialProductionShards: [...specialProductionShards].sort(),
+      specialUsageShards: [...specialUsageShards].sort(),
+      specialProductionCount,
+      specialUsageCount,
       members: group.itemIds,
       machineCapabilities: capabilitiesByMachine.get(group.id)
     };
