@@ -41,6 +41,7 @@
   const tooltipGroupId = $derived(tooltipIngredient?.ingredientGroupId ?? '');
 
   function openGroupChooser(itemId: string, groupId: string) {
+    hideTooltip();
     chosenItemId = itemId;
     chosenGroupId = groupId;
     chooserOpen = true;
@@ -143,7 +144,7 @@
   </div>
 {/if}
 
-{#if tooltipEntry}
+{#if !chooserOpen && tooltipEntry}
   <FloatingCatalogTooltip
     entry={tooltipEntry}
     x={tooltipX}

@@ -69,6 +69,7 @@
 
   function inspect(item: SpecialGoods, view: RecipeView) {
     if (item.oreDictionaryId && resolve(item.oreDictionaryId)) {
+      hideTooltip();
       chosenItemId = displayId(item);
       chosenGroupId = item.oreDictionaryId;
       chooserOpen = true;
@@ -147,7 +148,7 @@
   </section>
 {/if}
 
-{#if tooltipEntry}
+{#if !chooserOpen && tooltipEntry}
   <FloatingCatalogTooltip
     entry={tooltipEntry}
     x={tooltipX}
