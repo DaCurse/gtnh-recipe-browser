@@ -8,6 +8,7 @@ export default defineConfig(
   globalIgnores([
     'dist/**',
     'node_modules/**',
+    '.export-work/**',
     'public/data/**',
     'tests/fixtures/**',
     'gtnh@ShadowTheAge/**'

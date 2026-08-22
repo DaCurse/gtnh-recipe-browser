@@ -5,7 +5,13 @@ import { gzipSync } from 'node:zlib';
 import { encode } from '@msgpack/msgpack';
 import sharp from 'sharp';
 import { decodeFormat5 } from './decoder';
-import type { DecodedRecipe, DecodedRecipeType, DecodedRepository } from './model';
+import type {
+  DecodedGoodsBase,
+  DecodedItem,
+  DecodedRecipe,
+  DecodedRecipeType,
+  DecodedRepository
+} from './model';
 import type {
   CatalogAsset,
   GeneratedPackManifest,
@@ -355,6 +361,66 @@ function mutableGoodsIndexEntry(): MutableSpecialGoodsIndexEntry {
   return { recipes: mutableDirectionIndex(), usages: mutableDirectionIndex() };
 }
 
+function mergeSpecialDirectionIndex(
+  left: SpecialGoodsDirectionIndex,
+  right: SpecialGoodsDirectionIndex
+): SpecialGoodsDirectionIndex {
+  const lookupIds = [...new Set([...left.lookupIds, ...right.lookupIds])].sort();
+  return {
+    shardIds: [...new Set([...left.shardIds, ...right.shardIds])].sort(),
+    lookupIds,
+    // Every special record contributes one stable lookup ID per direction.
+    // Counting the union avoids double-counting when two equivalent stacks
+    // were retained by the runtime exporter.
+    recordCount: lookupIds.length
+  };
+}
+
+function mergeSpecialGoodsIndexEntry(
+  left: SpecialGoodsIndexEntry,
+  right: SpecialGoodsIndexEntry
+): SpecialGoodsIndexEntry {
+  return {
+    recipes: mergeSpecialDirectionIndex(left.recipes, right.recipes),
+    usages: mergeSpecialDirectionIndex(left.usages, right.usages)
+  };
+}
+
+/**
+ * CropsNH emits several exact genericSeed stacks for one crop.  Their NBT
+ * stats are useful normal-item variants, but NEI resolves all of them to the
+ * same crop, pool, and breeding pages.  The runtime sidecar intentionally
+ * retains the DEFAULT_ANALYZED stack; project its special indexes to every
+ * exact stack with the same crop key so selecting any literal seed is useful.
+ */
+function applyCropsNhVariantAliases(
+  index: Map<string, SpecialGoodsIndexEntry>,
+  goods: readonly DecodedGoodsBase[]
+): void {
+  const goodsById = new Map(goods.map((entry) => [entry.id, entry]));
+  const cropKey = (entry: DecodedGoodsBase | undefined): string | undefined => {
+    const item = entry as (DecodedItem & { kind?: string }) | undefined;
+    if (!item || item.kind !== 'item' || item.mod.toLowerCase() !== 'cropsnh') return undefined;
+    if (item.internalName !== 'genericSeed' || !item.nbt) return undefined;
+    return item.nbt.match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/)?.[1]?.toLowerCase();
+  };
+
+  const byCrop = new Map<string, SpecialGoodsIndexEntry>();
+  for (const [goodsId, projection] of index) {
+    const crop = cropKey(goodsById.get(goodsId));
+    if (!crop) continue;
+    const existing = byCrop.get(crop);
+    byCrop.set(crop, existing ? mergeSpecialGoodsIndexEntry(existing, projection) : projection);
+  }
+
+  for (const entry of goods) {
+    const crop = cropKey(entry);
+    const projection = crop ? byCrop.get(crop) : undefined;
+    if (!projection || index.has(entry.id)) continue;
+    index.set(entry.id, projection);
+  }
+}
+
 function finalizeSpecialDirectionIndex(
   index: MutableSpecialGoodsDirectionIndex
 ): SpecialGoodsDirectionIndex {
@@ -373,7 +439,8 @@ function finalizeSpecialDirectionIndex(
  */
 export function buildSpecialGoodsIndex(
   records: readonly SpecialRecord[],
-  shardByRecordId: ReadonlyMap<string, string>
+  shardByRecordId: ReadonlyMap<string, string>,
+  goods: readonly DecodedGoodsBase[] = []
 ): ReadonlyMap<string, SpecialGoodsIndexEntry> {
   const mutable = new Map<string, MutableSpecialGoodsIndexEntry>();
   for (const record of records) {
@@ -404,7 +471,7 @@ export function buildSpecialGoodsIndex(
       }
     }
   }
-  return new Map(
+  const result = new Map(
     [...mutable.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([goodsId, entry]) => [
       goodsId,
       {
@@ -413,6 +480,8 @@ export function buildSpecialGoodsIndex(
       }
     ])
   );
+  applyCropsNhVariantAliases(result, goods);
+  return result;
 }
 
 function buildCatalog(
@@ -422,8 +491,8 @@ function buildCatalog(
   specialShardByRecordId: Map<string, string>
 ) {
   const specialRecords = specialData?.records ?? [];
-  const specialGoodsIndex = buildSpecialGoodsIndex(specialRecords, specialShardByRecordId);
   const allGoods = [...repository.items, ...repository.fluids];
+  const specialGoodsIndex = buildSpecialGoodsIndex(specialRecords, specialShardByRecordId, allGoods);
   const goods = allGoods.map((entry) => {
     const { productionRecipeIds, usageRecipeIds, ...catalogEntry } = entry;
     const special = specialGoodsIndex.get(entry.id);

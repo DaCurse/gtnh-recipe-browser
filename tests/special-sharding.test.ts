@@ -10,6 +10,7 @@ import {
 } from '../tools/data-export/special';
 import { buildSpecialGoodsIndex, splitSpecialRecords } from '../tools/pack-builder/builder';
 import { specialGoodsForDirection } from '../tools/pack-builder/special';
+import type { DecodedItem } from '../tools/pack-builder/model';
 
 const fixturePath = 'tests/fixtures/nei-special-v1/browser-nei-special.json';
 
@@ -128,5 +129,50 @@ describe('format-4 special-data packing', () => {
         recordCount: 1
       }
     });
+  });
+
+  it('projects CropsNH special indexes to every exact seed variant', async () => {
+    const data = await readSpecialSidecar(fixturePath, { requireNonEmptyCategories: true });
+    const template = data.records.find((record) => record.category === 'crop-output')!;
+    const canonicalId = 'i:cropsnh:genericSeed:0:canonical';
+    const siblingId = 'i:cropsnh:genericSeed:0:sibling';
+    const otherCropId = 'i:cropsnh:genericSeed:0:other';
+    const records: SpecialRecord[] = [{
+      ...template,
+      id: 'crop:cropsnh-rubyne',
+      goodsIds: [canonicalId],
+      productionGoodsIds: [canonicalId],
+      usageGoodsIds: [canonicalId],
+      recipesLookupId: 'special:crop:cropsnh-rubyne:recipes',
+      usagesLookupId: 'special:crop:cropsnh-rubyne:usages',
+      payload: {}
+    }];
+    const seed = (id: string, nbt: string): DecodedItem => ({
+      id,
+      name: 'Rubyne Seeds',
+      mod: 'cropsnh',
+      internalName: 'genericSeed',
+      numericId: 0,
+      iconId: 0,
+      tooltip: null,
+      unlocalizedName: 'cropsnh_crops.rubyne',
+      nbt,
+      searchMask: [0, 0, 0, 0],
+      productionRecipeIds: [],
+      usageRecipeIds: [],
+      kind: 'item',
+      searchable: true,
+      stackSize: 64,
+      damage: 0,
+      container: null
+    });
+    const index = buildSpecialGoodsIndex(records, new Map([['crop:cropsnh-rubyne', 'special-crop']]), [
+      seed(canonicalId, '{crop:"cropsnh:rubyne",scan:1b}'),
+      seed(siblingId, '{re:1b,scan:1b,crop:"cropsnh:rubyne",gr:1b,ga:1b}'),
+      seed(otherCropId, '{crop:"cropsnh:other",scan:1b}')
+    ]);
+
+    expect(index.get(siblingId)).toEqual(index.get(canonicalId));
+    expect(index.get(otherCropId)).toBeUndefined();
   });
 });
