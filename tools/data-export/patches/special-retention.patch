@@ -1,0 +1,44 @@
+diff --git a/DatabaseParser.cs b/DatabaseParser.cs
+index 7e9c3df..d9e4dcb 100644
+--- a/DatabaseParser.cs
++++ b/DatabaseParser.cs
+@@ -4,4 +4,6 @@ namespace Source
+     public class DatabaseParser
+     {
++        public string DatabasePath { get; private set; }
++
+         public T[] GetTableContents<T>(TypeSchema<T> schema)
+         {
+@@ -15,5 +15,6 @@ namespace Source
+ 
+         public void Parse(string databaseFile)
+         {
++            DatabasePath = databaseFile;
+             using var fs = File.OpenRead(databaseFile);
+             using var fileReader = new StreamReader(fs);
+diff --git a/PackConverter.cs b/PackConverter.cs
+index 0fefaa1..f4f71cf 100644
+--- a/PackConverter.cs
++++ b/PackConverter.cs
+@@ -70,1 +70,1 @@ namespace Source
+-        private class ItemGroupBuilder
++        internal class ItemGroupBuilder
+@@ -331,5 +331,7 @@ namespace Source
+             foreach (var (_, igroup) in igroups)
+                 igroup.MarkUsedItems();
+             
++            SpecialRetention.MarkOreDictionaries(generator.DatabasePath, igroups);
++            
+             foreach (var (_, igroup) in igroups)
+                 igroup.Compile();
+@@ -334,6 +334,11 @@ namespace Source
+             foreach (var (_, recipe) in recipes)
+                 recipe.Compile();
+ 
++            // Special NEI pages are exported before normal processing. Mark their
++            // stable goods IDs before the touched-item projection so sidecar-only
++            // outputs, reagents, and service icons survive the browser policy.
++            SpecialRetention.Mark(generator.DatabasePath, items, fluids);
++
+ 
+             var repository = new Repository();

@@ -1,0 +1,230 @@
+{
+  "schemaVersion": 1,
+  "sourceVersions": {
+    "gtnhVersion": "2.9.0-beta-2",
+    "exporter": {
+      "repository": "https://github.com/ShadowTheAge/nesql-exporter",
+      "commit": "fixture-nesql-exporter"
+    },
+    "overlay": {
+      "version": "nei-special-v1",
+      "commit": "fixture-overlay"
+    },
+    "mods": {
+      "BloodMagic": "1.3.3-42",
+      "CropsNH": "1.1.6",
+      "EnhancedLootBags": "1.1.2",
+      "GT5-Unofficial": "5.09.43.00",
+      "NEI-Custom-Diagram": "1.4.0",
+      "VendingMachine": "1.2.0"
+    }
+  },
+  "categories": [
+    "crop-outputs",
+    "mutation-pools",
+    "crop-breeding",
+    "gt-ore-veins",
+    "gt-small-ores",
+    "meteor-rituals",
+    "lootbags",
+    "vending-trades",
+    "worldgen-loot",
+    "gt-ore-processing"
+  ],
+  "serviceIcons": [
+    { "id": "service:crop", "label": "Crop", "searchable": false },
+    { "id": "service:crop-breeding", "label": "Crop Breeding", "searchable": false },
+    { "id": "service:gt-ore", "label": "GregTech Ore", "searchable": false },
+    { "id": "service:meteor", "label": "Meteor Ritual", "searchable": false },
+    { "id": "service:lootbag", "label": "Loot Bag", "searchable": false },
+    { "id": "service:vending", "label": "Vending Machine", "searchable": false },
+    { "id": "service:worldgen", "label": "World Generation", "searchable": false },
+    { "id": "service:ore-processing", "label": "Ore Processing", "searchable": false }
+  ],
+  "specialViewTypes": [
+    { "id": "crop-outputs", "label": "Crop Outputs", "serviceIconId": "service:crop" },
+    { "id": "mutation-pools", "label": "Mutation Pools", "serviceIconId": "service:crop" },
+    { "id": "crop-breeding", "label": "Crop Breeding", "serviceIconId": "service:crop-breeding" },
+    { "id": "gt-ore-veins", "label": "GT Ore Veins", "serviceIconId": "service:gt-ore" },
+    { "id": "gt-small-ores", "label": "GT Small Ores", "serviceIconId": "service:gt-ore" },
+    { "id": "meteor-rituals", "label": "Meteor Rituals", "serviceIconId": "service:meteor" },
+    { "id": "lootbags", "label": "Enhanced LootBags", "serviceIconId": "service:lootbag" },
+    { "id": "vending-trades", "label": "Vending Machine", "serviceIconId": "service:vending" },
+    { "id": "worldgen-loot", "label": "World-Gen Loot", "serviceIconId": "service:worldgen" },
+    { "id": "gt-ore-processing", "label": "GT Ore Processing", "serviceIconId": "service:ore-processing" }
+  ],
+  "records": [
+    {
+      "id": "crop:blazereed",
+      "category": "crop-outputs",
+      "title": "Blazereed Crop",
+      "searchText": "blazereed crop cropsnh blaze rod fire",
+      "goodsIds": ["i:gregtech:gt.metaitem.01:2816"],
+      "recipesLookupId": "special:crop:blazereed:recipes",
+      "usagesLookupId": "special:crop:blazereed:usages",
+      "serviceIconId": "service:crop",
+      "payload": {
+        "tier": 4,
+        "durationTicks": 2400,
+        "growthMultiplier": 1.25,
+        "biomes": ["plains", "hell"],
+        "soils": ["tilled:crop"],
+        "underBlocks": ["minecraft:netherrack"],
+        "requirements": ["fire"],
+        "drops": [{ "goodsId": "i:gregtech:gt.metaitem.01:2816", "chance": 0.35, "min": 1, "max": 2 }]
+      }
+    },
+    {
+      "id": "pool:nether-stars",
+      "category": "mutation-pools",
+      "title": "Nether Star Mutation Pool",
+      "searchText": "mutation pool nether star crop",
+      "goodsIds": ["i:gregtech:gt.metaitem.01:2816", "i:minecraft:nether_star:0"],
+      "recipesLookupId": "special:pool:nether-stars:recipes",
+      "usagesLookupId": "special:pool:nether-stars:usages",
+      "serviceIconId": "service:crop",
+      "payload": {
+        "poolId": "nether-stars",
+        "chance": 0.08,
+        "outputs": [{ "goodsId": "i:minecraft:nether_star:0", "weight": 1 }]
+      }
+    },
+    {
+      "id": "breeding:blazereed",
+      "category": "crop-breeding",
+      "title": "Blazereed Direct Breeding",
+      "searchText": "direct crop breeding blazereed two parent four parent",
+      "goodsIds": ["i:gregtech:gt.metaitem.01:2816"],
+      "recipesLookupId": "special:breeding:blazereed:recipes",
+      "usagesLookupId": "special:breeding:blazereed:usages",
+      "serviceIconId": "service:crop-breeding",
+      "payload": {
+        "parents": [
+          ["i:gregtech:gt.metaitem.01:2815", "i:gregtech:gt.metaitem.01:2815"],
+          ["i:gregtech:gt.metaitem.01:2815", "i:gregtech:gt.metaitem.01:2815", "i:gregtech:gt.metaitem.01:2814", "i:gregtech:gt.metaitem.01:2814"]
+        ],
+        "chance": 0.25,
+        "machineOnly": false
+      }
+    },
+    {
+      "id": "vein:deep-iron",
+      "category": "gt-ore-veins",
+      "title": "Deep Iron Vein",
+      "searchText": "gregtech ore vein deep iron overworld",
+      "goodsIds": ["i:gregtech:gt.blockores:1", "i:gregtech:gt.metaitem.01:109"],
+      "recipesLookupId": "special:vein:deep-iron:recipes",
+      "usagesLookupId": "special:vein:deep-iron:usages",
+      "serviceIconId": "service:gt-ore",
+      "payload": {
+        "layers": [{ "name": "primary", "oreGoodsId": "i:gregtech:gt.blockores:1", "weight": 160 }, { "name": "secondary", "oreGoodsId": "i:gregtech:gt.metaitem.01:109", "weight": 80 }],
+        "minY": 5,
+        "maxY": 40,
+        "weight": 40,
+        "dimensions": [{ "id": 0, "chance": 1 }],
+        "overrides": [{ "dimension": 0, "minY": 5, "maxY": 40 }]
+      }
+    },
+    {
+      "id": "small-ore:certus",
+      "category": "gt-small-ores",
+      "title": "Certus Quartz Small Ore",
+      "searchText": "gregtech small ore certus quartz overworld",
+      "goodsIds": ["i:gregtech:gt.blockores:5", "i:gregtech:gt.metaitem.01:107"],
+      "recipesLookupId": "special:small-ore:certus:recipes",
+      "usagesLookupId": "special:small-ore:certus:usages",
+      "serviceIconId": "service:gt-ore",
+      "payload": {
+        "minY": 10,
+        "maxY": 50,
+        "amount": 8,
+        "dimensions": [0, -1],
+        "representativeOres": ["i:gregtech:gt.blockores:5"],
+        "representativeDusts": ["i:gregtech:gt.metaitem.01:107"],
+        "potentialDrops": [{ "goodsId": "i:gregtech:gt.metaitem.01:107", "chance": 1, "min": 1, "max": 2 }]
+      }
+    },
+    {
+      "id": "meteor:iron-focus",
+      "category": "meteor-rituals",
+      "title": "Iron Meteor Ritual",
+      "searchText": "blood magic meteor ritual iron focus reagent",
+      "goodsIds": ["i:BloodMagic:meteor:0", "i:gregtech:gt.metaitem.01:109", "i:BloodMagic:slate:0"],
+      "recipesLookupId": "special:meteor:iron-focus:recipes",
+      "usagesLookupId": "special:meteor:iron-focus:usages",
+      "serviceIconId": "service:meteor",
+      "payload": {
+        "focusGoodsId": "i:BloodMagic:meteor:0",
+        "lpCost": 50000,
+        "radius": 3,
+        "ritual": "meteor",
+        "crystal": "weak-activation-crystal",
+        "fillerRatio": 0.5,
+        "outputs": [{ "goodsId": "i:gregtech:gt.metaitem.01:109", "weight": 3, "estimatedAmount": 2 }],
+        "reagents": [{ "goodsId": "i:BloodMagic:slate:0", "amount": 1, "effect": "stabilize" }]
+      }
+    },
+    {
+      "id": "lootbag:common",
+      "category": "lootbags",
+      "title": "Common LootBag",
+      "searchText": "enhanced lootbags common grouped alternatives fortune chance",
+      "goodsIds": ["i:EnhancedLootBags:lootBag:0", "i:minecraft:coal:0", "i:minecraft:stick:0"],
+      "recipesLookupId": "special:lootbag:common:recipes",
+      "usagesLookupId": "special:lootbag:common:usages",
+      "serviceIconId": "service:lootbag",
+      "payload": {
+        "bagGoodsId": "i:EnhancedLootBags:lootBag:0",
+        "groups": [{ "id": "main", "weight": 100, "alternatives": [{ "goodsId": "i:minecraft:coal:0", "min": 1, "max": 3, "random": true }, { "goodsId": "i:minecraft:stick:0", "min": 2, "max": 4 }] }],
+        "fortuneChances": [0.4, 0.5, 0.6, 0.7],
+        "limits": { "min": 1, "max": 2 },
+        "trashGroupInheritance": "trash"
+      }
+    },
+    {
+      "id": "vending:steel-for-coins",
+      "category": "vending-trades",
+      "title": "Steel for Vending Coins",
+      "searchText": "vending machine steel coins quest requirement",
+      "goodsIds": ["i:VendingMachine:coin:0", "i:gregtech:gt.metaitem.01:113"],
+      "recipesLookupId": "special:vending:steel-for-coins:recipes",
+      "usagesLookupId": "special:vending:steel-for-coins:usages",
+      "serviceIconId": "service:vending",
+      "payload": {
+        "inputs": [{ "goodsId": "i:VendingMachine:coin:0", "amount": 4, "consumed": true }, { "oreDictionary": "ingotSteel", "amount": 1, "consumed": false }],
+        "outputs": [{ "goodsId": "i:gregtech:gt.metaitem.01:113", "amount": 2 }],
+        "requirements": [{ "type": "quest", "id": "quest:steel" }],
+        "staticOnly": true
+      }
+    },
+    {
+      "id": "worldgen:forge-chest",
+      "category": "worldgen-loot",
+      "title": "Forge Chest Loot",
+      "searchText": "forge roguelike twilight forest world gen loot chest",
+      "goodsIds": ["i:minecraft:iron_ingot:0", "i:minecraft:coal:0"],
+      "recipesLookupId": "special:worldgen:forge-chest:recipes",
+      "usagesLookupId": "special:worldgen:forge-chest:usages",
+      "serviceIconId": "service:worldgen",
+      "payload": {
+        "tables": [{ "source": "forge", "name": "chest", "entries": [{ "goodsId": "i:minecraft:iron_ingot:0", "min": 1, "max": 4, "weight": 20, "chance": 0.5 }] }, { "source": "roguelike", "name": "chest", "entries": [{ "goodsId": "i:minecraft:coal:0", "min": 2, "max": 8, "weight": 10, "chance": 0.25 }] }],
+        "dimensions": [0, 7]
+      }
+    },
+    {
+      "id": "ore-processing:iron",
+      "category": "gt-ore-processing",
+      "title": "Iron Ore Processing",
+      "searchText": "gregtech ore processing macerator washing centrifuge chemical bath sifter",
+      "goodsIds": ["i:gregtech:gt.blockores:1", "i:gregtech:gt.metaitem.01:109", "f:gregtech:hydrogen"],
+      "recipesLookupId": "special:ore-processing:iron:recipes",
+      "usagesLookupId": "special:ore-processing:iron:usages",
+      "serviceIconId": "service:ore-processing",
+      "payload": {
+        "nodes": [{ "id": "ore", "goodsId": "i:gregtech:gt.blockores:1", "rank": 0 }, { "id": "dust", "goodsId": "i:gregtech:gt.metaitem.01:109", "rank": 2 }, { "id": "hydrogen", "goodsId": "f:gregtech:hydrogen", "rank": 1 }],
+        "edges": [{ "from": "ore", "to": "dust", "machine": "maceration", "probability": 1 }, { "from": "ore", "to": "dust", "machine": "chemical-bath", "branch": "hydrogen", "probability": 0.8 }, { "from": "dust", "to": "dust", "machine": "sifting", "outputs": ["grid:0", "grid:1", "grid:2"] }],
+        "stages": ["maceration", "washing", "thermal-centrifuging", "centrifuging", "electromagnetic-separation", "chemical-bath", "sifting", "furnace", "blast-furnace", "reactor", "mixer", "autoclave"]
+      }
+    }
+  ]
+}

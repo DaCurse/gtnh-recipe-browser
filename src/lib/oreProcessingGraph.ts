@@ -5,7 +5,7 @@ import type {
   SpecialProcessingNode
 } from './specialData';
 
-export interface OreGraphNode extends SpecialProcessingNode {
+interface OreGraphNode extends SpecialProcessingNode {
   kind: 'source' | 'machine' | 'result' | 'probability' | 'reagent' | string;
   width: number;
   height: number;
@@ -14,7 +14,7 @@ export interface OreGraphNode extends SpecialProcessingNode {
   y: number;
 }
 
-export interface OreGraphEdge extends SpecialProcessingEdge {
+interface OreGraphEdge extends SpecialProcessingEdge {
   fromNode: OreGraphNode;
   toNode: OreGraphNode;
   points: Array<{ x: number; y: number }>;
@@ -256,7 +256,3 @@ export function layoutOreProcessingGraph(
   );
   return { nodes, edges, width, height, ranks };
 }
-
-/** Short aliases used by presentation-level tests and downstream renderers. */
-export const layoutOreGraph = layoutOreProcessingGraph;
-export const buildOreProcessingGraph = stagesToOreGraph;

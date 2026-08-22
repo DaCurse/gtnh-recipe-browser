@@ -1,0 +1,403 @@
+diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/main/Exporter.java b/src/main/java/com/github/dcysteine/nesql/exporter/main/Exporter.java
+--- a/src/main/java/com/github/dcysteine/nesql/exporter/main/Exporter.java
++++ b/src/main/java/com/github/dcysteine/nesql/exporter/main/Exporter.java
+@@ -6,6 +6,7 @@
+ import com.github.dcysteine.nesql.exporter.plugin.PluginExporter;
+ import com.github.dcysteine.nesql.exporter.registry.PluginRegistry;
+ import com.github.dcysteine.nesql.exporter.render.RenderDispatcher;
+ import com.github.dcysteine.nesql.exporter.render.Renderer;
++import com.github.dcysteine.nesql.exporter.special.NeiSpecialOverlay;
+ import com.github.dcysteine.nesql.sql.Metadata;
+ import com.github.dcysteine.nesql.sql.Plugin;
+@@ -186,7 +187,12 @@
+         EntityTransaction transaction = entityManager.getTransaction();
+         transaction.begin();
+ 
+         entityManager.persist(new Metadata(activePlugins.keySet()));
++
++        // Special adapters run before normal plugin processing.  They read the
++        // live NEI/mod registries and retain every goods ID they reference in
++        // the sidecar; the browser processor validates those IDs later.
++        NeiSpecialOverlay.export(repositoryDirectory, exporterState, activePlugins);
+ 
+         registry.initializePlugins();
+         registry.processPlugins();
+diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java b/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java
+new file mode 100644
+--- /dev/null
++++ b/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java
+@@ -0,0 +1,374 @@
++package com.github.dcysteine.nesql.exporter.special;
++
++import com.github.dcysteine.nesql.exporter.main.Logger;
++import com.github.dcysteine.nesql.exporter.plugin.ExporterState;
++import com.github.dcysteine.nesql.exporter.plugin.PluginExporter;
++import com.github.dcysteine.nesql.exporter.plugin.base.factory.FluidFactory;
++import com.github.dcysteine.nesql.exporter.plugin.base.factory.ItemFactory;
++import com.github.dcysteine.nesql.exporter.plugin.forge.factory.OreDictionaryFactory;
++import com.github.dcysteine.nesql.sql.Plugin;
++import com.github.dcysteine.nesql.sql.base.fluid.Fluid;
++import com.github.dcysteine.nesql.sql.base.item.Item;
++import com.github.dcysteine.nesql.sql.forge.OreDictionary;
++import jakarta.persistence.EntityManager;
++import net.minecraft.item.ItemStack;
++import net.minecraftforge.fluids.FluidStack;
++
++import java.io.File;
++import java.io.IOException;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.util.ArrayList;
++import java.util.Arrays;
++import java.util.Collections;
++import java.util.Comparator;
++import java.util.HashMap;
++import java.util.HashSet;
++import java.util.LinkedHashMap;
++import java.util.LinkedHashSet;
++import java.util.List;
++import java.util.Map;
++import java.util.ServiceLoader;
++import java.util.Set;
++
++/**
++ * Maintained overlay boundary for NEI Custom Diagram and mod-specific data.
++ *
++ * <p>The class deliberately has no compile-time dependency on the optional
++ * mods.  Adapters are loaded from the disposable exporter class path through
++ * {@link ServiceLoader}, or by the comma-separated
++ * {@code nesql.special.adapters} property.  This lets the overlay compile
++ * against the exact GTNH 2.9.0-beta-2 artifacts while keeping the pinned
++ * ShadowTheAge submodule unchanged.</p>
++ *
++ * <p>Adapters must use the sink instead of writing JSON themselves.  The sink
++ * performs stable ID checks, category coverage checks, reference retention,
++ * and deterministic serialization.</p>
++ */
++public final class NeiSpecialOverlay {
++    public static final int SCHEMA_VERSION = 1;
++    public static final String SIDECAR_FILE = "browser-nei-special.json";
++    public static final List<String> CATEGORIES = Collections.unmodifiableList(Arrays.asList(
++            "crop-output", "mutation-pool", "crop-breeding", "gt-ore-vein", "gt-small-ore",
++            "meteor-ritual", "loot-bag", "vending-trade", "worldgen-loot", "gt-ore-processing"));
++
++    /** Exact source versions are part of the sidecar provenance contract. */
++    private static final Map<String, String> SOURCE_VERSIONS;
++
++    static {
++        Map<String, String> versions = new HashMap<>();
++        versions.put("gtnh", "2.9.0-beta-2");
++        versions.put("CropsNH", "2.0.91");
++        versions.put("GT5-Unofficial", "5.09.54.20");
++        versions.put("BloodMagic", "1.9.4");
++        versions.put("EnhancedLootBags", "1.3.4");
++        versions.put("VendingMachine", "0.4.95");
++        versions.put("NEICustomDiagram", "1.8.30");
++        versions.put("RoguelikeDungeons", "1.6.6-GTNH");
++        versions.put("TwilightForest", "2.7.36");
++        versions.put("overlay", "nei-special-v1");
++        SOURCE_VERSIONS = Collections.unmodifiableMap(versions);
++    }
++
++    private NeiSpecialOverlay() {}
++
++    /** Adapter SPI implemented by the disposable, mod-aware overlay sources. */
++    public interface Adapter {
++        void export(Sink sink) throws Exception;
++    }
++
++    /**
++     * Runs all installed adapters and writes one validated sidecar.  A normal
++     * exporter without the optional overlay providers continues to produce its
++     * historical database; a requested special-data processing run rejects
++     * that missing sidecar rather than accepting partial records.
++     */
++    public static void export(
++            File repositoryDirectory,
++            ExporterState exporterState,
++            Map<Plugin, PluginExporter> activePlugins) {
++        List<Adapter> adapters = loadAdapters();
++        if (adapters.isEmpty()) {
++            throw new IllegalStateException(
++                    "No NEI special-data adapters installed; requested categories cannot be exported");
++        }
++        Sink sink = new Sink(exporterState, activePlugins);
++        try {
++            for (Adapter adapter : adapters) adapter.export(sink);
++            sink.write(new File(repositoryDirectory, SIDECAR_FILE));
++        } catch (Exception error) {
++            throw new RuntimeException("NEI special-data export failed", error);
++        }
++    }
++
++    private static List<Adapter> loadAdapters() {
++        List<Adapter> adapters = new ArrayList<>();
++        Set<String> loaded = new HashSet<>();
++        for (Adapter adapter : ServiceLoader.load(Adapter.class)) {
++            if (loaded.add(adapter.getClass().getName())) adapters.add(adapter);
++        }
++        String configured = System.getProperty("nesql.special.adapters", "");
++        for (String className : configured.split(",")) {
++            String name = className.trim();
++            if (name.length() == 0 || !loaded.add(name)) continue;
++            try {
++                Object instance = Class.forName(name).newInstance();
++                if (!(instance instanceof Adapter)) {
++                    throw new IllegalArgumentException(name + " does not implement NeiSpecialOverlay.Adapter");
++                }
++                adapters.add((Adapter) instance);
++            } catch (ReflectiveOperationException error) {
++                throw new RuntimeException("Unable to load special-data adapter " + name, error);
++            }
++        }
++        return adapters;
++    }
++
++    /** Mutable adapter output that is canonicalized when written. */
++    public static final class Sink {
++        private final ExporterState exporterState;
++        private final Map<Plugin, PluginExporter> activePlugins;
++        private final ItemFactory itemFactory;
++        private final FluidFactory fluidFactory;
++        private final OreDictionaryFactory oreDictionaryFactory;
++        private final Map<String, Map<String, Object>> serviceIcons = new LinkedHashMap<>();
++        private final List<Map<String, Object>> records = new ArrayList<>();
++        private final Map<String, Map<String, Object>> viewTypes = new LinkedHashMap<>();
++
++        private Sink(ExporterState exporterState, Map<Plugin, PluginExporter> activePlugins) {
++            this.exporterState = exporterState;
++            this.activePlugins = activePlugins;
++            PluginExporter base = activePlugins.get(Plugin.BASE);
++            if (base == null) throw new IllegalStateException("base plugin is required by special adapters");
++            this.itemFactory = new ItemFactory(base);
++            this.fluidFactory = new FluidFactory(base);
++            this.oreDictionaryFactory = new OreDictionaryFactory(base);
++        }
++
++        /** Access the same persistence context used by the normal factories. */
++        public EntityManager getEntityManager() {
++            return exporterState.getEntityManager();
++        }
++
++        /** Access active plugin exporters without constructing a second registry. */
++        public Map<Plugin, PluginExporter> getActivePlugins() {
++            return Collections.unmodifiableMap(activePlugins);
++        }
++
++        /** Persist/render a referenced item through the normal base factory. */
++        public String retainItem(ItemStack stack) {
++            Item item = itemFactory.get(stack);
++            return item.getId();
++        }
++
++        /** Persist/render a referenced fluid through the normal base factory. */
++        public String retainFluid(FluidStack stack) {
++            Fluid fluid = fluidFactory.get(stack);
++            return fluid.getId();
++        }
++
++        /** Persist an ore dictionary and all of its member item stacks. */
++        public String retainOreDictionary(String name, java.util.Collection<ItemStack> stacks) {
++            OreDictionary dictionary = oreDictionaryFactory.get(name, stacks);
++            return dictionary.getId();
++        }
++
++        public void addServiceIcon(String id, String label) {
++            requireId(id, "service icon");
++            requireId(label, "service icon label");
++            Map<String, Object> icon = new LinkedHashMap<>();
++            icon.put("id", id);
++            icon.put("label", label);
++            icon.put("searchable", false);
++            serviceIcons.put(id, icon);
++        }
++
++        public void addViewType(String id, String name, String serviceIconId) {
++            requireCategory(id);
++            requireId(name, "view name");
++            requireId(serviceIconId, "view service icon");
++            Map<String, Object> view = new LinkedHashMap<>();
++            view.put("id", id);
++            view.put("name", name);
++            view.put("label", name);
++            view.put("order", CATEGORIES.indexOf(id));
++            view.put("serviceIconId", serviceIconId);
++            view.put("iconGoodsId", serviceIconId);
++            viewTypes.put(id, view);
++        }
++
++        public void addRecord(
++                String id,
++                String category,
++                String title,
++                List<String> goodsIds,
++                String recipesLookupId,
++                String usagesLookupId,
++                String serviceIconId,
++                Map<String, Object> payload) {
++            requireId(id, "record");
++            requireCategory(category);
++            requireId(title, "record title");
++            requireId(recipesLookupId, "Recipes lookup");
++            requireId(usagesLookupId, "Usages lookup");
++            requireId(serviceIconId, "record service icon");
++            if (payload == null) throw new IllegalArgumentException("record payload is required for " + id);
++            List<String> references = sortedUnique(goodsIds, "goods IDs for " + id);
++            Map<String, Object> lookup = new LinkedHashMap<>();
++            // The explicit IDs are retained for the sidecar identity.  The
++            // lookup arrays are the normal goods indexes used by the pack
++            // builder, so every referenced value is validated against the
++            // processed item/fluid catalog instead of being mistaken for a
++            // goods ID named after the lookup itself.
++            lookup.put("recipes", references);
++            lookup.put("usages", references);
++            Map<String, Object> record = new LinkedHashMap<>();
++            record.put("id", id);
++            record.put("category", category);
++            record.put("type", category);
++            record.put("title", title);
++            record.put("name", title);
++            record.put("searchText", title);
++            record.put("goodsIds", references);
++            record.put("recipesLookupId", recipesLookupId);
++            record.put("usagesLookupId", usagesLookupId);
++            record.put("lookup", lookup);
++            record.put("serviceIconId", serviceIconId);
++            record.put("serviceIconIds", Collections.singletonList(serviceIconId));
++            record.put("payload", payload);
++            records.add(record);
++        }
++
++        private static List<String> sortedUnique(List<String> values, String context) {
++            if (values == null) throw new IllegalArgumentException(context + " are required");
++            List<String> result = new ArrayList<>(values);
++            for (String value : result) requireId(value, context);
++            Collections.sort(result);
++            for (int index = 1; index < result.size(); index++) {
++                if (result.get(index - 1).equals(result.get(index))) {
++                    throw new IllegalArgumentException("duplicate " + context + ": " + result.get(index));
++                }
++            }
++            return result;
++        }
++
++        private static void requireId(String value, String context) {
++            if (value == null || value.trim().length() == 0) {
++                throw new IllegalArgumentException(context + " must be non-empty");
++            }
++        }
++
++        private static void requireCategory(String value) {
++            requireId(value, "category");
++            if (!CATEGORIES.contains(value)) throw new IllegalArgumentException("unsupported category " + value);
++        }
++
++        private void validate() {
++            Set<String> categories = new LinkedHashSet<>();
++            Set<String> ids = new HashSet<>();
++            for (Map<String, Object> record : records) {
++                String id = (String) record.get("id");
++                if (!ids.add(id)) throw new IllegalArgumentException("duplicate special record " + id);
++                categories.add((String) record.get("category"));
++                String icon = (String) record.get("serviceIconId");
++                if (!serviceIcons.containsKey(icon)) throw new IllegalArgumentException("unknown service icon " + icon);
++            }
++            for (String category : CATEGORIES) {
++                if (!categories.contains(category)) throw new IllegalArgumentException("missing requested category " + category);
++            }
++            for (Map<String, Object> view : viewTypes.values()) {
++                if (!serviceIcons.containsKey(view.get("serviceIconId"))) {
++                    throw new IllegalArgumentException("unknown view service icon " + view.get("serviceIconId"));
++                }
++            }
++        }
++
++        private void write(File path) throws IOException {
++            validate();
++            records.sort((left, right) -> {
++                int category = Integer.compare(CATEGORIES.indexOf(left.get("category")), CATEGORIES.indexOf(right.get("category")));
++                if (category != 0) return category;
++                return ((String) left.get("id")).compareTo((String) right.get("id"));
++            });
++            List<String> iconIds = new ArrayList<>(serviceIcons.keySet());
++            Collections.sort(iconIds);
++            List<Map<String, Object>> icons = new ArrayList<>();
++            for (String iconId : iconIds) icons.add(serviceIcons.get(iconId));
++            List<Map<String, Object>> views = new ArrayList<>(viewTypes.values());
++            views.sort(Comparator.comparingInt(view -> CATEGORIES.indexOf(view.get("id"))));
++            Map<String, Object> root = new LinkedHashMap<>();
++            root.put("schemaVersion", SCHEMA_VERSION);
++            root.put("sourceVersions", SOURCE_VERSIONS);
++            root.put("categories", CATEGORIES);
++            root.put("serviceIconIds", iconIds);
++            root.put("serviceIcons", icons);
++            root.put("specialViewTypes", views);
++            root.put("records", records);
++            Files.write(path.toPath(), Json.encode(root).getBytes(StandardCharsets.UTF_8));
++        }
++    }
++
++    /** Tiny JSON encoder avoids depending on a mod's optional Gson version. */
++    private static final class Json {
++        private Json() {}
++
++        static String encode(Object value) {
++            StringBuilder output = new StringBuilder();
++            append(output, value);
++            output.append('\n');
++            return output.toString();
++        }
++
++        @SuppressWarnings("unchecked")
++        private static void append(StringBuilder output, Object value) {
++            if (value == null) { output.append("null"); return; }
++            if (value instanceof String) { quote(output, (String) value); return; }
++            if (value instanceof Boolean || value instanceof Number) { output.append(value); return; }
++            if (value instanceof Map) {
++                output.append('{');
++                boolean first = true;
++                List<String> keys = new ArrayList<>(((Map<String, Object>) value).keySet());
++                Collections.sort(keys);
++                for (String key : keys) {
++                    if (!first) output.append(',');
++                    first = false;
++                    quote(output, key);
++                    output.append(':');
++                    append(output, ((Map<String, Object>) value).get(key));
++                }
++                output.append('}');
++                return;
++            }
++            if (value instanceof Iterable) {
++                output.append('[');
++                boolean first = true;
++                for (Object entry : (Iterable<Object>) value) {
++                    if (!first) output.append(',');
++                    first = false;
++                    append(output, entry);
++                }
++                output.append(']');
++                return;
++            }
++            throw new IllegalArgumentException("unsupported JSON value " + value.getClass());
++        }
++
++        private static void quote(StringBuilder output, String value) {
++            output.append('"');
++            for (int index = 0; index < value.length(); index++) {
++                char character = value.charAt(index);
++                switch (character) {
++                    case '"': output.append("\\\""); break;
++                    case '\\': output.append("\\\\"); break;
++                    case '\n': output.append("\\n"); break;
++                    case '\r': output.append("\\r"); break;
++                    case '\t': output.append("\\t"); break;
++                    default:
++                        if (character < 0x20) output.append(String.format("\\u%04x", (int) character));
++                        else output.append(character);
++                }
++            }
++            output.append('"');
++        }
++    }
++}

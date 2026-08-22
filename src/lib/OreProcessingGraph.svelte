@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import type { RecipeView } from './types';
   import {
@@ -30,6 +31,9 @@
   let startPointerY = 0;
   let startPanX = 0;
   let startPanY = 0;
+  let tooltipNodeId = $state('');
+  let tooltipX = $state(0);
+  let tooltipY = $state(0);
   const payload = $derived(record.payload as OreProcessingSpecialPayload);
 
   function graphForPayload(value: OreProcessingSpecialPayload): {
@@ -158,6 +162,24 @@
     if (id && resolve(id)) navigate(id, view);
   }
 
+  function showNodeTooltip(event: PointerEvent, node: OreGraphLayout['nodes'][number]) {
+    if (event.pointerType === 'touch') return;
+    if (!nodeEntry(node)) return;
+    tooltipNodeId = node.id;
+    tooltipX = event.clientX;
+    tooltipY = event.clientY;
+  }
+
+  function moveNodeTooltip(event: PointerEvent) {
+    if (!tooltipNodeId || event.pointerType === 'touch') return;
+    tooltipX = event.clientX;
+    tooltipY = event.clientY;
+  }
+
+  function hideNodeTooltip() {
+    tooltipNodeId = '';
+  }
+
   function path(edge: OreGraphLayout['edges'][number]): string {
     return edge.points.map((point, index) => `${index === 0 ? 'M' : 'L'} ${point.x} ${point.y}`).join(' ');
   }
@@ -217,6 +239,18 @@
                 if (dragStarted) { event.preventDefault(); return; }
                 inspectNode(node, 'recipes');
               }}
+              onpointerenter={(event) => showNodeTooltip(event, node)}
+              onpointermove={moveNodeTooltip}
+              onpointerleave={hideNodeTooltip}
+              onfocus={(event) => {
+                if (nodeEntry(node)) {
+                  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+                  tooltipNodeId = node.id;
+                  tooltipX = rect.right;
+                  tooltipY = rect.bottom;
+                }
+              }}
+              onblur={hideNodeTooltip}
               oncontextmenu={(event) => {
                 event.preventDefault();
                 if (!dragStarted) inspectNode(node, 'usages');
@@ -237,6 +271,14 @@
     </div>
   </div>
 </section>
+
+{#if tooltipNodeId}
+  {@const tooltipNode = layout.nodes.find((node) => node.id === tooltipNodeId)}
+  {@const tooltipEntry = tooltipNode ? nodeEntry(tooltipNode) : undefined}
+  {#if tooltipEntry}
+    <FloatingCatalogTooltip entry={tooltipEntry} x={tooltipX} y={tooltipY} action="Left-click: Recipes · Right-click: Usages" />
+  {/if}
+{/if}
 
 <style>
   .ore-graph-card { min-width:0; border:1px solid #4a4e53; border-radius:9px; overflow:hidden; background:#808286; box-shadow:inset 0 1px #ffffff16,0 8px 24px #0003; }

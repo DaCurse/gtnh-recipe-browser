@@ -93,6 +93,12 @@ await cp(exporterRoot, patchedExporter, {
 const patchPath = join(repositoryRoot, 'tools/data-export/patches/combined-tooltips.patch');
 run('patch', ['--dry-run', '--batch', '-p1', '-i', patchPath], patchedExporter);
 run('patch', ['--batch', '-p1', '-i', patchPath], patchedExporter);
+const specialOverlayPatch = join(
+  repositoryRoot,
+  'tools/data-export/patches/nei-special-overlay.patch'
+);
+run('patch', ['--dry-run', '--batch', '-p1', '-i', specialOverlayPatch], patchedExporter);
+run('patch', ['--batch', '-p1', '-i', specialOverlayPatch], patchedExporter);
 const patchedBuild = await readFile(join(patchedExporter, 'build.gradle.kts'), 'utf8');
 const patchedItem = await readFile(
   join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/sql/base/item/Item.java'),
@@ -116,6 +122,13 @@ const patchedRenderJob = await readFile(
   join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/render/RenderJob.java'),
   'utf8'
 );
+const patchedSpecialOverlay = await readFile(
+  join(
+    patchedExporter,
+    'src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java'
+  ),
+  'utf8'
+);
 if (
   !patchedBuild.includes('retrofuturagradle") version "1.4.9"') ||
   !patchedBuild.includes('com.github.GTNewHorizons:AspectRecipeIndex:') ||
@@ -123,9 +136,14 @@ if (
   !patchedQuestFactory.includes('Skipping missing required quest {} referenced by quest {}') ||
   !patchedItemFactory.includes('RenderJob.ofItem(itemStack, item.getImageFilePath())') ||
   !patchedRenderJob.includes('job.imageFilePath = imageFilePath') ||
-  !patchedRenderJob.includes('return imageFilePath;')
+  !patchedRenderJob.includes('return imageFilePath;') ||
+  !patchedSpecialOverlay.includes('No NEI special-data adapters installed') ||
+  !patchedSpecialOverlay.includes('CropsNH') ||
+  !patchedSpecialOverlay.includes('NEICustomDiagram') ||
+  !patchedSpecialOverlay.includes('getEntityManager()') ||
+  !patchedSpecialOverlay.includes('browser-nei-special.json')
 ) {
-  throw new Error('Exporter compatibility patch did not produce the expected source');
+  throw new Error('Exporter compatibility or NEI special-data overlay did not produce the expected source');
 }
 run('bash', ['./gradlew', 'build'], patchedExporter);
 
@@ -182,6 +200,7 @@ const session: ExportSession = {
     repository: 'https://github.com/ShadowTheAge/nesql-exporter',
     commit: output('git', ['rev-parse', 'HEAD'], exporterRoot),
     patchSha256: await sha256File(patchPath),
+    specialOverlayPatchSha256: await sha256File(specialOverlayPatch),
     mainJar: basename(mainJar),
     mainJarSha256: await sha256File(mainJar),
     dependenciesJar: basename(dependenciesJar),

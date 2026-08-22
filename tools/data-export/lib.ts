@@ -19,6 +19,8 @@ export interface ExportSession {
     repository: string;
     commit: string;
     patchSha256: string;
+    /** Maintained NEI-special overlay applied only to the disposable exporter copy. */
+    specialOverlayPatchSha256?: string;
     mainJar: string;
     mainJarSha256: string;
     dependenciesJar: string;

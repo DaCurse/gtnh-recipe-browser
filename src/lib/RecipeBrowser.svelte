@@ -158,7 +158,7 @@
 {/if}
 
 <div class="recipe-list">
-  {#if state.showingSpecial && state.specialLoading}
+  {#if state.showingSpecial && state.specialLoading && state.specialRecords.length === 0}
     <div class:partial={state.specialRecords.length > 0} class="recipe-loading" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
       <b>Loading {state.specialTypeLabel}…</b>
@@ -192,6 +192,13 @@
         : 'This item has no known NEI special data in the active dataset.'}</p>
     </div>
   {:else if state.showingSpecial}
+    {#if state.specialLoading}
+      <div class="recipe-loading partial" aria-live="polite">
+        <span class="mini-spinner" aria-hidden="true"></span>
+        <b>Loading more {state.specialTypeLabel}…</b>
+        {#if state.specialTotalShards > 0}<small>{state.specialLoadedShards} of {state.specialTotalShards} chunks</small>{/if}
+      </div>
+    {/if}
     {#each visibleSpecialRecords as record (record.id)}
       <SpecialCard
         {record}

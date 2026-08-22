@@ -17,6 +17,7 @@ import {
   auditRenderedItemPaths,
   validateCombinedTooltipSchema
 } from './lib';
+import { readSpecialSidecar } from './special';
 
 function run(
   command: string,
@@ -39,6 +40,7 @@ const sessionPath = resolve(requiredArgument(args, 'session'));
 const session = await readExportSession(sessionPath);
 const outputWorkDirectory = resolve(args.get('work-dir') ?? session.workDirectory);
 const resumeProcessed = args.get('resume-processed') === 'true';
+const allowMissingSpecial = args.get('allow-missing-special') === 'true';
 const nesqlRoot = join(session.instanceDirectory, '.minecraft/nesql');
 const scripts = await findFiles(nesqlRoot, 'nesql-db.script');
 if (scripts.length !== 1) {
@@ -84,6 +86,14 @@ const namedOreDictionariesPatch = join(
   repositoryRoot,
   'tools/data-export/patches/named-ore-dictionaries.patch'
 );
+const specialRetentionPatch = join(
+  repositoryRoot,
+  'tools/data-export/patches/special-retention.patch'
+);
+const specialRetentionSource = join(
+  repositoryRoot,
+  'tools/data-export/patches/SpecialRetention.cs'
+);
 if (!resumeProcessed) {
   await assertPathMissing(processedDirectory, 'Process output');
   await assertPathMissing(processorDirectory, 'Process output');
@@ -98,9 +108,13 @@ if (!resumeProcessed) {
   run('patch', ['--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
   run('patch', ['--dry-run', '--batch', '-p1', '-i', namedOreDictionariesPatch], processorDirectory);
   run('patch', ['--batch', '-p1', '-i', namedOreDictionariesPatch], processorDirectory);
+  run('patch', ['--dry-run', '--batch', '-p1', '-i', specialRetentionPatch], processorDirectory);
+  run('patch', ['--batch', '-p1', '-i', specialRetentionPatch], processorDirectory);
+  await cp(specialRetentionSource, join(processorDirectory, 'SpecialRetention.cs'));
 }
 const patchedProcessor = await readFile(join(processorDirectory, 'PackPreProcessor.cs'), 'utf8');
 const patchedConverter = await readFile(join(processorDirectory, 'PackConverter.cs'), 'utf8');
+const patchedDatabaseParser = await readFile(join(processorDirectory, 'DatabaseParser.cs'), 'utf8');
 const patchedGenerator = await readFile(join(processorDirectory, 'PackGenerator.cs'), 'utf8');
 const patchedItemPolicy = await readFile(join(processorDirectory, 'ItemBanlist.cs'), 'utf8');
 const patchedAtlasBuilder = await readFile(join(processorDirectory, 'AtlasBuilder.cs'), 'utf8');
@@ -115,7 +129,11 @@ if (
   !patchedAtlasBuilder.includes('Mutable item renderers must preserve their persisted image path') ||
   !patchedProcessor.includes('for (var i = 1; i < parts.Length; i++)') ||
   !patchedConverter.includes('GetRepositoryGroups()') ||
-  !patchedConverter.includes('MarkOreDictionaryItems()')
+  !patchedConverter.includes('MarkOreDictionaryItems()') ||
+  !patchedConverter.includes('SpecialRetention.Mark') ||
+  !patchedConverter.includes('SpecialRetention.MarkOreDictionaries') ||
+  !patchedDatabaseParser.includes('DatabasePath') ||
+  !(await access(join(processorDirectory, 'SpecialRetention.cs')).then(() => true).catch(() => false))
 ) {
   throw new Error('Processor compatibility patch did not produce the expected source');
 }
@@ -174,17 +192,35 @@ if (!tooltips.some((tooltip) => tooltip.includes('\n') || /<br\s*\/?>/i.test(too
   throw new Error('Processed repository has no multiline tooltips');
 }
 
-const revision = combinedRevision(data, atlas);
-const datasetId = `${session.gtnhVersion}-r${revision}`;
+const sourceRevision = combinedRevision(data, atlas);
+const sidecarPath = join(nesqlDirectory, 'browser-nei-special.json');
+let specialDataPath: string | undefined;
+try {
+  await access(sidecarPath);
+  // Parse before the expensive processor run so a malformed or incomplete
+  // overlay export fails without producing a publishable pack.
+  await readSpecialSidecar(sidecarPath);
+  specialDataPath = sidecarPath;
+} catch (error) {
+  if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+  if (!allowMissingSpecial) {
+    throw new Error(
+      `NESQL export is missing ${sidecarPath}; the NEI special-data overlay must emit all requested categories. `
+      + `Use --allow-missing-special true only when intentionally processing a legacy export.`,
+      { cause: error }
+    );
+  }
+}
 const options = {
   dataPath,
   atlasPath,
   gtnhVersion: session.gtnhVersion,
-  revision,
-  datasetId,
-  displayName: `GTNH ${session.gtnhVersion} (revision ${revision})`
+  revision: sourceRevision,
+  ...(specialDataPath ? { specialDataPath } : {})
 };
-await buildPack({ ...options, outputDirectory: firstBuild });
+const firstBuildResult = await buildPack({ ...options, outputDirectory: firstBuild });
+const datasetId = firstBuildResult.manifest.datasetId;
+const revision = firstBuildResult.manifest.revision;
 await buildPack({ ...options, outputDirectory: secondBuild });
 const firstDigest = await directoryDigest(firstBuild);
 const secondDigest = await directoryDigest(secondBuild);

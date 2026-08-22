@@ -10,7 +10,7 @@ import type { CatalogEntry, RecipeView } from './types';
  * tabs.
  */
 
-export const SPECIAL_CATEGORY_ORDER = [
+const SPECIAL_CATEGORY_ORDER = [
   'crop',
   'cropPool',
   'cropBreeding',
@@ -37,7 +37,7 @@ export interface SpecialViewType {
   order?: number;
 }
 
-export interface SpecialServiceIcon {
+interface SpecialServiceIcon {
   id: string;
   label: string;
   goodsId?: string;
@@ -200,7 +200,7 @@ export interface SpecialProcessingEdge {
   branch?: string;
 }
 
-export type SpecialPayload = CropSpecialPayload
+type SpecialPayload = CropSpecialPayload
   | VeinSpecialPayload
   | MeteorSpecialPayload
   | LootBagSpecialPayload
@@ -378,7 +378,7 @@ export function toSpecialGoodsList(value: unknown): SpecialGoods[] {
   return value.map(toSpecialGoods).filter((item): item is SpecialGoods => item !== undefined);
 }
 
-export function toSpecialDrop(value: unknown): SpecialDrop | undefined {
+function toSpecialDrop(value: unknown): SpecialDrop | undefined {
   const goods = toSpecialGoods(value);
   if (!goods) return undefined;
   const object = objectValue(value);
@@ -407,11 +407,6 @@ export function toSpecialDrop(value: unknown): SpecialDrop | undefined {
 export function toSpecialDrops(value: unknown): SpecialDrop[] {
   if (!Array.isArray(value)) return [];
   return value.map(toSpecialDrop).filter((item): item is SpecialDrop => item !== undefined);
-}
-
-/** Counts are derived from records when a sidecar does not provide a count. */
-export function specialCount(records: readonly SpecialRecord[]): number {
-  return records.length;
 }
 
 export function boundedSpecialPage<T>(values: readonly T[], page: number, pageSize: number): T[] {
