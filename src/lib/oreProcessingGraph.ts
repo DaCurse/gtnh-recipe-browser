@@ -36,6 +36,22 @@ export interface OreGraphOptions {
   defaultNodeHeight?: number;
 }
 
+export function clampOreGraphPan(
+  nextX: number,
+  nextY: number,
+  canvasWidth: number,
+  canvasHeight: number,
+  viewportWidth: number,
+  viewportHeight: number
+): [number, number] {
+  const maxX = Math.max(0, canvasWidth - viewportWidth);
+  const maxY = Math.max(0, canvasHeight - viewportHeight);
+  return [
+    Math.min(0, Math.max(-maxX, nextX)),
+    Math.min(0, Math.max(-maxY, nextY))
+  ];
+}
+
 const DEFAULT_OPTIONS: Required<OreGraphOptions> = {
   horizontalGap: 38,
   verticalGap: 22,
@@ -240,3 +256,7 @@ export function layoutOreProcessingGraph(
   );
   return { nodes, edges, width, height, ranks };
 }
+
+/** Short aliases used by presentation-level tests and downstream renderers. */
+export const layoutOreGraph = layoutOreProcessingGraph;
+export const buildOreProcessingGraph = stagesToOreGraph;

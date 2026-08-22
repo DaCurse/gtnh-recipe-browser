@@ -2,6 +2,7 @@
   import ItemIcon from './ItemIcon.svelte';
   import type { RecipeView } from './types';
   import {
+    clampOreGraphPan,
     layoutOreProcessingGraph,
     stagesToOreGraph,
     type OreGraphLayout
@@ -116,9 +117,7 @@
 
   function clampPan(nextX: number, nextY: number): [number, number] {
     if (!viewport) return [nextX, nextY];
-    const maxX = Math.max(0, layout.width - viewport.clientWidth);
-    const maxY = Math.max(0, layout.height - viewport.clientHeight);
-    return [Math.min(0, Math.max(-maxX, nextX)), Math.min(0, Math.max(-maxY, nextY))];
+    return clampOreGraphPan(nextX, nextY, layout.width, layout.height, viewport.clientWidth, viewport.clientHeight);
   }
 
   function startPan(event: PointerEvent) {
