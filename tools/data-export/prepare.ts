@@ -69,6 +69,36 @@ const gtnhVersion = requiredArgument(args, 'version');
 if (gtnhVersion !== KNOWN_ARCHIVE.version) {
   throw new Error(`This preparation profile only supports ${KNOWN_ARCHIVE.version}`);
 }
+
+// The overlay itself is only an SPI.  A disposable Prism instance is useful
+// only when a maintained provider compiled against the live GTNH mod registries
+// is installed beside it.  Fail before archive/work-directory mutation rather
+// than producing an exporter that will inevitably abort at launch with no
+// sidecar.  Keep this check here (before archive stat, mkdir, unzip, or copy)
+// so a missing provider cannot leave a half-prepared instance behind.
+const specialProviderSource = join(
+  repositoryRoot,
+  'tools/data-export/overlay/RuntimeSpecialAdapter.java'
+);
+let specialProviderDetails: string;
+try {
+  specialProviderDetails = await readFile(specialProviderSource, 'utf8');
+} catch {
+  throw new Error(
+    'Cannot prepare the GTNH Prism export: the maintained live NEI special-data provider is missing at '
+      + `${specialProviderSource}. The current overlay supplies only the SPI and cannot emit the ten requested `
+      + 'live categories (CropsNH crop-output/mutation-pool/crop-breeding; GT ore vein/small ore/processing; '
+      + 'BloodMagic meteor-ritual; EnhancedLootBags loot-bag; VendingMachine vending-trade; Forge/Roguelike/'
+      + 'Twilight worldgen-loot). Add and compile that provider against the pinned 2.9.0-beta-2 runtime jars '
+      + 'before preparing a disposable instance.'
+  );
+}
+if (!specialProviderDetails.includes('implements NeiSpecialOverlay.Adapter')) {
+  throw new Error(
+    'Cannot prepare the GTNH Prism export: the maintained NEI special-data provider is not a compiled '
+      + `NeiSpecialOverlay.Adapter at ${specialProviderSource}; refusing to create a guaranteed-broken instance.`
+  );
+}
 const workDirectory = resolve(args.get('work-dir') ?? `.export-work/${gtnhVersion}`);
 const instanceDirectory = resolve(args.get('instance-dir') ?? join(workDirectory, 'prism-instance'));
 const sessionPath = join(workDirectory, 'export-session.json');

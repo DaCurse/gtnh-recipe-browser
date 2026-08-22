@@ -149,6 +149,19 @@ describe('NEI special sidecar contract', () => {
     expect(process).not.toContain('filter((item) => (item) =>');
   });
 
+  it('fails preparation before archive or Prism mutation when the live provider is absent', async () => {
+    const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
+    const providerCheck = prepare.indexOf('const specialProviderSource = join(');
+    const archiveStat = prepare.indexOf('const archiveStat = await stat(archivePath);');
+    const instanceMutation = prepare.indexOf('await mkdir(workDirectory, { recursive: true });');
+    expect(providerCheck).toBeGreaterThan(-1);
+    expect(providerCheck).toBeLessThan(archiveStat);
+    expect(providerCheck).toBeLessThan(instanceMutation);
+    expect(prepare).toContain('the maintained live NEI special-data provider is missing');
+    expect(prepare).toContain('refusing to create a guaranteed-broken instance');
+    expect(prepare).toContain('implements NeiSpecialOverlay.Adapter');
+  });
+
   it('retains sidecar item/fluid and ore-dictionary references before projection', async () => {
     const retention = await readFile('tools/data-export/patches/SpecialRetention.cs', 'utf8');
     expect(retention).toContain('item.touched = true');
