@@ -406,8 +406,11 @@ function validateReferences(
 }
 
 function validateCanonicalGoodsId(goodsId: string, owner: string): void {
-  const item = /^i:[^:]+:[^:]+:-?\d+(?::[0-9a-f]{40})?$/.test(goodsId);
-  const fluid = /^f:[^:]+:[^:]+$/.test(goodsId);
+  // The processor preserves the full internal name, which can itself contain
+  // colons (for example f:cropsnh:cropsnh:jagi). Parse identity from the fixed
+  // prefix/mod and the item damage/NBT suffix instead of counting separators.
+  const item = /^i:[^:]+:.+:-?\d+(?::[0-9a-f]{40})?$/.test(goodsId);
+  const fluid = /^f:[^:]+:.+$/.test(goodsId);
   if (!item && !fluid) {
     throw new SpecialDataError(`${owner}: invalid canonical goods ID ${goodsId}`);
   }

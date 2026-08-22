@@ -164,6 +164,9 @@ describe('NEI special sidecar contract', () => {
     expect(() => canonicalizeSpecialData(source)).toThrow(
       /invalid canonical goods ID i~gregtech~gt\.metaitem\.01~2816/
     );
+
+    records[0]!.goodsIds = ['f:cropsnh:cropsnh:jagi'];
+    expect(() => canonicalizeSpecialData(source)).not.toThrow();
   });
 
   it('retains nested goods references and produces a stable sidecar hash', async () => {
