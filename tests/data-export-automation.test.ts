@@ -37,7 +37,8 @@ describe('unattended NESQL export overlay', () => {
     expect(source).toContain('StandardCopyOption.ATOMIC_MOVE');
     expect(source).toContain('writeStatus(Phase.COMPLETE');
     expect(source).toContain('writeStatus(Phase.FAILED');
-    expect(source).toContain('minecraft.shutdown()');
+    expect(source).toContain('FMLCommonHandler.instance().exitJava(0, false)');
+    expect(source).not.toContain('minecraft.shutdown()');
   });
 
   it('keeps the upstream exporter immutable through a disposable patch', async () => {

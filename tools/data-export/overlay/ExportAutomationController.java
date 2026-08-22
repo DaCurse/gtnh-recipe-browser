@@ -64,7 +64,6 @@ public final class ExportAutomationController {
     private boolean neiLoadRequested;
     private boolean playerPrepared;
     private boolean exportStarted;
-    private volatile boolean shutdownRequested;
     private volatile Phase phase = Phase.BOOTING;
 
     private ExportAutomationController() {
@@ -95,10 +94,6 @@ public final class ExportAutomationController {
     @SuppressWarnings("unused")
     public void onClientTick(TickEvent.ClientTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
-        if (shutdownRequested) {
-            minecraft.shutdown();
-            return;
-        }
         if (phase == Phase.FAILED || phase == Phase.COMPLETE || exportStarted) return;
 
         try {
@@ -177,7 +172,7 @@ public final class ExportAutomationController {
                     fail("Exporter failed", error);
                     return;
                 }
-                shutdownRequested = true;
+                exitClient();
             }
         }, "NESQL unattended export");
         exportThread.setDaemon(false);
@@ -201,7 +196,16 @@ public final class ExportAutomationController {
     private synchronized void fail(String message, Throwable error) {
         Logger.MOD.error(message, error);
         writeStatus(Phase.FAILED, message, error);
-        shutdownRequested = true;
+        exitClient();
+    }
+
+    /**
+     * Exits the disposable automation JVM without invoking Minecraft.shutdown().
+     * GTNH intercepts that method with an interactive SDL confirmation dialog,
+     * which would leave an otherwise successful unattended export blocked.
+     */
+    private void exitClient() {
+        FMLCommonHandler.instance().exitJava(0, false);
     }
 
     private synchronized void writeStatus(Phase nextPhase, String message, Throwable error) {
