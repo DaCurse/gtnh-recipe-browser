@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 
 /** The wire version of browser-nei-special.json. */
-export const SPECIAL_SCHEMA_VERSION = 1 as const;
+const SPECIAL_SCHEMA_VERSION = 1 as const;
 
 /**
  * Keep this order in sync with the order used by the NEI tabs.  It is part of
@@ -22,7 +22,7 @@ export const SPECIAL_CATEGORY_IDS = [
   'gt-ore-processing'
 ] as const;
 
-export type SpecialCategoryId = (typeof SPECIAL_CATEGORY_IDS)[number];
+type SpecialCategoryId = (typeof SPECIAL_CATEGORY_IDS)[number];
 
 /** Names accepted by the overlay when adapting older NEI terminology. */
 const CATEGORY_ALIASES: Record<string, SpecialCategoryId> = {
@@ -67,7 +67,7 @@ const CATEGORY_ALIASES: Record<string, SpecialCategoryId> = {
   oreProcessing: 'gt-ore-processing'
 };
 
-export interface SpecialSourceVersions {
+interface SpecialSourceVersions {
   gtnhVersion: string;
   exporter: {
     repository: string;
@@ -87,7 +87,7 @@ export interface SpecialViewType {
   serviceIconId: string;
 }
 
-export interface SpecialServiceIcon {
+interface SpecialServiceIcon {
   id: string;
   label: string;
   /** A normal goods ID or an explicit service-only icon token. */
@@ -95,7 +95,7 @@ export interface SpecialServiceIcon {
   searchable: false;
 }
 
-export interface SpecialRecordBase {
+interface SpecialRecordBase {
   id: string;
   category: SpecialCategoryId;
   title: string;
@@ -122,7 +122,7 @@ export interface SpecialData {
   records: SpecialRecord[];
 }
 
-export interface SpecialValidationOptions {
+interface SpecialValidationOptions {
   /** Defaults to every category in SPECIAL_CATEGORY_IDS. */
   requiredCategories?: readonly SpecialCategoryId[];
   /** Defaults to true; use false only for a deliberately partial development export. */
@@ -477,20 +477,6 @@ export async function readSpecialSidecar(
     throw new SpecialDataError(`Unable to read special sidecar ${path}: ${error instanceof Error ? error.message : String(error)}`);
   }
   return canonicalizeSpecialData(parsed, options);
-}
-
-export async function writeSpecialSidecar(
-  path: string,
-  value: unknown,
-  options: SpecialValidationOptions = {}
-): Promise<{ bytes: number; sha256: string }> {
-  const serialized = serializeSpecialData(value, options);
-  const bytes = Buffer.from(serialized, 'utf8');
-  await writeFile(path, bytes, { flag: 'wx' });
-  return {
-    bytes: bytes.byteLength,
-    sha256: createHash('sha256').update(bytes).digest('hex')
-  };
 }
 
 export function specialDataSha256(value: unknown, options: SpecialValidationOptions = {}): string {

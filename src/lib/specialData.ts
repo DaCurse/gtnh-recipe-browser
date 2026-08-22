@@ -257,13 +257,20 @@ export function specialCategory(value: string): SpecialCategory | undefined {
     return value as SpecialCategory;
   }
   const aliases: Record<string, SpecialCategory> = {
+    'crop-output': 'crop',
     'crop-outputs': 'crop',
+    'mutation-pool': 'cropPool',
     'mutation-pools': 'cropPool',
     'crop-breeding': 'cropBreeding',
+    'gt-ore-vein': 'gtOreVein',
     'gt-ore-veins': 'gtOreVein',
+    'gt-small-ore': 'gtSmallOre',
     'gt-small-ores': 'gtSmallOre',
+    'meteor-ritual': 'meteorRitual',
     'meteor-rituals': 'meteorRitual',
+    'loot-bag': 'lootBag',
     lootbags: 'lootBag',
+    'vending-trade': 'vending',
     'vending-trades': 'vending',
     'worldgen-loot': 'worldgenLoot',
     'gt-ore-processing': 'oreProcessing',

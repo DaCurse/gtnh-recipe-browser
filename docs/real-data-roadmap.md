@@ -217,7 +217,7 @@ complete dataset in current Chromium, Firefox, and WebKit at desktop and mobile 
 startup and high-cardinality variant browsing on representative phones; no further pack-format change is currently
 required.
 
-## Phase 8 — NEI special data (implementation complete; live export pending)
+## Phase 8 — NEI special data (client/pack implementation complete; live export pending)
 
 Format 4 adds semantic NEI pages that cannot be reconstructed from the existing processed repository: crop
 products, mutation pools and breeding; GT veins and small ores; Meteor Rituals; Enhanced LootBags; Vending Machine

@@ -4,12 +4,19 @@ import { boundedSpecialPage, specialCategory, specialSearchText, type SpecialRec
 
 describe('NEI special browser presentation', () => {
   it('maps canonical sidecar category IDs to focused renderers', () => {
+    expect(specialCategory('crop-output')).toBe('crop');
     expect(specialCategory('crop-outputs')).toBe('crop');
+    expect(specialCategory('mutation-pool')).toBe('cropPool');
     expect(specialCategory('mutation-pools')).toBe('cropPool');
+    expect(specialCategory('gt-ore-vein')).toBe('gtOreVein');
     expect(specialCategory('gt-ore-veins')).toBe('gtOreVein');
+    expect(specialCategory('gt-small-ore')).toBe('gtSmallOre');
     expect(specialCategory('gt-small-ores')).toBe('gtSmallOre');
+    expect(specialCategory('meteor-ritual')).toBe('meteorRitual');
     expect(specialCategory('meteor-rituals')).toBe('meteorRitual');
+    expect(specialCategory('loot-bag')).toBe('lootBag');
     expect(specialCategory('lootbags')).toBe('lootBag');
+    expect(specialCategory('vending-trade')).toBe('vending');
     expect(specialCategory('vending-trades')).toBe('vending');
     expect(specialCategory('worldgen-loot')).toBe('worldgenLoot');
     expect(specialCategory('gt-ore-processing')).toBe('oreProcessing');

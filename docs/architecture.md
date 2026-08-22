@@ -26,9 +26,8 @@ Stateful feature workflows use Svelte 5 rune modules:
 - `storage.ts` owns versioned IndexedDB records for verified blobs and decoded catalog snapshots.
 - `catalogMaterialization.ts` builds (and serializes/restores) searchable items, ore dictionaries, and machine capabilities.
 - `recipeMaterialization.ts` converts packed recipes into display-domain recipes.
-- `specialMaterialization.ts` converts format-4 NEI-special shards into the
-  discriminated display records used by the special cards and ore-processing
-  graph.
+- `specialData.ts` defines and normalizes the discriminated display records
+  used by the special cards and ore-processing graph.
 
 The service worker precaches only the application shell. Immutable dataset bytes,
 on-demand icon sheets, and the decoded catalog snapshot stay in IndexedDB so
