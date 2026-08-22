@@ -367,6 +367,74 @@ function normalizeRecord(value: unknown, index: number, iconIds: ReadonlySet<str
   return record;
 }
 
+/**
+ * Convert the raw GT random weights emitted by older overlays to the same
+ * per-dimension probability that GTNEIOrePlugin puts in its tooltip.  The
+ * maintained runtime adapter already emits this normalized value; keeping
+ * the migration at the sidecar boundary also makes a pack rebuilt from an
+ * older disposable export safe and prevents the UI from mistaking a weight
+ * for a percentage.
+ */
+function normalizeGtOreVeinChances(records: SpecialRecord[]): void {
+  const totals = new Map<string, number>();
+  const dimensionsByRecord = new Map<SpecialRecord, string[]>();
+  for (const record of records) {
+    if (record.category !== 'gt-ore-vein') continue;
+    const payload = record.payload;
+    const dimensions = new Set<string>();
+    const rawDimensions = payload.dimensions;
+    if (Array.isArray(rawDimensions)) {
+      for (const value of rawDimensions) {
+        if (typeof value === 'string' || typeof value === 'number') {
+          dimensions.add(String(value));
+        } else if (isRecord(value)) {
+          const id = value.id ?? value.dimension ?? value.name;
+          if (typeof id === 'string' || typeof id === 'number') dimensions.add(String(id));
+        }
+      }
+    }
+    if (isRecord(payload.dimensionChance)) {
+      for (const id of Object.keys(payload.dimensionChance)) dimensions.add(id);
+    }
+    const ids = [...dimensions].sort((left, right) => left.localeCompare(right));
+    dimensionsByRecord.set(record, ids);
+    const weight = typeof payload.weight === 'number' && Number.isFinite(payload.weight)
+      ? payload.weight
+      : undefined;
+    if (weight === undefined) continue;
+    for (const id of ids) totals.set(id, (totals.get(id) ?? 0) + weight);
+  }
+
+  for (const [record, dimensions] of dimensionsByRecord) {
+    const payload = record.payload;
+    const weight = typeof payload.weight === 'number' && Number.isFinite(payload.weight)
+      ? payload.weight
+      : undefined;
+    if (weight === undefined || dimensions.length === 0) continue;
+    const chances: Record<string, unknown> = isRecord(payload.dimensionChance)
+      ? { ...payload.dimensionChance }
+      : {};
+    for (const id of dimensions) {
+      const total = totals.get(id);
+      if (total === undefined || total <= 0) continue;
+      // Weight is the authoritative source for a GT vein.  This both fills
+      // maps omitted by the old overlay and guarantees a stale normalized
+      // value cannot drift from the plugin's denominator.
+      chances[id] = weight / total;
+      const rawDimension = Array.isArray(payload.dimensions)
+        ? payload.dimensions.find((value) => {
+          if (typeof value === 'string' || typeof value === 'number') return String(value) === id;
+          if (!isRecord(value)) return false;
+          const valueId = value.id ?? value.dimension ?? value.name;
+          return (typeof valueId === 'string' || typeof valueId === 'number') && String(valueId) === id;
+        })
+        : undefined;
+      if (isRecord(rawDimension)) rawDimension.chance = weight / total;
+    }
+    payload.dimensionChance = chances;
+  }
+}
+
 function categories(value: unknown, records: readonly SpecialRecord[]): SpecialCategoryId[] {
   if (value === undefined) {
     return SPECIAL_CATEGORY_IDS.filter((category) => records.some((record) => record.category === category));
@@ -486,6 +554,7 @@ export function canonicalizeSpecialData(
   const normalizedRecords = Array.isArray(value.records)
     ? value.records.map((record, index) => normalizeRecord(record, index, iconIds))
     : (() => { throw new SpecialDataError('records must be an array'); })();
+  normalizeGtOreVeinChances(normalizedRecords);
   const recordIds = new Set<string>();
   for (const record of normalizedRecords) {
     if (recordIds.has(record.id)) throw new SpecialDataError(`duplicate special record ID ${record.id}`);

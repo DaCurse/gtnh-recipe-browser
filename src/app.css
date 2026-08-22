@@ -93,7 +93,9 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .ore-production-note button:hover { background:#454a51; }
 .type-row { max-width:1020px;margin:14px auto;display:flex;gap:8px;overflow:auto;padding:5px 2px 8px; }
 .type-row button { flex:0 0 62px; width:62px; height:62px; padding:0; display:grid; place-items:center; border:0;background:transparent;color:#92979c;font-size:24px;cursor:pointer; }
+.type-row button.machine-tab { width:92px; height:78px; flex-basis:92px; gap:1px; font-size:19px; }
 .type-row button.active { color:#f0f1f2; }
+.type-row button.machine-tab small { max-width:88px; overflow:hidden; color:inherit; font-size:9px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
 .type-row button.special-tab { position:relative; width:92px; height:78px; flex-basis:92px; gap:1px; border:1px solid transparent; border-radius:7px; color:#92979c; font-size:19px; }
 .type-row button.special-tab.active { border-color:#62676d; background:#2a2d31; color:#f0f1f2; }
 .type-row button.special-tab small { max-width:88px; overflow:hidden; color:inherit; font-size:9px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
@@ -137,7 +139,7 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
   .row-arrow { display:block; color:#777c81; font-size:25px; }
   .back { display:flex; }.item-head { gap:12px; }.item-overview { width:calc(100% - 100px); }.minecraft-tooltip { max-height:none; padding:6px 10px 8px; font-size:15px; }.tooltip-header { font-size:17px; }.tooltip-debug { font-size:10px; }
   .view-tabs { margin-top:20px;position:sticky;top:-12px;z-index:3;background:#191b1e; }.type-row { position:sticky;top:35px;z-index:3;background:#191b1e;padding:10px 0;margin:0 auto 8px; }
-  .type-row button.special-tab { width:86px; height:74px; flex-basis:86px; }
+  .type-row button.machine-tab,.type-row button.special-tab { width:86px; height:74px; flex-basis:86px; }
   .recipe-list { grid-template-columns:1fr; }.recipe-list article { max-width:600px;width:100%;margin:auto; }
   .no-recipes,.recipe-loading { padding:42px 12px; }
   .recipe-loading.partial { padding:16px 12px; }

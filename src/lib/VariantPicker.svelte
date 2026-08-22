@@ -70,6 +70,11 @@
     <div class="variant-list">
       {#each visible as variant (variant.entry.id)}
         {@const entry = variant.entry}
+        {@const variantMeta = [
+          group.variantLabels?.[entry.id] ? `${group.variantLabels[entry.id]} · ${entry.mod}` : entry.mod,
+          variantNbtLabel(entry),
+          variant.duplicateCount > 1 ? `${variant.duplicateCount} equivalent stacks` : undefined
+        ].filter(Boolean).join(' · ')}
         <button
           class="variant-row"
           onclick={() => select(entry.id)}
@@ -77,9 +82,7 @@
           <ItemIcon {entry} size={52} />
           <span>
             <strong><MinecraftText raw={entry.rawName} fallback={entry.name} /></strong>
-            <small>{group.variantLabels?.[entry.id]
-              ? `${group.variantLabels[entry.id]} · ${entry.mod}`
-              : entry.mod}{#if variantNbtLabel(entry)} · {variantNbtLabel(entry)}{/if}{#if variant.duplicateCount > 1} · {variant.duplicateCount} equivalent stacks{/if}</small>
+            <small>{variantMeta}</small>
             <em><MinecraftText raw={entry.rawTooltip} fallback={entry.tooltip} /></em>
           </span>
           <b>›</b>

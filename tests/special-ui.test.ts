@@ -82,8 +82,20 @@ describe('NEI special browser presentation', () => {
       expect(source).toContain(label);
     }
     expect(source).toContain('dimensionGoodsIds');
+    expect(source).toContain('overflow-x:auto');
+    expect(source).toContain('goods: goodsId ? [{ goodsId, chance }] : []');
+    expect(source).toContain('Chances per ore chunk');
+    expect(source).not.toContain('dimension-copy');
     expect(source).toContain('smallOreDrops');
     expect(source).toContain('per chunk');
+  });
+
+  it('labels machine tabs and keeps variant metadata separators stable', async () => {
+    const browser = await readFile('src/lib/RecipeBrowser.svelte', 'utf8');
+    const variants = await readFile('src/lib/VariantPicker.svelte', 'utf8');
+    expect(browser).toContain('class="machine-tab"');
+    expect(browser).toContain('<small>{tab}</small>');
+    expect(variants).toContain(".filter(Boolean).join(' · ')");
   });
 
   it('normalizes object-shaped crop soil references without stringifying objects', () => {

@@ -73,6 +73,7 @@
     {@const tabRecipe = related.find((recipe) => recipe.type === tab)}
     {@const tabCrafter = tabRecipe?.typeIconId ? entryById.get(tabRecipe.typeIconId) : undefined}
     <button
+      class="machine-tab"
       class:active={state.type === tab}
       onclick={() => state.selectRecipeType(tab)}
       title={tab}
@@ -83,6 +84,7 @@
       {:else}
         <span class="machine-fallback">⚙</span>
       {/if}
+      <small>{tab}</small>
     </button>
   {/each}
   {#each specialTypes as tab (tab.id)}

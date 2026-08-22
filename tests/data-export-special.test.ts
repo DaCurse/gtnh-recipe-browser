@@ -185,6 +185,35 @@ describe('NEI special sidecar contract', () => {
     expect(specialGoodsIds(data)).not.toContain('od~oreIron');
   });
 
+  it('normalizes legacy GT vein weights to per-dimension plugin probabilities', async () => {
+    const source = JSON.parse(await readFile(fixturePath, 'utf8')) as Record<string, unknown>;
+    const records = source.records as Array<Record<string, unknown>>;
+    const vein = records.find((record) => record.category === 'gt-ore-veins')!;
+    vein.category = 'gt-ore-vein';
+    vein.payload = {
+      ...(vein.payload as Record<string, unknown>),
+      dimensions: ['Overworld'],
+      dimensionChance: { Overworld: 60 },
+      weight: 60
+    };
+    const second = {
+      ...vein,
+      id: 'vein:second',
+      title: 'Second Vein',
+      payload: {
+        ...(vein.payload as Record<string, unknown>),
+        dimensionChance: { Overworld: 20 },
+        weight: 20
+      }
+    };
+    source.records = [...records, second];
+    const data = canonicalizeSpecialData(source);
+    const veins = data.records.filter((record) => record.category === 'gt-ore-vein');
+    expect(veins).toHaveLength(2);
+    expect(veins[0]!.payload.dimensionChance).toEqual({ Overworld: 0.75 });
+    expect(veins[1]!.payload.dimensionChance).toEqual({ Overworld: 0.25 });
+  });
+
   it('retains nested goods references and produces a stable sidecar hash', async () => {
     const data = await fixture();
     const goods = specialGoodsIds(data);
