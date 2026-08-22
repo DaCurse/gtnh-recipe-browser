@@ -561,7 +561,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 ItemStack stack = entry.theItemId;
                 if (stack != null) {
                     String goodsId = sink.retainItem(stack);
-                    goods.add(goodsId);
+                    addAllUnique(goods, Collections.singletonList(goodsId));
                     payload.put("goodsId", goodsId);
                 }
                 itemPayload.add(payload);
@@ -605,7 +605,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             ItemStack sample = sampleWeighted(weighted, 0x524f475545L);
             if (sample != null) {
                 String goodsId = sink.retainItem(sample);
-                goods.add(goodsId);
+                addAllUnique(goods, Collections.singletonList(goodsId));
                 entry.put("goodsId", goodsId);
             }
             entries.add(entry);
@@ -647,7 +647,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                             "Twilight treasure item");
                     if (sample == null) continue;
                     String goodsId = sink.retainItem(sample);
-                    goods.add(goodsId);
+                    addAllUnique(goods, Collections.singletonList(goodsId));
                     Map<String, Object> itemPayload = new LinkedHashMap<>();
                     itemPayload.put("goodsId", goodsId);
                     itemPayload.put("rarity", number(callOrNull(item, "getRarity")));
