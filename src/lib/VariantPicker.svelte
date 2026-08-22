@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import ItemIcon from './ItemIcon.svelte';
   import MinecraftText from './MinecraftText.svelte';
-  import { deduplicateVariantMembers } from './catalogVariants';
+  import { deduplicateVariantMembers, variantNbtLabel } from './catalogVariants';
   import { minecraftHtmlPlainText } from './minecraftText';
   import { normalize } from './search';
   import type { CatalogBrowseEntry, CatalogEntry } from './types';
@@ -79,7 +79,7 @@
             <strong><MinecraftText raw={entry.rawName} fallback={entry.name} /></strong>
             <small>{group.variantLabels?.[entry.id]
               ? `${group.variantLabels[entry.id]} · ${entry.mod}`
-              : entry.mod}{#if variant.duplicateCount > 1} · {variant.duplicateCount} equivalent stacks{/if}</small>
+              : entry.mod}{#if variantNbtLabel(entry)} · {variantNbtLabel(entry)}{/if}{#if variant.duplicateCount > 1} · {variant.duplicateCount} equivalent stacks{/if}</small>
             <em><MinecraftText raw={entry.rawTooltip} fallback={entry.tooltip} /></em>
           </span>
           <b>›</b>

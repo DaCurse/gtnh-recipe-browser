@@ -8,7 +8,8 @@ import {
   buildCatalogBrowseEntries,
   canonicalVariantNbt,
   deduplicateVariantMembers,
-  resolveCatalogVariant
+  resolveCatalogVariant,
+  variantNbtLabel
 } from '../src/lib/catalogVariants';
 import { describeGtOreVariant } from '../src/lib/gtOreVariants';
 import { querySearchMask, searchMaskContains } from '../src/lib/searchMask';
@@ -121,6 +122,8 @@ describe('catalog variant families', () => {
     });
 
     expect(canonicalVariantNbt(scannedA.nbt)).toBe(canonicalVariantNbt(scannedB.nbt));
+    expect(variantNbtLabel(unscanned)).toBe('Analyzed · Stats not recorded');
+    expect(variantNbtLabel(scannedA)).toBe('Analyzed · Growth · Gain · Resistance');
     const variants = deduplicateVariantMembers([unscanned, scannedB, scannedA]);
     expect(variants).toHaveLength(2);
     expect(variants[0]?.entry.id).toBe(unscanned.id);

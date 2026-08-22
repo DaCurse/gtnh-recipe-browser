@@ -61,6 +61,26 @@ export function canonicalVariantNbt(value: string | null | undefined): string | 
   return `{${fields.join(',')}}`;
 }
 
+function nbtFieldMap(value: string | null | undefined): Map<string, string> {
+  const canonical = canonicalVariantNbt(value);
+  if (!canonical) return new Map();
+  return new Map(splitNbtFields(canonical.slice(1, -1)).flatMap((field) => {
+    const separator = field.indexOf(':');
+    return separator > 0 ? [[field.slice(0, separator).trim(), field.slice(separator + 1).trim()] as const] : [];
+  }));
+}
+
+/** Short, human-readable state for CropsNH stacks whose tooltip omits NBT stats. */
+export function variantNbtLabel(entry: Pick<CatalogEntry, 'mod' | 'nbt'>): string | undefined {
+  if (entry.mod.toLocaleLowerCase() !== 'cropsnh') return undefined;
+  const fields = nbtFieldMap(entry.nbt);
+  if (!fields.has('crop')) return undefined;
+  const stats = [['gr', 'Growth'], ['ga', 'Gain'], ['re', 'Resistance']]
+    .filter(([key]) => fields.has(key))
+    .map(([, label]) => label);
+  return `${fields.has('scan') ? 'Analyzed' : 'Unanalyzed'} · ${stats.length > 0 ? stats.join(' · ') : 'Stats not recorded'}`;
+}
+
 export interface DeduplicatedVariant {
   entry: CatalogEntry;
   duplicateCount: number;
