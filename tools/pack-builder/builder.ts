@@ -11,10 +11,23 @@ import type {
   GeneratedPackManifest,
   IconSheetAsset,
   ImmutableAsset,
-  RecipeShardAsset
+  RecipeShardAsset,
+  SpecialDataShardAsset
 } from './manifest';
+import {
+  SPECIAL_CATEGORY_IDS,
+  buildSpecialViewTypes,
+  canonicalSpecialDataJson,
+  normalizeBrowserNeiSpecial,
+  parseBrowserNeiSpecial,
+  specialGoodsForDirection,
+  validateSpecialGoodsReferences,
+  type BrowserNeiSpecialData,
+  type SpecialRecord,
+  type SpecialViewType
+} from './special';
 
-const PACK_FORMAT_VERSION = 3;
+const PACK_FORMAT_VERSION = 4;
 const DEFAULT_MAX_SHARD_BYTES = 2 * 1024 * 1024;
 const DEFAULT_MAX_CATALOG_BYTES = 2 * 1024 * 1024;
 const ICONS_PER_SHEET = 1024;
@@ -33,6 +46,11 @@ export interface BuildPackOptions {
   baseUrl?: string;
   maxShardBytes?: number;
   maxCatalogBytes?: number;
+  /** Parsed sidecar value; useful to library callers and fixture tests. */
+  specialData?: unknown;
+  /** Path to browser-nei-special.json emitted by the special exporter. */
+  specialDataPath?: string;
+  maxSpecialShardBytes?: number;
 }
 
 export interface BuildPackResult {
@@ -163,6 +181,96 @@ async function buildRecipeShards(
   return { assets, shardByRecipeId };
 }
 
+interface EncodedSpecialPart {
+  records: SpecialRecord[];
+  bytes: Buffer;
+}
+
+function encodeSpecialPart(
+  datasetId: string,
+  viewType: SpecialViewType,
+  part: number,
+  records: SpecialRecord[]
+): Buffer {
+  return gzipMessagePack({
+    schemaVersion: PACK_FORMAT_VERSION,
+    datasetId,
+    kind: 'special',
+    specialViewTypeId: viewType.id,
+    specialViewTypeOrder: SPECIAL_CATEGORY_IDS.indexOf(viewType.id),
+    part,
+    records
+  });
+}
+
+function splitSpecialPart(
+  datasetId: string,
+  viewType: SpecialViewType,
+  records: SpecialRecord[],
+  maxBytes: number
+): EncodedSpecialPart[] {
+  if (records.length === 0) return [];
+  // Probe with a deliberately wide part number so the final (smaller) part
+  // number cannot grow beyond the requested byte cap.
+  const bytes = encodeSpecialPart(datasetId, viewType, 999_999, records);
+  if (bytes.byteLength <= maxBytes || records.length === 1) return [{ records, bytes }];
+  const middle = Math.ceil(records.length / 2);
+  return [
+    ...splitSpecialPart(datasetId, viewType, records.slice(0, middle), maxBytes),
+    ...splitSpecialPart(datasetId, viewType, records.slice(middle), maxBytes)
+  ];
+}
+
+/** Deterministically split special records without changing category/ID order. */
+export function splitSpecialRecords(
+  datasetId: string,
+  viewType: SpecialViewType,
+  records: SpecialRecord[],
+  maxBytes: number
+): SpecialRecord[][] {
+  return splitSpecialPart(datasetId, viewType, records, maxBytes).map((part) => part.records);
+}
+
+async function buildSpecialDataShards(
+  data: BrowserNeiSpecialData,
+  datasetId: string,
+  assetsDirectory: string,
+  baseUrl: string,
+  maxBytes: number
+): Promise<{ assets: SpecialDataShardAsset[]; shardByRecordId: Map<string, string> }> {
+  const assets: SpecialDataShardAsset[] = [];
+  const shardByRecordId = new Map<string, string>();
+  for (const viewType of buildSpecialViewTypes(data)) {
+    const records = data.records.filter((record) => record.category === viewType.id);
+    const parts = splitSpecialPart(datasetId, viewType, records, maxBytes);
+    for (const [part, encodedPart] of parts.entries()) {
+      const id = `special-${sanitize(viewType.id)}-${part.toString().padStart(3, '0')}`;
+      const bytes = encodeSpecialPart(datasetId, viewType, part, encodedPart.records);
+      // Re-encode with the actual part number before hashing.  The split probe
+      // intentionally uses part zero, which keeps the recursive size decision
+      // independent from the eventual number of shards.
+      const immutable = await writeImmutableAsset(
+        assetsDirectory,
+        baseUrl,
+        id,
+        'mpk',
+        bytes,
+        { encoding: 'gzip', mediaType: 'application/msgpack' }
+      );
+      assets.push({
+        ...immutable,
+        kind: 'specialData',
+        specialViewTypeId: viewType.id,
+        specialViewTypeOrder: SPECIAL_CATEGORY_IDS.indexOf(viewType.id),
+        part,
+        recordCount: encodedPart.records.length
+      });
+      for (const record of encodedPart.records) shardByRecordId.set(record.id, id);
+    }
+  }
+  return { assets, shardByRecordId };
+}
+
 function uniqueShards(recipeIds: string[], shardByRecipeId: Map<string, string>, context: string): string[] {
   const ids = new Set<string>();
   for (const recipeId of recipeIds) {
@@ -181,16 +289,111 @@ function iconReference(iconId: number) {
   };
 }
 
-function buildCatalog(repository: DecodedRepository, shardByRecipeId: Map<string, string>) {
-  const goods = [...repository.items, ...repository.fluids].map((entry) => {
+function specialOreDictionaryNames(data: BrowserNeiSpecialData): string[] {
+  const result = new Set<string>();
+  const visit = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      value.forEach(visit);
+      return;
+    }
+    if (value === null || typeof value !== 'object') return;
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      const normalizedKey = key.toLowerCase();
+      if (
+        (normalizedKey === 'oredictionary' || normalizedKey.endsWith('oredictionaryid'))
+        && typeof child === 'string'
+      ) result.add(child);
+      visit(child);
+    }
+  };
+  data.records.forEach((record) => visit(record.payload));
+  return [...result].sort();
+}
+
+function validateSpecialOreDictionaries(
+  data: BrowserNeiSpecialData,
+  repository: DecodedRepository
+): void {
+  const known = new Set([
+    ...repository.oreDictionaries.map((entry) => entry.id),
+    ...repository.ingredientGroups.map((entry) => entry.id)
+  ]);
+  for (const name of specialOreDictionaryNames(data)) {
+    if (!known.has(name) && !known.has(`o:${name}`)) {
+      throw new Error(`Special data references unresolved ore dictionary ${name}`);
+    }
+  }
+}
+
+function specialShardsForGoods(
+  goodsId: string,
+  records: readonly SpecialRecord[],
+  shardByRecordId: Map<string, string>,
+  direction: 'recipes' | 'usages'
+): string[] {
+  return records
+    .filter((record) => specialGoodsForDirection(record, direction).includes(goodsId))
+    .map((record) => shardByRecordId.get(record.id))
+    .filter((id): id is string => id !== undefined)
+    .filter((id, index, all) => all.indexOf(id) === index)
+    .sort();
+}
+
+function specialRecordCountForGoods(
+  goodsId: string,
+  records: readonly SpecialRecord[],
+  direction: 'recipes' | 'usages'
+): number {
+  return records.filter((record) => specialGoodsForDirection(record, direction).includes(goodsId)).length;
+}
+
+function specialLookupIdsForGoods(
+  goodsId: string,
+  records: readonly SpecialRecord[],
+  direction: 'recipes' | 'usages'
+): string[] {
+  return records
+    .filter((record) => specialGoodsForDirection(record, direction).includes(goodsId))
+    .map((record) => direction === 'recipes' ? record.recipesLookupId : record.usagesLookupId)
+    .filter((id, index, all) => all.indexOf(id) === index)
+    .sort();
+}
+
+function buildCatalog(
+  repository: DecodedRepository,
+  shardByRecipeId: Map<string, string>,
+  specialData: BrowserNeiSpecialData | undefined,
+  specialShardByRecordId: Map<string, string>
+) {
+  const specialRecords = specialData?.records ?? [];
+  const allGoods = [...repository.items, ...repository.fluids];
+  const goods = allGoods.map((entry) => {
     const { productionRecipeIds, usageRecipeIds, ...catalogEntry } = entry;
+    const specialProductionShards = specialShardsForGoods(
+      entry.id,
+      specialRecords,
+      specialShardByRecordId,
+      'recipes'
+    );
+    const specialUsageShards = specialShardsForGoods(
+      entry.id,
+      specialRecords,
+      specialShardByRecordId,
+      'usages'
+    );
     return {
       ...catalogEntry,
       icon: iconReference(entry.iconId),
       productionShards: uniqueShards(productionRecipeIds, shardByRecipeId, `${entry.id} production`),
       usageShards: uniqueShards(usageRecipeIds, shardByRecipeId, `${entry.id} usage`),
       productionCount: productionRecipeIds.length,
-      usageCount: usageRecipeIds.length
+      usageCount: usageRecipeIds.length,
+      specialProductionShards,
+      specialUsageShards,
+      specialProductionLookupIds: specialLookupIdsForGoods(entry.id, specialRecords, 'recipes'),
+      specialUsageLookupIds: specialLookupIdsForGoods(entry.id, specialRecords, 'usages'),
+      specialProductionCount: specialRecordCountForGoods(entry.id, specialRecords, 'recipes'),
+      specialUsageCount: specialRecordCountForGoods(entry.id, specialRecords, 'usages')
     };
   });
   return {
@@ -206,7 +409,19 @@ function buildCatalog(repository: DecodedRepository, shardByRecipeId: Map<string
         : null
     })),
     serviceItemIds: repository.serviceItemIds,
-    obsoleteRecipeRemaps: repository.obsoleteRecipeRemaps
+    obsoleteRecipeRemaps: repository.obsoleteRecipeRemaps,
+    specialViewTypes: specialData
+      ? buildSpecialViewTypes(specialData).map((viewType) => ({
+        ...viewType,
+        recordCount: specialRecords.filter((record) => record.category === viewType.id).length
+      }))
+      : [],
+    specialServiceIcons: specialData?.serviceIcons.map((serviceIcon) => ({
+      ...serviceIcon,
+      icon: serviceIcon.goodsId
+        ? iconReference(allGoods.find((entry) => entry.id === serviceIcon.goodsId)?.iconId ?? -1)
+        : null
+    })) ?? []
   };
 }
 
@@ -239,11 +454,13 @@ async function buildCatalogAssets(
   repository: DecodedRepository,
   datasetId: string,
   shardByRecipeId: Map<string, string>,
+  specialData: BrowserNeiSpecialData | undefined,
+  specialShardByRecordId: Map<string, string>,
   assetsDirectory: string,
   baseUrl: string,
   maxBytes: number
 ): Promise<CatalogAsset[]> {
-  const catalog = buildCatalog(repository, shardByRecipeId);
+  const catalog = buildCatalog(repository, shardByRecipeId, specialData, specialShardByRecordId);
   const { goods, ...core } = catalog;
   const coreBytes = gzipMessagePack({
     schemaVersion: PACK_FORMAT_VERSION,
@@ -369,8 +586,37 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   const dataBytes = await readFile(options.dataPath);
   const atlasBytes = await readFile(options.atlasPath);
   const repository = decodeFormat5(dataBytes);
-  const datasetId = options.datasetId ?? `${sanitize(options.gtnhVersion)}-r${sanitize(options.revision)}`;
-  const displayName = options.displayName ?? `GTNH ${options.gtnhVersion} (revision ${options.revision})`;
+  let specialData: BrowserNeiSpecialData | undefined;
+  if (options.specialDataPath !== undefined && options.specialData !== undefined) {
+    throw new Error('Specify only one of specialDataPath and specialData');
+  }
+  if (options.specialDataPath !== undefined) {
+    specialData = parseBrowserNeiSpecial(await readFile(options.specialDataPath));
+  } else if (options.specialData !== undefined) {
+    specialData = normalizeBrowserNeiSpecial(options.specialData);
+  }
+  if (specialData) {
+    const repositoryGoodsIds = new Set([
+      ...repository.items.map((entry) => entry.id),
+      ...repository.fluids.map((entry) => entry.id)
+    ]);
+    validateSpecialGoodsReferences(specialData, repositoryGoodsIds);
+    validateSpecialOreDictionaries(specialData, repository);
+    for (const serviceIcon of specialData.serviceIcons) {
+      if (!serviceIcon.goodsId) continue;
+      const goods = [...repository.items, ...repository.fluids].find((entry) => entry.id === serviceIcon.goodsId);
+      if (!goods) throw new Error(`Special service icon ${serviceIcon.id} references unresolved goods ID ${serviceIcon.goodsId}`);
+    }
+  }
+  const specialDataBytes = specialData
+    ? Buffer.from(canonicalSpecialDataJson(specialData), 'utf8')
+    : undefined;
+  const specialDataSha256 = specialDataBytes ? sha256(specialDataBytes) : undefined;
+  const effectiveRevision = specialDataBytes
+    ? createHash('sha256').update(options.revision).update('\0').update(specialDataBytes).digest('hex').slice(0, 12)
+    : options.revision;
+  const datasetId = options.datasetId ?? `${sanitize(options.gtnhVersion)}-r${sanitize(effectiveRevision)}`;
+  const displayName = options.displayName ?? `GTNH ${options.gtnhVersion} (revision ${effectiveRevision})`;
   const baseUrl = options.baseUrl ?? '.';
 
   const { assets: recipeShards, shardByRecipeId } = await buildRecipeShards(
@@ -381,10 +627,22 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
     options.maxShardBytes ?? DEFAULT_MAX_SHARD_BYTES
   );
 
+  const { assets: specialDataShards, shardByRecordId: specialShardByRecordId } = specialData
+    ? await buildSpecialDataShards(
+      specialData,
+      datasetId,
+      assetsDirectory,
+      baseUrl,
+      options.maxSpecialShardBytes ?? options.maxShardBytes ?? DEFAULT_MAX_SHARD_BYTES
+    )
+    : { assets: [], shardByRecordId: new Map<string, string>() };
+
   const catalogAssets = await buildCatalogAssets(
     repository,
     datasetId,
     shardByRecipeId,
+    specialData,
+    specialShardByRecordId,
     assetsDirectory,
     baseUrl,
     options.maxCatalogBytes ?? DEFAULT_MAX_CATALOG_BYTES
@@ -402,29 +660,39 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   const iconCount = Math.max(...iconIds) + 1;
   const iconSheets = await buildIconSheets(options.atlasPath, iconCount, assetsDirectory, baseUrl);
 
-  const allAssets = [...catalogAssets, ...recipeShards, ...iconSheets];
+  const allAssets = [...catalogAssets, ...recipeShards, ...specialDataShards, ...iconSheets];
   const manifest: GeneratedPackManifest = {
     formatVersion: PACK_FORMAT_VERSION,
     datasetId,
     gtnhVersion: options.gtnhVersion,
-    revision: options.revision,
+    revision: effectiveRevision,
     displayName,
     source: {
       formatVersion: repository.formatVersion,
       dataSha256: sha256(dataBytes),
-      atlasSha256: sha256(atlasBytes)
+      atlasSha256: sha256(atlasBytes),
+      ...(specialDataSha256 ? { specialDataSha256 } : {})
     },
     catalogAssets,
     recipeShards,
     iconSheets,
+    specialDataShards,
     totals: {
       searchableEntries: repository.items.filter((item) => item.searchable).length
         + repository.fluids.filter((fluid) => fluid.searchable).length,
       recipes: repository.recipes.length,
+      specialRecords: specialData?.records.length ?? 0,
       assets: allAssets.length,
       offlineBytes: allAssets.reduce((total, asset) => total + asset.bytes, 0)
     }
   };
+  if (specialDataBytes) {
+    await writeFile(
+      join(staging, 'browser-nei-special.json'),
+      specialDataBytes,
+      { flag: 'wx' }
+    );
+  }
   const manifestPath = join(staging, 'pack-manifest.json');
   await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' });
   await rename(staging, outputDirectory);

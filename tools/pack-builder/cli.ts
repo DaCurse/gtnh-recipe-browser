@@ -5,7 +5,8 @@ function usage(): never {
   console.error(`Usage:
   npm run pack -- --data <data.bin> --atlas <atlas.webp> --gtnh-version <version> \\
     --revision <immutable-revision> --output <directory> [--dataset-id <id>] \\
-    [--display-name <name>] [--base-url <url>] [--max-shard-bytes <bytes>]
+    [--display-name <name>] [--base-url <url>] [--max-shard-bytes <bytes>] \\
+    [--special-data <browser-nei-special.json>] [--max-special-shard-bytes <bytes>]
 
 The output directory must not already exist. Inputs must be ShadowTheAge format-v5 assets.`);
   process.exit(2);
@@ -26,6 +27,12 @@ function parseArguments(args: string[]): BuildPackOptions {
   if (maxShardBytes !== undefined && (!Number.isFinite(maxShardBytes) || maxShardBytes < 1024)) {
     throw new Error('--max-shard-bytes must be an integer of at least 1024');
   }
+  const maxSpecialShardBytes = values.has('max-special-shard-bytes')
+    ? Number.parseInt(required('max-special-shard-bytes'), 10)
+    : undefined;
+  if (maxSpecialShardBytes !== undefined && (!Number.isFinite(maxSpecialShardBytes) || maxSpecialShardBytes < 1024)) {
+    throw new Error('--max-special-shard-bytes must be an integer of at least 1024');
+  }
   return {
     dataPath: required('data'),
     atlasPath: required('atlas'),
@@ -35,7 +42,9 @@ function parseArguments(args: string[]): BuildPackOptions {
     datasetId: values.get('dataset-id'),
     displayName: values.get('display-name'),
     baseUrl: values.get('base-url'),
-    maxShardBytes
+    maxShardBytes,
+    specialDataPath: values.get('special-data'),
+    maxSpecialShardBytes
   };
 }
 

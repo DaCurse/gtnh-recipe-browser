@@ -33,8 +33,16 @@ export interface IconSheetAsset extends ImmutableAsset {
   spriteSize: 32;
 }
 
+export interface SpecialDataShardAsset extends ImmutableAsset {
+  kind: 'specialData';
+  specialViewTypeId: string;
+  specialViewTypeOrder: number;
+  part: number;
+  recordCount: number;
+}
+
 export interface GeneratedPackManifest {
-  formatVersion: 3;
+  formatVersion: 4;
   datasetId: string;
   gtnhVersion: string;
   revision: string;
@@ -43,13 +51,16 @@ export interface GeneratedPackManifest {
     formatVersion: 5;
     dataSha256: string;
     atlasSha256: string;
+    specialDataSha256?: string;
   };
   catalogAssets: CatalogAsset[];
   recipeShards: RecipeShardAsset[];
   iconSheets: IconSheetAsset[];
+  specialDataShards: SpecialDataShardAsset[];
   totals: {
     searchableEntries: number;
     recipes: number;
+    specialRecords: number;
     assets: number;
     offlineBytes: number;
   };

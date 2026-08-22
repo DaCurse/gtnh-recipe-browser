@@ -63,7 +63,7 @@ if (directManifest) {
 }
 const manifest = await fetchJson(manifestUrl, 'pack manifest');
 if (
-  ![1, 2, 3].includes(manifest.formatVersion)
+  ![1, 2, 3, 4].includes(manifest.formatVersion)
   || typeof manifest.datasetId !== 'string'
   || (expectedDatasetId && manifest.datasetId !== expectedDatasetId)
 ) {
@@ -73,6 +73,7 @@ if (
 const listedAssets = [
   ...(manifest.catalogAssets ?? []),
   ...(manifest.recipeShards ?? []),
+  ...(manifest.specialDataShards ?? []),
   ...(manifest.iconSheets ?? [])
 ];
 const assets = verifyAllAssets
@@ -80,8 +81,9 @@ const assets = verifyAllAssets
   : [
       [manifest.catalogAssets?.[0], 'catalog asset'],
       [manifest.recipeShards?.[0], 'recipe shard'],
+      [manifest.specialDataShards?.[0], 'special data shard'],
       [manifest.iconSheets?.[0], 'icon sheet']
-    ];
+    ].filter(([asset]) => asset);
 let nextAsset = 0;
 async function verifyNextAsset() {
   while (nextAsset < assets.length) {
@@ -96,5 +98,5 @@ await Promise.all(Array.from(
 ));
 
 console.log(
-  `Deployment smoke test passed: ${appUrl} (${verifyAllAssets ? listedAssets.length : 3} assets)`
+  `Deployment smoke test passed: ${appUrl} (${assets.length} assets)`
 );
