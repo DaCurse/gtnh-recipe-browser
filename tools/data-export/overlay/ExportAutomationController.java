@@ -33,6 +33,7 @@ public final class ExportAutomationController {
     public static final String REPOSITORY_PROPERTY = "nesql.automation.repository";
     public static final String STATUS_PROPERTY = "nesql.automation.status";
     public static final String WORLD_PROPERTY = "nesql.automation.world";
+    public static final String SEED_PROPERTY = "nesql.automation.seed";
 
     private static final Pattern SAFE_NAME = Pattern.compile("[A-Za-z0-9._-]+");
     private static final int WORLD_START_DELAY_TICKS = 80;
@@ -52,6 +53,7 @@ public final class ExportAutomationController {
     private final Minecraft minecraft = Minecraft.getMinecraft();
     private final String repositoryName;
     private final String worldName;
+    private final long worldSeed;
     private final File statusFile;
     private int ticks;
     private int playerTicks;
@@ -70,6 +72,7 @@ public final class ExportAutomationController {
         worldName = safeName(
                 System.getProperty(WORLD_PROPERTY, "browser-export-world"),
                 "world");
+        worldSeed = parseSeed(System.getProperty(SEED_PROPERTY, "8675309"));
         String configuredStatus = System.getProperty(STATUS_PROPERTY, "").trim();
         File minecraftDirectory = (File) FMLInjectionData.data()[6];
         statusFile = configuredStatus.length() == 0
@@ -103,7 +106,7 @@ public final class ExportAutomationController {
                     worldStarted = true;
                     writeStatus(Phase.STARTING_WORLD, "Creating disposable integrated world", null);
                     WorldSettings settings = new WorldSettings(
-                            0L,
+                            worldSeed,
                             WorldSettings.GameType.CREATIVE,
                             false,
                             false,
@@ -234,6 +237,14 @@ public final class ExportAutomationController {
                     "Unsafe unattended export " + label + " name: " + value);
         }
         return trimmed;
+    }
+
+    private static long parseSeed(String value) {
+        try {
+            return Long.parseLong(value.trim());
+        } catch (NumberFormatException error) {
+            throw new IllegalArgumentException("Invalid unattended export world seed: " + value, error);
+        }
     }
 
     private static String stackTrace(Throwable error) {
