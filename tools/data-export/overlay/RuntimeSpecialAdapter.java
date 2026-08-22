@@ -469,7 +469,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("focusGoodsId", focusId);
             payload.put("ritual", ritualId);
-            payload.put("ritualName", stringOrEmpty(callOrNull(ritual, "getLocalizedName")));
+            payload.put("ritualName", stringOrEmpty(callOrNull(ritual, "getRitualLocalizedName")));
             payload.put("lpCost", ritualCost);
             payload.put("cost", number(fieldOrNull(meteor, "cost")));
             payload.put("radius", number(fieldOrNull(meteor, "radius")));
