@@ -574,7 +574,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             payload.put("entries", itemPayload);
             String slug = slug(category);
             sink.addRecord("worldgen:forge:" + slug, "worldgen-loot", "Forge Loot: " + source[1],
-                    searchText("forge", "worldgen-loot", source[1], category), goods,
+                    searchText("neicustomdiagram", "forge", "worldgen-loot", source[1], category), goods,
                     "special:worldgen:forge:" + slug + ":recipes",
                     "special:worldgen:forge:" + slug + ":usages", "service:worldgen", payload);
             count++;
