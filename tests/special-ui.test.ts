@@ -4,6 +4,7 @@ import { layoutOreProcessingGraph, stagesToOreGraph } from '../src/lib/oreProces
 import {
   boundedSpecialPage,
   specialCategory,
+  humanizeSpecialName,
   specialLookupMatchesView,
   specialSearchText,
   toSpecialGoodsList,
@@ -35,6 +36,12 @@ describe('NEI special browser presentation', () => {
     expect(specialLookupMatchesView('special:pool:cropsnh-gray:usages', 'mutation-pool')).toBe(true);
     expect(specialLookupMatchesView('special:ore-processing:iron:recipes', 'gt-ore-processing')).toBe(true);
     expect(specialLookupMatchesView('special:crop:cropsnh-rubyne:recipes', 'gt-ore-processing')).toBe(false);
+  });
+
+  it('humanizes legacy CropsNH localization keys', () => {
+    expect(humanizeSpecialName('cropsnh_crops.aluminiumOreBerry')).toBe('Aluminium Ore Berry');
+    expect(humanizeSpecialName('cropsnh_mutationPool.danger')).toBe('Danger');
+    expect(humanizeSpecialName('Mutation Pool: cropsnh_mutationPool.oreBerry')).toBe('Ore Berry');
   });
 
   it('normalizes object-shaped crop soil references without stringifying objects', () => {

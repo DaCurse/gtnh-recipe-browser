@@ -3,6 +3,7 @@ package com.github.dcysteine.nesql.exporter.special;
 import net.minecraft.item.ItemStack;
 import net.minecraft.item.Item;
 import net.minecraft.block.Block;
+import net.minecraft.util.StatCollector;
 import net.minecraft.nbt.NBTBase;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.nbt.NBTTagList;
@@ -464,8 +465,9 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         List<Object> pools = sortedObjects(call(registry, "getMutationPools"), "pool name");
         int count = 0;
         for (Object pool : pools) {
-            String poolName = string(call(pool, "getUnlocalisedName"));
-            String slug = slug(poolName);
+            String poolId = string(call(pool, "getUnlocalisedName"));
+            String poolName = localizedName(poolId);
+            String slug = slug(poolId);
             List<Object> members = sortedObjects(call(pool, "getMembers"), "member crop id");
             List<String> goods = new ArrayList<>();
             List<Object> memberIds = new ArrayList<>();
@@ -480,11 +482,12 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
                 memberSeeds.add(seed);
             }
             Map<String, Object> payload = new LinkedHashMap<>();
+            payload.put("poolId", poolId);
             payload.put("poolName", poolName);
             payload.put("members", memberIds);
             payload.put("memberSeeds", memberSeeds);
             sink.addRecord("pool:" + slug, "mutation-pool", poolName,
-                    searchText("cropsnh", "mutation-pool", poolName, join(memberIds, " ")), goods,
+                    searchText("cropsnh", "mutation-pool", poolId, poolName, join(memberIds, " ")), goods,
                     "special:pool:" + slug + ":recipes", "special:pool:" + slug + ":usages",
                     "service:crop", payload);
             count++;
@@ -1932,7 +1935,23 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     private static String cropTitle(Object crop, String id) {
         String unlocalized = stringOrEmpty(callOrNull(crop, "getUnlocalizedName"));
-        return unlocalized.length() == 0 ? id : unlocalized;
+        return unlocalized.length() == 0 ? id : localizedName(unlocalized);
+    }
+
+    /** Resolve mod language keys while retaining the raw key in payload/search fields. */
+    private static String localizedName(String key) {
+        if (key == null || key.length() == 0) return key;
+        try {
+            String localized = StatCollector.translateToLocal(key);
+            if (localized == null || localized.length() == 0 || localized.equals(key)) {
+                localized = StatCollector.translateToFallback(key);
+            }
+            return localized == null || localized.length() == 0 ? key : localized;
+        } catch (Throwable ignored) {
+            // A headless/server-side runtime may not have loaded language data;
+            // the browser still has a deterministic client-side fallback.
+            return key;
+        }
     }
 
     private static List<String> requirementDescriptions(Object value) {

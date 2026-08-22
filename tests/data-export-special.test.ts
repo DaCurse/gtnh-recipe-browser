@@ -249,6 +249,8 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('dimensionOverrides');
     expect(adapter).toContain('getSeedItem');
     expect(adapter).toContain('SeedStats", "DEFAULT_ANALYZED"');
+    expect(adapter).toContain('StatCollector.translateToLocal');
+    expect(adapter).toContain('payload.put("poolId", poolId)');
     expect(adapter).toContain('getSoilsForNEI", true');
     expect(adapter).toContain('getBlocksUnderForNEI", true');
     expect(adapter).toContain('returned no DEFAULT_ANALYZED seed item');

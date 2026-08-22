@@ -332,6 +332,24 @@ export function specialLabel(viewType: SpecialViewType): string {
   return viewType.shortLabel || viewType.label || viewType.id;
 }
 
+/**
+ * Readable fallback for legacy CropsNH language keys when an older sidecar
+ * predates runtime localization.  New exports carry the localized value, but
+ * keeping this deterministic fallback makes the published pack self-healing.
+ */
+export function humanizeSpecialName(value: string): string {
+  const candidate = value.trim()
+    .replace(/^Mutation Pool:\s*/i, '')
+    .replace(/^cropsnh_(?:crops|mutationPool)\./i, '')
+    .replace(/^cropsnh:/i, '')
+    .replace(/[_-]+/g, ' ')
+    .replace(/([a-z0-9])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim();
+  if (!candidate) return value;
+  return candidate.replace(/(^|\s)([a-z])/g, (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
+}
+
 export function specialSearchText(record: SpecialRecord): string {
   const payload = record.payload as unknown as Record<string, unknown>;
   const flatten = (value: unknown): string => {

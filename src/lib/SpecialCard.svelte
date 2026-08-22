@@ -7,7 +7,7 @@
   import VeinSpecialCard from './VeinSpecialCard.svelte';
   import VendingSpecialCard from './VendingSpecialCard.svelte';
   import WorldgenLootSpecialCard from './WorldgenLootSpecialCard.svelte';
-  import { specialCategory, toSpecialGoods, type SpecialRecord, type SpecialResolver, type SpecialViewType } from './specialData';
+  import { humanizeSpecialName, specialCategory, toSpecialGoods, type SpecialRecord, type SpecialResolver, type SpecialViewType } from './specialData';
   import type { RecipeView } from './types';
 
   let { record, viewType, resolve, navigate }: {
@@ -23,10 +23,17 @@
 
   function specialTitle(value: SpecialRecord, valueCategory: string, resolver: SpecialResolver): string {
     if (valueCategory === 'cropPool') {
-      // Older sidecars included this category label in every card title. The
-      // tab already supplies that context, so keep only the pool's name while
-      // remaining compatible with those packs.
-      return value.title.replace(/^Mutation Pool:\s*/i, '');
+      const payload = value.payload as unknown as Record<string, unknown>;
+      const poolName = typeof payload.poolName === 'string' ? payload.poolName : value.title;
+      return humanizeSpecialName(poolName);
+    }
+    if (valueCategory === 'crop') {
+      const payload = value.payload as unknown as Record<string, unknown>;
+      const seedId = value.goodsIds?.find((id) => id.startsWith('i:cropsnh:genericSeed:0:'));
+      const seedEntry = seedId ? resolver(seedId) : undefined;
+      if (seedEntry?.name) return seedEntry.name.replace(/\s+Seeds?$/i, '');
+      const cropId = typeof payload.cropId === 'string' ? payload.cropId : value.title;
+      return humanizeSpecialName(cropId);
     }
     if (valueCategory !== 'cropBreeding') return value.title;
     const payload = value.payload as unknown as Record<string, unknown>;
