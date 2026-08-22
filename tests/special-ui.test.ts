@@ -98,6 +98,15 @@ describe('NEI special browser presentation', () => {
     expect(variants).toContain(".filter(Boolean).join(' · ')");
   });
 
+  it('does not carry a special tab into another item or recipe direction', async () => {
+    const state = await readFile('src/lib/recipeBrowserState.svelte.ts', 'utf8');
+    expect(state).toContain('private lastRecipeContextKey: string | undefined;');
+    expect(state).toContain("const contextKey = `${mode}:${selected.id}`;");
+    expect(state).toContain("this.specialType = '';");
+    expect(state).toContain("this.specialQuery = '';");
+    expect(state).toContain("this.specialFilter = '';");
+  });
+
   it('normalizes object-shaped crop soil references without stringifying objects', () => {
     expect(toSpecialGoodsList([
       { goodsId: 'i:minecraft:stone:0' },

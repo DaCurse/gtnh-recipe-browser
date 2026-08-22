@@ -62,6 +62,13 @@ export class RecipeBrowserState {
   private specialAbortController: AbortController | null = null;
   private specialRequest = 0;
   private specialCache = new Map<string, SpecialRecord[]>();
+  /**
+   * The selected goods and top-level direction are the context for both
+   * normal recipes and NEI special pages.  A special tab is a local choice
+   * within that context; it must not leak when App navigates to another item
+   * or switches Recipes/Usages.
+   */
+  private lastRecipeContextKey: string | undefined;
 
   constructor(private readonly context: RecipeBrowserContext) {
     $effect(() => {
@@ -320,6 +327,14 @@ export class RecipeBrowserState {
     const repository = this.context.repository();
     const selected = this.context.selected();
     const mode = this.context.mode();
+    const contextKey = `${mode}:${selected.id}`;
+    if (this.lastRecipeContextKey !== undefined && this.lastRecipeContextKey !== contextKey) {
+      this.specialType = '';
+      this.specialQuery = '';
+      this.specialFilter = '';
+      this.specialPage = 0;
+    }
+    this.lastRecipeContextKey = contextKey;
     this.recipeAbortController?.abort();
     this.specialAbortController?.abort();
     const controller = new AbortController();

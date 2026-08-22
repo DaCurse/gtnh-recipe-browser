@@ -571,14 +571,14 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             for (String fieldName : new String[] {"mPrimary", "mSecondary", "mBetween", "mSporadic"}) {
                 Object material = fieldOrNull(layer, fieldName);
                 if (material == null) continue;
-                List<String> materialGoods = materialGoods(sink, material, "oreNormal", "ore");
+                List<String> materialGoods = materialSpecialGoods(sink, material);
                 addAllUnique(goods, materialGoods);
                 Map<String, Object> part = new LinkedHashMap<>();
                 part.put("role", fieldName.substring(1).toLowerCase(Locale.ROOT));
                 part.put("material", materialName(material));
                 part.put("goodsIds", materialGoods);
                 if (!materialGoods.isEmpty()) part.put("oreGoodsId", materialGoods.get(0));
-                String oreDictionaryId = retainMaterialOreDictionary(sink, materialName(material), goods);
+                String oreDictionaryId = oreDictionaryId(materialName(material), materialGoods);
                 if (oreDictionaryId != null) {
                     part.put("oreDictionaryId", oreDictionaryId);
                     part.put("oreDictionary", "ore" + materialName(material));
@@ -625,6 +625,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             List<String> goods = new ArrayList<>();
             addAllUnique(goods, representativeOres);
             addAllUnique(goods, representativeDusts);
+            addAllUnique(goods, materialSpecialGoods(sink, material));
             List<Object> potentialDrops = smallOrePotentialDrops(sink, material, goods);
             Map<String, Object> payload = new LinkedHashMap<>();
             payload.put("material", materialName(material));
@@ -637,7 +638,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
             payload.put("dimensionHeights", dimensionHeights(ore, dimensions));
             payload.put("dimensionGoodsIds", dimensionDisplayGoods(sink, dimensions, goods));
             payload.put("dimensionChance", binaryDimensionChance(dimensions));
-            String oreDictionaryId = retainMaterialOreDictionary(sink, materialName(material), goods);
+            String oreDictionaryId = oreDictionaryId(materialName(material), goods);
             if (oreDictionaryId != null) {
                 payload.put("oreDictionaryId", oreDictionaryId);
                 payload.put("oreDictionary", "ore" + materialName(material));
@@ -1812,6 +1813,48 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         }
     }
 
+    /**
+     * Prefixes accepted by GTNEIOrePlugin.PluginGT5OreBase when it resolves a
+     * selected item back to an ore material.  Keep the exact representative
+     * stacks and their named dictionaries on the vein record so dust,
+     * crushed/raw, gem, and alternate host-stone stacks open the same vein
+     * page as the ore block in NEI.
+     */
+    private static final String[][] GT_ORE_MATERIAL_GROUPS = new String[][] {
+            { "dust", "dust" },
+            { "dustPure", "dustPure" },
+            { "dustImpure", "dustImpure" },
+            { "crushed", "crushed" },
+            { "crushedPurified", "crushedPurified" },
+            { "crushedCentrifuged", "crushedCentrifuged" },
+            { "rawOre", "rawOre" },
+            { "gem", "gem" },
+            { "gemChipped", "gemChipped" },
+            { "gemFlawed", "gemFlawed" },
+            { "gemFlawless", "gemFlawless" },
+            { "gemExquisite", "gemExquisite" }
+    };
+
+    private static List<String> materialSpecialGoods(NeiSpecialOverlay.Sink sink, Object material) {
+        List<String> result = new ArrayList<>();
+        if (material == null) return result;
+        String materialName = materialName(material);
+        addAllUnique(result, materialGoods(sink, material,
+                "oreNormal", "oreSmall", "ore", "dust", "dustPure", "dustImpure",
+                "crushed", "crushedPurified", "crushedCentrifuged", "rawOre", "gem",
+                "gemChipped", "gemFlawed", "gemFlawless", "gemExquisite"));
+        for (String[] group : GT_ORE_MATERIAL_GROUPS) {
+            String dictionaryId = retainMaterialOreDictionary(
+                    sink,
+                    materialName,
+                    group[0],
+                    group[1],
+                    result);
+            if (dictionaryId != null) result.add(dictionaryId);
+        }
+        return uniqueSorted(result);
+    }
+
     private static List<String> materialGoods(NeiSpecialOverlay.Sink sink, Object material, String... prefixes) {
         List<String> result = new ArrayList<>();
         if (material == null) return result;
@@ -1836,14 +1879,49 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
      * stack so the browser can cycle the same host-stone variants as NEI.
      */
     private static String retainMaterialOreDictionary(NeiSpecialOverlay.Sink sink,
-            String material, List<String> goods) {
+            String material, String dictionaryPrefix, String materialPrefix, List<String> goods) {
         if (material == null || material.isEmpty()) return null;
-        String name = "ore" + material;
-        List<ItemStack> stacks = OreDictionary.getOres(name, false);
-        if (stacks == null || stacks.isEmpty()) return null;
+        String name = dictionaryPrefix + material;
+        List<ItemStack> stacks = new ArrayList<>();
+        List<ItemStack> registered = OreDictionary.getOres(name, false);
+        if (registered != null) stacks.addAll(registered);
+
+        // Some GT material prefixes are not registered in Forge's dictionary
+        // until the corresponding stack is requested.  Supplying the exact
+        // GT stack keeps the semantic group alive even in that case; normal
+        // exporter processing will merge any already-registered alternatives.
+        Class<?> prefixClass;
+        try {
+            prefixClass = Class.forName("gregtech.api.enums.OrePrefixes");
+        } catch (ClassNotFoundException error) {
+            throw new IllegalStateException("GT OrePrefixes API is missing", error);
+        }
+        Object orePrefix = fieldOrNull(prefixClass, materialPrefix);
+        ItemStack representative = null;
+        if (orePrefix != null) {
+            representative = materialPart(material, orePrefix, "GT material " + material + " " + dictionaryPrefix);
+        }
+        if (representative != null) {
+            String representativeKey = stableStackName(representative);
+            boolean present = false;
+            for (ItemStack stack : stacks) {
+                if (stack != null && stableStackName(stack).equals(representativeKey)) {
+                    present = true;
+                    break;
+                }
+            }
+            if (!present) stacks.add(representative);
+        }
+        if (stacks.isEmpty()) return null;
         String goodsId = sink.retainOreDictionary(name, stacks);
         if (goodsId != null) addAllUnique(goods, Collections.singletonList(goodsId));
         return goodsId;
+    }
+
+    private static String oreDictionaryId(String material, List<String> goods) {
+        if (material == null || material.isEmpty()) return null;
+        String expected = "o:ore" + material;
+        return goods.contains(expected) ? expected : null;
     }
 
     private static ItemStack materialPart(Object material, Object orePrefix, String context) {
