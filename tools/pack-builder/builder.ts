@@ -6,8 +6,10 @@ import { encode } from '@msgpack/msgpack';
 import sharp from 'sharp';
 import { decodeFormat5 } from './decoder';
 import type {
+  DecodedAnonymousIngredientGroup,
   DecodedGoodsBase,
   DecodedItem,
+  DecodedOreDictionary,
   DecodedRecipe,
   DecodedRecipeType,
   DecodedRepository
@@ -32,6 +34,7 @@ import {
   type SpecialRecord,
   type SpecialViewType
 } from './special';
+import { expandGtOreSpecialData } from './specialOreAliases';
 
 const PACK_FORMAT_VERSION = 4;
 const DEFAULT_MAX_SHARD_BYTES = 2 * 1024 * 1024;
@@ -421,6 +424,45 @@ function applyCropsNhVariantAliases(
   }
 }
 
+/**
+ * A special record can retain an ore-dictionary ID instead of every exact
+ * stack registered under that dictionary.  Catalog groups are materialized
+ * as separate entries, so project that explicit group projection to each of
+ * its members as well.  This mirrors NEI's ore-prefix resolution for the
+ * named groups actually emitted by the runtime adapter without guessing
+ * aliases from an item's display name or internal ID.
+ */
+function applyIngredientGroupAliases(
+  index: Map<string, SpecialGoodsIndexEntry>,
+  groups: readonly (DecodedOreDictionary | DecodedAnonymousIngredientGroup)[],
+  goods: readonly DecodedGoodsBase[]
+): void {
+  const goodsById = new Map(goods.map((entry) => [entry.id, entry]));
+  const isGtHostOre = (goodsId: string): boolean => {
+    const entry = goodsById.get(goodsId) as DecodedItem | undefined;
+    return entry?.kind === 'item'
+      && entry.mod.toLocaleLowerCase() === 'gregtech'
+      && entry.internalName.toLocaleLowerCase().startsWith('gt.blockores');
+  };
+
+  for (const group of groups) {
+    const projection = index.get(group.id);
+    if (!projection) continue;
+    // `o:ore<Material>` and its GT host-stone variants are intentionally
+    // narrower than a normal processing dictionary: the Forge group can
+    // contain vanilla/Galacticraft/TConstruct blocks that GTNEI does not
+    // resolve as GT vein inputs.  Exact GT host blocks are already retained
+    // separately by the runtime adapter; only those receive the vein index.
+    const memberIds = group.id.startsWith('o:ore')
+      ? group.itemIds.filter(isGtHostOre)
+      : group.itemIds;
+    for (const itemId of memberIds) {
+      const existing = index.get(itemId);
+      index.set(itemId, existing ? mergeSpecialGoodsIndexEntry(existing, projection) : projection);
+    }
+  }
+}
+
 function finalizeSpecialDirectionIndex(
   index: MutableSpecialGoodsDirectionIndex
 ): SpecialGoodsDirectionIndex {
@@ -440,7 +482,8 @@ function finalizeSpecialDirectionIndex(
 export function buildSpecialGoodsIndex(
   records: readonly SpecialRecord[],
   shardByRecordId: ReadonlyMap<string, string>,
-  goods: readonly DecodedGoodsBase[] = []
+  goods: readonly DecodedGoodsBase[] = [],
+  groups: readonly (DecodedOreDictionary | DecodedAnonymousIngredientGroup)[] = []
 ): ReadonlyMap<string, SpecialGoodsIndexEntry> {
   const mutable = new Map<string, MutableSpecialGoodsIndexEntry>();
   for (const record of records) {
@@ -481,6 +524,7 @@ export function buildSpecialGoodsIndex(
     ])
   );
   applyCropsNhVariantAliases(result, goods);
+  applyIngredientGroupAliases(result, groups, goods);
   return result;
 }
 
@@ -492,7 +536,12 @@ function buildCatalog(
 ) {
   const specialRecords = specialData?.records ?? [];
   const allGoods = [...repository.items, ...repository.fluids];
-  const specialGoodsIndex = buildSpecialGoodsIndex(specialRecords, specialShardByRecordId, allGoods);
+  const specialGoodsIndex = buildSpecialGoodsIndex(
+    specialRecords,
+    specialShardByRecordId,
+    allGoods,
+    [...repository.oreDictionaries, ...repository.ingredientGroups]
+  );
   const specialGroupFields = (id: string) => {
     const special = specialGoodsIndex.get(id);
     return {
@@ -729,6 +778,7 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   } else if (options.specialData !== undefined) {
     specialData = normalizeBrowserNeiSpecial(options.specialData);
   }
+  if (specialData) specialData = expandGtOreSpecialData(specialData, repository);
   if (specialData) {
     const repositoryGoodsIds = new Set([
       ...repository.items.map((entry) => entry.id),

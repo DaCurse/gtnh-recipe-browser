@@ -129,6 +129,33 @@ function cropsNhSeedKey(goods: PackedGoods | undefined): string | undefined {
   return goods.nbt.match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/i)?.[1]?.toLocaleLowerCase();
 }
 
+const GT_ORE_PRODUCT_GROUP_PREFIXES = [
+  'dust',
+  'dustpure',
+  'dustimpure',
+  'crushed',
+  'crushedpurified',
+  'crushedcentrifuged',
+  'rawore',
+  'gem',
+  'gemchipped',
+  'gemflawed',
+  'gemflawless',
+  'gemexquisite'
+];
+
+function isGtHostOreGoods(goods: PackedGoods | undefined): boolean {
+  return goods?.kind === 'item'
+    && goods.mod.toLocaleLowerCase() === 'gregtech'
+    && /^gt\.blockores\d*$/i.test(goods.internalName);
+}
+
+function isGtOreSpecialGroup(groupId: string, goods: PackedGoods | undefined): boolean {
+  const name = groupId.slice(2).toLocaleLowerCase();
+  if (name.startsWith('ore')) return isGtHostOreGoods(goods);
+  return GT_ORE_PRODUCT_GROUP_PREFIXES.some((prefix) => name.startsWith(prefix));
+}
+
 export interface DatasetLoadProgress {
   percent: number;
   stage: string;
@@ -633,6 +660,21 @@ export class DatasetRepository {
     const result = view === 'recipes' && productionFallback
       ? new Set(productionFallback.itemIds)
       : new Set([entryId]);
+    // GT's special ore handlers resolve a selected product/host stack through
+    // every named ore dictionary containing that stack.  The pack builder
+    // projects current records onto group members, but expanding the scope
+    // here also keeps older/externally-built packs correct when only the
+    // dictionary entry carries the special metadata.
+    for (const itemId of [...result]) {
+      const item = this.packedGoods.get(itemId);
+      for (const group of this.ingredientGroups.values()) {
+        if (
+          group.id.startsWith('o:')
+          && group.itemIds.includes(itemId)
+          && isGtOreSpecialGroup(group.id, item)
+        ) result.add(group.id);
+      }
+    }
     // CropsNH's NEI handlers resolve every literal genericSeed stack through
     // the crop identity, while the sidecar retains the canonical analyzed
     // stack. Expand the lookup set at read time so a visible variant cannot

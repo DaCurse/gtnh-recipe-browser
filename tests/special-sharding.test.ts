@@ -8,9 +8,13 @@ import {
   specialGoodsIds,
   type SpecialRecord
 } from '../tools/data-export/special';
-import { buildSpecialGoodsIndex, splitSpecialRecords } from '../tools/pack-builder/builder';
+import {
+  buildSpecialGoodsIndex,
+  splitSpecialRecords
+} from '../tools/pack-builder/builder';
+import { expandGtOreSpecialData } from '../tools/pack-builder/specialOreAliases';
 import { specialGoodsForDirection } from '../tools/pack-builder/special';
-import type { DecodedItem } from '../tools/pack-builder/model';
+import type { DecodedItem, DecodedOreDictionary, DecodedRepository } from '../tools/pack-builder/model';
 
 const fixturePath = 'tests/fixtures/nei-special-v1/browser-nei-special.json';
 
@@ -174,5 +178,123 @@ describe('format-4 special-data packing', () => {
 
     expect(index.get(siblingId)).toEqual(index.get(canonicalId));
     expect(index.get(otherCropId)).toBeUndefined();
+  });
+
+  it('projects explicit product dictionaries to registered members but limits host ore aliases to GT blocks', async () => {
+    const data = await readSpecialSidecar(fixturePath, { requireNonEmptyCategories: true });
+    const template = data.records.find((record) => record.category === 'gt-ore-vein')!;
+    const gtOre = 'i:gregtech:gt.blockores2:32';
+    const vanillaOre = 'i:minecraft:iron_ore:0';
+    const gtDust = 'i:gregtech:gt.metaitem.01:2032';
+    const ic2Dust = 'i:IC2:itemDust:5';
+    const records: SpecialRecord[] = [{
+      ...template,
+      id: 'vein:iron',
+      goodsIds: ['o:oreIron', 'o:dustIron'],
+      productionGoodsIds: ['o:oreIron', 'o:dustIron'],
+      usageGoodsIds: ['o:oreIron', 'o:dustIron'],
+      recipesLookupId: 'special:vein:iron:recipes',
+      usagesLookupId: 'special:vein:iron:usages',
+      payload: {}
+    }];
+    const item = (id: string, mod: string, internalName: string): DecodedItem => ({
+      id,
+      name: id,
+      mod,
+      internalName,
+      numericId: 0,
+      iconId: 0,
+      tooltip: null,
+      unlocalizedName: id,
+      nbt: null,
+      searchMask: [],
+      productionRecipeIds: [],
+      usageRecipeIds: [],
+      kind: 'item',
+      searchable: true,
+      stackSize: 64,
+      damage: 0,
+      container: null
+    });
+    const groups: DecodedOreDictionary[] = [
+      { id: 'o:oreIron', kind: 'oreDict', searchMask: [], itemIds: [gtOre, vanillaOre] },
+      { id: 'o:dustIron', kind: 'oreDict', searchMask: [], itemIds: [gtDust, ic2Dust] }
+    ];
+    const index = buildSpecialGoodsIndex(
+      records,
+      new Map([['vein:iron', 'special-vein']]),
+      [
+        item(gtOre, 'gregtech', 'gt.blockores2'),
+        item(vanillaOre, 'minecraft', 'iron_ore'),
+        item(gtDust, 'gregtech', 'gt.metaitem.01'),
+        item(ic2Dust, 'IC2', 'itemDust')
+      ],
+      groups
+    );
+
+    expect(index.get(gtOre)).toEqual(index.get('o:oreIron'));
+    expect(index.get(vanillaOre)).toBeUndefined();
+    expect(index.get(gtDust)).toEqual(index.get('o:dustIron'));
+    expect(index.get(ic2Dust)).toEqual(index.get('o:dustIron'));
+  });
+
+  it('enriches GT vein and small-ore records from payload materials before indexing', async () => {
+    const data = await readSpecialSidecar(fixturePath, { requireNonEmptyCategories: true });
+    const vein = data.records.find((record) => record.category === 'gt-ore-vein')!;
+    const smallOre = data.records.find((record) => record.category === 'gt-small-ore')!;
+    const records: SpecialRecord[] = [
+      {
+        ...vein,
+        id: 'vein:iron-material',
+        goodsIds: ['i:gregtech:gt.blockores2:32'],
+        productionGoodsIds: ['i:production-only'],
+        usageGoodsIds: ['i:usage-only'],
+        payload: { layers: [{ material: 'Iron' }] }
+      },
+      {
+        ...smallOre,
+        id: 'small-ore:iron-material',
+        goodsIds: ['i:gregtech:gt.blockores2:32'],
+        payload: { material: 'Iron' }
+      }
+    ];
+    const repository = {
+      items: [],
+      fluids: [],
+      oreDictionaries: [
+        { id: 'o:oreIron', kind: 'oreDict', searchMask: [], itemIds: [] },
+        { id: 'o:dustIron', kind: 'oreDict', searchMask: [], itemIds: [] },
+        { id: 'o:crushedIron', kind: 'oreDict', searchMask: [], itemIds: [] },
+        { id: 'o:rawOreIron', kind: 'oreDict', searchMask: [], itemIds: [] },
+        { id: 'o:gemIron', kind: 'oreDict', searchMask: [], itemIds: [] }
+      ],
+      ingredientGroups: []
+    } as unknown as DecodedRepository;
+    const expanded = expandGtOreSpecialData({ ...data, records }, repository);
+
+    for (const record of expanded.records) {
+      expect(record.goodsIds).toEqual([
+        'i:gregtech:gt.blockores2:32',
+        'o:crushedIron',
+        'o:dustIron',
+        'o:gemIron',
+        'o:rawOreIron'
+      ]);
+      expect(record.goodsIds).not.toContain('o:oreIron');
+    }
+    expect(expanded.records[0]?.productionGoodsIds).toEqual([
+      'i:production-only',
+      'o:crushedIron',
+      'o:dustIron',
+      'o:gemIron',
+      'o:rawOreIron'
+    ]);
+    expect(expanded.records[0]?.usageGoodsIds).toEqual([
+      'i:usage-only',
+      'o:crushedIron',
+      'o:dustIron',
+      'o:gemIron',
+      'o:rawOreIron'
+    ]);
   });
 });

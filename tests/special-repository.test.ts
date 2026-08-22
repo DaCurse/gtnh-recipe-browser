@@ -43,12 +43,24 @@ describe('format-4 DatasetRepository special shards', () => {
     const datasetId = `special-repository-${crypto.randomUUID()}`;
     const specialId = 'special-crop-output-000';
     const goodsId = 'i:fixture:test';
+    const oreGoodsId = 'i:gregtech:fixture-ore:0';
+    const oreGroupId = 'o:oreFixture';
     const core = asset('catalog-core', {
       schemaVersion: 4,
       datasetId,
       kind: 'core',
       recipeTypes: [],
-      oreDictionaries: [],
+      oreDictionaries: [{
+        id: oreGroupId,
+        kind: 'oreDict',
+        itemIds: [oreGoodsId],
+        specialProductionShards: [specialId],
+        specialUsageShards: [specialId],
+        specialProductionLookupIds: ['special:fixture:recipes'],
+        specialUsageLookupIds: ['special:fixture:usages'],
+        specialProductionCount: 1,
+        specialUsageCount: 1
+      }],
       ingredientGroups: [],
       specialViewTypes: [{ id: 'crop-outputs', label: 'Crop Outputs', serviceIconId: 'service:crop' }],
       specialServiceIcons: [{ id: 'service:crop', label: 'Crop', searchable: false, icon: null }]
@@ -79,6 +91,24 @@ describe('format-4 DatasetRepository special shards', () => {
         specialUsageShards: [specialId],
         specialProductionCount: 1,
         specialUsageCount: 1
+      }, {
+        id: oreGoodsId,
+        name: 'Fixture Ore',
+        mod: 'gregtech',
+        kind: 'item',
+        tooltip: null,
+        internalName: 'gt.blockores2',
+        unlocalizedName: 'fixture.ore',
+        nbt: null,
+        numericId: 2,
+        damage: 0,
+        searchMask: [],
+        searchable: true,
+        icon: null,
+        productionShards: [],
+        usageShards: [],
+        productionCount: 0,
+        usageCount: 0
       }, {
         id: 'i:cropsnh:genericSeed:0:variant',
         name: 'Fixture Seed',
@@ -115,7 +145,7 @@ describe('format-4 DatasetRepository special shards', () => {
         category: 'crop-outputs',
         title: 'Fixture Crop',
         searchText: 'fixture crop',
-        goodsIds: [goodsId],
+        goodsIds: [goodsId, oreGroupId],
         recipesLookupId: 'special:fixture:recipes',
         usagesLookupId: 'special:fixture:usages',
         serviceIconId: 'service:crop',
@@ -132,7 +162,7 @@ describe('format-4 DatasetRepository special shards', () => {
       source: { formatVersion: 5, dataSha256: 'fixture', atlasSha256: 'fixture' },
       catalogAssets: [
         { ...descriptor(core), kind: 'catalog', role: 'core', part: 0, goodsCount: 0 },
-        { ...descriptor(goods), kind: 'catalog', role: 'goods', part: 0, goodsCount: 1 }
+        { ...descriptor(goods), kind: 'catalog', role: 'goods', part: 0, goodsCount: 2 }
       ],
       recipeShards: [],
       specialDataShards: [{ ...descriptor(special), kind: 'specialData', specialViewTypeId: 'crop-outputs', specialViewTypeOrder: 0, part: 0, recordCount: 1 }],
@@ -178,6 +208,9 @@ describe('format-4 DatasetRepository special shards', () => {
     expect(records).toHaveLength(1);
     expect(records[0]?.lookupId).toBe('special:fixture:recipes');
     expect(progress.at(-1)).toEqual({ loadedShards: 1, totalShards: 1 });
+
+    const oreRecords = await repository.specialFor(oreGoodsId, 'recipes', 'crop-outputs');
+    expect(oreRecords).toHaveLength(1);
 
     const variantRecords = await repository.specialFor(
       'i:cropsnh:genericSeed:0:variant',
