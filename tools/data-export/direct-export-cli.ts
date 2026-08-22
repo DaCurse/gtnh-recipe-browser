@@ -8,7 +8,7 @@ interface CliOptions extends DirectExportOptions {
 
 function usage(): string {
   return [
-    'One-command direct GTNH export orchestrator (no Prism dependency)',
+    'One-command direct GTNH export orchestrator',
     '',
     'Usage:',
     '  npm run export:direct -- [options]',
@@ -40,7 +40,7 @@ function usage(): string {
     '  --poll-interval <ms>      Status polling interval (default: 1000)',
     '  --jvm-arg <argument>      Extra JVM argument (repeatable)',
     '',
-    'The orchestrator verifies the official archive byte size and SHA-256 before prepare.ts runs.'
+    'The orchestrator verifies the official archive byte size and SHA-256 before preparing the disposable client.'
   ].join('\n');
 }
 

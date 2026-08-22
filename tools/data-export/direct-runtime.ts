@@ -106,7 +106,7 @@ interface RuntimePatchFile {
   patch: RuntimePatch;
 }
 
-export interface RuntimeIdentity {
+interface RuntimeIdentity {
   username: string;
   uuid: string;
   accessToken: string;
@@ -1256,8 +1256,4 @@ export async function waitForRuntimeStatus(
     await new Promise<void>((resolveDelay) => setTimeout(resolveDelay, intervalMs));
   }
   throw new Error(`Timed out waiting for runtime status file ${statusFile}`);
-}
-
-export function runtimePlanJson(plan: RuntimeLaunchPlan): string {
-  return `${JSON.stringify(plan, null, 2)}\n`;
 }

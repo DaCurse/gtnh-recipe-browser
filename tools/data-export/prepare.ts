@@ -141,12 +141,11 @@ if (gtnhVersion !== KNOWN_ARCHIVE.version) {
   throw new Error(`This preparation profile only supports ${KNOWN_ARCHIVE.version}`);
 }
 
-// The overlay itself is only an SPI.  A disposable Prism instance is useful
-// only when a maintained provider compiled against the live GTNH mod registries
-// is installed beside it.  Fail before archive/work-directory mutation rather
-// than producing an exporter that will inevitably abort at launch with no
-// sidecar.  Keep this check here (before archive stat, mkdir, unzip, or copy)
-// so a missing provider cannot leave a half-prepared instance behind.
+// The maintained provider is compiled into the disposable direct-export copy.
+// Fail before archive/work-directory mutation rather than producing an exporter
+// that will inevitably abort at launch with no sidecar. Keep this check before
+// archive stat, mkdir, unzip, or copy so a missing provider cannot leave a
+// half-prepared instance behind.
 const specialProviderSource = join(
   repositoryRoot,
   'tools/data-export/overlay/RuntimeSpecialAdapter.java'
@@ -156,7 +155,7 @@ try {
   specialProviderDetails = await readFile(specialProviderSource, 'utf8');
 } catch {
   throw new Error(
-    'Cannot prepare the GTNH Prism export: the maintained live NEI special-data provider is missing at '
+    'Cannot prepare the direct GTNH export: the maintained live NEI special-data provider is missing at '
       + `${specialProviderSource}. The current overlay supplies only the SPI and cannot emit the ten requested `
       + 'live categories (CropsNH crop-output/mutation-pool/crop-breeding; GT ore vein/small ore/processing; '
       + 'BloodMagic meteor-ritual; EnhancedLootBags loot-bag; VendingMachine vending-trade; Forge/Roguelike/'
@@ -166,12 +165,12 @@ try {
 }
 if (!specialProviderDetails.includes('implements NeiSpecialOverlay.Adapter')) {
   throw new Error(
-    'Cannot prepare the GTNH Prism export: the maintained NEI special-data provider is not a compiled '
+    'Cannot prepare the direct GTNH export: the maintained NEI special-data provider is not a compiled '
       + `NeiSpecialOverlay.Adapter at ${specialProviderSource}; refusing to create a guaranteed-broken instance.`
   );
 }
 const workDirectory = resolve(args.get('work-dir') ?? `.export-work/${gtnhVersion}`);
-const instanceDirectory = resolve(args.get('instance-dir') ?? join(workDirectory, 'prism-instance'));
+const instanceDirectory = resolve(args.get('instance-dir') ?? join(workDirectory, 'client-instance'));
 const sessionPath = join(workDirectory, 'export-session.json');
 const archiveStat = await stat(archivePath);
 const archiveSha256 = await sha256File(archivePath);
@@ -182,7 +181,7 @@ if (archiveStat.size !== KNOWN_ARCHIVE.bytes || archiveSha256 !== KNOWN_ARCHIVE.
 }
 
 await assertPathMissing(workDirectory, 'Export work directory');
-await assertPathMissing(instanceDirectory, 'Prism export instance');
+await assertPathMissing(instanceDirectory, 'Direct export client instance');
 await mkdir(workDirectory, { recursive: true });
 const runtimeJarsDirectory = await extractPinnedRuntimeJars(archivePath, workDirectory);
 

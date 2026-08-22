@@ -290,12 +290,13 @@ describe('NEI special sidecar contract', () => {
   it('requires the sidecar for special exports and preserves the GT-tool sanity predicate', async () => {
     const process = await readFile('tools/data-export/process.ts', 'utf8');
     expect(process).toContain('NESQL export is missing ${sidecarPath}');
-    expect(process).toContain("args.get('allow-missing-special') === 'true'");
+    expect(process).toContain("await access(sidecarPath)");
+    expect(process).not.toContain('allow-missing-special');
     expect(process).toContain("item.mod.toLowerCase() === 'gregtech'");
     expect(process).not.toContain('filter((item) => (item) =>');
   });
 
-  it('fails preparation before archive or Prism mutation when the live provider is absent', async () => {
+  it('fails preparation before archive or client mutation when the live provider is absent', async () => {
     const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
     const providerCheck = prepare.indexOf('const specialProviderSource = join(');
     const archiveStat = prepare.indexOf('const archiveStat = await stat(archivePath);');

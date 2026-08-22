@@ -4,13 +4,14 @@ const baseUrl = process.argv[2];
 if (!baseUrl) {
   throw new Error(
     'Usage: node tools/deployment-smoke.mjs <deployed-base-url> '
-    + '[--manifest <relative-manifest-url>] [--all-assets]'
+    + '[--manifest <relative-manifest-url>] [--all-assets] [--require-special]'
   );
 }
 const manifestArgument = process.argv.indexOf('--manifest');
 const directManifest = manifestArgument >= 0 ? process.argv[manifestArgument + 1] : undefined;
 if (manifestArgument >= 0 && !directManifest) throw new Error('--manifest requires a URL');
 const verifyAllAssets = process.argv.includes('--all-assets');
+const requireSpecial = process.argv.includes('--require-special') || !directManifest;
 
 async function fetchOk(url, label) {
   const response = await fetch(url, { redirect: 'follow' });
@@ -68,6 +69,14 @@ if (
   || (expectedDatasetId && manifest.datasetId !== expectedDatasetId)
 ) {
   throw new Error('pack manifest: identity or format mismatch');
+}
+if (requireSpecial && (
+  manifest.formatVersion !== 4
+  || !Array.isArray(manifest.specialDataShards)
+  || manifest.specialDataShards.length === 0
+  || (manifest.totals?.specialRecords ?? 0) <= 0
+)) {
+  throw new Error('pack manifest: deployed default is not the verified format-4 special-data release');
 }
 
 const listedAssets = [

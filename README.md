@@ -36,17 +36,18 @@ size and SHA-256:
 npm run smoke:deploy -- https://<site>.netlify.app/
 ```
 
+The default-origin smoke requires the active format-4 special-data release; pass an explicit historical manifest when
+checking the 2.8.0 benchmark.
+
 ## Data pipeline
 
 `gtnh@ShadowTheAge` and `nesql-exporter@ShadowTheAge` are read-only MIT-licensed upstream submodules. The
 reproducible release workflow directly launches a disposable client from the official archive, processes its private NESQL output twice,
-verifies the format-v5 source and deterministic chunked browser pack, and publishes it without removing historical
-datasets. The disposable processor applies the documented
+verifies the format-v5 source and deterministic chunked browser pack, and publishes one revision per GTNH version. The disposable processor applies the documented
 [`browser catalog retention policy`](docs/browser-catalog-policy.md) so valid tools and configurable variants
 filtered from the upstream production calculator remain browseable.
 
-Run the pinned unattended client export and processing pipeline without Prism or
-an existing player instance:
+Run the pinned unattended client export and processing pipeline against a fresh client workspace:
 
 ```sh
 npm run export:direct -- --version 2.9.0-beta-2
@@ -74,9 +75,9 @@ The source NESQL export remains private. Processed compatibility fixtures are im
 add a sibling fixture when supporting a new upstream shape.
 
 `tests/fixtures/shadowtheage-v5-2.8.0/` is the pinned, network-independent compatibility source for decoder and
-recipe-parity tests. `tests/fixtures/gtnh-2.9.0-beta-2-browser-policy/` pins real GT tool variants and their recipes.
-`public/data/2.9.0-beta-2-racad91e7243b/` is the current default format-v2 pack; the immutable 2.8.0 pack remains
-available for version switching.
+recipe-parity tests. The current automated release is
+`public/data/2.9.0-beta-2-rc748daddaa3e/`; the immutable 2.8.0 pack remains available as a benchmark and historical
+version.
 
 ## Assets and attribution
 

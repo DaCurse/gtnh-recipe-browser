@@ -37,7 +37,7 @@ Vitest is the unit-test framework. Add focused tests for decoder validation, sea
 
 ## Dataset Export Work
 
-Before preparing or publishing a GTNH dataset, read `docs/agent-data-export-runbook.md`. Keep both ShadowTheAge submodules read-only, use native WSL dependencies, and stop at the documented manual Prism checkpoint rather than touching an existing player instance.
+Before preparing or publishing a GTNH dataset, read `docs/agent-data-export-runbook.md`. Keep both ShadowTheAge submodules read-only, use native WSL dependencies, and run the documented disposable direct-export workflow rather than touching an existing player instance.
 
 ## Commit & Pull Request Guidelines
 

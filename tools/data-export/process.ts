@@ -40,7 +40,6 @@ const sessionPath = resolve(requiredArgument(args, 'session'));
 const session = await readExportSession(sessionPath);
 const outputWorkDirectory = resolve(args.get('work-dir') ?? session.workDirectory);
 const resumeProcessed = args.get('resume-processed') === 'true';
-const allowMissingSpecial = args.get('allow-missing-special') === 'true';
 const nesqlRoot = join(session.instanceDirectory, '.minecraft/nesql');
 const scripts = await findFiles(nesqlRoot, 'nesql-db.script');
 if (scripts.length !== 1) {
@@ -71,23 +70,18 @@ if (imageAudit.missingVariantPaths > 0) {
 }
 
 const sidecarPath = join(nesqlDirectory, 'browser-nei-special.json');
-let specialDataPath: string | undefined;
 try {
   await access(sidecarPath);
-  // Fail malformed or incomplete special exports before the expensive .NET
-  // conversion. Cross-checking against processed goods happens during build.
-  await readSpecialSidecar(sidecarPath);
-  specialDataPath = sidecarPath;
 } catch (error) {
-  if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-  if (!allowMissingSpecial) {
-    throw new Error(
-      `NESQL export is missing ${sidecarPath}; the NEI special-data overlay must emit all requested categories. `
-      + `Use --allow-missing-special true only when intentionally processing a legacy export.`,
-      { cause: error }
-    );
-  }
+  throw new Error(
+    `NESQL export is missing ${sidecarPath}; the NEI special-data overlay must emit all requested categories.`,
+    { cause: error }
+  );
 }
+// Fail malformed or incomplete special exports before the expensive .NET
+// conversion. Cross-checking against processed goods happens during build.
+await readSpecialSidecar(sidecarPath);
+const specialDataPath = sidecarPath;
 
 const processedDirectory = join(outputWorkDirectory, 'processed');
 const processorDirectory = join(outputWorkDirectory, 'processor');
