@@ -2,6 +2,7 @@ import { onMount, untrack } from 'svelte';
 import { toRecipeSearchCatalogEntry, toRecipeSearchRecord } from './recipeSearch';
 import {
   specialLabel,
+  specialLookupMatchesView,
   specialRepository,
   specialSearchText,
   type SpecialLoadProgress,
@@ -158,6 +159,7 @@ export class RecipeBrowserState {
   get specialTypes(): SpecialViewType[] {
     const repository = specialRepository(this.context.repository());
     const serviceIcons = new Map((repository.specialServiceIcons ?? []).map((icon) => [icon.id, icon]));
+    const mode = this.context.mode();
     return [...(repository.specialViewTypes ?? [])]
       .map((viewType) => ({
         ...viewType,
@@ -167,6 +169,7 @@ export class RecipeBrowserState {
           ?? serviceIcons.get(viewType.serviceIconId ?? '')?.label.slice(0, 1)
       }))
       .filter((viewType) => viewType.id.length > 0)
+      .filter((viewType) => this.specialCount(mode, viewType.id) !== 0)
       .sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
   }
 
@@ -251,7 +254,17 @@ export class RecipeBrowserState {
     const declared = selected as CatalogEntry & {
       specialProductionCount?: number;
       specialUsageCount?: number;
+      specialProductionLookupIds?: string[];
+      specialUsageLookupIds?: string[];
     };
+    const lookupIds = view === 'recipes'
+      ? declared.specialProductionLookupIds
+      : view === 'usages'
+        ? declared.specialUsageLookupIds
+        : undefined;
+    if (lookupIds !== undefined) {
+      return lookupIds.filter((lookupId) => specialLookupMatchesView(lookupId, viewType)).length;
+    }
     const declaredCount = view === 'recipes'
       ? declared.specialProductionCount
       : view === 'usages'

@@ -128,7 +128,7 @@
             {#if item.weight !== undefined}
               <span class="special-weight">w {item.weight}</span>
             {/if}
-            {#if item.label}<small>{item.label}</small>{/if}
+            <small>{item.label ?? entry.name}</small>
           </button>
         {:else}
           <div class="special-good unresolved" title={item.goodsId}>

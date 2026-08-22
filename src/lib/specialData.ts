@@ -295,6 +295,34 @@ export function specialCategory(value: string): SpecialCategory | undefined {
   return aliases[value];
 }
 
+/**
+ * Lookup IDs are deliberately opaque to the UI, but the exporter keeps the
+ * category token immediately after `special:`.  The token is useful for
+ * deciding which NEI tabs can have data before the first shard is fetched.
+ * Keep this adapter here so aliases and the packed category IDs do not drift
+ * between the browser state and the exporter.
+ */
+const SPECIAL_LOOKUP_PREFIXES: Record<SpecialCategory, readonly string[]> = {
+  crop: ['crop'],
+  cropPool: ['pool'],
+  cropBreeding: ['breeding'],
+  gtOreVein: ['vein'],
+  gtSmallOre: ['small-ore'],
+  meteorRitual: ['meteor'],
+  lootBag: ['lootbag'],
+  vending: ['vending'],
+  worldgenLoot: ['worldgen'],
+  oreProcessing: ['ore-processing']
+};
+
+export function specialLookupMatchesView(lookupId: string, viewTypeId: string): boolean {
+  const category = specialCategory(viewTypeId);
+  if (!category) return false;
+  return SPECIAL_LOOKUP_PREFIXES[category].some((prefix) =>
+    lookupId.startsWith(`special:${prefix}:`)
+  );
+}
+
 export function specialLabel(viewType: SpecialViewType): string {
   return viewType.shortLabel || viewType.label || viewType.id;
 }
@@ -344,7 +372,7 @@ function objectValue(value: unknown): Record<string, unknown> | undefined {
 
 /** Tolerant adapters for raw sidecar payloads used by the fixture and exporter. */
 export function toSpecialGoods(value: unknown): SpecialGoods | undefined {
-  if (typeof value === 'string') return { goodsId: value };
+  if (typeof value === 'string') return { goodsId: value, label: value };
   const object = objectValue(value);
   if (!object) return undefined;
   const rawId = object.goodsId ?? object.id;

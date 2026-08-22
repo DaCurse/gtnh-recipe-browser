@@ -206,7 +206,7 @@
   >
     <div class="ore-graph-canvas" style:width={`${layout.width}px`} style:height={`${layout.height}px`} style:transform={`translate(${panX}px,${panY}px)`}>
       <svg class="ore-graph-routes" width={layout.width} height={layout.height} aria-hidden="true">
-        {#each layout.edges as edge (`${edge.from}:${edge.to}:${edge.branch ?? ''}`)}
+        {#each layout.edges as edge, edgeIndex (`${edge.from}:${edge.to}:${edge.branch ?? ''}:${edgeIndex}`)}
           <path class:chemical={edge.branch?.toLocaleLowerCase().includes('chemical') || edge.label?.toLocaleLowerCase().includes('chemical')} d={path(edge)}></path>
           {#if edge.chance !== undefined}
             {@const mid = edge.points[Math.floor(edge.points.length / 2)]!}

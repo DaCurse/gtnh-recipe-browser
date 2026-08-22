@@ -4,7 +4,12 @@ import {
   catalogDocumentMatches,
   parseCatalogSearchQuery
 } from '../src/lib/catalogSearch';
-import { buildCatalogBrowseEntries, resolveCatalogVariant } from '../src/lib/catalogVariants';
+import {
+  buildCatalogBrowseEntries,
+  canonicalVariantNbt,
+  deduplicateVariantMembers,
+  resolveCatalogVariant
+} from '../src/lib/catalogVariants';
 import { describeGtOreVariant } from '../src/lib/gtOreVariants';
 import { querySearchMask, searchMaskContains } from '../src/lib/searchMask';
 import type { CatalogEntry } from '../src/lib/types';
@@ -86,6 +91,41 @@ describe('catalog variant families', () => {
     expect(resolveCatalogVariant(family!, exactEntries, 0).id).toBe('ichorium');
     expect(resolveCatalogVariant(family!, exactEntries, 1).id).toBe('steel');
     expect(resolveCatalogVariant(family!, exactEntries, 2).id).toBe('ichorium');
+  });
+
+  it('collapses only reordered NBT duplicates and keeps the richest catalog row', () => {
+    const unscanned = entry({
+      id: 'rubyne-unscanned',
+      name: 'Rubyne Seeds',
+      mod: 'cropsnh',
+      internalName: 'genericSeed',
+      damage: 0,
+      nbt: '{crop:"cropsnh:rubyne",scan:1b}',
+      productionCount: 1
+    });
+    const scannedA = entry({
+      id: 'rubyne-scanned-a',
+      name: 'Rubyne Seeds',
+      mod: 'cropsnh',
+      internalName: 'genericSeed',
+      damage: 0,
+      nbt: '{re:1b,scan:1b,gr:1b,crop:"cropsnh:rubyne",ga:1b}',
+      productionCount: 1,
+      specialProductionCount: 3
+    });
+    const scannedB = entry({
+      ...scannedA,
+      id: 'rubyne-scanned-b',
+      nbt: '{re:1b,scan:1b,crop:"cropsnh:rubyne",gr:1b,ga:1b}',
+      specialProductionCount: 1
+    });
+
+    expect(canonicalVariantNbt(scannedA.nbt)).toBe(canonicalVariantNbt(scannedB.nbt));
+    const variants = deduplicateVariantMembers([unscanned, scannedB, scannedA]);
+    expect(variants).toHaveLength(2);
+    expect(variants[0]?.entry.id).toBe(unscanned.id);
+    expect(variants[1]?.entry.id).toBe(scannedA.id);
+    expect(variants[1]?.duplicateCount).toBe(2);
   });
 });
 

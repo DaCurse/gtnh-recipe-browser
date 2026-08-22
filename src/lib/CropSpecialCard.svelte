@@ -3,6 +3,7 @@
   import {
     toSpecialDrops,
     toSpecialGoodsList,
+    toSpecialGoods,
     type CropSpecialPayload,
     type SpecialRecord,
     type SpecialResolver
@@ -16,18 +17,37 @@
   } = $props();
   const payload = $derived(record.payload as CropSpecialPayload);
   const rawPayload = $derived(record.payload as unknown as Record<string, unknown>);
+  function displayValues(value: unknown): string[] {
+    if (!Array.isArray(value)) return [];
+    return value.map((candidate) => {
+      if (typeof candidate === 'string' || typeof candidate === 'number' || typeof candidate === 'boolean') {
+        const text = String(candidate);
+        return resolve(text)?.name ?? text;
+      }
+      const goods = toSpecialGoods(candidate);
+      if (goods) return resolve(goods.goodsId)?.name ?? goods.label ?? goods.goodsId;
+      if (typeof candidate === 'object' && candidate !== null) {
+        const object = candidate as Record<string, unknown>;
+        return String(object.name ?? object.label ?? object.id ?? object.goodsId ?? 'Unknown');
+      }
+      return '';
+    }).filter(Boolean);
+  }
   const drops = $derived(toSpecialDrops(
     payload.drops?.length
       ? payload.drops
       : rawPayload.outputs ?? record.outputs ?? []
   ));
-  const parentGroups = $derived((Array.isArray(rawPayload.parents) ? rawPayload.parents : []).flatMap((group) =>
-    Array.isArray(group) ? [toSpecialGoodsList(group)] : [toSpecialGoodsList([group])]
-  ).filter((group) => group.length > 0));
   const rawParentValues = $derived(Array.isArray(rawPayload.parents) ? rawPayload.parents : []);
-  const parents = $derived(parentGroups.length === 1 && !Array.isArray(rawParentValues[0])
-    ? parentGroups[0]
-    : []);
+  const parentGroups = $derived((rawParentValues.some(Array.isArray)
+    ? rawParentValues.flatMap((group) => Array.isArray(group) ? [toSpecialGoodsList(group)] : [])
+    : [toSpecialGoodsList(rawParentValues)]
+  ).filter((group) => group.length > 0));
+  const parents = $derived(parentGroups.length === 1 ? parentGroups[0] : []);
+  const biomes = $derived(displayValues(rawPayload.biomes ?? rawPayload.likedBiomeTags));
+  const soils = $derived(displayValues(rawPayload.soils));
+  const underBlocks = $derived(displayValues(rawPayload.underBlocks ?? rawPayload.blocksUnder));
+  const requirements = $derived(displayValues(rawPayload.requirements));
 </script>
 
 <div class="crop-card">
@@ -38,10 +58,10 @@
     {#if payload.parentCount !== undefined || parentGroups.length}<span><b>Breeding</b>{payload.parentCount ?? parentGroups.map((group) => group.length).join(' / ')}-parent</span>{/if}
     {#if payload.machineOnly}<span class="warning"><b>Availability</b>Machine-only</span>{/if}
   </div>
-  {#if payload.biomes?.length}<p class="special-line"><b>Biomes</b> {payload.biomes.join(', ')}</p>{/if}
-  {#if payload.soils?.length}<p class="special-line"><b>Soils</b> {payload.soils.join(', ')}</p>{/if}
-  {#if payload.underBlocks?.length}<p class="special-line"><b>Under blocks</b> {payload.underBlocks.join(', ')}</p>{/if}
-  {#if payload.requirements?.length}<p class="special-line"><b>Requirements</b> {payload.requirements.join(' · ')}</p>{/if}
+  {#if biomes.length}<p class="special-line"><b>Biomes</b> {biomes.join(', ')}</p>{/if}
+  {#if soils.length}<p class="special-line"><b>Soils</b> {soils.join(', ')}</p>{/if}
+  {#if underBlocks.length}<p class="special-line"><b>Under blocks</b> {underBlocks.join(', ')}</p>{/if}
+  {#if requirements.length}<p class="special-line"><b>Requirements</b> {requirements.join(' · ')}</p>{/if}
   {#if parentGroups.length > 1}
     {#each parentGroups as group, index (`${index}:${group.length}`)}
       <SpecialGoods goods={group} resolve={resolve} {navigate} label={`${group.length}-parent breeding`} showAmounts={false} showChance={false} />

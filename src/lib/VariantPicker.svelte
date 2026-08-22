@@ -2,6 +2,7 @@
   import { onMount } from 'svelte';
   import ItemIcon from './ItemIcon.svelte';
   import MinecraftText from './MinecraftText.svelte';
+  import { deduplicateVariantMembers } from './catalogVariants';
   import { minecraftHtmlPlainText } from './minecraftText';
   import { normalize } from './search';
   import type { CatalogBrowseEntry, CatalogEntry } from './types';
@@ -31,7 +32,8 @@
       return terms.every((term) => haystack.includes(term));
     });
   });
-  const visible = $derived(filtered.slice(0, limit));
+  const distinctFiltered = $derived(deduplicateVariantMembers(filtered));
+  const visible = $derived(distinctFiltered.slice(0, limit));
 
   onMount(() => searchInput.focus());
 </script>
@@ -49,7 +51,7 @@
     <h2>{group.name}</h2>
     <p>{isGtOre
       ? `${members.length.toLocaleString()} host stones share this ore material. Choose the exact block.`
-      : `${members.length.toLocaleString()} stacks share this item family. Choose the exact material or configuration.`}</p>
+      : `${members.length.toLocaleString()} stacks share this item family. Equivalent serialized variants are grouped.`}</p>
     <div class="variant-search">
       <svg viewBox="0 0 24 24" aria-hidden="true">
         <circle cx="10.5" cy="10.5" r="6.5"></circle>
@@ -64,9 +66,10 @@
       />
       {#if query}<button onclick={() => query = ''} aria-label="Clear variant search">×</button>{/if}
     </div>
-    <div class="variant-count">{filtered.length.toLocaleString()} matching variants</div>
+    <div class="variant-count">{distinctFiltered.length.toLocaleString()} matching variants{distinctFiltered.length !== filtered.length ? ` (${filtered.length - distinctFiltered.length} equivalent rows grouped)` : ''}</div>
     <div class="variant-list">
-      {#each visible as entry (entry.id)}
+      {#each visible as variant (variant.entry.id)}
+        {@const entry = variant.entry}
         <button
           class="variant-row"
           onclick={() => select(entry.id)}
@@ -76,7 +79,7 @@
             <strong><MinecraftText raw={entry.rawName} fallback={entry.name} /></strong>
             <small>{group.variantLabels?.[entry.id]
               ? `${group.variantLabels[entry.id]} · ${entry.mod}`
-              : entry.mod}</small>
+              : entry.mod}{#if variant.duplicateCount > 1} · {variant.duplicateCount} equivalent stacks{/if}</small>
             <em><MinecraftText raw={entry.rawTooltip} fallback={entry.tooltip} /></em>
           </span>
           <b>›</b>
@@ -84,9 +87,9 @@
       {:else}
         <div class="variant-empty">No variants match this search.</div>
       {/each}
-      {#if visible.length < filtered.length}
+      {#if visible.length < distinctFiltered.length}
         <button class="variant-more" onclick={() => limit += 100}>
-          Load next {Math.min(100, filtered.length - visible.length).toLocaleString()}
+          Load next {Math.min(100, distinctFiltered.length - visible.length).toLocaleString()}
         </button>
       {/if}
     </div>

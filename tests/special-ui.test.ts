@@ -1,6 +1,14 @@
+import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
 import { layoutOreProcessingGraph, stagesToOreGraph } from '../src/lib/oreProcessingGraph';
-import { boundedSpecialPage, specialCategory, specialSearchText, type SpecialRecord } from '../src/lib/specialData';
+import {
+  boundedSpecialPage,
+  specialCategory,
+  specialLookupMatchesView,
+  specialSearchText,
+  toSpecialGoodsList,
+  type SpecialRecord
+} from '../src/lib/specialData';
 
 describe('NEI special browser presentation', () => {
   it('maps canonical sidecar category IDs to focused renderers', () => {
@@ -20,6 +28,39 @@ describe('NEI special browser presentation', () => {
     expect(specialCategory('vending-trades')).toBe('vending');
     expect(specialCategory('worldgen-loot')).toBe('worldgenLoot');
     expect(specialCategory('gt-ore-processing')).toBe('oreProcessing');
+  });
+
+  it('maps directional lookup IDs to their individual NEI tabs', () => {
+    expect(specialLookupMatchesView('special:crop:cropsnh-rubyne:recipes', 'crop-output')).toBe(true);
+    expect(specialLookupMatchesView('special:pool:cropsnh-gray:usages', 'mutation-pool')).toBe(true);
+    expect(specialLookupMatchesView('special:ore-processing:iron:recipes', 'gt-ore-processing')).toBe(true);
+    expect(specialLookupMatchesView('special:crop:cropsnh-rubyne:recipes', 'gt-ore-processing')).toBe(false);
+  });
+
+  it('normalizes object-shaped crop soil references without stringifying objects', () => {
+    expect(toSpecialGoodsList([
+      { goodsId: 'i:minecraft:stone:0' },
+      { id: 'i:minecraft:dirt:0', label: 'Dirt' }
+    ])).toEqual([
+      { goodsId: 'i:minecraft:stone:0' },
+      { goodsId: 'i:minecraft:dirt:0', label: 'Dirt' }
+    ]);
+  });
+
+  it('uses a unique key for duplicate semantic ore routes', async () => {
+    const source = await readFile('src/lib/OreProcessingGraph.svelte', 'utf8');
+    expect(source).toContain('as edge, edgeIndex (`${edge.from}:${edge.to}:${edge.branch ?? \'\'}:${edgeIndex}`)');
+    const input = {
+      nodes: [
+        { id: 'source', label: 'Source', kind: 'source' },
+        { id: 'result', label: 'Result', kind: 'result' }
+      ],
+      edges: [
+        { from: 'source', to: 'result', chance: 0.5 },
+        { from: 'source', to: 'result', chance: 0.25 }
+      ]
+    } as const;
+    expect(layoutOreProcessingGraph(input).edges).toHaveLength(2);
   });
 
   it('retains category payload fields in search text', () => {
