@@ -10,6 +10,7 @@ import {
   humanizeSpecialName,
   specialLookupMatchesView,
   specialSearchText,
+  toSpecialGoods,
   toSpecialGoodsList,
   type SpecialRecord
 } from '../src/lib/specialData';
@@ -117,6 +118,17 @@ describe('NEI special browser presentation', () => {
     ]);
   });
 
+  it('keeps special goods annotations available to the shared tooltip path', () => {
+    expect(toSpecialGoods({
+      goodsId: 'i:minecraft:iron_ingot:0',
+      estimatedAmount: 2,
+      tooltipNotes: ['Estimated amount: 2']
+    })).toMatchObject({
+      estimatedAmount: 2,
+      tooltipNotes: ['Estimated amount: 2']
+    });
+  });
+
   it('uses a unique key for duplicate semantic ore routes', async () => {
     const source = await readFile('src/lib/OreProcessingGraph.svelte', 'utf8');
     expect(source).toContain('as edge, edgeIndex (`${edge.from}:${edge.to}:${edge.branch ?? \'\'}:${edgeIndex}`)');
@@ -189,9 +201,23 @@ describe('NEI special browser presentation', () => {
     expect(source).toContain('^(?:Forge|Twilight) Loot:');
   });
 
-  it('keys duplicate meteor reagent effects by row as well as content', async () => {
+  it('flows meteor focus into outputs and keeps hidden details out of the card', async () => {
     const source = await readFile('src/lib/MeteorSpecialCard.svelte', 'utf8');
-    expect(source).toContain('effects as reagent, index (`${index}:${String(reagent.goodsId ?? reagent.effect)}`)');
+    expect(source).toContain('meteor-flow-arrow');
+    expect(source).toContain('Weighted outputs');
+    expect(source).toContain('tooltipNotes');
+    expect(source).not.toContain('class="estimated"');
+    expect(source).not.toContain('Reagent effects');
+  });
+
+  it('supports reusable tooltip notes for special goods', async () => {
+    const goodsSource = await readFile('src/lib/SpecialGoods.svelte', 'utf8');
+    const floatingSource = await readFile('src/lib/FloatingCatalogTooltip.svelte', 'utf8');
+    const tooltipSource = await readFile('src/lib/CatalogTooltip.svelte', 'utf8');
+    expect(goodsSource).toContain('notes={tooltipNotes}');
+    expect(floatingSource).toContain('<CatalogTooltip {entry} {action} {notes} />');
+    expect(tooltipSource).toContain('notes?: readonly string[];');
+    expect(tooltipSource).toContain('class="tooltip-notes"');
   });
 
   it('builds semantic stage nodes, including reagent and branch outputs', () => {

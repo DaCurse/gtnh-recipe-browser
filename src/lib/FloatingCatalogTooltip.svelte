@@ -6,12 +6,15 @@
     entry,
     x,
     y,
-    action
+    action,
+    notes
   }: {
     entry: CatalogEntry;
     x: number;
     y: number;
     action?: string;
+    /** Additional plain-text lines supplied by a specialized goods view. */
+    notes?: readonly string[];
   } = $props();
 
   let element: HTMLDivElement;
@@ -44,7 +47,7 @@
 </script>
 
 <div class="floating-tooltip" style={position} bind:this={element}>
-  <CatalogTooltip {entry} {action} />
+  <CatalogTooltip {entry} {action} {notes} />
 </div>
 
 <style>

@@ -4,10 +4,13 @@
 
   let {
     entry,
-    action
+    action,
+    notes
   }: {
     entry: CatalogEntry;
     action?: string | string[];
+    /** Additional plain-text lines supplied by a specialized view. */
+    notes?: readonly string[];
   } = $props();
 </script>
 
@@ -20,6 +23,11 @@
     <div class="tooltip-text">
       {#if entry.formula}<span class="tooltip-formula">{entry.formula}</span>{/if}
       <MinecraftText lines={entry.formattedTooltip} raw={entry.rawTooltip} fallback={entry.tooltip} />
+    </div>
+  {/if}
+  {#if notes?.length}
+    <div class="tooltip-notes">
+      {#each notes as note, index (`${index}:${note}`)}<div>{note}</div>{/each}
     </div>
   {/if}
   {#if entry.oreDictionaryIds?.length}
@@ -37,6 +45,13 @@
 </div>
 
 <style>
+  .tooltip-notes {
+    margin-top: 4px;
+    color: #ffff55;
+    font: 12px/1.45 Minecraft, monospace;
+    text-shadow: 2px 2px #342c34;
+    overflow-wrap: anywhere;
+  }
   .tooltip-ore-dictionaries {
     margin-top: 4px;
     color: #aca1ab;

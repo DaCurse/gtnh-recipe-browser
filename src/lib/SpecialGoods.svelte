@@ -49,6 +49,7 @@
   const tooltipEntry = $derived(tooltipGoods ? resolve(
     tooltipGoods.oreDictionaryId ?? tooltipGoods.alternatives?.[0] ?? tooltipGoods.goodsId
   ) : undefined);
+  const tooltipNotes = $derived(tooltipGoods?.tooltipNotes);
   const chosenItem = $derived(chosenItemId ? resolve(chosenItemId) : undefined);
   const chosenGroup = $derived(chosenGroupId ? resolve(chosenGroupId) : undefined);
 
@@ -237,6 +238,7 @@
     action={tooltipGoods?.oreDictionaryId
       ? 'Left-click: Recipes · Right-click: Usages · Ore dictionary'
       : 'Left-click: Recipes · Right-click: Usages'}
+    notes={tooltipNotes}
   />
 {/if}
 

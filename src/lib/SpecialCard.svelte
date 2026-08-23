@@ -54,6 +54,15 @@
       // clean table name.
       return value.title.replace(/^(?:Forge|Twilight) Loot:\s*/i, '');
     }
+    if (valueCategory === 'meteorRitual') {
+      const payload = value.payload as unknown as Record<string, unknown>;
+      const focus = toSpecialGoods(payload.focus ?? payload.focusGoodsId);
+      const focusEntry = focus ? resolver(
+        focus.oreDictionaryId ?? focus.alternatives?.[0] ?? focus.goodsId
+      ) : undefined;
+      if (focusEntry?.name) return focusEntry.name;
+      return value.title.replace(/^Meteor Ritual:\s*/i, '');
+    }
     if (valueCategory !== 'cropBreeding') return value.title;
     const payload = value.payload as unknown as Record<string, unknown>;
     const outputSeed = toSpecialGoods(payload.outputSeed);

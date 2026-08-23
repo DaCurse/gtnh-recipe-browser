@@ -57,6 +57,9 @@ export interface SpecialGoods {
   chance?: number;
   weight?: number;
   limit?: number;
+  estimatedAmount?: number;
+  /** Optional plain-text annotations rendered below the catalog tooltip body. */
+  tooltipNotes?: string[];
   /** A human-readable label for empty/service or unresolved references. */
   label?: string;
   role?: 'input' | 'output' | 'reagent' | 'currency' | 'filler' | 'tool' | string;
@@ -70,7 +73,6 @@ export interface SpecialDrop extends SpecialGoods {
   weight?: number;
   fortune?: [number, number, number, number];
   limit?: number;
-  estimatedAmount?: number;
   groupId?: string;
   groupLabel?: string;
   randomAmount?: boolean;
@@ -576,6 +578,12 @@ export function toSpecialGoods(value: unknown): SpecialGoods | undefined {
       : typeof object.probability === 'number'
         ? object.probability
         : undefined,
+    estimatedAmount: typeof object.estimatedAmount === 'number' ? object.estimatedAmount : undefined,
+    tooltipNotes: Array.isArray(object.tooltipNotes)
+      ? object.tooltipNotes.filter((note): note is string => typeof note === 'string' && note.length > 0)
+      : typeof object.tooltipNote === 'string' && object.tooltipNote.length > 0
+        ? [object.tooltipNote]
+        : undefined,
     label: typeof object.label === 'string'
       ? object.label
       : typeof oreDictionary === 'string'
@@ -625,7 +633,6 @@ function toSpecialDrop(value: unknown): SpecialDrop | undefined {
       : typeof object.limitedDropCount === 'number'
         ? object.limitedDropCount
         : undefined,
-    estimatedAmount: typeof object.estimatedAmount === 'number' ? object.estimatedAmount : undefined,
     groupId: typeof object.group === 'string' && object.group.length > 0 ? object.group : undefined,
     groupLabel: typeof object.groupLabel === 'string' ? object.groupLabel : undefined,
     randomAmount: object.randomAmount === true,
