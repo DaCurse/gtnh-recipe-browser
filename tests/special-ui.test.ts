@@ -189,6 +189,11 @@ describe('NEI special browser presentation', () => {
     expect(source).toContain('^(?:Forge|Twilight) Loot:');
   });
 
+  it('keys duplicate meteor reagent effects by row as well as content', async () => {
+    const source = await readFile('src/lib/MeteorSpecialCard.svelte', 'utf8');
+    expect(source).toContain('effects as reagent, index (`${index}:${String(reagent.goodsId ?? reagent.effect)}`)');
+  });
+
   it('builds semantic stage nodes, including reagent and branch outputs', () => {
     const graph = stagesToOreGraph([
       {

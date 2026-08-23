@@ -30,7 +30,7 @@
     <div class="estimated"><b>Estimated amounts</b>{#each Object.entries(estimated) as [id, amount] (`${id}:${amount}`)}<span>{id}: {amount}</span>{/each}</div>
   {/if}
   {#if effects.length}
-    <div class="reagent-effects"><b>Reagent effects</b>{#each effects as reagent (String(reagent.goodsId ?? reagent.effect))}<span>{String(reagent.goodsId ?? 'Reagent')}: {String(reagent.effect)}</span>{/each}</div>
+    <div class="reagent-effects"><b>Reagent effects</b>{#each effects as reagent, index (`${index}:${String(reagent.goodsId ?? reagent.effect)}`)}<span>{String(reagent.goodsId ?? 'Reagent')}: {String(reagent.effect)}</span>{/each}</div>
   {/if}
 </div>
 
