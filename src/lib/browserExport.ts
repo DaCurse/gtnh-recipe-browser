@@ -833,15 +833,27 @@ function sanitizeExportFilename(value: string): string {
   return normalized || 'export';
 }
 
+const RECIPE_VIEW_FILENAME: Record<RecipeView, string> = {
+  recipes: 'recipes',
+  usages: 'usages',
+  machineUsages: 'machine-usages'
+};
+
 export function browserExportFilename(
   value: BrowserExportEnvelope
 ): string {
+  if (value.scope === 'special-global') {
+    const view = sanitizeExportFilename(value.specialViewType?.id ?? 'special');
+    return `gtnh-special-global-${view}.json`;
+  }
+  const selection = sanitizeExportFilename(value.selection.name || value.selection.id);
+  const recipeSubject = value.kind === 'recipes' && value.recipeType
+    ? sanitizeExportFilename(value.recipeType)
+    : selection;
   const view = value.kind === 'special'
     ? sanitizeExportFilename(value.specialViewType?.id ?? 'special')
-    : 'recipes';
-  if (value.scope === 'special-global') return `gtnh-special-global-${view}.json`;
-  const selection = sanitizeExportFilename(value.selection.name || value.selection.id);
-  return `gtnh-${value.scope}-${view}-${selection}.json`;
+    : RECIPE_VIEW_FILENAME[value.view];
+  return `gtnh-${recipeSubject}-${view}.json`;
 }
 
 /** Download through a short-lived JSON Blob so packed shard bytes never leak into the export. */

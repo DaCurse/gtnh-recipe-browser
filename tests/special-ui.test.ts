@@ -99,6 +99,17 @@ describe('NEI special browser presentation', () => {
     expect(variants).toContain(".filter(Boolean).join(' · ')");
   });
 
+  it('keeps the all-category export beside the direction tabs', async () => {
+    const browser = await readFile('src/lib/RecipeBrowser.svelte', 'utf8');
+    const viewTabs = browser.indexOf('<nav class="view-tabs"');
+    const categoryExport = browser.indexOf('class="category-export"');
+    const machineTabs = browser.indexOf('<div class="type-row">');
+    expect(categoryExport).toBeGreaterThan(viewTabs);
+    expect(categoryExport).toBeLessThan(machineTabs);
+    expect(browser).toContain('const paneExportLabel = $derived');
+    expect(browser).toContain("'Export data'");
+  });
+
   it('does not carry a special tab into another item or recipe direction', async () => {
     const state = await readFile('src/lib/recipeBrowserState.svelte.ts', 'utf8');
     expect(state).toContain('private lastRecipeContextKey: string | undefined;');

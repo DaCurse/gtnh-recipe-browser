@@ -67,6 +67,26 @@ describe('browser JSON exports', () => {
       records,
       applied: false
     });
+    expect(browserExportFilename(complete)).toBe('gtnh-iron-ingot-recipes.json');
+
+    const activeType = createRecipeExport({
+      repository,
+      selected: iron,
+      view: 'recipes',
+      scope: 'pane',
+      recipeType: 'Canner',
+      records: []
+    });
+    expect(browserExportFilename(activeType)).toBe('gtnh-canner-recipes.json');
+
+    const machineUsages = createRecipeExport({
+      repository,
+      selected: { ...iron, name: 'Canner' },
+      view: 'machineUsages',
+      scope: 'machine',
+      records: []
+    });
+    expect(browserExportFilename(machineUsages)).toBe('gtnh-canner-machine-usages.json');
     expect(complete.records.map((record) => record.id)).toEqual(['crafting:1', 'electric:2']);
     expect(complete.records[0]?.inputs[0]).toMatchObject({
       id: iron.id,

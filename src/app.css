@@ -94,6 +94,10 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .view-tabs { max-width:1020px; margin:29px auto 0; display:flex; overflow-x:auto; border-bottom:1px solid #3a3d41; scrollbar-width:thin; }
 .view-tabs button { min-height:47px; flex:0 0 auto; padding:0 22px; border:0;border-bottom:2px solid transparent;background:none;color:#8b9095;font-weight:700;font-size:12px;white-space:nowrap;cursor:pointer; }
 .view-tabs button.active { color:#eef0f2;border-bottom-color:#aeb3b8; }.view-tabs span,.type-row span { padding:2px 6px;border-radius:8px;background:#383b40;font-size:10px; }
+.view-tabs button.category-export { width:190px; min-width:190px; flex-basis:190px; margin-left:auto; display:inline-flex; align-items:center; justify-content:flex-start; gap:7px; padding:0 12px; border:1px solid #50555a; border-bottom-color:#50555a; border-radius:7px 7px 0 0; background:#292c30; color:#d2d5d8; text-align:left; }
+.view-tabs button.category-export:hover { border-color:#7b8187; background:#34383d; }
+.view-tabs button.category-export:disabled { opacity:.45; cursor:not-allowed; }
+.view-tabs button.category-export span { min-width:0; overflow:hidden; padding:0; border-radius:0; background:none; font-size:inherit; text-overflow:ellipsis; white-space:nowrap; }
 .ore-production-note { max-width:1020px; margin:13px auto 0; padding:10px 12px; border:1px solid #45494e; border-radius:7px; background:#24272b; color:#c8ccd0; font-size:13px; line-height:1.45; }
 .ore-production-note button { min-height:32px; padding:2px 7px; border:0; border-radius:4px; background:#383c42; color:#f0f1f2; font:inherit; cursor:pointer; }
 .ore-production-note button:hover { background:#454a51; }
@@ -111,10 +115,11 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .pane-toolbar { max-width:1020px; margin:0 auto 14px; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:12px; }
 .pane-toolbar .recipe-search-block { max-width:none; margin:0; min-width:0; }
 .export-actions { max-width:none; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; margin:0; }
-.export-actions button { min-height:38px; padding:0 12px; border:1px solid #50555a; border-radius:7px; background:#292c30; color:#d2d5d8; font-size:11px; font-weight:700; cursor:pointer; }
+.export-actions button { min-height:38px; display:inline-flex; align-items:center; justify-content:center; gap:7px; padding:0 12px; border:1px solid #50555a; border-radius:7px; background:#292c30; color:#d2d5d8; font-size:11px; font-weight:700; cursor:pointer; }
 .export-actions button:hover { border-color:#7b8187; background:#34383d; }
 .export-actions button:disabled { opacity:.45; cursor:not-allowed; }
 .export-actions button:first-child { background:#35393d; }
+.export-icon { width:16px; height:16px; flex:0 0 16px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .export-error { flex:1 0 100%; max-width:100%; margin:0; color:#d0aeb2; font-size:11px; text-align:right; }
 .recipe-search-block { max-width:1020px; margin:0 auto 14px; }
 .recipe-search-wrap { height:44px; display:flex; align-items:center; gap:9px; padding:0 10px; border:1px solid #45494e; border-radius:8px; background:#121315; box-shadow:inset 0 1px 5px #0005; }

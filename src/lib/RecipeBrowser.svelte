@@ -12,6 +12,7 @@
   import RecipeCard from './RecipeCard.svelte';
   import SpecialCard from './SpecialCard.svelte';
   import { RecipeBrowserState } from './recipeBrowserState.svelte';
+  import { specialRepository } from './specialData';
   import type { CatalogEntry, RecipeView, SpecialScope } from './types';
 
   let {
@@ -55,12 +56,20 @@
   const recipePageCount = $derived(browserState.recipePageCount);
   const recipeSearchPending = $derived(browserState.recipeSearchPending);
   const modeLabel = $derived(browserState.modeLabel);
+  const categoryExportLabel = $derived(browserState.showingSpecial
+    ? `Export all ${browserState.specialTypeLabel}`
+    : `Export all ${modeLabel}`);
+  const paneExportLabel = $derived(browserState.showingSpecial
+    ? browserState.showingGlobalSpecial
+      ? `Export all ${browserState.specialTypeLabel}`
+      : `Export all ${selected.name} ${browserState.specialTypeLabel}`
+    : `Export all ${browserState.type || selected.name} ${modeLabel}`);
   const specialSearchTotal = $derived(browserState.specialSearchTotal);
   const specialPageCount = $derived(browserState.specialPageCount);
   const specialSearchPending = $derived(browserState.specialSearchPending);
   const recipeCount = (view: RecipeView) => browserState.recipeCount(view);
 
-  type ExportTarget = 'pane' | 'machine';
+  type ExportTarget = 'pane' | 'machine' | 'category';
   type ExportChoice = 'filtered' | 'all';
   let exportPrompt = $state<ExportTarget | null>(null);
   let exportWorking = $state(false);
@@ -68,11 +77,16 @@
 
   function exportQuery(target: ExportTarget): string {
     if (target === 'machine') return browserState.recipeQuery;
+    if (target === 'category') return '';
     return browserState.showingSpecial ? browserState.specialQuery : browserState.recipeQuery;
   }
 
   function requestExport(target: ExportTarget) {
     exportError = '';
+    if (target === 'category') {
+      void performExport(target, 'all');
+      return;
+    }
     if (exportQuery(target).trim()) {
       exportPrompt = target;
       return;
@@ -93,6 +107,46 @@
     const query = exportQuery(target);
     const applyFilter = choice === 'filtered' && query.trim().length > 0;
     try {
+      if (target === 'category') {
+        if (browserState.showingSpecial) {
+          const viewType = specialTypes.find((candidate) => candidate.id === browserState.specialType);
+          if (!viewType) return;
+          const specialRepo = specialRepository(repository);
+          const loader = specialRepo.specialForAll ?? specialRepo.specialRecordsForAll;
+          const records = loader
+            ? await loader.call(specialRepo, mode, viewType.id)
+            : [];
+          const value = createSpecialExport({
+            repository,
+            selected,
+            view: mode,
+            scope: 'special-global',
+            specialViewType: { id: viewType.id, label: viewType.label },
+            records
+          });
+          downloadBrowserExport(value, browserExportFilename(value));
+          return;
+        }
+
+        const records = recipeRecordsForExport(
+          repository,
+          browserState.allRecipes,
+          null,
+          '',
+          false
+        );
+        const value = createRecipeExport({
+          repository,
+          selected,
+          view: mode,
+          scope: 'pane',
+          recipeType: null,
+          records
+        });
+        downloadBrowserExport(value, browserExportFilename(value));
+        return;
+      }
+
       if (target === 'machine') {
         const machineRecipes = await repository.recipesFor(selected.id, 'machineUsages');
         const activeMachineRecipes = machineRecipes.filter((recipe) => recipe.type === browserState.type);
@@ -135,10 +189,13 @@
         return;
       }
 
+      const activeRecipes = browserState.type
+        ? browserState.allRecipes.filter((recipe) => recipe.type === browserState.type)
+        : browserState.allRecipes;
       const records = recipeRecordsForExport(
         repository,
-        browserState.allRecipes,
-        browserState.type || null,
+        activeRecipes,
+        null,
         query,
         applyFilter
       );
@@ -147,7 +204,7 @@
         selected,
         view: mode,
         scope: 'pane',
-        recipeType: applyFilter ? browserState.type || null : null,
+        recipeType: browserState.type || null,
         query,
         applied: applyFilter,
         records
@@ -172,6 +229,21 @@
     <button class:active={mode === 'machineUsages'} onclick={() => setMode('machineUsages')}>
       Machine Usages
       {#if recipeCount('machineUsages') !== undefined}<span>{recipeCount('machineUsages')}</span>{/if}
+    </button>
+  {/if}
+  {#if related.length > 0 || browserState.showingSpecial}
+    <button
+      class="category-export"
+      type="button"
+      onclick={() => requestExport('category')}
+      disabled={exportWorking || browserState.recipeLoading || browserState.specialLoading}
+      title={categoryExportLabel}
+      aria-label={categoryExportLabel}
+    >
+      <svg class="export-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 20h14"></path>
+      </svg>
+      <span>{categoryExportLabel}</span>
     </button>
   {/if}
 </nav>
@@ -278,16 +350,28 @@
   {/if}
   <div class="export-actions">
     <button
+      type="button"
       onclick={() => requestExport('pane')}
       disabled={exportWorking || browserState.recipeLoading || browserState.specialLoading}
+      title={paneExportLabel}
+      aria-label={paneExportLabel}
     >
-      {exportWorking ? 'Preparing JSON…' : 'Download pane JSON'}
+      <svg class="export-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 20h14"></path>
+      </svg>
+      <span>{exportWorking ? 'Preparing JSON…' : 'Export data'}</span>
     </button>
     {#if selected.machineCapabilities?.length && browserState.type}
       <button
+        type="button"
         onclick={() => requestExport('machine')}
         disabled={exportWorking || browserState.recipeLoading}
-      >Download machine JSON</button>
+      >
+        <svg class="export-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 20h14"></path>
+        </svg>
+        <span>Download machine JSON</span>
+      </button>
     {/if}
     {#if exportError}<p class="export-error">Could not download JSON: {exportError}</p>{/if}
   </div>
@@ -447,7 +531,7 @@
       <button class="export-close" aria-label="Close" onclick={() => exportPrompt = null}>×</button>
       <p class="eyebrow">DOWNLOAD JSON</p>
       <h2>Choose records</h2>
-      <p>This pane has an active filter. Download only matching records or the complete pane.</p>
+      <p>This export has an active filter. Download only matching records or all records in this view.</p>
       <div class="export-choice-actions">
         <button class="primary" onclick={() => confirmExport('filtered')}>Filtered results</button>
         <button onclick={() => confirmExport('all')}>All results</button>
