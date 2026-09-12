@@ -1,7 +1,9 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
+    "src/main.ts",
     "src/workers/*.worker.ts",
+    "tests/**/*.test.ts",
     "tools/data-export/prepare.ts"
   ],
   "project": [
