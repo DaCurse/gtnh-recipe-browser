@@ -2,6 +2,7 @@ import type { MinecraftTextLine } from './minecraftText';
 
 type Kind = 'item' | 'fluid' | 'oreDict' | 'itemGroup';
 export type RecipeView = 'recipes' | 'usages' | 'machineUsages';
+export type SpecialScope = 'item' | 'all';
 
 export interface MachineRecipeCapability {
   recipeTypeId: string;
@@ -27,6 +28,8 @@ export interface CatalogEntry {
   tooltip: string[];
   formattedName?: MinecraftTextLine[];
   formattedTooltip?: MinecraftTextLine[];
+  /** Layout hint for synthetic catalog entries such as global special views. */
+  tooltipLayout?: 'standard' | 'compact';
   color: string;
   glyph: string;
   icon?: {
@@ -79,6 +82,8 @@ export interface CatalogBrowseEntry extends CatalogEntry {
 
 export interface Ingredient {
   id: string;
+  /** Catalog-resolved name included in browser exports for human readability. */
+  name?: string;
   amount?: number;
   chance?: number;
   /** Zero-based position in the matching NEI item/fluid grid. */
@@ -89,6 +94,8 @@ export interface Ingredient {
   ingredientGroupKind?: 'oreDict' | 'itemGroup';
   /** Every interchangeable item accepted by a grouped ingredient. */
   alternatives?: string[];
+  /** Catalog-resolved names corresponding to alternatives, when available. */
+  alternativeNames?: string[];
 }
 
 export interface GridDimensions {
@@ -124,11 +131,16 @@ export interface Recipe {
   euPerTickExact?: string;
   metadata?: string[];
   crafterId?: string;
+  /** Catalog-resolved name for the primary crafter, when available. */
+  crafterName?: string;
   crafters?: Array<{
     id: string;
     role: 'singleblock' | 'multiblock' | 'default';
+    name?: string;
   }>;
   typeIconId?: string;
+  /** Catalog-resolved name for the recipe-type icon, when available. */
+  typeIconName?: string;
   /** Raw GT circuit conflict mask retained for parity but not currently displayed. */
   circuitConflicts?: number;
   specialValue?: number;

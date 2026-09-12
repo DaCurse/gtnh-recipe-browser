@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest';
 import {
   itemListUrl,
   recipeViewFromUrl,
-  recipeViewUrlValue
+  recipeViewUrlValue,
+  specialNavigationFromUrl,
+  specialNavigationUrl
 } from '../src/lib/navigation';
 
 describe('item-list navigation', () => {
@@ -30,5 +32,35 @@ describe('recipe-view navigation', () => {
   it('falls back to recipes for missing or unknown URL values', () => {
     expect(recipeViewFromUrl(null)).toBe('recipes');
     expect(recipeViewFromUrl('unknown')).toBe('recipes');
+  });
+});
+
+describe('special-view navigation', () => {
+  it('round-trips item and global special scopes', () => {
+    const global = specialNavigationUrl(
+      'https://example.test/browser/?item=i%3Atest&view=recipes',
+      'meteor-ritual',
+      'all'
+    );
+    expect(global.searchParams.get('special')).toBe('meteor-ritual');
+    expect(global.searchParams.get('special-scope')).toBe('all');
+    expect(specialNavigationFromUrl(global)).toEqual({
+      specialType: 'meteor-ritual',
+      specialScope: 'all'
+    });
+
+    const item = specialNavigationUrl(global, 'meteor-ritual', 'item');
+    expect(item.searchParams.has('special-scope')).toBe(false);
+    expect(specialNavigationFromUrl(item).specialScope).toBe('item');
+  });
+
+  it('clears both special parameters when the special context ends', () => {
+    const url = specialNavigationUrl(
+      'https://example.test/browser/?special=meteor-ritual&special-scope=all',
+      ''
+    );
+    expect(url.searchParams.has('special')).toBe(false);
+    expect(url.searchParams.has('special-scope')).toBe(false);
+    expect(specialNavigationFromUrl(url)).toEqual({ specialType: '', specialScope: 'item' });
   });
 });

@@ -14,7 +14,7 @@
 
   const displayLines = $derived(
     lines
-    ?? (raw !== undefined ? parseMinecraftHtml(raw).lines : undefined)
+    ?? (raw !== undefined && raw !== null ? parseMinecraftHtml(raw).lines : undefined)
     ?? plainMinecraftText(Array.isArray(fallback) ? fallback.join('\n') : fallback).lines
   );
 </script>

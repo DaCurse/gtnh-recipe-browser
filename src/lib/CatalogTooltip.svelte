@@ -14,7 +14,12 @@
   } = $props();
 </script>
 
-<div class="minecraft-tooltip" role="group" aria-label={`${entry.name} tooltip`}>
+<div
+  class="minecraft-tooltip"
+  class:compact={entry.tooltipLayout === 'compact'}
+  role="group"
+  aria-label={`${entry.name} tooltip`}
+>
   <div class="tooltip-header">
     <MinecraftText lines={entry.formattedName} raw={entry.rawName} fallback={entry.name} />
   </div>
@@ -66,5 +71,9 @@
     text-transform: uppercase;
     letter-spacing: .08em;
     text-shadow: none;
+  }
+  .minecraft-tooltip.compact .tooltip-debug,
+  .minecraft-tooltip.compact .tooltip-mod {
+    display: none;
   }
 </style>

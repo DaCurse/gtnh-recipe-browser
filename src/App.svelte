@@ -10,12 +10,15 @@
   import RecipeBrowser from './lib/RecipeBrowser.svelte';
   import { DatasetRepository } from './lib/dataset';
   import { clearIconSheetCache } from './lib/iconCache';
+  import { createSpecialContextEntry } from './lib/specialContext';
   import {
     itemListUrl,
     recipeViewFromUrl,
-    recipeViewUrlValue
+    recipeViewUrlValue,
+    specialNavigationFromUrl,
+    specialNavigationUrl
   } from './lib/navigation';
-  import type { CatalogEntry, RecipeView } from './lib/types';
+  import type { CatalogEntry, RecipeView, SpecialScope } from './lib/types';
 
   let catalog = $state<CatalogEntry[]>([]);
   let repository = $state<DatasetRepository | null>(null);
@@ -31,6 +34,8 @@
   let query = $state('');
   let selectedId = $state('');
   let mode = $state<RecipeView>('recipes');
+  let specialType = $state('');
+  let specialScope = $state<SpecialScope>('item');
   let detailsOpen = $state(false);
   let updateReady = $state(false);
   let sidebarWidth = $state(410);
@@ -39,6 +44,31 @@
 
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
   const selected = $derived(entryById.get(selectedId));
+  const specialContextViewType = $derived(
+    specialScope === 'all'
+      ? repository?.specialViewTypes.find((viewType) => viewType.id === specialType)
+      : undefined
+  );
+  const specialContextServiceIcon = $derived(
+    specialContextViewType?.serviceIconId
+      ? repository?.specialServiceIcons.find((icon) => icon.id === specialContextViewType.serviceIconId)
+      : undefined
+  );
+  const specialContextIconEntry = $derived(
+    specialContextServiceIcon?.goodsId
+      ? entryById.get(specialContextServiceIcon.goodsId)
+      : undefined
+  );
+  const itemOverviewSelected = $derived(
+    selected && specialContextViewType
+      ? createSpecialContextEntry(
+        selected,
+        specialContextViewType,
+        specialContextServiceIcon,
+        specialContextIconEntry
+      )
+      : selected
+  );
   const datasetManager = new DatasetManagerState({
     getRepository: () => repository,
     validateRepository,
@@ -51,19 +81,34 @@
   function select(id: string, push = true, nextMode: RecipeView = 'recipes') {
     mode = nextMode;
     selectedId = id;
+    specialType = '';
+    specialScope = 'item';
     detailsOpen = true;
     if (push) {
       const url = new URL(location.href);
       url.searchParams.set('item', id);
       url.searchParams.set('view', recipeViewUrlValue(mode));
+      url.searchParams.delete('special');
+      url.searchParams.delete('special-scope');
       history.pushState({ id }, '', url);
     }
   }
 
   function setMode(next: RecipeView) {
     mode = next;
+    specialType = '';
+    specialScope = 'item';
     const url = new URL(location.href);
     url.searchParams.set('view', recipeViewUrlValue(mode));
+    url.searchParams.delete('special');
+    url.searchParams.delete('special-scope');
+    history.replaceState({ id: selectedId }, '', url);
+  }
+
+  function setSpecialNavigation(nextType: string, nextScope: SpecialScope) {
+    specialType = nextType;
+    specialScope = nextType ? nextScope : 'item';
+    const url = specialNavigationUrl(location.href, specialType, specialScope);
     history.replaceState({ id: selectedId }, '', url);
   }
 
@@ -118,14 +163,25 @@
     if (mode === 'machineUsages' && !selectedEntry?.machineCapabilities?.length) mode = 'recipes';
     if (preserveSelection && preferredId !== selectedId) detailsOpen = false;
     if (!preserveSelection) detailsOpen = Boolean(linkedId && linkedId === selectedId);
+    const linkedSpecial = specialNavigationFromUrl(location.href);
+    specialType = detailsOpen ? linkedSpecial.specialType : '';
+    specialScope = detailsOpen ? linkedSpecial.specialScope : 'item';
+    if (mode === 'machineUsages') {
+      specialType = '';
+      specialScope = 'item';
+    }
     const url = new URL(location.href);
     url.searchParams.set('version', loaded.datasetId);
     if (!detailsOpen) {
       url.searchParams.delete('item');
       url.searchParams.delete('view');
+      url.searchParams.delete('special');
+      url.searchParams.delete('special-scope');
     } else {
       url.searchParams.set('item', selectedId);
       url.searchParams.set('view', recipeViewUrlValue(mode));
+      const normalizedSpecial = specialNavigationUrl(url, specialType, specialScope);
+      url.search = normalizedSpecial.search;
     }
     history.replaceState(detailsOpen ? { id: selectedId } : { route: 'items' }, '', url);
   }
@@ -177,11 +233,23 @@
   onMount(() => {
     const params = new URLSearchParams(location.search);
     mode = recipeViewFromUrl(params.get('view'));
+    const linkedSpecial = specialNavigationFromUrl(params);
+    specialType = linkedSpecial.specialType;
+    specialScope = linkedSpecial.specialScope;
     const handlePopState = () => {
-      const id = new URLSearchParams(location.search).get('item');
-      const linkedView = recipeViewFromUrl(new URLSearchParams(location.search).get('view'));
-      if (id && entryById.has(id)) select(id, false, linkedView);
-      else detailsOpen = false;
+      const currentParams = new URLSearchParams(location.search);
+      const id = currentParams.get('item');
+      const linkedView = recipeViewFromUrl(currentParams.get('view'));
+      const currentSpecial = specialNavigationFromUrl(currentParams);
+      if (id && entryById.has(id)) {
+        select(id, false, linkedView);
+        specialType = currentSpecial.specialType;
+        specialScope = currentSpecial.specialScope;
+      } else {
+        detailsOpen = false;
+        specialType = '';
+        specialScope = 'item';
+      }
     };
     const handleShortcut = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.key.toLowerCase() === 'k') {
@@ -214,7 +282,7 @@
   });
 </script>
 
-<svelte:head><title>{selected && detailsOpen ? `${selected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser'}</title></svelte:head>
+<svelte:head><title>{itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser'}</title></svelte:head>
 
 <div class="app-shell">
   <AppHeader
@@ -258,7 +326,7 @@
         Back to items
       </button>
       <ItemOverview
-        {selected}
+        selected={itemOverviewSelected!}
         {entryById}
         navigate={(id, view) => select(id, true, view)}
       />
@@ -266,8 +334,11 @@
         {repository}
         {selected}
         {mode}
+        {specialType}
+        {specialScope}
         active={detailsOpen}
         {setMode}
+        setSpecialNavigation={setSpecialNavigation}
         navigate={(id, view) => select(id, true, view)}
       />
     </section>

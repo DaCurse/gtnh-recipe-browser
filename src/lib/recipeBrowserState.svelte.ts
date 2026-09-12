@@ -11,13 +11,16 @@ import {
   type SpecialViewType
 } from './specialData';
 import type { DatasetRepository } from './dataset';
-import type { CatalogEntry, Recipe, RecipeView } from './types';
+import type { CatalogEntry, Recipe, RecipeView, SpecialScope } from './types';
 
 interface RecipeBrowserContext {
   repository: () => DatasetRepository;
   selected: () => CatalogEntry;
   mode: () => RecipeView;
   active: () => boolean;
+  specialType?: () => string;
+  specialScope?: () => SpecialScope;
+  onSpecialNavigation?: (specialType: string, specialScope: SpecialScope) => void;
 }
 
 export class RecipeBrowserState {
@@ -33,6 +36,7 @@ export class RecipeBrowserState {
   recipeFilter = $state('');
   type = $state('');
   specialType = $state('');
+  specialScope = $state<SpecialScope>('item');
   specialRecords = $state<SpecialRecord[]>([]);
   specialLoading = $state(false);
   specialError = $state('');
@@ -61,7 +65,10 @@ export class RecipeBrowserState {
   private recipeSearchRequest = 0;
   private specialAbortController: AbortController | null = null;
   private specialRequest = 0;
-  private specialCache = new Map<string, SpecialRecord[]>();
+  private specialCache = new Map<string, {
+    records: SpecialRecord[];
+    totalShards: number;
+  }>();
   /**
    * The selected goods and top-level direction are the context for both
    * normal recipes and NEI special pages.  A special tab is a local choice
@@ -71,6 +78,9 @@ export class RecipeBrowserState {
   private lastRecipeContextKey: string | undefined;
 
   constructor(private readonly context: RecipeBrowserContext) {
+    this.specialType = context.specialType?.() ?? '';
+    this.specialScope = context.specialScope?.() ?? 'item';
+
     $effect(() => {
       const selected = this.context.selected();
       const mode = this.context.mode();
@@ -79,9 +89,25 @@ export class RecipeBrowserState {
       void this.type;
       void this.recipeFilter;
       void this.specialType;
+      void this.specialScope;
       void this.specialFilter;
       this.recipePage = 0;
       this.specialPage = 0;
+    });
+
+    $effect(() => {
+      const externalSpecialType = this.context.specialType?.() ?? '';
+      const externalSpecialScope = this.context.specialScope?.() ?? 'item';
+      if (
+        externalSpecialType === this.specialType
+        && externalSpecialScope === this.specialScope
+      ) return;
+      this.specialType = externalSpecialType;
+      this.specialScope = externalSpecialType ? externalSpecialScope : 'item';
+      this.specialQuery = '';
+      this.specialFilter = '';
+      this.specialPage = 0;
+      if (this.context.active()) untrack(() => void this.refresh());
     });
 
     $effect(() => {
@@ -178,7 +204,11 @@ export class RecipeBrowserState {
       }))
       .filter((viewType) => viewType.id.length > 0)
       .filter((viewType) => isSpecialViewEnabled(viewType.id))
-      .filter((viewType) => this.specialCount(mode, viewType.id) !== 0)
+      .filter(() => mode !== 'machineUsages')
+      .filter((viewType) => {
+        const count = this.specialCount(mode, viewType.id);
+        return typeof count === 'number' && Number.isFinite(count) && count > 0;
+      })
       .sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
   }
 
@@ -247,6 +277,10 @@ export class RecipeBrowserState {
     return this.specialType.length > 0 && this.specialTypes.some((viewType) => viewType.id === this.specialType);
   }
 
+  get showingGlobalSpecial(): boolean {
+    return this.showingSpecial && this.specialScope === 'all';
+  }
+
   recipeCount(view: RecipeView): number | undefined {
     const selected = this.context.selected();
     const declared = view === 'recipes'
@@ -302,24 +336,52 @@ export class RecipeBrowserState {
     });
   }
 
+  private notifySpecialNavigation() {
+    this.context.onSpecialNavigation?.(this.specialType, this.specialScope);
+  }
+
   selectRecipeType(type: string) {
     const wasSpecial = this.showingSpecial;
     this.specialType = '';
+    this.specialScope = 'item';
     this.type = type;
     this.recipePage = 0;
     this.specialPage = 0;
     this.specialQuery = '';
     this.specialFilter = '';
+    if (wasSpecial) this.notifySpecialNavigation();
     if (wasSpecial) void this.refresh();
   }
 
   selectSpecialType(type: string) {
     if (!this.specialTypes.some((viewType) => viewType.id === type)) return;
     this.specialType = type;
+    this.specialScope = 'item';
     this.type = '';
     this.specialPage = 0;
     this.specialQuery = '';
     this.specialFilter = '';
+    this.notifySpecialNavigation();
+    void this.refresh();
+  }
+
+  enterSpecialGlobal() {
+    if (!this.showingSpecial) return;
+    this.specialScope = 'all';
+    this.specialPage = 0;
+    this.specialQuery = '';
+    this.specialFilter = '';
+    this.notifySpecialNavigation();
+    void this.refresh();
+  }
+
+  returnToItemSpecial() {
+    if (!this.showingSpecial) return;
+    this.specialScope = 'item';
+    this.specialPage = 0;
+    this.specialQuery = '';
+    this.specialFilter = '';
+    this.notifySpecialNavigation();
     void this.refresh();
   }
 
@@ -330,6 +392,7 @@ export class RecipeBrowserState {
     const contextKey = `${mode}:${selected.id}`;
     if (this.lastRecipeContextKey !== undefined && this.lastRecipeContextKey !== contextKey) {
       this.specialType = '';
+      this.specialScope = 'item';
       this.specialQuery = '';
       this.specialFilter = '';
       this.specialPage = 0;
@@ -346,7 +409,10 @@ export class RecipeBrowserState {
     const specialType = this.specialTypes.some((viewType) => viewType.id === this.specialType)
       ? this.specialType
       : '';
+    const specialScope: SpecialScope = specialType && this.specialScope === 'all' ? 'all' : 'item';
     this.specialType = specialType;
+    this.specialScope = specialType ? specialScope : 'item';
+    if (!specialType && this.context.specialType?.()) this.notifySpecialNavigation();
     this.specialRecords = [];
     if (!specialType) {
       this.allRecipes = [];
@@ -370,32 +436,63 @@ export class RecipeBrowserState {
         this.specialLoading = true;
         const specialController = new AbortController();
         this.specialAbortController = specialController;
-        const cacheKey = `${repository.datasetId}:${entryId}:${view}:${specialType}`;
+        const cacheEntryId = specialScope === 'all' ? 'all' : entryId;
+        const cacheKey = `${repository.datasetId}:${cacheEntryId}:${view}:${specialType}`;
         const specialRepo = specialRepository(repository);
-        const loader = specialRepo.specialFor ?? specialRepo.specialRecordsFor;
+        const allLoader = specialRepo.specialForAll ?? specialRepo.specialRecordsForAll;
+        const itemLoader = specialRepo.specialFor ?? specialRepo.specialRecordsFor;
+        const loader = specialScope === 'all' ? allLoader : itemLoader;
         if (!loader) {
           this.specialRecords = [];
           this.loadedSpecialCounts = {
             ...this.loadedSpecialCounts,
-            [`${entryId}:${view}:${specialType}`]: 0
+            [`${cacheEntryId}:${view}:${specialType}`]: 0
           };
         } else {
           const cached = this.specialCache.get(cacheKey);
-          const loaded = cached ?? await loader.call(
-            specialRepo,
-            entryId,
-            view,
-            specialType,
-            (progress) => this.applySpecialProgress(progress, specialRequest, entryId, view, specialType),
-            specialController.signal
-          );
+          let loaded: SpecialRecord[];
+          if (cached) {
+            loaded = cached.records;
+            this.specialTotalShards = cached.totalShards;
+            this.specialLoadedShards = cached.totalShards;
+          } else if (specialScope === 'all') {
+            loaded = await (allLoader as NonNullable<typeof allLoader>).call(
+              specialRepo,
+              view,
+              specialType,
+              (progress) => this.applySpecialProgress(
+                progress,
+                specialRequest,
+                cacheEntryId,
+                view,
+                specialType
+              ),
+              specialController.signal
+            );
+          } else {
+            loaded = await (itemLoader as NonNullable<typeof itemLoader>).call(
+              specialRepo,
+              entryId,
+              view,
+              specialType,
+              (progress) => this.applySpecialProgress(
+                progress,
+                specialRequest,
+                cacheEntryId,
+                view,
+                specialType
+              ),
+              specialController.signal
+            );
+          }
           if (specialRequest !== this.specialRequest || request !== this.recipeRequest) return;
           const ordered = [...loaded].sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
-          this.specialCache.set(cacheKey, ordered);
+          const totalShards = this.specialTotalShards;
+          this.specialCache.set(cacheKey, { records: ordered, totalShards });
           this.specialRecords = ordered;
           this.loadedSpecialCounts = {
             ...this.loadedSpecialCounts,
-            [`${entryId}:${view}:${specialType}`]: ordered.length
+            [`${cacheEntryId}:${view}:${specialType}`]: ordered.length
           };
           this.specialTotalShards = Math.max(this.specialTotalShards, 1);
           this.specialLoadedShards = this.specialTotalShards;
@@ -453,7 +550,7 @@ export class RecipeBrowserState {
   private applySpecialProgress(
     progress: SpecialLoadProgress,
     request: number,
-    entryId: string,
+    cacheEntryId: string,
     view: RecipeView,
     viewType: string
   ) {
@@ -466,7 +563,7 @@ export class RecipeBrowserState {
     this.specialRecords = next;
     this.loadedSpecialCounts = {
       ...this.loadedSpecialCounts,
-      [`${entryId}:${view}:${viewType}`]: next.length
+      [`${cacheEntryId}:${view}:${viewType}`]: next.length
     };
   }
 

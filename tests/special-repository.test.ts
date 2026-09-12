@@ -209,6 +209,19 @@ describe('format-4 DatasetRepository special shards', () => {
     expect(records[0]?.lookupId).toBe('special:fixture:recipes');
     expect(progress.at(-1)).toEqual({ loadedShards: 1, totalShards: 1 });
 
+    const allProgress: Array<{ loadedShards: number; totalShards: number }> = [];
+    const allRecords = await repository.specialForAll(
+      'recipes',
+      'crop-outputs',
+      ({ loadedShards, totalShards }) => allProgress.push({ loadedShards, totalShards })
+    );
+    expect(allRecords).toHaveLength(1);
+    expect(allRecords[0]?.lookupId).toBe('special:fixture:recipes');
+    expect(allProgress.at(-1)).toEqual({ loadedShards: 1, totalShards: 1 });
+
+    const allUsageRecords = await repository.specialForAll('usages', 'crop-outputs');
+    expect(allUsageRecords[0]?.lookupId).toBe('special:fixture:usages');
+
     const oreRecords = await repository.specialFor(oreGoodsId, 'recipes', 'crop-outputs');
     expect(oreRecords).toHaveLength(1);
 

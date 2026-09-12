@@ -704,6 +704,17 @@ export class DatasetRepository {
     });
   }
 
+  private specialShardIdsForViewType(viewType: string): string[] {
+    return (this.manifest.specialDataShards ?? [])
+      .filter((descriptor) => descriptor.specialViewTypeId === viewType)
+      .sort((left, right) =>
+        left.specialViewTypeOrder - right.specialViewTypeOrder
+        || left.part - right.part
+        || left.id.localeCompare(right.id)
+      )
+      .map((descriptor) => descriptor.id);
+  }
+
   private materializeSpecialRecord(
     record: PackedSpecialRecord,
     view: RecipeView,
@@ -726,10 +737,11 @@ export class DatasetRepository {
     };
   }
 
-  async specialFor(
-    entryId: string,
+  private async specialFromShards(
+    shardIds: readonly string[],
     view: RecipeView,
     viewType: string,
+    matches: (record: PackedSpecialRecord) => boolean,
     onProgress?: (progress: {
       loadedShards: number;
       totalShards: number;
@@ -737,15 +749,6 @@ export class DatasetRepository {
     }) => void,
     signal?: AbortSignal
   ): Promise<SpecialRecord[]> {
-    const entryIds = this.specialRecordIds(entryId, view);
-    if (!entryIds) {
-      onProgress?.({ loadedShards: 0, totalShards: 0, batch: [] });
-      return [];
-    }
-    const shardIds = this.specialShardIds(entryIds, view).filter((id) => {
-      const descriptor = this.manifest.specialDataShards?.find((shard) => shard.id === id);
-      return descriptor?.specialViewTypeId === viewType;
-    });
     onProgress?.({ loadedShards: 0, totalShards: shardIds.length, batch: [] });
     const batches = await mapProgressively(
       shardIds,
@@ -754,10 +757,7 @@ export class DatasetRepository {
         const records = await this.loadSpecialShard(shardId);
         const batch = records
           .filter((record) => record.category === viewType)
-          .filter((record) => {
-            const goodsIds = specialRecordGoodsForDirection(record, view);
-            return goodsIds.some((goodsId) => entryIds.has(goodsId));
-          })
+          .filter(matches)
           .map((record, recordIndex) => this.materializeSpecialRecord(
             record,
             view,
@@ -778,6 +778,59 @@ export class DatasetRepository {
     );
   }
 
+  async specialFor(
+    entryId: string,
+    view: RecipeView,
+    viewType: string,
+    onProgress?: (progress: {
+      loadedShards: number;
+      totalShards: number;
+      batch: SpecialRecord[];
+    }) => void,
+    signal?: AbortSignal
+  ): Promise<SpecialRecord[]> {
+    const entryIds = this.specialRecordIds(entryId, view);
+    if (!entryIds) {
+      onProgress?.({ loadedShards: 0, totalShards: 0, batch: [] });
+      return [];
+    }
+    const shardIds = this.specialShardIds(entryIds, view).filter((id) => {
+      const descriptor = this.manifest.specialDataShards?.find((shard) => shard.id === id);
+      return descriptor?.specialViewTypeId === viewType;
+    });
+    return this.specialFromShards(
+      shardIds,
+      view,
+      viewType,
+      (record) => {
+        const goodsIds = specialRecordGoodsForDirection(record, view);
+        return goodsIds.some((goodsId) => entryIds.has(goodsId));
+      },
+      onProgress,
+      signal
+    );
+  }
+
+  async specialForAll(
+    view: RecipeView,
+    viewType: string,
+    onProgress?: (progress: {
+      loadedShards: number;
+      totalShards: number;
+      batch: SpecialRecord[];
+    }) => void,
+    signal?: AbortSignal
+  ): Promise<SpecialRecord[]> {
+    return this.specialFromShards(
+      this.specialShardIdsForViewType(viewType),
+      view,
+      viewType,
+      () => true,
+      onProgress,
+      signal
+    );
+  }
+
   specialRecordsFor(
     entryId: string,
     view: RecipeView,
@@ -790,6 +843,19 @@ export class DatasetRepository {
     signal?: AbortSignal
   ): Promise<SpecialRecord[]> {
     return this.specialFor(entryId, view, viewType, onProgress, signal);
+  }
+
+  specialRecordsForAll(
+    view: RecipeView,
+    viewType: string,
+    onProgress?: (progress: {
+      loadedShards: number;
+      totalShards: number;
+      batch: SpecialRecord[];
+    }) => void,
+    signal?: AbortSignal
+  ): Promise<SpecialRecord[]> {
+    return this.specialForAll(view, viewType, onProgress, signal);
   }
 
   async recipesFor(

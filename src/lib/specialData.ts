@@ -51,6 +51,8 @@ interface SpecialServiceIcon {
 
 export interface SpecialGoods {
   goodsId: string;
+  /** Catalog-resolved name included in browser exports for human readability. */
+  name?: string;
   amount?: number;
   minAmount?: number;
   maxAmount?: number;
@@ -64,6 +66,8 @@ export interface SpecialGoods {
   label?: string;
   role?: 'input' | 'output' | 'reagent' | 'currency' | 'filler' | 'tool' | string;
   alternatives?: string[];
+  /** Catalog-resolved names corresponding to alternatives, when available. */
+  alternativeNames?: string[];
   oreDictionaryId?: string;
 }
 
@@ -246,8 +250,14 @@ export interface SpecialRecord {
   usagesLookupId?: string;
   serviceIconId?: string;
   goodsIds?: string[];
+  /** Catalog-resolved names corresponding to goodsIds, for browser exports. */
+  goodsNames?: string[];
   productionGoodsIds?: string[];
+  /** Catalog-resolved names corresponding to productionGoodsIds, for browser exports. */
+  productionGoodsNames?: string[];
   usageGoodsIds?: string[];
+  /** Catalog-resolved names corresponding to usageGoodsIds, for browser exports. */
+  usageGoodsNames?: string[];
   inputs?: SpecialGoods[];
   outputs?: SpecialDrop[];
   payload: SpecialPayload | Record<string, unknown>;
@@ -271,8 +281,16 @@ export interface SpecialRepository {
     onProgress?: (progress: SpecialLoadProgress) => void,
     signal?: AbortSignal
   ) => Promise<SpecialRecord[]>;
+  specialForAll?: (
+    view: RecipeView,
+    viewType: string,
+    onProgress?: (progress: SpecialLoadProgress) => void,
+    signal?: AbortSignal
+  ) => Promise<SpecialRecord[]>;
   /** Alias accepted while the repository is being migrated. */
   specialRecordsFor?: SpecialRepository['specialFor'];
+  /** Alias accepted while the repository is being migrated. */
+  specialRecordsForAll?: SpecialRepository['specialForAll'];
 }
 
 export function specialRepository(value: unknown): SpecialRepository {

@@ -62,6 +62,12 @@ aside footer { margin-top:auto; min-height:42px; padding:0 14px; border-top:1px 
 .back svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .item-head { display:flex; align-items:flex-start; gap:20px; max-width:1020px; margin:auto; }
 .item-overview { width:min(720px,calc(100% - 108px)); min-width:0; }
+.item-head.compact .minecraft-tooltip { padding-top:4px; padding-bottom:5px; }
+.item-head.compact .tooltip-header { line-height:1.15; }
+.item-head.compact .tooltip-debug { line-height:12px; }
+.item-head.compact .tooltip-text { margin-top:0; }
+.item-head.compact .tooltip-text .minecraft-line { min-height:1.15em; }
+.item-head.compact .tooltip-mod { margin-top:1px; line-height:1.1; }
 .eyebrow { margin:0 0 8px; color:#a5aaaf; font:14px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342C34; }
 h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-spacing:.3px; text-shadow:2px 2px #342C34; }
 .minecraft-tooltip { width:100%; max-height:min(52vh,560px); overflow-y:auto; padding:6px 12px 8px; border:2px solid #100010; border-radius:2px; background:#100010; box-shadow:inset 0 0 0 2px #4300d650,0 7px 20px #0005; font:400 16px/1.42 Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342c34; scrollbar-color:#51455b #100010; }
@@ -102,6 +108,14 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .special-fallback { line-height:1; }
 .special-tab-count { position:absolute; right:4px; top:3px; padding:2px 5px; border-radius:8px; background:#383b40; color:#d8dbde; font-size:9px; }
 .machine-fallback { line-height:1; }
+.pane-toolbar { max-width:1020px; margin:0 auto 14px; display:grid; grid-template-columns:minmax(0,1fr) auto; align-items:start; gap:12px; }
+.pane-toolbar .recipe-search-block { max-width:none; margin:0; min-width:0; }
+.export-actions { max-width:none; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:7px; margin:0; }
+.export-actions button { min-height:38px; padding:0 12px; border:1px solid #50555a; border-radius:7px; background:#292c30; color:#d2d5d8; font-size:11px; font-weight:700; cursor:pointer; }
+.export-actions button:hover { border-color:#7b8187; background:#34383d; }
+.export-actions button:disabled { opacity:.45; cursor:not-allowed; }
+.export-actions button:first-child { background:#35393d; }
+.export-error { flex:1 0 100%; max-width:100%; margin:0; color:#d0aeb2; font-size:11px; text-align:right; }
 .recipe-search-block { max-width:1020px; margin:0 auto 14px; }
 .recipe-search-wrap { height:44px; display:flex; align-items:center; gap:9px; padding:0 10px; border:1px solid #45494e; border-radius:8px; background:#121315; box-shadow:inset 0 1px 5px #0005; }
 .recipe-search-wrap:focus-within { border-color:#8c9298; box-shadow:0 0 0 2px #aab0b622; }
@@ -121,6 +135,14 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .recipe-pagination button { min-height:46px; border:1px solid #50555a; border-radius:8px; background:#292c30; color:#d2d5d8; font-weight:700; cursor:pointer; }
 .recipe-pagination button:disabled { opacity:.4; cursor:default; }
 .recipe-pagination span { color:#92979c; font-size:12px; text-align:center; white-space:nowrap; }
+.export-scrim { position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }
+.export-dialog { position:relative; width:min(460px,100%); padding:28px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }
+.export-dialog h2 { margin:0 46px 10px 0; color:#f0f1f2; font:21px/1.25 Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
+.export-dialog>p:not(.eyebrow) { margin:0; color:#a5aaaf; font-size:13px; line-height:1.5; }
+.export-close { position:absolute; right:10px; top:10px; width:44px; height:44px; border:0; background:none; color:#aeb3b8; font-size:25px; cursor:pointer; }
+.export-choice-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; }
+.export-choice-actions button { flex:1; min-height:44px; padding:0 12px; border:1px solid #5a5f65; border-radius:7px; background:#363a3f; color:#e1e4e7; font-size:12px; font-weight:700; cursor:pointer; }
+.export-choice-actions button.primary { background:#d1d4d7; border-color:#d1d4d7; color:#17191b; }
 @media (max-width:800px) {
   .header-links { display:none; }
   main { display:block;overflow:hidden; }.app-shell { height:100dvh; } aside { height:100%;border:0; }.sidebar-resizer { display:none; }.detail { display:none;height:100%;padding:12px 14px 60px; }.detail.mobile-visible { display:block; }.mobile-hidden { display:none; }
@@ -140,6 +162,8 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
   .back { display:flex; }.item-head { gap:12px; }.item-overview { width:calc(100% - 100px); }.minecraft-tooltip { max-height:none; padding:6px 10px 8px; font-size:15px; }.tooltip-header { font-size:17px; }.tooltip-debug { font-size:10px; }
   .view-tabs { margin-top:20px;position:sticky;top:-12px;z-index:3;background:#191b1e; }.type-row { position:sticky;top:35px;z-index:3;background:#191b1e;padding:10px 0;margin:0 auto 8px; }
   .type-row button.machine-tab,.type-row button.special-tab { width:86px; height:74px; flex-basis:86px; }
+  .pane-toolbar { display:block; }
+  .pane-toolbar .export-actions { margin-top:8px; justify-content:flex-start; }
   .recipe-list { grid-template-columns:1fr; }.recipe-list article { max-width:600px;width:100%;margin:auto; }
   .no-recipes,.recipe-loading { padding:42px 12px; }
   .recipe-loading.partial { padding:16px 12px; }
