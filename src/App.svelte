@@ -12,7 +12,11 @@
   import { clearIconSheetCache } from './lib/iconCache';
   import { createSpecialContextEntry } from './lib/specialContext';
   import {
+    catalogSearchFromUrl,
+    catalogSearchUrl,
     itemListUrl,
+    recipeFilterFromUrl,
+    recipeFilterUrl,
     recipeViewFromUrl,
     recipeViewUrlValue,
     specialNavigationFromUrl,
@@ -32,6 +36,8 @@
   let loadTargetVersion = $state<string>();
   let loadPreserveSelection = $state(false);
   let query = $state('');
+  let recipeQuery = $state('');
+  let navigationUrlReady = $state(false);
   let selectedId = $state('');
   let mode = $state<RecipeView>('recipes');
   let specialType = $state('');
@@ -69,6 +75,21 @@
       )
       : selected
   );
+
+  $effect(() => {
+    if (!navigationUrlReady) return;
+    const url = catalogSearchUrl(location.href, query);
+    if (url.search === location.search) return;
+    history.replaceState({ id: selectedId }, '', url);
+  });
+
+  $effect(() => {
+    if (!navigationUrlReady) return;
+    const url = recipeFilterUrl(location.href, recipeQuery);
+    if (url.search === location.search) return;
+    history.replaceState({ id: selectedId }, '', url);
+  });
+
   const datasetManager = new DatasetManagerState({
     getRepository: () => repository,
     validateRepository,
@@ -83,6 +104,7 @@
     selectedId = id;
     specialType = '';
     specialScope = 'item';
+    if (push) recipeQuery = '';
     detailsOpen = true;
     if (push) {
       const url = new URL(location.href);
@@ -90,6 +112,7 @@
       url.searchParams.set('view', recipeViewUrlValue(mode));
       url.searchParams.delete('special');
       url.searchParams.delete('special-scope');
+      url.searchParams.delete('recipe-filter');
       history.pushState({ id }, '', url);
     }
   }
@@ -98,24 +121,35 @@
     mode = next;
     specialType = '';
     specialScope = 'item';
+    recipeQuery = '';
     const url = new URL(location.href);
     url.searchParams.set('view', recipeViewUrlValue(mode));
     url.searchParams.delete('special');
     url.searchParams.delete('special-scope');
+    url.searchParams.delete('recipe-filter');
     history.replaceState({ id: selectedId }, '', url);
   }
 
   function setSpecialNavigation(nextType: string, nextScope: SpecialScope) {
     specialType = nextType;
     specialScope = nextType ? nextScope : 'item';
+    recipeQuery = '';
     const url = specialNavigationUrl(location.href, specialType, specialScope);
+    url.searchParams.delete('recipe-filter');
     history.replaceState({ id: selectedId }, '', url);
+  }
+
+  function setRecipeQuery(nextQuery: string) {
+    if (navigationUrlReady) recipeQuery = nextQuery;
   }
 
   function showItemList(clearSearch = false) {
     detailsOpen = false;
-    if (clearSearch) query = '';
-    history.replaceState({ route: 'items' }, '', itemListUrl(location.href));
+    const nextQuery = clearSearch ? '' : query;
+    if (clearSearch) query = nextQuery;
+    recipeQuery = '';
+    const url = catalogSearchUrl(itemListUrl(location.href), nextQuery);
+    history.replaceState({ route: 'items' }, '', url);
   }
 
   function diagnostic(error: unknown): string {
@@ -173,10 +207,12 @@
     const url = new URL(location.href);
     url.searchParams.set('version', loaded.datasetId);
     if (!detailsOpen) {
+      recipeQuery = '';
       url.searchParams.delete('item');
       url.searchParams.delete('view');
       url.searchParams.delete('special');
       url.searchParams.delete('special-scope');
+      url.searchParams.delete('recipe-filter');
     } else {
       url.searchParams.set('item', selectedId);
       url.searchParams.set('view', recipeViewUrlValue(mode));
@@ -232,6 +268,9 @@
 
   onMount(() => {
     const params = new URLSearchParams(location.search);
+    query = catalogSearchFromUrl(params);
+    recipeQuery = recipeFilterFromUrl(params);
+    navigationUrlReady = true;
     mode = recipeViewFromUrl(params.get('view'));
     const linkedSpecial = specialNavigationFromUrl(params);
     specialType = linkedSpecial.specialType;
@@ -239,6 +278,8 @@
     const handlePopState = () => {
       const currentParams = new URLSearchParams(location.search);
       const id = currentParams.get('item');
+      query = catalogSearchFromUrl(currentParams);
+      recipeQuery = recipeFilterFromUrl(currentParams);
       const linkedView = recipeViewFromUrl(currentParams.get('view'));
       const currentSpecial = specialNavigationFromUrl(currentParams);
       if (id && entryById.has(id)) {
@@ -249,6 +290,7 @@
         detailsOpen = false;
         specialType = '';
         specialScope = 'item';
+        recipeQuery = '';
       }
     };
     const handleShortcut = (event: KeyboardEvent) => {
@@ -334,9 +376,11 @@
         {repository}
         {selected}
         {mode}
+        {recipeQuery}
         {specialType}
         {specialScope}
         active={detailsOpen}
+        setRecipeQuery={setRecipeQuery}
         {setMode}
         setSpecialNavigation={setSpecialNavigation}
         navigate={(id, view) => select(id, true, view)}

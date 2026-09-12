@@ -5,12 +5,53 @@ export interface SpecialNavigation {
   specialScope: SpecialScope;
 }
 
+export function catalogSearchFromUrl(
+  currentUrl: string | URL | URLSearchParams
+): string {
+  const params = currentUrl instanceof URLSearchParams
+    ? currentUrl
+    : new URL(currentUrl).searchParams;
+  return params.get('search') ?? '';
+}
+
+export function catalogSearchUrl(
+  currentUrl: string | URL,
+  query: string
+): URL {
+  const url = new URL(currentUrl);
+  const normalizedQuery = query.trim();
+  if (normalizedQuery) url.searchParams.set('search', normalizedQuery);
+  else url.searchParams.delete('search');
+  return url;
+}
+
+export function recipeFilterFromUrl(
+  currentUrl: string | URL | URLSearchParams
+): string {
+  const params = currentUrl instanceof URLSearchParams
+    ? currentUrl
+    : new URL(currentUrl).searchParams;
+  return params.get('recipe-filter') ?? '';
+}
+
+export function recipeFilterUrl(
+  currentUrl: string | URL,
+  query: string
+): URL {
+  const url = new URL(currentUrl);
+  const normalizedQuery = query.trim();
+  if (normalizedQuery) url.searchParams.set('recipe-filter', normalizedQuery);
+  else url.searchParams.delete('recipe-filter');
+  return url;
+}
+
 export function itemListUrl(currentUrl: string | URL): URL {
   const url = new URL(currentUrl);
   url.searchParams.delete('item');
   url.searchParams.delete('view');
   url.searchParams.delete('special');
   url.searchParams.delete('special-scope');
+  url.searchParams.delete('recipe-filter');
   return url;
 }
 

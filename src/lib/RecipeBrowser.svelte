@@ -22,6 +22,8 @@
     specialType,
     specialScope,
     active,
+    recipeQuery,
+    setRecipeQuery,
     setMode,
     setSpecialNavigation,
     navigate
@@ -32,6 +34,8 @@
     specialType: string;
     specialScope: SpecialScope;
     active: boolean;
+    recipeQuery: string;
+    setRecipeQuery: (query: string) => void;
     setMode: (view: RecipeView) => void;
     setSpecialNavigation: (specialType: string, specialScope: SpecialScope) => void;
     navigate: (id: string, view: RecipeView) => void;
@@ -45,6 +49,16 @@
     specialType: () => specialType,
     specialScope: () => specialScope,
     onSpecialNavigation: (nextType, nextScope) => setSpecialNavigation(nextType, nextScope)
+  });
+
+  function updateRecipeQuery(nextQuery: string) {
+    browserState.recipeQuery = nextQuery;
+    setRecipeQuery(nextQuery);
+  }
+
+  $effect(() => {
+    const nextQuery = recipeQuery;
+    if (nextQuery !== browserState.recipeQuery) browserState.recipeQuery = nextQuery;
   });
   const entryById = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
   const related = $derived(browserState.related);
@@ -331,12 +345,13 @@
         <path d="m15.5 15.5 4 4"></path>
       </svg>
       <input
-        bind:value={browserState.recipeQuery}
+        value={browserState.recipeQuery}
+        oninput={(event) => updateRecipeQuery((event.currentTarget as HTMLInputElement).value)}
         placeholder={`Filter ${modeLabel} by item, mod, or metadata…`}
         aria-label={`Filter ${modeLabel}`}
       />
       {#if browserState.recipeQuery}
-        <button onclick={() => browserState.recipeQuery = ''} aria-label="Clear recipe filter">
+        <button onclick={() => updateRecipeQuery('')} aria-label="Clear recipe filter">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <path d="m7 7 10 10M17 7 7 17"></path>
           </svg>

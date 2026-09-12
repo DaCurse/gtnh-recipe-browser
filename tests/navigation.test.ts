@@ -1,19 +1,68 @@
 import { describe, expect, it } from 'vitest';
 import {
+  catalogSearchFromUrl,
+  catalogSearchUrl,
   itemListUrl,
+  recipeFilterFromUrl,
+  recipeFilterUrl,
   recipeViewFromUrl,
   recipeViewUrlValue,
   specialNavigationFromUrl,
   specialNavigationUrl
 } from '../src/lib/navigation';
 
+describe('catalog search navigation', () => {
+  it('round-trips the sidebar filter through the shareable search parameter', () => {
+    const url = catalogSearchUrl(
+      'https://example.test/browser/?item=i%3Atest&view=recipes',
+      'iron @gregtech'
+    );
+
+    expect(url.searchParams.get('search')).toBe('iron @gregtech');
+    expect(catalogSearchFromUrl(url)).toBe('iron @gregtech');
+  });
+
+  it('removes the sidebar filter when it is cleared', () => {
+    const url = catalogSearchUrl(
+      'https://example.test/browser/?search=iron&version=2.9.0',
+      '  '
+    );
+
+    expect(url.searchParams.has('search')).toBe(false);
+    expect(catalogSearchFromUrl(url)).toBe('');
+  });
+});
+
+describe('recipe filter navigation', () => {
+  it('round-trips the local active-tab filter independently of catalog search', () => {
+    const url = recipeFilterUrl(
+      'https://example.test/browser/?search=iron&item=i%3Atest&view=recipes',
+      'dust @gregtech'
+    );
+
+    expect(url.searchParams.get('search')).toBe('iron');
+    expect(url.searchParams.get('recipe-filter')).toBe('dust @gregtech');
+    expect(recipeFilterFromUrl(url)).toBe('dust @gregtech');
+  });
+
+  it('removes the local filter without removing the catalog search', () => {
+    const url = recipeFilterUrl(
+      'https://example.test/browser/?search=iron&recipe-filter=dust',
+      ' '
+    );
+
+    expect(url.searchParams.has('recipe-filter')).toBe(false);
+    expect(url.searchParams.get('search')).toBe('iron');
+  });
+});
+
 describe('item-list navigation', () => {
   it('removes item selection without discarding unrelated query state', () => {
     const url = itemListUrl(
-      'https://example.test/browser/?item=i%3Agregtech%3Aafsu&view=recipes&version=2.8.0#catalog'
+      'https://example.test/browser/?item=i%3Agregtech%3Aafsu&view=recipes&search=iron&recipe-filter=dust&version=2.8.0#catalog'
     );
 
-    expect(url.href).toBe('https://example.test/browser/?version=2.8.0#catalog');
+    expect(url.href).toBe('https://example.test/browser/?search=iron&version=2.8.0#catalog');
   });
 
   it('is stable when the item list is already open', () => {
