@@ -49,7 +49,7 @@ import {
   cachedAssetSizes,
   getDataset,
   listDatasets,
-  migrateLegacyDatasetStates,
+  migrateObsoleteDatasetStates,
   recordDatasetAsset,
   saveDataset
 } from './storage';
@@ -67,7 +67,6 @@ import type { SpecialRecord, SpecialViewType } from './specialData';
 import {
   CURRENT_DATASET_CACHE_VERSION,
   isLegacyDatasetState,
-  legacyDatasetStatesFor,
   preferredDatasetId,
   replacementDatasetActive
 } from './datasetVersions';
@@ -727,7 +726,13 @@ export class DatasetRepository {
     }
     if (manifest.datasetId !== selected.datasetId) throw new Error('Manifest dataset identity mismatch');
     const legacyStates = installed.filter(isLegacyDatasetState);
-    const sameVersionLegacyStates = legacyDatasetStatesFor(installed, manifest.gtnhVersion);
+    const sameVersionStates = installed.filter((state) =>
+      state.gtnhVersion === manifest.gtnhVersion && state.datasetId !== manifest.datasetId
+    );
+    const obsoleteStates = [...new Map(
+      [...sameVersionStates, ...legacyStates]
+        .map((state) => [state.datasetId, state] as const)
+    ).values()];
     report(12, 'Loading catalog');
     const loadedCatalog = await loadCatalog(
       manifest,
@@ -774,13 +779,13 @@ export class DatasetRepository {
           : 'catalog',
       storedBytes,
       totalBytes: repository.offlineBytes,
-      active: replacementDatasetActive(previous ?? undefined, sameVersionLegacyStates, installed),
+      active: replacementDatasetActive(previous ?? undefined, sameVersionStates, installed),
       assetHashes: [...assetHashes],
       updatedAt: Date.now()
     });
-    if (legacyStates.length > 0) {
+    if (obsoleteStates.length > 0) {
       report(97, 'Migrating cached dataset bookkeeping');
-      await migrateLegacyDatasetStates(manifest.datasetId, legacyStates);
+      await migrateObsoleteDatasetStates(manifest.datasetId, obsoleteStates);
     }
     report(100, 'Catalog ready');
     return repository;

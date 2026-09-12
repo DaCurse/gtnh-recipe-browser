@@ -62,7 +62,7 @@ npm run export:process -- \
   --session .export-work/2.9.0-beta-3-direct/export-session.json \
   --work-dir .export-work/2.9.0-beta-3-direct \
   --layout tools/pack-builder/layouts/2.9.0.json \
-  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-r<revision>
+  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-v6-r<revision>
 ```
 
 The reuse list is applied identically to both deterministic builds. The source exporter remains format5; `--reuse-packs`
@@ -72,7 +72,9 @@ The canonical pack directory contains only `pack-manifest.json` and its local
 `assets/sha256/` object source. Run provenance stays beside the pack in the
 ignored work directory and is not part of the browser dataset. Publishing
 accepts only format 6, copies only the manifest into the dataset directory, and
-places immutable physical objects in the global SHA-256 store.
+places immutable physical objects in the global SHA-256 store. Generated
+dataset IDs include `v6`; the publisher rejects replacing a different manifest
+at an existing immutable dataset URL.
 
 Stage the immutable format-6 manifest and its physical objects first:
 

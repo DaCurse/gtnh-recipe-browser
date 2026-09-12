@@ -274,13 +274,13 @@ async function removeUnreferencedAssets(candidateHashes?: readonly string[]): Pr
  * retain its shared blobs. Other obsolete rows are removed, while hashes
  * owned by any current-format dataset remain referenced and cannot be pruned.
  */
-export async function migrateLegacyDatasetStates(
+export async function migrateObsoleteDatasetStates(
   replacementDatasetId: string,
-  legacyStates: readonly Pick<DatasetState, 'datasetId' | 'assetHashes'>[]
+  obsoleteStates: readonly Pick<DatasetState, 'datasetId' | 'assetHashes'>[]
 ): Promise<void> {
-  if (legacyStates.length === 0) return;
-  for (const legacy of legacyStates) {
-    if (legacy.datasetId !== replacementDatasetId) await removeDataset(legacy.datasetId);
+  if (obsoleteStates.length === 0) return;
+  for (const obsolete of obsoleteStates) {
+    if (obsolete.datasetId !== replacementDatasetId) await removeDataset(obsolete.datasetId);
   }
   // The app-specific object store may also contain blobs written by versions
   // whose old rows predate assetHashes bookkeeping. Once the replacement row

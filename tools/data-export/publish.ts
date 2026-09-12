@@ -11,6 +11,7 @@ import {
 import {
   argumentsMap,
   assertPathMissing,
+  assertImmutableManifestBytes,
   unreferencedSharedObjectNames,
   requiredArgument,
   withPublishedVersion,
@@ -25,9 +26,8 @@ const replaceExisting = args.get('replace') === 'true';
 if (mode !== 'stage' && mode !== 'activate' && mode !== 'publish') {
   throw new Error(`Unsupported publish mode ${mode}; expected stage, activate, or publish`);
 }
-const manifest = JSON.parse(
-  await readFile(join(packDirectory, 'pack-manifest.json'), 'utf8')
-) as GeneratedPackManifest;
+const sourceManifestBytes = await readFile(join(packDirectory, 'pack-manifest.json'));
+const manifest = JSON.parse(sourceManifestBytes.toString('utf8')) as GeneratedPackManifest;
 if (manifest.formatVersion !== 6) {
   throw new Error(`Unsupported generated pack format ${manifest.formatVersion}; only format 6 is publishable`);
 }
@@ -36,6 +36,7 @@ await verifyPack({ packDirectory });
 const publicData = join(repositoryRoot, 'public/data');
 const destination = join(publicData, manifest.datasetId);
 const globalAssets = join(repositoryRoot, 'public/assets/sha256');
+const versionsPath = join(repositoryRoot, 'public/versions.json');
 
 function assetFilename(asset: { url: string }): string {
   return basename(new URL(asset.url, 'https://publisher.invalid/').pathname);
@@ -99,6 +100,25 @@ async function pathExists(path: string): Promise<boolean> {
     if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false;
     throw error;
   }
+}
+
+/**
+ * A dataset ID is part of an immutable manifest URL. Replacing a different
+ * manifest at the same path would leave installed browsers with an
+ * unresolvable cache collision, especially across pack-format migrations.
+ */
+async function assertImmutableDestination(): Promise<void> {
+  const existingManifestPath = join(destination, 'pack-manifest.json');
+  let existingManifestBytes: Buffer;
+  try {
+    existingManifestBytes = await readFile(existingManifestPath);
+  } catch (error) {
+    throw new Error(
+      `Cannot replace dataset ${manifest.datasetId}: its immutable destination has no readable manifest`,
+      { cause: error }
+    );
+  }
+  assertImmutableManifestBytes(existingManifestBytes, sourceManifestBytes, manifest.datasetId);
 }
 
 function prefixLayoutFromManifest(
@@ -183,6 +203,7 @@ if (mode === 'stage' || mode === 'publish') {
     if (!replaceExisting) {
       await assertPathMissing(destination, 'Published dataset');
     }
+    await assertImmutableDestination();
     previousDirectory = join(publicData, `.${manifest.datasetId}.previous-${process.pid}`);
     await assertPathMissing(previousDirectory, 'Previous published dataset backup');
     await rename(destination, previousDirectory);
@@ -223,7 +244,6 @@ if (mode === 'stage') {
   process.exit(0);
 }
 
-const versionsPath = join(repositoryRoot, 'public/versions.json');
 const versions = JSON.parse(await readFile(versionsPath, 'utf8')) as VersionsIndex;
 const replacedDatasetIds = mode === 'activate'
   ? versions.versions

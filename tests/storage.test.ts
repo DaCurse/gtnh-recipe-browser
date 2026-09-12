@@ -9,7 +9,7 @@ import {
   getDataset,
   getCachedAsset,
   listDatasets,
-  migrateLegacyDatasetStates,
+  migrateObsoleteDatasetStates,
   removeDataset,
   recordDatasetAsset,
   removeCachedAsset,
@@ -205,11 +205,12 @@ describe('IndexedDB dataset lifecycle', () => {
     expect((await cachedAssetSizes()).has(firstHash)).toBe(false);
   });
 
-  it('prunes every old-format row after replacement while retaining current shared blobs', async () => {
+  it('prunes obsolete rows after replacement while retaining current shared blobs', async () => {
     await cacheAsset('migration-only', new Uint8Array([1]));
     await cacheAsset('migration-shared', new Uint8Array([2]));
     await cacheAsset('other-legacy-only', new Uint8Array([3]));
     await cacheAsset('current-only', new Uint8Array([4]));
+    await cacheAsset('same-version-only', new Uint8Array([6]));
     await cacheAsset('untracked-old-object', new Uint8Array([5]));
     await saveDataset(dataset('migration-version', false, ['migration-only', 'migration-shared']));
     const otherLegacy = dataset('other-legacy-version', true, ['other-legacy-only', 'migration-shared']);
@@ -223,10 +224,17 @@ describe('IndexedDB dataset lifecycle', () => {
       ...dataset('migration-version', false, ['migration-shared']),
       cacheVersion: CURRENT_DATASET_CACHE_VERSION
     });
+    const sameVersionObsolete = {
+      ...dataset('same-version-obsolete', false, ['same-version-only']),
+      gtnhVersion: 'migration-version',
+      cacheVersion: CURRENT_DATASET_CACHE_VERSION
+    };
+    await saveDataset(sameVersionObsolete);
 
-    await migrateLegacyDatasetStates('migration-version', [
+    await migrateObsoleteDatasetStates('migration-version', [
       dataset('migration-version', false, ['migration-only', 'migration-shared']),
-      otherLegacy
+      otherLegacy,
+      sameVersionObsolete
     ]);
 
     expect(await getDataset('migration-version')).toMatchObject({
@@ -234,9 +242,11 @@ describe('IndexedDB dataset lifecycle', () => {
       assetHashes: ['migration-shared']
     });
     expect(await getDataset('other-legacy-version')).toBeNull();
+    expect(await getDataset('same-version-obsolete')).toBeNull();
     expect(await getDataset('current-version')).not.toBeNull();
     expect(await getCachedAsset('migration-only')).toBeNull();
     expect(await getCachedAsset('other-legacy-only')).toBeNull();
+    expect(await getCachedAsset('same-version-only')).toBeNull();
     expect(await getCachedAsset('untracked-old-object')).toBeNull();
     expect(await getCachedAsset('migration-shared')).toEqual(new Uint8Array([2]));
     expect(await getCachedAsset('current-only')).toEqual(new Uint8Array([4]));

@@ -3,29 +3,29 @@
   "generatedAt": "2026-09-12T03:58:08.449Z",
   "versions": [
     {
-      "datasetId": "2.9.0-beta-3-rcb4153c995d9",
+      "datasetId": "2.9.0-beta-3-v6-rd5d4ec826817",
       "gtnhVersion": "2.9.0-beta-3",
       "revision": "d5d4ec826817",
       "publishedAt": "2026-09-12T03:58:08.449Z",
-      "packManifestUrl": "./data/2.9.0-beta-3-rcb4153c995d9/pack-manifest.json",
+      "packManifestUrl": "./data/2.9.0-beta-3-v6-rd5d4ec826817/pack-manifest.json",
       "catalogBytes": 26843858,
       "offlineBytes": 80874793
     },
     {
-      "datasetId": "2.9.0-beta-2-r2e44dca28916",
+      "datasetId": "2.9.0-beta-2-v6-rfd81b2eed8b0",
       "gtnhVersion": "2.9.0-beta-2",
       "revision": "fd81b2eed8b0",
       "publishedAt": "2026-09-12T03:57:49.378Z",
-      "packManifestUrl": "./data/2.9.0-beta-2-r2e44dca28916/pack-manifest.json",
+      "packManifestUrl": "./data/2.9.0-beta-2-v6-rfd81b2eed8b0/pack-manifest.json",
       "catalogBytes": 18650403,
       "offlineBytes": 69364889
     },
     {
-      "datasetId": "2.8.0-r6d351536",
+      "datasetId": "2.8.0-v6-r6d351536",
       "gtnhVersion": "2.8.0",
       "revision": "6d351536",
       "publishedAt": "2026-09-12T03:57:58.120Z",
-      "packManifestUrl": "./data/2.8.0-r6d351536/pack-manifest.json",
+      "packManifestUrl": "./data/2.8.0-v6-r6d351536/pack-manifest.json",
       "catalogBytes": 6439775,
       "offlineBytes": 32848222
     }

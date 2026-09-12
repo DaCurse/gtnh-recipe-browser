@@ -103,7 +103,7 @@ npm run export:process -- \
   --session .export-work/2.9.0-beta-3-direct/export-session.json \
   --work-dir .export-work/2.9.0-beta-3-direct \
   --layout tools/pack-builder/layouts/2.9.0.json \
-  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-r<revision>
+  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-v6-r<revision>
 ```
 
 Do not include the output directory in its own reuse list. Reuse preserves page-level physical bytes while each

@@ -146,6 +146,19 @@ export async function assertPathMissing(path: string, label: string): Promise<vo
   }
 }
 
+/** Immutable dataset URLs may be retried only with byte-identical manifests. */
+export function assertImmutableManifestBytes(
+  existing: Uint8Array,
+  incoming: Uint8Array,
+  datasetId: string
+): void {
+  if (existing.length !== incoming.length || existing.some((byte, index) => byte !== incoming[index])) {
+    throw new Error(
+      `Dataset ${datasetId} already has different immutable manifest bytes; publish a new dataset ID`
+    );
+  }
+}
+
 export async function readExportSession(path: string): Promise<ExportSession> {
   const session = JSON.parse(await readFile(path, 'utf8')) as ExportSession;
   if (session.schemaVersion !== 1) throw new Error(`Unsupported export session ${session.schemaVersion}`);

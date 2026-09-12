@@ -66,11 +66,11 @@ npm run pack -- \
   --atlas tests/fixtures/shadowtheage-v5-2.8.0/atlas.webp \
   --gtnh-version 2.8.0 \
   --revision 6d351536 \
-  --output .pack-output/2.8.0-r6d351536 \
+  --output .pack-output/2.8.0-v6-r6d351536 \
   --layout tools/pack-builder/layouts/2.9.0.json
 
 npm run verify-pack -- \
-  --pack .pack-output/2.8.0-r6d351536 \
+  --pack .pack-output/2.8.0-v6-r6d351536 \
   --atlas tests/fixtures/shadowtheage-v5-2.8.0/atlas.webp
 ```
 
@@ -84,10 +84,13 @@ build-time reuse, not a runtime dependency on another version. Storage accountin
 can be reproduced with `npm run analyze:storage -- <pack-a> <pack-b>`.
 
 `tests/fixtures/shadowtheage-v5-2.8.0/` is the pinned, network-independent compatibility source for decoder and
-recipe-parity tests. The current automated release is
-`public/data/2.9.0-beta-2-r2e44dca28916/` and
-`public/data/2.9.0-beta-3-rcb4153c995d9/`; the immutable 2.8.0 pack remains
+recipe-parity tests. The current format-6 release is indexed by
+`public/versions.json`: `public/data/2.9.0-beta-2-v6-rfd81b2eed8b0/` and
+`public/data/2.9.0-beta-3-v6-rd5d4ec826817/`; the immutable 2.8.0 pack remains
 available as a benchmark and historical version.
+
+Dataset URLs include the pack format, and the publisher never replaces an immutable dataset URL with bytes from
+another pack format. Existing browsers migrate their cached old-format rows after the new shell loads successfully.
 
 ## Assets and attribution
 

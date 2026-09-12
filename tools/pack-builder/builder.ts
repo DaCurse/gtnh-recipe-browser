@@ -944,7 +944,11 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   const effectiveRevision = specialDataBytes
     ? createHash('sha256').update(options.revision).update('\0').update(specialDataBytes).digest('hex').slice(0, 12)
     : options.revision;
-  const datasetId = options.datasetId ?? `${sanitize(options.gtnhVersion)}-r${sanitize(effectiveRevision)}`;
+  // Dataset URLs are immutable. Keep the browser-pack format in the generated
+  // identity so a format migration cannot reuse an older manifest URL that a
+  // browser or CDN has cached as immutable.
+  const datasetId = options.datasetId
+    ?? `${sanitize(options.gtnhVersion)}-v6-r${sanitize(effectiveRevision)}`;
   const displayName = options.displayName ?? `GTNH ${options.gtnhVersion} (revision ${effectiveRevision})`;
   // The published manifest lives at public/data/<dataset>/pack-manifest.json,
   // so ../../assets/sha256 is the immutable global object store.  The local

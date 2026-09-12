@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   argumentsMap,
+  assertImmutableManifestBytes,
   auditRenderedItemPaths,
   combinedRevision,
   referencedSharedObjectHashes,
@@ -36,6 +37,16 @@ describe('data export tooling', () => {
   it('parses paired CLI arguments and rejects incomplete input', () => {
     expect(argumentsMap(['--version', '2.9.0-beta-2']).get('version')).toBe('2.9.0-beta-2');
     expect(() => argumentsMap(['--version'])).toThrow(/Invalid argument/);
+  });
+
+  it('rejects changing bytes behind an immutable dataset URL', () => {
+    const original = new TextEncoder().encode('{"formatVersion":4}');
+    const identical = new TextEncoder().encode('{"formatVersion":4}');
+    const changed = new TextEncoder().encode('{"formatVersion":6}');
+
+    expect(() => assertImmutableManifestBytes(original, identical, 'dataset')).not.toThrow();
+    expect(() => assertImmutableManifestBytes(original, changed, 'dataset'))
+      .toThrow(/publish a new dataset ID/);
   });
 
   it('derives a stable revision from both processed source assets', () => {
@@ -231,6 +242,21 @@ describe('data export tooling', () => {
 
     expect(withPublishedVersion(existing, latest, 'now').versions.map((entry) => entry.datasetId))
       .toEqual(['2.9.0-beta-2-r2', '2.8.0-r1']);
+  });
+
+  it('keeps the current format index on format-safe immutable dataset URLs', async () => {
+    const index = JSON.parse(await readFile(join(process.cwd(), 'public/versions.json'), 'utf8')) as VersionsIndex;
+    expect(index.versions.length).toBeGreaterThan(0);
+    for (const version of index.versions) {
+      expect(version.datasetId).toContain('-v6-');
+      expect(version.packManifestUrl).toBe(`./data/${version.datasetId}/pack-manifest.json`);
+      const manifest = JSON.parse(await readFile(
+        join(process.cwd(), 'public', version.packManifestUrl.slice(2)),
+        'utf8'
+      )) as { datasetId?: string; formatVersion?: number };
+      expect(manifest).toMatchObject({ datasetId: version.datasetId, formatVersion: 6 });
+    }
+
   });
 
   it('replaces the previous revision for the same GTNH version', () => {

@@ -105,13 +105,16 @@ both manifests during later deletion and lets an offline install skip them in
 one indexed lookup rather than probing every descriptor separately.
 
 The first format-6 load also performs the one-time browser migration from all
-older dataset bookkeeping rows. It keeps cached blobs whose hashes are
+older dataset bookkeeping rows, including a prior row for the same semantic
+GTNH version under an old immutable dataset ID. It keeps cached blobs whose hashes are
 referenced by any current manifest, removes obsolete decoded catalog snapshots,
 marks the selected row with the current cache format, and removes every legacy
 row and unreferenced blob. Detection uses the cache marker rather than
 beta-specific IDs or old manifest format numbers, so the migration remains
 generic for prior and future revisions. The new manifest is still downloaded
 and validated in full; this is cache migration, not a delta-chain dependency.
+New format-6 dataset IDs include `v6`, and the publisher rejects changing
+manifest bytes behind an existing immutable URL.
 
 Special records are semantic data, not exported screenshots. In particular, the
 GT ore-processing view lays out typed nodes and edges in the browser. Its layout

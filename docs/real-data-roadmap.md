@@ -22,12 +22,14 @@ submodules are read-only; all browser-specific retention, special-data, and rele
 
 ## Current release
 
-The active 2.9.0 beta datasets are `2.9.0-beta-3-rcb4153c995d9` and
-`2.9.0-beta-2-r2e44dca28916`, built with canonical format 6 and the shared
+The active 2.9.0 beta datasets are `2.9.0-beta-3-v6-rd5d4ec826817` and
+`2.9.0-beta-2-v6-rfd81b2eed8b0`, built with canonical format 6 and the shared
 layout. Beta 2 has 285,691 recipes, 104,729 goods, 1,948 special records, and
 914 manifest assets; beta 3 has 286,455 recipes, 105,099 goods, 1,949 special
 records, and 916 manifest assets. The 2.8.0 benchmark is also migrated to
-format 6 with 190,080 recipes, 42,640 goods, and 868 manifest assets.
+format 6 as `2.8.0-v6-r6d351536`, with 190,080 recipes, 42,640 goods, and 868
+manifest assets. Dataset URLs include the pack format so immutable URLs are
+never reused across format migrations.
 
 ## Future profiles
 

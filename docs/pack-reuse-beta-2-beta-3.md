@@ -1,7 +1,7 @@
 # Beta 2 / beta 3 shared-pack analysis
 
 This is the measured format-6 design review for the local direct exports
-`2.9.0-beta-2-r2e44dca28916` and `2.9.0-beta-3-rcb4153c995d9`. The figures come
+`2.9.0-beta-2-v6-rfd81b2eed8b0` and `2.9.0-beta-3-v6-rd5d4ec826817`. The figures come
 from `tools/pack-analysis/compare-packs.ts` and the final generated packs.
 Bytes are compressed payload bytes unless stated otherwise.
 
@@ -152,8 +152,9 @@ display name) and maps stable logical shard IDs to runs in immutable record
 pages by compact manifest-local page indexes. Reusable payloads do not contain
 a dataset owner. The publisher stores physical pages and sheets under
 `public/assets/sha256/<full-sha256>` and publishes each complete manifest under
-`public/data/<dataset-id>/`. Existing objects are accepted only when their
-bytes have the requested SHA.
+`public/data/<dataset-id>/`. Format 6 is included in generated dataset IDs so a
+format migration cannot reuse a cached immutable URL. Existing objects are
+accepted only when their bytes have the requested SHA.
 
 The verifier and browser replace dataset ownership checks with manifest
 membership, strong SHA verification, schema/kind/logical-ID checks, prefix and
