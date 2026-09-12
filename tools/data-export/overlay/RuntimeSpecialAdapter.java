@@ -264,8 +264,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         String meteorIconGoodsId = sink.retainItem(blockIcon(
                 "WayofTime.alchemicalWizardry.ModBlocks", "blockMasterStone", "Blood Magic master ritual stone"));
         String vendingIconGoodsId = sink.retainItem(vendingMachineIconStack());
-        String worldgenIconGoodsId = sink.retainItem(blockIcon(
-                "net.minecraft.init.Blocks", "chest", "Forge world-generation chest"));
+        String worldgenIconGoodsId = sink.retainItem(worldgenChestIconStack());
         String oreProcessingIconGoodsId = sink.retainItem(registryItemIcon(
                 "minecraft", "diamond_block", "GregTech ore-processing category"));
         sink.addServiceIcon("service:crop", "CropsNH", cropIconGoodsId);
@@ -335,6 +334,15 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         Item item = Item.getItemFromBlock((Block) value);
         if (item == null) throw new IllegalStateException(context + " has no registered item form");
         return new ItemStack(item, 1, 0);
+    }
+
+    /** Java 21's transformed Minecraft classes may omit the legacy field. */
+    private static ItemStack worldgenChestIconStack() {
+        try {
+            return blockIcon("net.minecraft.init.Blocks", "chest", "Forge world-generation chest");
+        } catch (IllegalStateException missingLegacyField) {
+            return registryItemIcon("minecraft", "chest", "Forge world-generation chest");
+        }
     }
 
     /** Resolve a vanilla/mod item through Forge's live registry when its
@@ -429,14 +437,14 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
 
     private static Map<String, String> pinnedMods() {
         Map<String, String> pins = new LinkedHashMap<>();
-        pins.put("cropsnh", "2.0.91");
-        pins.put("gregtech", "5.09.54.20");
-        pins.put("AWWayofTime", "1.9.4");
-        pins.put("enhancedlootbags", "1.3.4");
-        pins.put("vendingmachine", "0.4.95");
-        pins.put("neicustomdiagram", "1.8.30");
-        pins.put("Roguelike", "1.6.6-GTNH");
-        pins.put("TwilightForest", "2.7.36");
+        pins.put("cropsnh", System.getProperty("nesql.special.mod.cropsnh", "2.0.91"));
+        pins.put("gregtech", System.getProperty("nesql.special.mod.gregtech", "5.09.54.20"));
+        pins.put("AWWayofTime", System.getProperty("nesql.special.mod.AWWayofTime", "1.9.4"));
+        pins.put("enhancedlootbags", System.getProperty("nesql.special.mod.enhancedlootbags", "1.3.4"));
+        pins.put("vendingmachine", System.getProperty("nesql.special.mod.vendingmachine", "0.4.95"));
+        pins.put("neicustomdiagram", System.getProperty("nesql.special.mod.neicustomdiagram", "1.8.30"));
+        pins.put("Roguelike", System.getProperty("nesql.special.mod.Roguelike", "1.6.6-GTNH"));
+        pins.put("TwilightForest", System.getProperty("nesql.special.mod.TwilightForest", "2.7.36"));
         return Collections.unmodifiableMap(pins);
     }
 
@@ -1993,9 +2001,11 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         Map<String, Object> result = new LinkedHashMap<>();
         String veinName = stringOrEmpty(callOrNull(layer, "getName"));
         Object helper = null;
+        Object dimensionHelper = null;
         Object wrapper = null;
         try {
             helper = Class.forName("gtneioreplugin.util.GT5OreLayerHelper");
+            dimensionHelper = Class.forName("gtneioreplugin.util.DimensionHelper");
             wrapper = call(helper, "getVeinByName", veinName);
         } catch (Throwable error) {
             throw new IllegalStateException("GT NEI Ore Plugin could not resolve vein " + veinName
@@ -2007,7 +2017,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
         for (String dimension : dimensions) {
             Object normalDimension;
             try {
-                Object abbreviation = call(helper, "getDimAbbreviatedName", dimension);
+                Object abbreviation = call(dimensionHelper, "getDimAbbreviatedName", dimension);
                 normalDimension = call(helper, "getVeinByDim", abbreviation);
             } catch (Throwable error) {
                 throw new IllegalStateException("GT NEI Ore Plugin could not resolve dimension "

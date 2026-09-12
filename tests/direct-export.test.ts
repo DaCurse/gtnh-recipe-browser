@@ -36,7 +36,13 @@ function tinyProfile(content: string): DirectExportProfile {
     clientUrl: 'file:///unused/test-pack.zip',
     bytes: Buffer.byteLength(content),
     sha256: digest(content),
-    sourcePage: 'https://example.test/profile'
+    sourcePage: 'https://example.test/profile',
+    runtimeMods: [{
+      jarName: 'test.jar',
+      modId: 'test',
+      version: '1.0.0',
+      sourceName: 'Test'
+    }]
   };
 }
 
@@ -124,6 +130,15 @@ describe('direct export orchestration', () => {
       clientUrl: 'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip',
       bytes: 680333339,
       sha256: 'adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee'
+    });
+    expect(getDirectExportProfile('2.9.0-beta-3')).toMatchObject({
+      clientUrl: 'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-3_Java_17-26.zip',
+      bytes: 719551573,
+      sha256: 'f814cca68c7d4be529ce1247c5dcc9d665a65e7136a885b69f52175a4e0c8aed',
+      runtimeMods: expect.arrayContaining([
+        expect.objectContaining({ modId: 'gregtech', version: '5.09.54.133' }),
+        expect.objectContaining({ modId: 'cropsnh', version: '2.0.114' })
+      ])
     });
   });
 

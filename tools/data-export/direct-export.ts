@@ -37,7 +37,37 @@ export interface DirectExportProfile {
   bytes: number;
   sha256: string;
   sourcePage: string;
+  runtimeMods: readonly RuntimeModPin[];
 }
+
+interface RuntimeModPin {
+  jarName: string;
+  modId: string;
+  version: string;
+  sourceName: string;
+}
+
+const BETA_2_RUNTIME_MODS: readonly RuntimeModPin[] = [
+  { jarName: 'cropsnh-2.0.91.jar', modId: 'cropsnh', version: '2.0.91', sourceName: 'CropsNH' },
+  { jarName: 'gregtech-5.09.54.20.jar', modId: 'gregtech', version: '5.09.54.20', sourceName: 'GT5-Unofficial' },
+  { jarName: 'BloodMagic-1.9.4.jar', modId: 'AWWayofTime', version: '1.9.4', sourceName: 'BloodMagic' },
+  { jarName: 'EnhancedLootBags-1.3.4.jar', modId: 'enhancedlootbags', version: '1.3.4', sourceName: 'EnhancedLootBags' },
+  { jarName: 'vendingmachine-0.4.95.jar', modId: 'vendingmachine', version: '0.4.95', sourceName: 'VendingMachine' },
+  { jarName: 'NEICustomDiagram-1.8.30.jar', modId: 'neicustomdiagram', version: '1.8.30', sourceName: 'NEICustomDiagram' },
+  { jarName: 'roguelike-1.6.6-GTNH.jar', modId: 'Roguelike', version: '1.6.6-GTNH', sourceName: 'RoguelikeDungeons' },
+  { jarName: 'TwilightForest-2.7.36.jar', modId: 'TwilightForest', version: '2.7.36', sourceName: 'TwilightForest' }
+];
+
+const BETA_3_RUNTIME_MODS: readonly RuntimeModPin[] = [
+  { jarName: 'cropsnh-2.0.114.jar', modId: 'cropsnh', version: '2.0.114', sourceName: 'CropsNH' },
+  { jarName: 'gregtech-5.09.54.133.jar', modId: 'gregtech', version: '5.09.54.133', sourceName: 'GT5-Unofficial' },
+  { jarName: 'BloodMagic-1.9.13.jar', modId: 'AWWayofTime', version: '1.9.13', sourceName: 'BloodMagic' },
+  { jarName: 'EnhancedLootBags-1.3.4.jar', modId: 'enhancedlootbags', version: '1.3.4', sourceName: 'EnhancedLootBags' },
+  { jarName: 'vendingmachine-0.4.100.jar', modId: 'vendingmachine', version: '0.4.100', sourceName: 'VendingMachine' },
+  { jarName: 'NEICustomDiagram-1.8.34.jar', modId: 'neicustomdiagram', version: '1.8.34', sourceName: 'NEICustomDiagram' },
+  { jarName: 'roguelike-1.6.6-GTNH.jar', modId: 'Roguelike', version: '1.6.6-GTNH', sourceName: 'RoguelikeDungeons' },
+  { jarName: 'TwilightForest-2.7.40.jar', modId: 'TwilightForest', version: '2.7.40', sourceName: 'TwilightForest' }
+];
 
 export const DIRECT_EXPORT_PROFILES: Readonly<Record<string, DirectExportProfile>> = {
   '2.9.0-beta-2': {
@@ -47,7 +77,18 @@ export const DIRECT_EXPORT_PROFILES: Readonly<Record<string, DirectExportProfile
       'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip',
     bytes: 680_333_339,
     sha256: 'adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee',
-    sourcePage: 'https://www.gtnewhorizons.com/version-history/'
+    sourcePage: 'https://www.gtnewhorizons.com/version-history/',
+    runtimeMods: BETA_2_RUNTIME_MODS
+  },
+  '2.9.0-beta-3': {
+    version: '2.9.0-beta-3',
+    archiveFileName: 'GT_New_Horizons_2.9.0-beta-3_Java_17-26.zip',
+    clientUrl:
+      'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-3_Java_17-26.zip',
+    bytes: 719_551_573,
+    sha256: 'f814cca68c7d4be529ce1247c5dcc9d665a65e7136a885b69f52175a4e0c8aed',
+    sourcePage: 'https://www.gtnewhorizons.com/version-history/',
+    runtimeMods: BETA_3_RUNTIME_MODS
   }
 };
 
@@ -198,6 +239,26 @@ function profileFromInput(profile: string | DirectExportProfile | undefined): Di
   if (!SHA256_PATTERN.test(value.sha256)) throw new Error(`Invalid export profile SHA-256 for ${value.version}`);
   if (!/^https?:\/\/|^file:\/\//.test(value.clientUrl)) {
     throw new Error(`Invalid export profile client URL for ${value.version}`);
+  }
+  if (!Array.isArray(value.runtimeMods) || value.runtimeMods.length === 0) {
+    throw new Error(`Invalid runtime mod pins for ${value.version}`);
+  }
+  const runtimeModIds = new Set<string>();
+  const runtimeSourceNames = new Set<string>();
+  for (const mod of value.runtimeMods) {
+    if (
+      !mod
+      || !SAFE_NAME_PATTERN.test(mod.jarName)
+      || !SAFE_NAME_PATTERN.test(mod.modId)
+      || !SAFE_NAME_PATTERN.test(mod.version)
+      || !SAFE_NAME_PATTERN.test(mod.sourceName)
+      || runtimeModIds.has(mod.modId)
+      || runtimeSourceNames.has(mod.sourceName)
+    ) {
+      throw new Error(`Invalid or duplicate runtime mod pin for ${value.version}`);
+    }
+    runtimeModIds.add(mod.modId);
+    runtimeSourceNames.add(mod.sourceName);
   }
   return { ...value, sha256: value.sha256.toLowerCase() };
 }
@@ -551,6 +612,7 @@ function validateSession(
 
 function defaultJvmArguments(
   options: DirectExportOptions,
+  profile: DirectExportProfile,
   repositoryName: string,
   worldName: string,
   automationStatusFile: string
@@ -572,7 +634,9 @@ function defaultJvmArguments(
     '-Dnesql.automation.enabled=true',
     `-Dnesql.automation.repository=${repositoryName}`,
     `-Dnesql.automation.world=${worldName}`,
-    `-Dnesql.automation.status=${automationStatusFile}`
+    `-Dnesql.automation.status=${automationStatusFile}`,
+    `-Dnesql.special.gtnhVersion=${profile.version}`,
+    ...profile.runtimeMods.map((mod) => `-Dnesql.special.mod.${mod.modId}=${mod.version}`)
   ];
 }
 
@@ -683,7 +747,7 @@ export async function orchestrateDirectExport(options: DirectExportOptions = {})
       extractNatives: true
     });
     for (const argument of [
-      ...defaultJvmArguments(options, repositoryName, worldName, automationStatusFile),
+      ...defaultJvmArguments(options, profile, repositoryName, worldName, automationStatusFile),
       ...(options.jvmArgs ?? [])
     ]) {
       if (!resolution.jvmArgs.includes(argument)) resolution.jvmArgs.push(argument);

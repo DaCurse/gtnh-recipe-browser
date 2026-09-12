@@ -75,7 +75,7 @@ new file mode 100644
 + * mods.  Adapters are loaded from the disposable exporter class path through
 + * {@link ServiceLoader}, or by the comma-separated
 + * {@code nesql.special.adapters} property.  This lets the overlay compile
-+ * against the exact GTNH 2.9.0-beta-2 artifacts while keeping the pinned
++ * against the exact profile artifacts while keeping the pinned
 + * ShadowTheAge submodule unchanged.</p>
 + *
 + * <p>Adapters must use the sink instead of writing JSON themselves.  The sink
@@ -94,21 +94,21 @@ new file mode 100644
 +
 +    static {
 +        Map<String, String> mods = new HashMap<>();
-+        mods.put("CropsNH", "2.0.91");
-+        mods.put("GT5-Unofficial", "5.09.54.20");
-+        mods.put("BloodMagic", "1.9.4");
-+        mods.put("EnhancedLootBags", "1.3.4");
-+        mods.put("VendingMachine", "0.4.95");
-+        mods.put("NEICustomDiagram", "1.8.30");
-+        mods.put("RoguelikeDungeons", "1.6.6-GTNH");
-+        mods.put("TwilightForest", "2.7.36");
++        mods.put("CropsNH", System.getProperty("nesql.special.mod.cropsnh", "2.0.91"));
++        mods.put("GT5-Unofficial", System.getProperty("nesql.special.mod.gregtech", "5.09.54.20"));
++        mods.put("BloodMagic", System.getProperty("nesql.special.mod.AWWayofTime", "1.9.4"));
++        mods.put("EnhancedLootBags", System.getProperty("nesql.special.mod.enhancedlootbags", "1.3.4"));
++        mods.put("VendingMachine", System.getProperty("nesql.special.mod.vendingmachine", "0.4.95"));
++        mods.put("NEICustomDiagram", System.getProperty("nesql.special.mod.neicustomdiagram", "1.8.30"));
++        mods.put("RoguelikeDungeons", System.getProperty("nesql.special.mod.Roguelike", "1.6.6-GTNH"));
++        mods.put("TwilightForest", System.getProperty("nesql.special.mod.TwilightForest", "2.7.36"));
 +        Map<String, Object> exporter = new LinkedHashMap<>();
 +        exporter.put("repository", "https://github.com/ShadowTheAge/nesql-exporter");
 +        exporter.put("commit", "b9279b39f2f439da78eebd70fab272b028947371");
 +        Map<String, Object> overlay = new LinkedHashMap<>();
 +        overlay.put("version", "nei-special-v1");
 +        Map<String, Object> versions = new LinkedHashMap<>();
-+        versions.put("gtnhVersion", "2.9.0-beta-2");
++        versions.put("gtnhVersion", System.getProperty("nesql.special.gtnhVersion", "2.9.0-beta-2"));
 +        versions.put("exporter", exporter);
 +        versions.put("overlay", overlay);
 +        versions.put("mods", mods);

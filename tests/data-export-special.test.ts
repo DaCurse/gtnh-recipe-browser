@@ -249,14 +249,14 @@ describe('NEI special sidecar contract', () => {
     expect(patch).toContain('return browserItemId(item)');
     expect(patch).toContain('MessageDigest.getInstance("SHA-1")');
     expect(patch).toContain('return "f:" + fluid.getModId()');
-    expect(patch).toContain('CropsNH", "2.0.91"');
-    expect(patch).toContain('GT5-Unofficial", "5.09.54.20"');
-    expect(patch).toContain('BloodMagic", "1.9.4"');
-    expect(patch).toContain('EnhancedLootBags", "1.3.4"');
-    expect(patch).toContain('VendingMachine", "0.4.95"');
-    expect(patch).toContain('NEICustomDiagram", "1.8.30"');
-    expect(patch).toContain('RoguelikeDungeons", "1.6.6-GTNH"');
-    expect(patch).toContain('TwilightForest", "2.7.36"');
+    expect(patch).toContain('System.getProperty("nesql.special.mod.cropsnh", "2.0.91")');
+    expect(patch).toContain('System.getProperty("nesql.special.mod.gregtech", "5.09.54.20")');
+    expect(patch).toContain('System.getProperty("nesql.special.mod.AWWayofTime", "1.9.4")');
+    expect(patch).toContain('System.getProperty("nesql.special.mod.enhancedlootbags", "1.3.4")');
+    expect(patch).toContain('System.getProperty("nesql.special.mod.vendingmachine", "0.4.95")');
+    expect(patch).toContain('System.getProperty("nesql.special.mod.neicustomdiagram", "1.8.30")');
+    expect(patch).toContain('System.getProperty("nesql.special.mod.Roguelike", "1.6.6-GTNH")');
+    expect(patch).toContain('System.getProperty("nesql.special.mod.TwilightForest", "2.7.36")');
     expect(patch).not.toContain('nesql-exporter@ShadowTheAge/');
     const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
     expect(prepare).toContain('nei-special-overlay.patch');
@@ -278,12 +278,14 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('dimensionOverrides');
     expect(adapter).toContain('dimensionDisplayGoods');
     expect(adapter).toContain('getDimAbbreviatedName');
+    expect(adapter).toContain('dimensionHelper = Class.forName("gtneioreplugin.util.DimensionHelper")');
     expect(adapter).toContain('oreVeinToProbabilityInDimension');
     expect(adapter).toContain('retainMaterialOreDictionary');
     expect(adapter).toContain('getSeedItem');
     expect(adapter).toContain('SeedStats", "DEFAULT_ANALYZED"');
     expect(adapter).toContain('VMItems", "vendingMachine"');
     expect(adapter).toContain('net.minecraft.init.Blocks", "chest"');
+    expect(adapter).toContain('worldgenChestIconStack');
     expect(adapter).toContain('payload.put("totalWeight", totalWeight)');
     expect(adapter).not.toContain('"Forge Loot: " + source[1]');
     expect(adapter).not.toContain('"Twilight Loot: " + field.getName()');
@@ -344,7 +346,9 @@ describe('NEI special sidecar contract', () => {
       .map((line) => line.slice(1))
       .join('\n');
     expect(javaSource).toContain('Map<String, Object> SOURCE_VERSIONS');
-    expect(javaSource).toContain('versions.put("gtnhVersion", "2.9.0-beta-2")');
+    expect(javaSource).toContain(
+      'versions.put("gtnhVersion", System.getProperty("nesql.special.gtnhVersion", "2.9.0-beta-2"))'
+    );
     expect(javaSource).toContain('versions.put("exporter", exporter)');
     expect(javaSource).toContain('versions.put("overlay", overlay)');
     expect(javaSource).toContain('versions.put("mods", mods)');

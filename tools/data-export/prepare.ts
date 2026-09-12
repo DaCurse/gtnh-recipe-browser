@@ -10,29 +10,7 @@ import {
   sha256File,
   type ExportSession
 } from './lib';
-
-const KNOWN_ARCHIVE = {
-  version: '2.9.0-beta-2',
-  bytes: 680_333_339,
-  sha256: 'adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee'
-};
-
-interface PinnedRuntimeMod {
-  jarName: string;
-  modId: string;
-  version: string;
-}
-
-const PINNED_RUNTIME_MODS: readonly PinnedRuntimeMod[] = [
-  { jarName: 'cropsnh-2.0.91.jar', modId: 'cropsnh', version: '2.0.91' },
-  { jarName: 'gregtech-5.09.54.20.jar', modId: 'gregtech', version: '5.09.54.20' },
-  { jarName: 'BloodMagic-1.9.4.jar', modId: 'AWWayofTime', version: '1.9.4' },
-  { jarName: 'EnhancedLootBags-1.3.4.jar', modId: 'enhancedlootbags', version: '1.3.4' },
-  { jarName: 'vendingmachine-0.4.95.jar', modId: 'vendingmachine', version: '0.4.95' },
-  { jarName: 'NEICustomDiagram-1.8.30.jar', modId: 'neicustomdiagram', version: '1.8.30' },
-  { jarName: 'roguelike-1.6.6-GTNH.jar', modId: 'Roguelike', version: '1.6.6-GTNH' },
-  { jarName: 'TwilightForest-2.7.36.jar', modId: 'TwilightForest', version: '2.7.36' }
-];
+import { getDirectExportProfile, type DirectExportProfile } from './direct-export';
 
 function run(command: string, args: string[], cwd?: string): void {
   const result = spawnSync(command, args, { cwd, stdio: 'inherit' });
@@ -52,11 +30,15 @@ function metadataContainsPin(value: unknown, modId: string, version: string): bo
   return metadataContainsPin(object.modList, modId, version);
 }
 
-async function extractPinnedRuntimeJars(archivePath: string, workDirectory: string): Promise<string> {
+async function extractPinnedRuntimeJars(
+  archivePath: string,
+  workDirectory: string,
+  profile: DirectExportProfile
+): Promise<string> {
   const runtimeJarsDirectory = join(workDirectory, 'runtime-jars');
   await mkdir(runtimeJarsDirectory, { recursive: true });
-  const archiveRoot = `GT New Horizons ${KNOWN_ARCHIVE.version}/.minecraft/mods`;
-  const entries = PINNED_RUNTIME_MODS.map((mod) => `${archiveRoot}/${mod.jarName}`);
+  const archiveRoot = `GT New Horizons ${profile.version}/.minecraft/mods`;
+  const entries = profile.runtimeMods.map((mod) => `${archiveRoot}/${mod.jarName}`);
   try {
     run('unzip', ['-q', '-j', '-o', archivePath, ...entries, '-d', runtimeJarsDirectory]);
   } catch (error) {
@@ -65,7 +47,7 @@ async function extractPinnedRuntimeJars(archivePath: string, workDirectory: stri
       { cause: error }
     );
   }
-  for (const mod of PINNED_RUNTIME_MODS) {
+  for (const mod of profile.runtimeMods) {
     const jarPath = join(runtimeJarsDirectory, mod.jarName);
     let metadataText: string;
     try {
@@ -137,9 +119,7 @@ const args = argumentsMap(process.argv.slice(2));
 const repositoryRoot = process.cwd();
 const archivePath = resolve(requiredArgument(args, 'archive'));
 const gtnhVersion = requiredArgument(args, 'version');
-if (gtnhVersion !== KNOWN_ARCHIVE.version) {
-  throw new Error(`This preparation profile only supports ${KNOWN_ARCHIVE.version}`);
-}
+const profile = getDirectExportProfile(gtnhVersion);
 
 // The maintained provider is compiled into the disposable direct-export copy.
 // Fail before archive/work-directory mutation rather than producing an exporter
@@ -159,7 +139,7 @@ try {
       + `${specialProviderSource}. The current overlay supplies only the SPI and cannot emit the ten requested `
       + 'live categories (CropsNH crop-output/mutation-pool/crop-breeding; GT ore vein/small ore/processing; '
       + 'BloodMagic meteor-ritual; EnhancedLootBags loot-bag; VendingMachine vending-trade; Forge/Roguelike/'
-      + 'Twilight worldgen-loot). Add and compile that provider against the pinned 2.9.0-beta-2 runtime jars '
+      + `Twilight worldgen-loot). Add and compile that provider against the pinned ${gtnhVersion} runtime jars `
       + 'before preparing a disposable instance.'
   );
 }
@@ -174,7 +154,7 @@ const instanceDirectory = resolve(args.get('instance-dir') ?? join(workDirectory
 const sessionPath = join(workDirectory, 'export-session.json');
 const archiveStat = await stat(archivePath);
 const archiveSha256 = await sha256File(archivePath);
-if (archiveStat.size !== KNOWN_ARCHIVE.bytes || archiveSha256 !== KNOWN_ARCHIVE.sha256) {
+if (archiveStat.size !== profile.bytes || archiveSha256 !== profile.sha256) {
   throw new Error(
     `Official archive mismatch: received ${archiveStat.size} bytes / ${archiveSha256}`
   );
@@ -183,7 +163,7 @@ if (archiveStat.size !== KNOWN_ARCHIVE.bytes || archiveSha256 !== KNOWN_ARCHIVE.
 await assertPathMissing(workDirectory, 'Export work directory');
 await assertPathMissing(instanceDirectory, 'Direct export client instance');
 await mkdir(workDirectory, { recursive: true });
-const runtimeJarsDirectory = await extractPinnedRuntimeJars(archivePath, workDirectory);
+const runtimeJarsDirectory = await extractPinnedRuntimeJars(archivePath, workDirectory, profile);
 
 const exporterRoot = join(repositoryRoot, 'nesql-exporter@ShadowTheAge');
 const patchedExporter = join(workDirectory, 'nesql-exporter');
@@ -234,12 +214,12 @@ await writeFile(
 
 const buildPath = join(patchedExporter, 'build.gradle.kts');
 const buildBeforeRuntimeJars = await readFile(buildPath, 'utf8');
-const runtimeCompileOnly = PINNED_RUNTIME_MODS.map(
+const runtimeCompileOnly = profile.runtimeMods.map(
   (mod) => `    compileOnly(files("${gradlePath(join(runtimeJarsDirectory, mod.jarName))}"))`
 ).join('\n');
 await writeFile(
   buildPath,
-  `${buildBeforeRuntimeJars}\n// Exact GTNH 2.9.0-beta-2 jars used by RuntimeSpecialAdapter.\ndependencies {\n${runtimeCompileOnly}\n}\n`,
+  `${buildBeforeRuntimeJars}\n// Exact GTNH ${gtnhVersion} jars used by RuntimeSpecialAdapter.\ndependencies {\n${runtimeCompileOnly}\n}\n`,
   'utf8'
 );
 const patchedBuild = await readFile(buildPath, 'utf8');
@@ -296,7 +276,7 @@ if (
   !copiedProvider.includes('implements NeiSpecialOverlay.Adapter') ||
   !copiedAutomationController.includes('nesql.automation.enabled') ||
   !serviceLoader.includes('RuntimeSpecialAdapter') ||
-  !patchedBuild.includes('Exact GTNH 2.9.0-beta-2 jars used by RuntimeSpecialAdapter')
+  !patchedBuild.includes(`Exact GTNH ${gtnhVersion} jars used by RuntimeSpecialAdapter`)
 ) {
   throw new Error('Exporter compatibility or NEI special-data overlay did not produce the expected source');
 }
