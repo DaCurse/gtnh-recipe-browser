@@ -3,6 +3,15 @@
   "generatedAt": "2026-08-22T23:18:46.000Z",
   "versions": [
     {
+      "datasetId": "2.9.0-beta-3-rcb4153c995d9",
+      "gtnhVersion": "2.9.0-beta-3",
+      "revision": "cb4153c995d9",
+      "publishedAt": "2026-09-11T23:36:07.916Z",
+      "packManifestUrl": "./data/2.9.0-beta-3-rcb4153c995d9/pack-manifest.json",
+      "catalogBytes": 8842328,
+      "offlineBytes": 59061505
+    },
+    {
       "datasetId": "2.9.0-beta-2-r2e44dca28916",
       "gtnhVersion": "2.9.0-beta-2",
       "revision": "2e44dca28916",
