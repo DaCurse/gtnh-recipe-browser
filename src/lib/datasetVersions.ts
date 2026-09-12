@@ -4,6 +4,39 @@ import type {
   ManagedDataset
 } from './types';
 
+/** Bumped for format-6 physical-page ownership and removal of catalog snapshots. */
+export const CURRENT_DATASET_CACHE_VERSION = 2;
+
+/** Old browser rows predate explicit cache-format bookkeeping. */
+export function isLegacyDatasetState(state: Pick<DatasetState, 'cacheVersion'>): boolean {
+  return state.cacheVersion !== CURRENT_DATASET_CACHE_VERSION;
+}
+
+/**
+ * Find legacy rows by semantic GTNH version, not by a hard-coded dataset ID or
+ * a particular historical pack format. Revisions may change their IDs.
+ */
+export function legacyDatasetStatesFor(
+  stored: readonly DatasetState[],
+  gtnhVersion: string
+): DatasetState[] {
+  return stored.filter((state) =>
+    state.gtnhVersion === gtnhVersion && isLegacyDatasetState(state)
+  );
+}
+
+/** Preserve active ownership when a semantic version is replaced by a new dataset ID. */
+export function replacementDatasetActive(
+  previous: Pick<DatasetState, 'active'> | undefined,
+  legacyStates: readonly Pick<DatasetState, 'active'>[],
+  installed: readonly Pick<DatasetState, 'active'>[]
+): boolean {
+  return previous?.active ?? (
+    legacyStates.some((state) => state.active)
+    || installed.every((state) => !state.active)
+  );
+}
+
 /** Select a published same-version replacement unless the caller requested an explicit dataset. */
 export function preferredDatasetId(
   available: readonly DatasetVersion[],

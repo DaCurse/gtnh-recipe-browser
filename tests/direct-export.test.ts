@@ -228,6 +228,7 @@ describe('direct export orchestration', () => {
       const result = await orchestrateDirectExport({
         profile,
         cacheDirectory,
+        sharedLayoutPath: join(root, 'layout.json'),
         archiveSourcePath: sourcePath,
         workDirectory,
         statusFile: join(statusDirectory, 'orchestrator.json'),
@@ -357,6 +358,7 @@ describe('direct export orchestration', () => {
       await expect(orchestrateDirectExport({
         profile,
         cacheDirectory,
+        sharedLayoutPath: join(root, 'layout.json'),
         archiveSourcePath: sourcePath,
         workDirectory,
         statusFile: join(statusDirectory, 'orchestrator.json'),

@@ -21,43 +21,6 @@ export interface MaterializedCatalog {
   productionFallbacks: Map<string, PackedOreDictionary>;
 }
 
-/**
- * The materialized catalog is intentionally kept as arrays at the IndexedDB
- * boundary.  Maps are cheap to rebuild, while arrays are portable across
- * browsers and make the snapshot format explicit and inspectable.
- */
-export interface MaterializedCatalogSnapshot {
-  entries: CatalogEntry[];
-  productionFallbacks: Array<[string, PackedOreDictionary]>;
-}
-
-export function snapshotMaterializedCatalog(
-  materialized: MaterializedCatalog
-): MaterializedCatalogSnapshot {
-  return {
-    entries: materialized.entries,
-    productionFallbacks: [...materialized.productionFallbacks.entries()]
-  };
-}
-
-export function restoreMaterializedCatalog(
-  snapshot: MaterializedCatalogSnapshot,
-  catalog: PackedCatalog
-): MaterializedCatalog {
-  const ingredientGroups = [
-    ...catalog.oreDictionaries,
-    ...(catalog.ingredientGroups ?? [])
-  ];
-  return {
-    entries: snapshot.entries,
-    goods: new Map(catalog.goods.map((goods) => [goods.id, goods])),
-    recipeTypes: new Map(catalog.recipeTypes.map((type) => [type.id, type])),
-    oreDictionaries: new Map(catalog.oreDictionaries.map((ore) => [ore.id, ore])),
-    ingredientGroups: new Map(ingredientGroups.map((group) => [group.id, group])),
-    productionFallbacks: new Map(snapshot.productionFallbacks)
-  };
-}
-
 export function materializeCatalog(
   manifest: DatasetManifest,
   manifestUrl: string,

@@ -23,8 +23,8 @@ Stateful feature workflows use Svelte 5 rune modules:
 
 - `datasetSchema.ts` defines immutable manifest and MessagePack wire shapes.
 - `datasetAssets.ts` performs verified network/cache reads and decompression.
-- `storage.ts` owns versioned IndexedDB records for verified blobs and decoded catalog snapshots.
-- `catalogMaterialization.ts` builds (and serializes/restores) searchable items, ore dictionaries, and machine capabilities.
+- `storage.ts` owns versioned IndexedDB records for verified blobs and a lightweight size index.
+- `catalogMaterialization.ts` builds searchable items, ore dictionaries, and machine capabilities in memory.
 - `recipeMaterialization.ts` converts packed recipes into display-domain recipes.
 - `specialData.ts` defines and normalizes the discriminated display records
   used by the special cards and ore-processing graph.
@@ -37,17 +37,81 @@ For the other NEI special categories, use the handler/icon anchors in
 [`nei-special-integrations.md`](nei-special-integrations.md).
 
 The service worker precaches only the application shell. Immutable dataset bytes,
-on-demand icon sheets, and the decoded catalog snapshot stay in IndexedDB so
+and on-demand icon sheets stay in IndexedDB so
 dataset deletion and storage accounting remain explicit. Recipe shards remain
 lazy and are decoded only when a tab needs them.
 
-Format-4 catalogs additionally declare `specialViewTypes`. Goods reference
+Canonical catalogs declare `specialViewTypes`. Goods reference
 production and usage special shards separately, using the same Recipes/Usages
 direction as normal recipes. `DatasetRepository` is still the only component
 which reads those immutable shards. Special tabs therefore share verified asset
 loading, request cancellation, offline accounting, and dataset deletion without
 exposing packed wire records to Svelte components. Service icons referenced only
 by special views are retained in the catalog but remain non-searchable.
+
+Format 6 is the canonical shared-data pack path. A dataset manifest remains complete and
+independently selectable, but its asset descriptors can point at immutable,
+full-SHA-256-named objects in the global `assets/sha256/` store. Reusable payloads
+carry schema/kind and stable logical-shard metadata rather than a dataset owner;
+membership in the manifest, the object SHA, and runtime schema checks provide
+ownership and integrity. A logical shard ID is separate from its current content
+hash. Logical shards select runs of complete encoded records from immutable
+2-MiB record pages. Pages are gzip-compressed MessagePack arrays of binary
+record values. A later build reuses existing record locations and writes only
+new records into new pages; its manifest lists every physical page it needs.
+It never needs another dataset's manifest, a patch chain, or a base dataset.
+Deleted records are omitted by the selectors; unused bytes in a retained page
+are the bounded tradeoff for keeping object counts and requests practical.
+Both physical page hashes and reconstructed logical-shard hashes are verified.
+`part` and ordering fields are presentation metadata, not semantic identity.
+
+Recipes are partitioned inside stable recipe-type namespaces. Goods and special
+records use the same deterministic prefix routing where it is useful, while
+icons deduplicate canonical RGBA pixels into frozen WebP sheets. The catalog
+maps an owner to a sheet SHA and cell; changed pixels receive new cells in new
+sheets without invalidating unchanged sprites. The shared layout is a persistent
+union hash-prefix trie: every published prefix is append-only. Existing prefixes
+retain their meaning forever; later datasets may keep a prefix or add descendants
+to it, but may never merge, reassign, or rebuild published prefixes because a
+later dataset is smaller or differently distributed. A partition containing one
+record that is still above the byte target is explicitly marked as an
+`oversizedSingleton` and remains above the cap. If the payload is a large
+secondary index, model that index as a separate record family instead; never
+distort the trie to hide the exception. See
+[`pack-reuse-beta-2-beta-3.md`](pack-reuse-beta-2-beta-3.md) for the measured
+comparison with record-aware CDC. Format-6 manifests carry the compact prefix
+map and its fingerprint; publishing compares it with every existing format-6
+manifest and rejects removal, reassignment, or a changed target cap.
+
+The browser cache is already physical and SHA-keyed. Installing two manifests
+stores one copy of an identical object; dataset state records which hashes each
+dataset references, and deletion removes only hashes no other dataset references.
+Offline progress and the manager report both logical dataset totals and physical
+cache bytes, so shared objects are not counted twice. Only compressed physical
+pages and sheets are persisted, not reconstructed shards or expanded per-dataset
+catalog/search snapshots. A lightweight size index avoids loading binary data
+just to display storage usage. Decoded pages may be retained in bounded memory.
+
+When switching versions, the active repository lends the replacement any
+decoded catalog chunks and lazy recipe or special shard promises whose SHA and
+logical identity match. The replacement validates them against its own
+manifest and catalog, so this is an in-memory acceleration rather than a
+cross-version dependency. The switch loads the target manifest and catalog,
+then leaves recipe and special shards lazy; only target data that is not already
+cached or loaded is read.
+After the target manifest is known, its dataset row also adopts any matching
+hashes already present in the physical cache. That keeps shared blobs owned by
+both manifests during later deletion and lets an offline install skip them in
+one indexed lookup rather than probing every descriptor separately.
+
+The first format-6 load also performs the one-time browser migration from all
+older dataset bookkeeping rows. It keeps cached blobs whose hashes are
+referenced by any current manifest, removes obsolete decoded catalog snapshots,
+marks the selected row with the current cache format, and removes every legacy
+row and unreferenced blob. Detection uses the cache marker rather than
+beta-specific IDs or old manifest format numbers, so the migration remains
+generic for prior and future revisions. The new manifest is still downloaded
+and validated in full; this is cache migration, not a delta-chain dependency.
 
 Special records are semantic data, not exported screenshots. In particular, the
 GT ore-processing view lays out typed nodes and edges in the browser. Its layout

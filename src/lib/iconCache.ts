@@ -43,10 +43,17 @@ export function resolveIconSheetUrl(icon: {
   return pending;
 }
 
-/** Release object URLs when the active dataset is replaced. */
-export function clearIconSheetCache(): void {
-  for (const pending of resolvedSheets.values()) {
+/**
+ * Release object URLs which are not used by the replacement dataset.
+ *
+ * Sprite sheets are immutable and keyed by their SHA, so retaining hashes
+ * shared by both catalogs lets a version switch reuse the already decoded
+ * browser image instead of rebuilding it.
+ */
+export function clearIconSheetCache(retainHashes: ReadonlySet<string> = new Set()): void {
+  for (const [sha256, pending] of resolvedSheets) {
+    if (retainHashes.has(sha256)) continue;
     void pending.then((url) => URL.revokeObjectURL(url)).catch(() => {});
+    resolvedSheets.delete(sha256);
   }
-  resolvedSheets.clear();
 }

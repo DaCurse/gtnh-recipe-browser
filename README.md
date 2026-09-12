@@ -36,21 +36,23 @@ size and SHA-256:
 npm run smoke:deploy -- https://<site>.netlify.app/
 ```
 
-The default-origin smoke requires the active format-4 special-data release; pass an explicit historical manifest when
-checking the 2.8.0 benchmark.
+The default-origin smoke requires the active special-data release; pass an explicit historical manifest when checking
+the 2.8.0 benchmark.
 
 ## Data pipeline
 
 `gtnh@ShadowTheAge` and `nesql-exporter@ShadowTheAge` are read-only MIT-licensed upstream submodules. The
 reproducible release workflow directly launches a disposable client from the official archive, processes its private NESQL output twice,
-verifies the format-v5 source and deterministic chunked browser pack, and publishes one revision per GTNH version. The disposable processor applies the documented
+verifies the unchanged format-v5 source and deterministic format-6 shared browser pack, and publishes one revision per GTNH version. The disposable processor applies the documented
 [`browser catalog retention policy`](docs/browser-catalog-policy.md) so valid tools and configurable variants
 filtered from the upstream production calculator remain browseable.
 
 Run the pinned unattended client export and processing pipeline against a fresh client workspace:
 
 ```sh
-npm run export:direct -- --version 2.9.0-beta-2
+npm run export:direct -- \
+  --version 2.9.0-beta-2 \
+  --shared-layout tools/pack-builder/layouts/2.9.0.json
 ```
 
 See [`docs/exporting-current-data.md`](docs/exporting-current-data.md) for
@@ -64,7 +66,8 @@ npm run pack -- \
   --atlas tests/fixtures/shadowtheage-v5-2.8.0/atlas.webp \
   --gtnh-version 2.8.0 \
   --revision 6d351536 \
-  --output .pack-output/2.8.0-r6d351536
+  --output .pack-output/2.8.0-r6d351536 \
+  --layout tools/pack-builder/layouts/2.9.0.json
 
 npm run verify-pack -- \
   --pack .pack-output/2.8.0-r6d351536 \
@@ -74,10 +77,17 @@ npm run verify-pack -- \
 The source NESQL export remains private. Processed compatibility fixtures are immutable and versioned separately;
 add a sibling fixture when supporting a new upstream shape.
 
+Browser packs use format 6: complete manifests select immutable shared record
+pages and sprite sheets. For a nearby version, pass `--reuse-packs <pack-a>,<pack-b>`
+to `pack` so unchanged records retain their existing physical pages. This is
+build-time reuse, not a runtime dependency on another version. Storage accounting
+can be reproduced with `npm run analyze:storage -- <pack-a> <pack-b>`.
+
 `tests/fixtures/shadowtheage-v5-2.8.0/` is the pinned, network-independent compatibility source for decoder and
 recipe-parity tests. The current automated release is
-`public/data/2.9.0-beta-2-rc748daddaa3e/`; the immutable 2.8.0 pack remains available as a benchmark and historical
-version.
+`public/data/2.9.0-beta-2-r2e44dca28916/` and
+`public/data/2.9.0-beta-3-rcb4153c995d9/`; the immutable 2.8.0 pack remains
+available as a benchmark and historical version.
 
 ## Assets and attribution
 

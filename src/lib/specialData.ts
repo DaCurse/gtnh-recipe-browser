@@ -5,9 +5,9 @@ import type { CatalogEntry, RecipeView } from './types';
  *
  * The exporter is allowed to evolve its packed representation independently
  * of the UI.  DatasetRepository exposes these already materialized records
- * through the optional SpecialRepository interface below; old format-1--3
- * repositories simply do not implement it and therefore render no special
- * tabs.
+ * through the optional SpecialRepository interface below; datasets without
+ * the special overlay simply do not implement it and therefore render no
+ * special tabs.
  */
 
 const SPECIAL_CATEGORY_ORDER = [
@@ -270,7 +270,7 @@ export interface SpecialLoadProgress {
   batch: SpecialRecord[];
 }
 
-/** Optional surface implemented by format-4 DatasetRepository. */
+/** Optional surface implemented by the canonical DatasetRepository. */
 export interface SpecialRepository {
   readonly specialViewTypes?: readonly SpecialViewType[];
   readonly specialServiceIcons?: readonly SpecialServiceIcon[];

@@ -19,6 +19,7 @@ function usage(): string {
     '  --archive <file>          Verify and use a local archive instead of downloading',
     '  --work-dir <directory>    Fresh disposable export workspace',
     '  --instance-dir <dir>      Fresh prepared client directory',
+    '  --shared-layout <file>    Persistent append-only layout for the pack',
     '',
     'Client identity/automation:',
     '  --username <name>         Offline Minecraft identity (default: GTNH)',
@@ -89,6 +90,9 @@ function parseCli(args: string[]): CliOptions {
     } else if (flag === '--instance-dir') {
       [value, index] = takeValue(args, index, flag);
       result.instanceDirectory = value;
+    } else if (flag === '--shared-layout') {
+      [value, index] = takeValue(args, index, flag);
+      result.sharedLayoutPath = value;
     } else if (flag === '--username') {
       [value, index] = takeValue(args, index, flag);
       result.username = value;
@@ -147,6 +151,7 @@ export async function runDirectExportCli(args: string[] = process.argv.slice(2))
     console.log(usage());
     return 0;
   }
+  if (!options.sharedLayoutPath) throw new Error('--shared-layout is required for the canonical pack');
   const result = await orchestrateDirectExport(options);
   process.stdout.write(`${JSON.stringify({
     profile: result.profile.version,

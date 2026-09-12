@@ -1,8 +1,6 @@
 import { decode } from '@msgpack/msgpack';
 import {
   materializeCatalog,
-  restoreMaterializedCatalog,
-  snapshotMaterializedCatalog,
   type MaterializedCatalog
 } from './catalogMaterialization';
 import { buildCatalogBrowseEntries } from './catalogVariants';
@@ -18,7 +16,15 @@ import type {
   PackedCatalog,
   PackedCatalogCore,
   PackedCatalogGoods,
+  PackedCatalogIcons,
+  PackedCatalogGoodsMetadata,
+  PackedCatalogIngredientGroups,
+  PackedCatalogOreDictionaries,
+  PackedCatalogRecipeRemaps,
+  PackedCatalogRecipeTypes,
+  PackedCatalogSpecialMetadata,
   PackedGoods,
+  PackedGoodsMetadata,
   PackedIngredientGroup,
   PackedOreDictionary,
   PackedRecipe,
@@ -40,11 +46,11 @@ import {
 } from './catalogSearch';
 import {
   activateDataset,
-  getCatalogSnapshot,
+  cachedAssetSizes,
   getDataset,
-  hasCachedAsset,
   listDatasets,
-  saveCatalogSnapshot,
+  migrateLegacyDatasetStates,
+  recordDatasetAsset,
   saveDataset
 } from './storage';
 import type {
@@ -58,7 +64,13 @@ import type {
   RecipeView
 } from './types';
 import type { SpecialRecord, SpecialViewType } from './specialData';
-import { preferredDatasetId } from './datasetVersions';
+import {
+  CURRENT_DATASET_CACHE_VERSION,
+  isLegacyDatasetState,
+  legacyDatasetStatesFor,
+  preferredDatasetId,
+  replacementDatasetActive
+} from './datasetVersions';
 
 function specialRecordGoodsIds(record: PackedSpecialRecord): string[] {
   const result = new Set<string>([
@@ -118,6 +130,132 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 
+function isNumberArray(value: unknown): value is number[] {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'number' && Number.isFinite(entry));
+}
+
+function isPackedGoodsMetadata(value: unknown): value is PackedGoodsMetadata {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  const record = value as Record<string, unknown>;
+  return typeof record.id === 'string'
+    && typeof record.name === 'string'
+    && (record.tooltip === null || typeof record.tooltip === 'string')
+    && typeof record.unlocalizedName === 'string'
+    && isNumberArray(record.searchMask)
+    && typeof record.searchable === 'boolean'
+    && Number.isInteger(record.numericId)
+    && isStringArray(record.productionShards)
+    && isStringArray(record.usageShards)
+    && Number.isInteger(record.productionCount)
+    && Number.isInteger(record.usageCount)
+    && isStringArray(record.specialProductionShards)
+    && isStringArray(record.specialUsageShards)
+    && isStringArray(record.specialProductionLookupIds)
+    && isStringArray(record.specialUsageLookupIds)
+    && Number.isInteger(record.specialProductionCount)
+    && Number.isInteger(record.specialUsageCount);
+}
+
+type SharedPrefixFamily = 'goods' | 'oreDictionaries' | 'recipeTypes' | 'specialViews';
+
+function sharedPrefixIsPublished(
+  manifest: DatasetManifest,
+  family: SharedPrefixFamily,
+  namespace: string,
+  prefix: unknown
+): boolean {
+  if (manifest.formatVersion !== 6 || typeof prefix !== 'string') return false;
+  const prefixes = manifest.sharedLayout?.prefixes;
+  if (!prefixes) return false;
+  const list = family === 'recipeTypes' || family === 'specialViews'
+    ? prefixes[family]?.[namespace]
+    : prefixes[family];
+  return Array.isArray(list) && list.includes(prefix);
+}
+
+function validSharedPrefixMap(value: unknown): value is Record<string, string[]> {
+  return value !== null
+    && typeof value === 'object'
+    && !Array.isArray(value)
+    && Object.entries(value as Record<string, unknown>).every(([namespace, prefixes]) => (
+      namespace.length > 0
+      && Array.isArray(prefixes)
+      && prefixes.length > 0
+      && prefixes.every((prefix) => typeof prefix === 'string' && /^[0-9a-f]{0,8}$/.test(prefix))
+      && new Set(prefixes).size === prefixes.length
+    ));
+}
+
+function validSharedPrefixList(value: unknown): value is string[] {
+  return Array.isArray(value)
+    && value.length > 0
+    && value.every((prefix) => typeof prefix === 'string' && /^[0-9a-f]{0,8}$/.test(prefix))
+    && new Set(value).size === value.length;
+}
+
+function uniqueAssetBytes(assets: readonly DatasetAsset[], hashes?: ReadonlySet<string>): number {
+  const bytes = new Map<string, number>();
+  for (const asset of assets) {
+    if (hashes && !hashes.has(asset.sha256)) continue;
+    const previous = bytes.get(asset.sha256);
+    if (previous !== undefined && previous !== asset.bytes) {
+      throw new Error(`Conflicting asset sizes share hash ${asset.sha256}`);
+    }
+    bytes.set(asset.sha256, asset.bytes);
+  }
+  return [...bytes.values()].reduce((total, value) => total + value, 0);
+}
+
+function uniqueAssetHashes(assets: readonly DatasetAsset[]): Set<string> {
+  return new Set(assets.map((asset) => asset.sha256));
+}
+
+function physicalHashesForLogicalAssets(
+  assets: readonly DatasetAsset[],
+  recordPages: readonly DatasetAsset[]
+): Set<string> {
+  const physicalPages = new Map(recordPages.map((asset, index) => [index, asset]));
+  const result = new Set<string>();
+  for (const asset of assets) {
+    if (asset.segments) {
+      for (const [pageIndex] of asset.segments) {
+        const page = physicalPages.get(pageIndex);
+        if (!page) {
+          throw new Error(`${asset.id}: record page index ${String(pageIndex)} is absent from the manifest`);
+        }
+        result.add(page.sha256);
+      }
+    }
+  }
+  return result;
+}
+
+function isLogicalRecordAsset(asset: DatasetAsset): boolean {
+  return asset.segments !== undefined;
+}
+
+function physicalDescriptorsFor(
+  asset: DatasetAsset,
+  recordPages: readonly DatasetAsset[]
+): DatasetAsset[] {
+  if (!asset.segments) return [asset];
+  const pages = new Map(recordPages.map((page, index) => [index, page]));
+  const result: DatasetAsset[] = [];
+  const seen = new Set<string>();
+  for (const [pageIndex] of asset.segments) {
+    const page = pages.get(pageIndex);
+    if (!page) throw new Error(`${asset.id}: record page index ${String(pageIndex)} is absent from the manifest`);
+    if (seen.has(page.sha256)) continue;
+    result.push(page);
+    seen.add(page.sha256);
+  }
+  return result;
+}
+
+async function decodeAssetPayload(asset: DatasetAsset, bytes: Uint8Array): Promise<unknown> {
+  return decode(asset.encoding === 'gzip' ? await decompress(bytes) : bytes);
+}
+
 function cropsNhSeedKey(goods: PackedGoods | undefined): string | undefined {
   if (
     !goods
@@ -168,76 +306,187 @@ export interface RecipeLoadProgress {
   batch: Recipe[];
 }
 
+type DecodedCatalogAsset = PackedCatalogCore
+  | PackedCatalogGoods
+  | PackedCatalogIcons
+  | PackedCatalogGoodsMetadata
+  | PackedCatalogRecipeTypes
+  | PackedCatalogOreDictionaries
+  | PackedCatalogIngredientGroups
+  | PackedCatalogRecipeRemaps
+  | PackedCatalogSpecialMetadata;
+
+type CatalogAssetDescriptor = DatasetManifest['catalogAssets'][number];
+type RecipeShardDescriptor = DatasetManifest['recipeShards'][number];
+type SpecialShardDescriptor = DatasetManifest['specialDataShards'][number];
+
+function validateCatalogAsset(
+  manifest: DatasetManifest,
+  asset: CatalogAssetDescriptor,
+  value: DecodedCatalogAsset
+): void {
+  if (value.schemaVersion !== 5) {
+    throw new Error(`${asset.id}: catalog identity mismatch`);
+  }
+  if (value.kind !== asset.role || value.logicalId !== asset.logicalId) {
+    throw new Error(`${asset.id}: shared catalog logical identity mismatch`);
+  }
+  if (asset.role === 'goods' || asset.role === 'goodsMetadata' || asset.role === 'oreDictionaries') {
+    const valuePrefix = 'prefix' in value ? value.prefix : undefined;
+    if (valuePrefix !== asset.prefix) {
+      throw new Error(`${asset.id}: shared catalog partition identity mismatch`);
+    }
+    if (!sharedPrefixIsPublished(
+      manifest,
+      asset.role === 'oreDictionaries' ? 'oreDictionaries' : 'goods',
+      'goods',
+      asset.prefix
+    )) {
+      throw new Error(`${asset.id}: shared catalog prefix is not in the published layout`);
+    }
+  }
+}
+
 async function loadCatalog(
   manifest: DatasetManifest,
   manifestUrl: string,
-  report: (percent: number, stage: string) => void
-): Promise<{ catalog: PackedCatalog; hashes: string[] }> {
+  report: (percent: number, stage: string) => void,
+  reusableAssets?: ReadonlyMap<string, DecodedCatalogAsset>
+): Promise<{
+  catalog: PackedCatalog;
+  decodedByHash: Map<string, DecodedCatalogAsset>;
+}> {
   if (manifest.catalogAssets.length === 0) throw new Error('Pack manifest has no catalog assets');
-  if (manifest.formatVersion === 1) {
-    const asset = manifest.catalogAssets[0]!;
-    const bytes = await fetchVerified(asset, manifestUrl, ({ loaded, total, cached }) => {
-      const ratio = total > 0 ? Math.min(1, loaded / total) : 0;
-      report(12 + Math.round(ratio * 58), cached ? 'Reading verified catalog cache' : 'Downloading catalog');
-    });
-    report(76, 'Decompressing catalog');
-    const catalog = decode(await decompress(bytes)) as PackedCatalog;
-    if (catalog.datasetId !== manifest.datasetId) throw new Error('Catalog dataset identity mismatch');
-    return { catalog, hashes: [asset.sha256] };
-  }
-  if (manifest.formatVersion !== 2 && manifest.formatVersion !== 3 && manifest.formatVersion !== 4) {
-    throw new Error(`Unsupported pack manifest format ${manifest.formatVersion}`);
+  if (manifest.catalogAssets.some((asset) => !isLogicalRecordAsset(asset))) {
+    throw new Error('Format-6 catalog assets must use record-page segments');
   }
 
-  const loaded = new Array(manifest.catalogAssets.length).fill(0) as number[];
-  const totalBytes = manifest.catalogAssets.reduce((total, asset) => total + asset.bytes, 0);
+  const assetsToDecode = manifest.catalogAssets.filter((asset) => !reusableAssets?.has(asset.sha256));
+  const catalogPages = [...new Map(
+    assetsToDecode.flatMap((asset) => physicalDescriptorsFor(asset, manifest.recordPages))
+      .map((page) => [page.sha256, page] as const)
+  ).values()];
+  const loaded = new Array(catalogPages.length).fill(0) as number[];
+  const totalBytes = catalogPages.reduce((total, asset) => total + asset.bytes, 0);
+  await mapProgressively(
+    catalogPages,
+    3,
+    async (page, index) => fetchVerified(page, manifestUrl, ({ loaded: assetLoaded, cached }) => {
+      loaded[index] = Math.max(loaded[index]!, Math.min(page.bytes, assetLoaded));
+      const ratio = loaded.reduce((total, value) => total + value, 0) / Math.max(1, totalBytes);
+      report(12 + Math.round(ratio * 52), cached ? 'Reading shared catalog data' : 'Downloading changed catalog data');
+    }),
+    ({ completed, total }) => report(
+      12 + Math.round(completed / Math.max(1, total) * 52),
+      `Loading shared catalog page ${completed.toLocaleString()} of ${total.toLocaleString()}`
+    )
+  );
   const decoded = await mapProgressively(
     manifest.catalogAssets,
     3,
-    async (asset, index) => {
-      const bytes = await fetchVerified(asset, manifestUrl, ({ loaded: assetLoaded, cached }) => {
-        loaded[index] = assetLoaded;
-        const ratio = loaded.reduce((total, value) => total + value, 0) / Math.max(1, totalBytes);
-        report(
-          12 + Math.round(ratio * 50),
-          cached ? 'Reading verified catalog chunks' : 'Downloading catalog chunks'
-        );
-      });
-      const value = decode(await decompress(bytes)) as PackedCatalogCore | PackedCatalogGoods;
-      if (value.schemaVersion !== manifest.formatVersion || value.datasetId !== manifest.datasetId) {
-        throw new Error(`${asset.id}: catalog identity mismatch`);
+    async (asset) => {
+      const reusable = reusableAssets?.get(asset.sha256);
+      if (reusable) {
+        validateCatalogAsset(manifest, asset, reusable);
+        return reusable;
       }
+      const bytes = await fetchVerified(asset, manifestUrl, undefined, undefined, manifest);
+      const value = await decodeAssetPayload(asset, bytes) as DecodedCatalogAsset;
+      validateCatalogAsset(manifest, asset, value);
       return value;
     },
     ({ completed, total }) => report(
-      64 + Math.round(completed / total * 22),
+      65 + Math.round(completed / total * 22),
       `Decoding catalog chunk ${completed.toLocaleString()} of ${total.toLocaleString()}`
     )
   );
   const coreAssets = decoded.filter((asset): asset is PackedCatalogCore => asset.kind === 'core');
   const goodsAssets = decoded
-    .filter((asset): asset is PackedCatalogGoods => asset.kind === 'goods')
-    .sort((left, right) => left.part - right.part);
+    .filter((asset): asset is PackedCatalogGoods => asset.kind === 'goods');
   if (coreAssets.length !== 1 || goodsAssets.length === 0) {
-    throw new Error(`Format-${manifest.formatVersion} catalog requires one core and at least one goods chunk`);
+    throw new Error('Catalog requires one core and at least one goods chunk');
   }
-  goodsAssets.forEach((asset, index) => {
-    if (asset.part !== index) throw new Error(`Catalog goods chunk ${asset.part} is out of order`);
-  });
   const core = coreAssets[0]!;
+  const catalogRoleCounts = new Map<string, number>();
+  for (const asset of decoded) catalogRoleCounts.set(asset.kind, (catalogRoleCounts.get(asset.kind) ?? 0) + 1);
+  for (const role of ['core', 'recipeTypes', 'ingredientGroups', 'recipeRemaps', 'specialMetadata', 'icons']) {
+    if (catalogRoleCounts.get(role) !== 1) {
+      throw new Error(`Catalog requires exactly one ${role} asset`);
+    }
+  }
+  const oreAssets = decoded
+    .filter((asset): asset is PackedCatalogOreDictionaries => asset.kind === 'oreDictionaries');
+  if (oreAssets.length === 0) throw new Error('Catalog requires at least one ore-dictionary asset');
+  if ((catalogRoleCounts.get('goodsMetadata') ?? 0) === 0) {
+    throw new Error('Catalog requires at least one goodsMetadata asset');
+  }
+  const typeAsset = decoded.find((asset): asset is PackedCatalogRecipeTypes => asset.kind === 'recipeTypes')!;
+  const ingredientAsset = decoded.find((asset): asset is PackedCatalogIngredientGroups => asset.kind === 'ingredientGroups')!;
+  const remapAsset = decoded.find((asset): asset is PackedCatalogRecipeRemaps => asset.kind === 'recipeRemaps')!;
+  const specialAsset = decoded.find((asset): asset is PackedCatalogSpecialMetadata => asset.kind === 'specialMetadata')!;
+  const iconAsset = decoded.find((asset): asset is PackedCatalogIcons => asset.kind === 'icons')!;
+  const oreDictionaries = oreAssets.flatMap((asset) => asset.oreDictionaries);
+  const goodsMetadata = new Map<string, PackedGoodsMetadata>();
+  for (const asset of decoded.filter((candidate): candidate is PackedCatalogGoodsMetadata => candidate.kind === 'goodsMetadata')) {
+    if (!sharedPrefixIsPublished(manifest, 'goods', 'goods', asset.prefix)) {
+      throw new Error('Goods metadata prefix is not in the published layout');
+    }
+    for (const goods of asset.goods) {
+      if (!isPackedGoodsMetadata(goods)) {
+        throw new Error(`Invalid goods metadata record ${String((goods as { id?: unknown }).id)}`);
+      }
+      if (goodsMetadata.has(goods.id)) throw new Error(`Duplicate goods metadata ID ${goods.id}`);
+      goodsMetadata.set(goods.id, goods);
+    }
+  }
+  const icons = new Map(iconAsset.icons.map((record) => [record.id, record.icon]));
+  const goodsValues = goodsAssets.flatMap((asset) => asset.goods.map((goods): PackedGoods => ({
+    ...goods,
+    ...goodsMetadata.get(goods.id),
+    icon: icons.get(goods.id) ?? null
+  })));
+  {
+    const goodsIds = new Set(goodsValues.map((goods) => goods.id));
+    if (goodsMetadata.size !== goodsIds.size || [...goodsMetadata.keys()].some((id) => !goodsIds.has(id))) {
+      throw new Error('Goods metadata does not cover exactly the goods catalog');
+    }
+    if (icons.size !== goodsIds.size || [...icons.keys()].some((id) => !goodsIds.has(id))) {
+      throw new Error('Icon references do not cover exactly the goods catalog');
+    }
+    const goodsIdsByPrefix = new Map<string, Set<string>>();
+    for (const asset of goodsAssets) {
+      if (typeof asset.prefix !== 'string' || typeof asset.logicalId !== 'string') {
+        throw new Error('Goods catalog asset is missing its persistent partition identity');
+      }
+      goodsIdsByPrefix.set(asset.prefix, new Set(asset.goods.map((goods) => goods.id)));
+    }
+    const metadataIdsByPrefix = new Map<string, Set<string>>();
+    for (const asset of decoded.filter((candidate): candidate is PackedCatalogGoodsMetadata => candidate.kind === 'goodsMetadata')) {
+      metadataIdsByPrefix.set(asset.prefix, new Set(asset.goods.map((goods) => goods.id)));
+    }
+    if (goodsIdsByPrefix.size !== metadataIdsByPrefix.size
+      || [...goodsIdsByPrefix.entries()].some(([prefix, ids]) => {
+        const metadataIds = metadataIdsByPrefix.get(prefix);
+        return metadataIds === undefined
+          || ids.size !== metadataIds.size
+          || [...ids].some((id) => !metadataIds.has(id));
+      })) {
+      throw new Error('Goods metadata partitions do not match goods partitions');
+    }
+  }
   return {
     catalog: {
-      datasetId: core.datasetId,
-      goods: goodsAssets.flatMap((asset) => asset.goods),
-      recipeTypes: core.recipeTypes,
-      oreDictionaries: core.oreDictionaries,
-      ingredientGroups: core.ingredientGroups ?? [],
+      datasetId: manifest.datasetId,
+      goods: goodsValues,
+      recipeTypes: typeAsset?.recipeTypes ?? core.recipeTypes,
+      oreDictionaries,
+      ingredientGroups: ingredientAsset?.ingredientGroups ?? core.ingredientGroups ?? [],
       serviceItemIds: core.serviceItemIds,
-      obsoleteRecipeRemaps: core.obsoleteRecipeRemaps,
-      specialViewTypes: core.specialViewTypes,
-      specialServiceIcons: core.specialServiceIcons
+      obsoleteRecipeRemaps: remapAsset?.obsoleteRecipeRemaps ?? core.obsoleteRecipeRemaps,
+      specialViewTypes: specialAsset?.specialViewTypes ?? core.specialViewTypes,
+      specialServiceIcons: specialAsset?.specialServiceIcons ?? core.specialServiceIcons
     },
-    hashes: manifest.catalogAssets.map((asset) => asset.sha256)
+    decodedByHash: new Map(manifest.catalogAssets.map((asset, index) => [asset.sha256, decoded[index]!] as const))
   };
 }
 
@@ -248,7 +497,7 @@ export class DatasetRepository {
   readonly datasetId: string;
   readonly gtnhVersion: string;
   readonly revision: string;
-  /** Format-4 NEI tabs; empty for legacy format-1--3 packs. */
+  /** NEI special tabs supplied by the canonical pack. */
   readonly specialViewTypes: readonly SpecialViewType[];
   /** Service icons are deliberately not searchable catalog goods. */
   readonly specialServiceIcons: ReadonlyArray<{
@@ -264,14 +513,17 @@ export class DatasetRepository {
   private readonly types: Map<string, PackedRecipeType>;
   private readonly ingredientGroups: Map<string, PackedOreDictionary | PackedIngredientGroup>;
   private readonly productionFallbacks: Map<string, PackedOreDictionary>;
+  /** Decoded raw catalog chunks retained only for the next version switch. */
+  private readonly catalogAssetsByHash: Map<string, DecodedCatalogAsset>;
   private readonly shards = new Map<string, Promise<PackedRecipe[]>>();
   private readonly specialShards = new Map<string, Promise<PackedSpecialRecord[]>>();
+  /** Loaded shard promises borrowed from the repository being replaced. */
+  private readonly reusableRecipeShards = new Map<string, Promise<PackedRecipe[]>>();
+  private readonly reusableSpecialShards = new Map<string, Promise<PackedSpecialRecord[]>>();
 
   private get assets(): DatasetAsset[] {
     return [
-      ...this.manifest.catalogAssets,
-      ...this.manifest.recipeShards,
-      ...(this.manifest.specialDataShards ?? []),
+      ...this.manifest.recordPages,
       ...this.manifest.iconSheets
     ];
   }
@@ -281,7 +533,25 @@ export class DatasetRepository {
   }
 
   get offlineBytes(): number {
-    return this.assets.reduce((total, asset) => total + asset.bytes, 0);
+    return uniqueAssetBytes(this.assets);
+  }
+
+  /** Physical bytes this dataset would add to the existing browser cache. */
+  async uncachedOfflineBytes(): Promise<number> {
+    const unique = new Map<string, DatasetAsset>();
+    for (const asset of this.assets) {
+      const previous = unique.get(asset.sha256);
+      if (previous && previous.bytes !== asset.bytes) {
+        throw new Error(`Conflicting asset sizes share hash ${asset.sha256}`);
+      }
+      if (!previous) unique.set(asset.sha256, asset);
+    }
+    let total = 0;
+    const cachedSizes = await cachedAssetSizes();
+    for (const asset of unique.values()) {
+      if (cachedSizes.get(asset.sha256) !== asset.bytes) total += asset.bytes;
+    }
+    return total;
   }
 
   private constructor(
@@ -290,7 +560,9 @@ export class DatasetRepository {
     catalog: PackedCatalog,
     materialized?: MaterializedCatalog,
     browseEntries?: CatalogBrowseEntry[],
-    searchDocuments?: CatalogSearchDocument[]
+    searchDocuments?: CatalogSearchDocument[],
+    decodedCatalogAssets?: ReadonlyMap<string, DecodedCatalogAsset>,
+    reuseFrom?: DatasetRepository
   ) {
     this.manifest = manifest;
     this.manifestUrl = manifestUrl;
@@ -306,6 +578,29 @@ export class DatasetRepository {
     this.types = resolved.recipeTypes;
     this.ingredientGroups = resolved.ingredientGroups;
     this.productionFallbacks = resolved.productionFallbacks;
+    this.catalogAssetsByHash = new Map(decodedCatalogAssets ?? []);
+    for (const descriptor of manifest.recipeShards) {
+      const sourceDescriptor = reuseFrom?.manifest.recipeShards.find(
+        (candidate) => candidate.sha256 === descriptor.sha256
+          && candidate.id === descriptor.id
+          && candidate.logicalId === descriptor.logicalId
+          && candidate.recipeTypeId === descriptor.recipeTypeId
+          && candidate.prefix === descriptor.prefix
+      );
+      const sourceShard = sourceDescriptor && reuseFrom?.shards.get(sourceDescriptor.id);
+      if (sourceShard) this.reusableRecipeShards.set(descriptor.sha256, sourceShard);
+    }
+    for (const descriptor of manifest.specialDataShards) {
+      const sourceDescriptor = reuseFrom?.manifest.specialDataShards.find(
+        (candidate) => candidate.sha256 === descriptor.sha256
+          && candidate.id === descriptor.id
+          && candidate.logicalId === descriptor.logicalId
+          && candidate.specialViewTypeId === descriptor.specialViewTypeId
+          && candidate.prefix === descriptor.prefix
+      );
+      const sourceShard = sourceDescriptor && reuseFrom?.specialShards.get(sourceDescriptor.id);
+      if (sourceShard) this.reusableSpecialShards.set(descriptor.sha256, sourceShard);
+    }
     this.specialViewTypes = (catalog.specialViewTypes ?? []).map((viewType, order) => ({
       ...viewType,
       order
@@ -338,14 +633,20 @@ export class DatasetRepository {
 
   static async load(
     datasetId?: string,
-    onProgress?: (progress: DatasetLoadProgress) => void
+    onProgress?: (progress: DatasetLoadProgress) => void,
+    /** The active repository, whose already-decoded immutable data may be borrowed. */
+    reuseFrom?: DatasetRepository
   ): Promise<DatasetRepository> {
     const progressContext: { gtnhVersion?: string } = {};
-    const report = (percent: number, stage: string) => onProgress?.({
-      percent,
+    let lastPercent = 0;
+    const report = (percent: number, stage: string) => {
+      lastPercent = Math.max(lastPercent, Math.min(100, percent));
+      onProgress?.({
+      percent: lastPercent,
       stage,
       gtnhVersion: progressContext.gtnhVersion
-    });
+      });
+    };
     const versionsUrl = new URL('./versions.json', document.baseURI).href;
     report(3, 'Checking available GTNH versions');
     const versionsResult = await fetchJsonNetworkFirst<VersionsIndex>(versionsUrl, `versions:${versionsUrl}`);
@@ -370,99 +671,102 @@ export class DatasetRepository {
       `manifest:${manifestUrl}`
     );
     const manifest = manifestResult.value;
-    if (![1, 2, 3, 4].includes(manifest.formatVersion)) {
-      throw new Error(`Unsupported pack manifest format ${manifest.formatVersion}`);
+    if (manifest.formatVersion !== 6) {
+      throw new Error(`Unsupported pack manifest format ${String(manifest.formatVersion)}; only format 6 is supported`);
+    }
+    if (!Array.isArray(manifest.recordPages) || manifest.recordPages.length === 0) {
+      throw new Error('Format-6 manifest has no record pages');
+    }
+    if (manifest.catalogAssets.some((asset) => !isLogicalRecordAsset(asset))
+      || manifest.recipeShards.some((asset) => !isLogicalRecordAsset(asset))
+      || manifest.specialDataShards.some((asset) => !isLogicalRecordAsset(asset))) {
+      throw new Error('Format-6 logical assets must use record-page segments');
+    }
+    const recordPageHashes = new Set(manifest.recordPages.map((asset) => asset.sha256));
+    if (recordPageHashes.size !== manifest.recordPages.length
+      || manifest.recordPages.some((asset) => !/^[a-f0-9]{64}$/.test(asset.sha256)
+        || !Number.isSafeInteger(asset.bytes)
+        || asset.bytes < 0
+        || asset.encoding !== 'gzip'
+        || typeof asset.url !== 'string'
+        || asset.url.length === 0
+        || asset.segments !== undefined)) {
+      throw new Error('Format-6 manifest has invalid physical record pages');
+    }
+    for (const asset of [
+      ...manifest.catalogAssets,
+      ...manifest.recipeShards,
+      ...manifest.specialDataShards
+    ]) {
+      if (asset.encoding !== 'identity' || asset.url !== ''
+        || !asset.segments!.every(([pageIndex, first, count]) => Number.isSafeInteger(pageIndex)
+          && pageIndex >= 0
+          && pageIndex < manifest.recordPages.length
+          && Number.isSafeInteger(first)
+          && Number.isSafeInteger(count)
+          && first >= 0
+          && count >= 1)) {
+        throw new Error(`${asset.id}: invalid record-page logical descriptor`);
+      }
+    }
+    {
+      const layout = manifest.sharedLayout;
+      if (!layout
+        || manifest.assetStore !== 'global-sha256'
+        || layout.schemaVersion !== 1
+        || !/^[a-f0-9]{64}$/.test(layout.layoutSha256)
+        || !validSharedPrefixMap(layout.prefixes.recipeTypes)
+        || !validSharedPrefixList(layout.prefixes.goods)
+        || !validSharedPrefixList(layout.prefixes.oreDictionaries)
+        || !validSharedPrefixMap(layout.prefixes.specialViews)) {
+        throw new Error('Manifest is missing shared object-store metadata');
+      }
+      if (Object.values(layout.targets).some((bytes) => !Number.isInteger(bytes) || bytes < 1024)) {
+        throw new Error('Manifest has invalid shared-layout targets');
+      }
     }
     if (manifest.datasetId !== selected.datasetId) throw new Error('Manifest dataset identity mismatch');
+    const legacyStates = installed.filter(isLegacyDatasetState);
+    const sameVersionLegacyStates = legacyDatasetStatesFor(installed, manifest.gtnhVersion);
     report(12, 'Loading catalog');
-    const expectedCatalogHashes = manifest.catalogAssets.map((asset) => asset.sha256);
-    const cachedSnapshot = await getCatalogSnapshot(manifest.datasetId);
-    const snapshotMatches = cachedSnapshot
-      && cachedSnapshot.cacheVersion === 1
-      && cachedSnapshot.formatVersion === manifest.formatVersion
-      && cachedSnapshot.manifestUrl === manifestResult.url
-      && Array.isArray(cachedSnapshot.catalogHashes)
-      && cachedSnapshot.catalogHashes.length === expectedCatalogHashes.length
-      && cachedSnapshot.catalogHashes.every((hash, index) => hash === expectedCatalogHashes[index])
-      && cachedSnapshot.catalog !== undefined
-      && cachedSnapshot.catalog.datasetId === manifest.datasetId
-      && Array.isArray(cachedSnapshot.materialized?.entries)
-      && Array.isArray(cachedSnapshot.materialized?.productionFallbacks)
-      && Array.isArray(cachedSnapshot.browseEntries)
-      && Array.isArray(cachedSnapshot.searchDocuments);
-    let restoredSnapshot = false;
-    let loadedCatalog: {
-      catalog: PackedCatalog;
-      hashes: string[];
-      materialized?: MaterializedCatalog;
-      browseEntries?: CatalogBrowseEntry[];
-      searchDocuments?: CatalogSearchDocument[];
-    };
-    if (snapshotMatches) {
-      try {
-        report(88, 'Restoring decoded catalog cache');
-        loadedCatalog = {
-          catalog: cachedSnapshot.catalog,
-          hashes: expectedCatalogHashes,
-          materialized: restoreMaterializedCatalog(cachedSnapshot.materialized, cachedSnapshot.catalog),
-          browseEntries: cachedSnapshot.browseEntries,
-          searchDocuments: cachedSnapshot.searchDocuments
-        };
-        restoredSnapshot = true;
-      } catch (error) {
-        console.warn('Ignoring an incompatible decoded catalog cache', error);
-        loadedCatalog = await loadCatalog(manifest, manifestResult.url, report);
-      }
-    } else {
-      loadedCatalog = await loadCatalog(manifest, manifestResult.url, report);
-    }
+    const loadedCatalog = await loadCatalog(
+      manifest,
+      manifestResult.url,
+      report,
+      reuseFrom?.catalogAssetsByHash
+    );
     report(93, 'Preparing items and ore dictionaries');
     const repository = new DatasetRepository(
       manifest,
       manifestResult.url,
       loadedCatalog.catalog,
-      loadedCatalog.materialized,
-      loadedCatalog.browseEntries,
-      loadedCatalog.searchDocuments
+      undefined,
+      undefined,
+      undefined,
+      loadedCatalog.decodedByHash,
+      reuseFrom
     );
-    if (!restoredSnapshot) {
-      void saveCatalogSnapshot({
-        cacheVersion: 1,
-        datasetId: manifest.datasetId,
-        formatVersion: manifest.formatVersion,
-        manifestUrl: manifestResult.url,
-        catalogHashes: expectedCatalogHashes,
-        catalog: loadedCatalog.catalog,
-        materialized: snapshotMaterializedCatalog({
-          entries: repository.entries,
-          goods: repository.packedGoods,
-          recipeTypes: repository.types,
-          oreDictionaries: new Map(loadedCatalog.catalog.oreDictionaries.map((ore) => [ore.id, ore])),
-          ingredientGroups: repository.ingredientGroups,
-          productionFallbacks: repository.productionFallbacks
-        }),
-        browseEntries: repository.browseEntries,
-        searchDocuments: repository.searchDocuments,
-        cachedAt: Date.now()
-      }).catch((error) => console.warn('Unable to persist decoded catalog cache', error));
-    }
     const previous = await getDataset(manifest.datasetId);
-    const assetHashes = new Set(previous?.assetHashes ?? []);
-    loadedCatalog.hashes.forEach((hash) => assetHashes.add(hash));
-    const allAssets = repository.assets;
-    const catalogHashes = new Set(manifest.catalogAssets.map((asset) => asset.sha256));
-    const storedBytes = allAssets.reduce(
-      (total, asset) => total + (assetHashes.has(asset.sha256) ? asset.bytes : 0),
-      0
+    const manifestAssetHashes = new Set(repository.assets.map((asset) => asset.sha256));
+    const assetHashes = new Set(
+      (previous?.assetHashes ?? []).filter((hash) => manifestAssetHashes.has(hash))
     );
-    const noActiveDataset = installed.every((dataset) => !dataset.active);
+    const cachedSizes = await cachedAssetSizes();
+    for (const asset of repository.assets) {
+      if (cachedSizes.get(asset.sha256) === asset.bytes) assetHashes.add(asset.sha256);
+    }
+    const allAssets = repository.assets;
+    const catalogHashes = physicalHashesForLogicalAssets(manifest.catalogAssets, manifest.recordPages);
+    const storedBytes = uniqueAssetBytes(allAssets, assetHashes);
+    const complete = [...uniqueAssetHashes(allAssets)].every((hash) => assetHashes.has(hash));
     await saveDataset({
       datasetId: manifest.datasetId,
       gtnhVersion: manifest.gtnhVersion,
       revision: manifest.revision,
       displayName: manifest.displayName,
       manifestUrl: manifestResult.url,
-      status: previous?.status === 'complete'
+      cacheVersion: CURRENT_DATASET_CACHE_VERSION,
+      status: complete
         ? 'complete'
         : allAssets.some((asset) =>
           !catalogHashes.has(asset.sha256) && assetHashes.has(asset.sha256))
@@ -470,10 +774,14 @@ export class DatasetRepository {
           : 'catalog',
       storedBytes,
       totalBytes: repository.offlineBytes,
-      active: previous?.active ?? noActiveDataset,
+      active: replacementDatasetActive(previous ?? undefined, sameVersionLegacyStates, installed),
       assetHashes: [...assetHashes],
       updatedAt: Date.now()
     });
+    if (legacyStates.length > 0) {
+      report(97, 'Migrating cached dataset bookkeeping');
+      await migrateLegacyDatasetStates(manifest.datasetId, legacyStates);
+    }
     report(100, 'Catalog ready');
     return repository;
   }
@@ -492,23 +800,25 @@ export class DatasetRepository {
   ): Promise<DatasetState> {
     const current = await getDataset(this.datasetId);
     const completed = new Set<string>();
+    const cachedSizes = await cachedAssetSizes();
     for (const asset of this.assets) {
-      if (current?.assetHashes?.includes(asset.sha256) && await hasCachedAsset(asset.sha256, asset.bytes)) {
+      if (cachedSizes.get(asset.sha256) === asset.bytes) {
         completed.add(asset.sha256);
       }
     }
     const persist = async (hashes: ReadonlySet<string>, complete: boolean) => {
-      const storedBytes = this.assets.reduce(
-        (total, asset) => total + (hashes.has(asset.sha256) ? asset.bytes : 0),
-        0
+      const storedBytes = uniqueAssetBytes(this.assets, hashes);
+      const catalogHashes = physicalHashesForLogicalAssets(
+        this.manifest.catalogAssets,
+        this.manifest.recordPages
       );
-      const catalogHashes = new Set(this.manifest.catalogAssets.map((asset) => asset.sha256));
       await saveDataset({
         datasetId: this.datasetId,
         gtnhVersion: this.gtnhVersion,
         revision: this.revision,
         displayName: this.displayName,
         manifestUrl: this.manifestUrl,
+        cacheVersion: CURRENT_DATASET_CACHE_VERSION,
         status: complete
           ? 'complete'
           : this.assets.some((asset) =>
@@ -539,111 +849,163 @@ export class DatasetRepository {
   }
 
   private async recordAsset(asset: DatasetAsset): Promise<void> {
-    const current = await getDataset(this.datasetId);
-    if (!current || current.assetHashes?.includes(asset.sha256)) return;
-    const hashes = new Set(current.assetHashes ?? []);
-    hashes.add(asset.sha256);
-    const storedBytes = this.assets.reduce(
-      (total, candidate) => total + (hashes.has(candidate.sha256) ? candidate.bytes : 0),
-      0
-    );
-    await saveDataset({
-      ...current,
-      status: hashes.size === this.assets.length ? 'complete' : 'partial',
-      storedBytes,
-      assetHashes: [...hashes],
-      updatedAt: Date.now()
-    });
+    for (const physical of physicalDescriptorsFor(asset, this.manifest.recordPages)) {
+      await recordDatasetAsset(this.datasetId, physical.sha256, physical.bytes);
+    }
+  }
+
+  private validateRecipeRecords(
+    descriptor: RecipeShardDescriptor,
+    recipes: PackedRecipe[]
+  ): PackedRecipe[] {
+    if (!Array.isArray(recipes) || recipes.length !== descriptor.recipeCount) {
+      throw new Error(`${descriptor.id}: recipe count mismatch`);
+    }
+    if (!sharedPrefixIsPublished(this.manifest, 'recipeTypes', descriptor.recipeTypeId, descriptor.prefix)) {
+      throw new Error(`${descriptor.id}: recipe shard prefix is not in the published layout`);
+    }
+    if (!this.types.has(descriptor.recipeTypeId)) {
+      throw new Error(`${descriptor.id}: recipe shard references an unknown recipe type`);
+    }
+    let previousId: string | undefined;
+    for (const recipe of recipes) {
+      if (!recipe || typeof recipe.id !== 'string' || recipe.recipeTypeId !== descriptor.recipeTypeId) {
+        throw new Error(`${descriptor.id}: recipe has an invalid or mismatched identity`);
+      }
+      if (previousId !== undefined && recipe.id.localeCompare(previousId) < 0) {
+        throw new Error(`${descriptor.id}: recipes are not sorted`);
+      }
+      previousId = recipe.id;
+    }
+    return recipes;
+  }
+
+  private async loadRecipeShard(descriptor: RecipeShardDescriptor): Promise<PackedRecipe[]> {
+    const bytes = await fetchVerified(descriptor, this.manifestUrl, undefined, undefined, this.manifest);
+    await this.recordAsset(descriptor);
+    const shard = await decodeAssetPayload(descriptor, bytes) as PackedShard;
+    await yieldToBrowser();
+    if (
+      shard.schemaVersion !== 5
+      || shard.kind !== 'recipeShard'
+      || shard.logicalId !== descriptor.id
+      || shard.logicalId !== descriptor.logicalId
+      || shard.recipeTypeId !== descriptor.recipeTypeId
+      || shard.prefix !== descriptor.prefix
+    ) throw new Error(`${descriptor.id}: shared recipe shard identity mismatch`);
+    return this.validateRecipeRecords(descriptor, shard.recipes);
   }
 
   private loadShard(id: string): Promise<PackedRecipe[]> {
     let pending = this.shards.get(id);
     if (pending) return pending;
-    pending = (async () => {
-      const descriptor = this.manifest.recipeShards.find((shard) => shard.id === id);
-      if (!descriptor) throw new Error(`Unknown recipe shard ${id}`);
-      const bytes = await fetchVerified(descriptor, this.manifestUrl);
-      await this.recordAsset(descriptor);
-      const decompressed = await decompress(bytes);
-      await yieldToBrowser();
-      const shard = decode(decompressed) as PackedShard;
-      if (shard.datasetId !== this.datasetId) throw new Error(`${id}: dataset identity mismatch`);
-      return shard.recipes;
-    })();
+    const descriptor = this.manifest.recipeShards.find((shard) => shard.id === id);
+    if (!descriptor) throw new Error(`Unknown recipe shard ${id}`);
+    const reusable = this.reusableRecipeShards.get(descriptor.sha256);
+    pending = reusable
+      ? (async () => {
+        try {
+          const recipes = this.validateRecipeRecords(descriptor, await reusable);
+          await this.recordAsset(descriptor);
+          return recipes;
+        } catch {
+          return this.loadRecipeShard(descriptor);
+        }
+      })()
+      : this.loadRecipeShard(descriptor);
     this.shards.set(id, pending);
     void pending.catch(() => this.shards.delete(id));
     return pending;
   }
 
-  private loadSpecialShard(id: string): Promise<PackedSpecialRecord[]> {
+  private validateSpecialRecords(
+    descriptor: SpecialShardDescriptor,
+    records: PackedSpecialRecord[]
+  ): PackedSpecialRecord[] {
+    if (!sharedPrefixIsPublished(this.manifest, 'specialViews', descriptor.specialViewTypeId, descriptor.prefix)) {
+      throw new Error(`${descriptor.id}: special-data prefix is not in the published layout`);
+    }
+    if (!Array.isArray(records) || records.length !== descriptor.recordCount) {
+      throw new Error(`${descriptor.id}: special-data record count mismatch`);
+    }
+    const serviceIconIds = new Set(this.specialServiceIcons.map((icon) => icon.id));
+    let previousId: string | undefined;
+    for (const record of records) {
+      if (
+        !record
+        || typeof record.id !== 'string'
+        || typeof record.category !== 'string'
+        || typeof record.title !== 'string'
+        || typeof record.searchText !== 'string'
+        || !isStringArray(record.goodsIds)
+        || (record.productionGoodsIds !== undefined && !isStringArray(record.productionGoodsIds))
+        || (record.usageGoodsIds !== undefined && !isStringArray(record.usageGoodsIds))
+        || typeof record.recipesLookupId !== 'string'
+        || typeof record.usagesLookupId !== 'string'
+        || typeof record.serviceIconId !== 'string'
+        || record.payload === null
+        || typeof record.payload !== 'object'
+        || Array.isArray(record.payload)
+      ) {
+        throw new Error(`${descriptor.id}: invalid special record`);
+      }
+      if (record.category !== descriptor.specialViewTypeId) {
+        throw new Error(`${descriptor.id}: record ${record.id} has the wrong special category`);
+      }
+      if (previousId !== undefined && record.id.localeCompare(previousId) < 0) {
+        throw new Error(`${descriptor.id}: special records are not sorted`);
+      }
+      previousId = record.id;
+      if (!serviceIconIds.has(record.serviceIconId)) {
+        throw new Error(`${descriptor.id}: record ${record.id} references unknown service icon ${record.serviceIconId}`);
+      }
+      if (record.recipesLookupId.length === 0 || record.usagesLookupId.length === 0) {
+        throw new Error(`${descriptor.id}: record ${record.id} has an empty lookup ID`);
+      }
+      for (const goodsId of specialRecordGoodsIds(record)) {
+        if (!this.packedGoods.has(goodsId) && !this.ingredientGroups.has(goodsId)) {
+          throw new Error(`${descriptor.id}: record ${record.id} references unknown goods ${goodsId}`);
+        }
+      }
+    }
+    return records;
+  }
+
+  private async loadSpecialShard(descriptor: SpecialShardDescriptor): Promise<PackedSpecialRecord[]> {
+    const bytes = await fetchVerified(descriptor, this.manifestUrl, undefined, undefined, this.manifest);
+    await this.recordAsset(descriptor);
+    const shard = await decodeAssetPayload(descriptor, bytes) as PackedSpecialShard;
+    await yieldToBrowser();
+    if (
+      shard.schemaVersion !== 5
+      || shard.kind !== 'special'
+      || shard.logicalId !== descriptor.id
+      || shard.logicalId !== descriptor.logicalId
+      || shard.specialViewTypeId !== descriptor.specialViewTypeId
+      || shard.prefix !== descriptor.prefix
+    ) {
+      throw new Error(`${descriptor.id}: special-data identity mismatch`);
+    }
+    return this.validateSpecialRecords(descriptor, shard.records);
+  }
+
+  private loadSpecialShardById(id: string): Promise<PackedSpecialRecord[]> {
     let pending = this.specialShards.get(id);
     if (pending) return pending;
-    pending = (async () => {
-      const descriptor = this.manifest.specialDataShards?.find((shard) => shard.id === id);
-      if (!descriptor) throw new Error(`Unknown special-data shard ${id}`);
-      if (this.manifest.formatVersion !== 4) {
-        throw new Error(`Special-data shard ${id} requires format 4`);
-      }
-      const bytes = await fetchVerified(descriptor, this.manifestUrl);
-      await this.recordAsset(descriptor);
-      const decompressed = await decompress(bytes);
-      await yieldToBrowser();
-      const shard = decode(decompressed) as PackedSpecialShard;
-      if (
-        shard.schemaVersion !== 4
-        || shard.datasetId !== this.datasetId
-        || shard.kind !== 'special'
-        || shard.specialViewTypeId !== descriptor.specialViewTypeId
-        || shard.specialViewTypeOrder !== descriptor.specialViewTypeOrder
-        || shard.part !== descriptor.part
-      ) {
-        throw new Error(`${id}: special-data identity mismatch`);
-      }
-      if (!Array.isArray(shard.records) || shard.records.length !== descriptor.recordCount) {
-        throw new Error(`${id}: special-data record count mismatch`);
-      }
-      const serviceIconIds = new Set(this.specialServiceIcons.map((icon) => icon.id));
-      let previousId: string | undefined;
-      for (const record of shard.records) {
-        if (
-          !record
-          || typeof record.id !== 'string'
-          || typeof record.category !== 'string'
-          || typeof record.title !== 'string'
-          || typeof record.searchText !== 'string'
-          || !isStringArray(record.goodsIds)
-          || (record.productionGoodsIds !== undefined && !isStringArray(record.productionGoodsIds))
-          || (record.usageGoodsIds !== undefined && !isStringArray(record.usageGoodsIds))
-          || typeof record.recipesLookupId !== 'string'
-          || typeof record.usagesLookupId !== 'string'
-          || typeof record.serviceIconId !== 'string'
-          || record.payload === null
-          || typeof record.payload !== 'object'
-          || Array.isArray(record.payload)
-      ) {
-          throw new Error(`${id}: invalid special record`);
+    const descriptor = this.manifest.specialDataShards.find((shard) => shard.id === id);
+    if (!descriptor) throw new Error(`Unknown special-data shard ${id}`);
+    const reusable = this.reusableSpecialShards.get(descriptor.sha256);
+    pending = reusable
+      ? (async () => {
+        try {
+          const records = this.validateSpecialRecords(descriptor, await reusable);
+          await this.recordAsset(descriptor);
+          return records;
+        } catch {
+          return this.loadSpecialShard(descriptor);
         }
-        if (record.category !== descriptor.specialViewTypeId) {
-          throw new Error(`${id}: record ${record.id} has the wrong special category`);
-        }
-        if (previousId !== undefined && record.id.localeCompare(previousId) < 0) {
-          throw new Error(`${id}: special records are not sorted`);
-        }
-        previousId = record.id;
-        if (!serviceIconIds.has(record.serviceIconId)) {
-          throw new Error(`${id}: record ${record.id} references unknown service icon ${record.serviceIconId}`);
-        }
-        if (record.recipesLookupId.length === 0 || record.usagesLookupId.length === 0) {
-          throw new Error(`${id}: record ${record.id} has an empty lookup ID`);
-        }
-        for (const goodsId of specialRecordGoodsIds(record)) {
-          if (!this.packedGoods.has(goodsId) && !this.ingredientGroups.has(goodsId)) {
-            throw new Error(`${id}: record ${record.id} references unknown goods ${goodsId}`);
-          }
-        }
-      }
-      return shard.records;
-    })();
+      })()
+      : this.loadSpecialShard(descriptor);
     this.specialShards.set(id, pending);
     void pending.catch(() => this.specialShards.delete(id));
     return pending;
@@ -696,8 +1058,8 @@ export class DatasetRepository {
       for (const shardId of metadata?.[field] ?? []) result.add(shardId);
     }
     return [...result].sort((left, right) => {
-      const a = this.manifest.specialDataShards?.find((shard) => shard.id === left);
-      const b = this.manifest.specialDataShards?.find((shard) => shard.id === right);
+      const a = this.manifest.specialDataShards.find((shard) => shard.id === left);
+      const b = this.manifest.specialDataShards.find((shard) => shard.id === right);
       return (a?.specialViewTypeOrder ?? 0) - (b?.specialViewTypeOrder ?? 0)
         || (a?.part ?? 0) - (b?.part ?? 0)
         || left.localeCompare(right);
@@ -705,7 +1067,7 @@ export class DatasetRepository {
   }
 
   private specialShardIdsForViewType(viewType: string): string[] {
-    return (this.manifest.specialDataShards ?? [])
+    return this.manifest.specialDataShards
       .filter((descriptor) => descriptor.specialViewTypeId === viewType)
       .sort((left, right) =>
         left.specialViewTypeOrder - right.specialViewTypeOrder
@@ -754,7 +1116,7 @@ export class DatasetRepository {
       shardIds,
       2,
       async (shardId, shardIndex) => {
-        const records = await this.loadSpecialShard(shardId);
+        const records = await this.loadSpecialShardById(shardId);
         const batch = records
           .filter((record) => record.category === viewType)
           .filter(matches)
@@ -795,7 +1157,7 @@ export class DatasetRepository {
       return [];
     }
     const shardIds = this.specialShardIds(entryIds, view).filter((id) => {
-      const descriptor = this.manifest.specialDataShards?.find((shard) => shard.id === id);
+      const descriptor = this.manifest.specialDataShards.find((shard) => shard.id === id);
       return descriptor?.specialViewTypeId === viewType;
     });
     return this.specialFromShards(

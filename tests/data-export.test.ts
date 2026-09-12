@@ -6,12 +6,33 @@ import {
   argumentsMap,
   auditRenderedItemPaths,
   combinedRevision,
+  referencedSharedObjectHashes,
+  unreferencedSharedObjectNames,
   validateCombinedTooltipSchema,
   withPublishedVersion,
   type VersionsIndex
 } from '../tools/data-export/lib';
 
 describe('data export tooling', () => {
+  it('retains only physical objects owned by format-6 manifests', () => {
+    const first = 'a'.repeat(64);
+    const second = 'b'.repeat(64);
+    const orphan = 'c'.repeat(64);
+    const manifests = [{
+      formatVersion: 6,
+      recordPages: [{ sha256: first }],
+      iconSheets: [{ sha256: second }]
+    }, {
+      formatVersion: 4,
+      recordPages: [{ sha256: orphan }],
+      iconSheets: []
+    }];
+
+    expect(referencedSharedObjectHashes(manifests)).toEqual(new Set([first, second]));
+    expect(unreferencedSharedObjectNames([orphan, second, first], manifests)).toEqual([orphan]);
+    expect(() => unreferencedSharedObjectNames(['not-a-hash'], manifests)).toThrow(/filename/);
+  });
+
   it('parses paired CLI arguments and rejects incomplete input', () => {
     expect(argumentsMap(['--version', '2.9.0-beta-2']).get('version')).toBe('2.9.0-beta-2');
     expect(() => argumentsMap(['--version'])).toThrow(/Invalid argument/);
@@ -180,6 +201,8 @@ describe('data export tooling', () => {
     expect(processSource).toContain("DOTNET_GCHeapHardLimitPercent: '0x32'");
     expect(processSource).toContain('...process.env');
     expect(processSource).toContain("args.get('resume-processed') === 'true'");
+    expect(processSource).toContain("join(outputWorkDirectory, 'provenance.json')");
+    expect(processSource).not.toContain("join(finalPack, 'provenance.json')");
   });
 
   it('publishes a new default while retaining other GTNH versions', () => {

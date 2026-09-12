@@ -3,6 +3,8 @@ import { hasRevisionUpdate, reconcileDatasetVersions } from './datasetVersions';
 import { storageShortfall } from './offline';
 import {
   estimateStorage,
+  cachedAssetSizes,
+  calculateDatasetStorageReport,
   listDatasets,
   removeDataset,
   requestPersistentStorage,
@@ -10,6 +12,7 @@ import {
 } from './storage';
 import type {
   DatasetState,
+  DatasetStorageReport,
   DatasetVersion,
   ManagedDataset,
   OfflineInstallProgress
@@ -45,6 +48,17 @@ export class DatasetManagerState {
   installProgress = $state<OfflineInstallProgress>();
   storageUsage = $state<number>();
   storageQuota = $state<number>();
+  physicalAssetBytes = $state(0);
+  physicalAssetCount = $state(0);
+  storageReport = $state<DatasetStorageReport>({
+    logicalBytes: 0,
+    referencedBytes: 0,
+    sharedSavingsBytes: 0,
+    untrackedBytes: 0,
+    sharedAssets: 0,
+    untrackedAssets: 0,
+    byDataset: {}
+  });
   persistentStorage = $state<boolean>();
   private installController: AbortController | null = null;
 
@@ -71,17 +85,19 @@ export class DatasetManagerState {
     this.loading = true;
     this.error = '';
     try {
-      const [versions, records, storage, persisted] = await Promise.all([
+      const [versions, records, storage, persisted, assetSizes] = await Promise.all([
         DatasetRepository.availableVersions(),
         listDatasets(),
         estimateStorage(),
-        storageIsPersistent()
+        storageIsPersistent(),
+        cachedAssetSizes()
       ]);
       this.availableDatasets = versions;
       this.datasetRecords = records;
       this.storageUsage = storage.usage;
       this.storageQuota = storage.quota;
       this.persistentStorage = persisted;
+      this.applyStorageReport(records, assetSizes);
     } catch (error) {
       this.error = diagnostic(error);
       this.datasetRecords = await listDatasets();
@@ -91,17 +107,27 @@ export class DatasetManagerState {
   }
 
   async refreshRecords() {
-    this.datasetRecords = await listDatasets();
+    const [records, assetSizes] = await Promise.all([listDatasets(), cachedAssetSizes()]);
+    this.datasetRecords = records;
+    this.applyStorageReport(records, assetSizes);
+  }
+
+  private applyStorageReport(records: DatasetState[], assetSizes: ReadonlyMap<string, number>) {
+    this.storageReport = calculateDatasetStorageReport(records, assetSizes);
+    this.physicalAssetBytes = [...assetSizes.values()].reduce((total, bytes) => total + bytes, 0);
+    this.physicalAssetCount = assetSizes.size;
   }
 
   async refreshAvailability() {
     try {
-      const [versions, records] = await Promise.all([
+      const [versions, records, assetSizes] = await Promise.all([
         DatasetRepository.availableVersions(),
-        listDatasets()
+        listDatasets(),
+        cachedAssetSizes()
       ]);
       this.availableDatasets = versions;
       this.datasetRecords = records;
+      this.applyStorageReport(records, assetSizes);
     } catch (error) {
       console.warn('Unable to refresh available GTNH datasets', error);
       this.datasetRecords = await listDatasets();
@@ -117,17 +143,14 @@ export class DatasetManagerState {
     this.installController = controller;
     try {
       const repository = this.callbacks.getRepository();
-      const state = this.datasetRecords.find((record) => record.datasetId === version.datasetId);
-      const totalBytes = version.offlineBytes ?? state?.totalBytes;
-      const remainingBytes = totalBytes === undefined
-        ? undefined
-        : Math.max(0, totalBytes - (state?.storedBytes ?? 0));
+      const installer = repository?.datasetId === version.datasetId
+        ? repository
+        : await DatasetRepository.load(version.datasetId, undefined, repository ?? undefined);
+      const remainingBytes = await installer.uncachedOfflineBytes();
       const estimate = await estimateStorage();
       this.storageUsage = estimate.usage;
       this.storageQuota = estimate.quota;
-      const shortfall = remainingBytes === undefined
-        ? undefined
-        : storageShortfall(remainingBytes, estimate.usage, estimate.quota);
+      const shortfall = storageShortfall(remainingBytes, estimate.usage, estimate.quota);
       if (shortfall !== undefined && shortfall > 0) {
         const availableBytes = Math.max(0, estimate.quota! - estimate.usage!);
         throw new Error(
@@ -137,9 +160,6 @@ export class DatasetManagerState {
       }
       const persisted = await requestPersistentStorage();
       if (persisted !== undefined) this.persistentStorage = persisted;
-      const installer = repository?.datasetId === version.datasetId
-        ? repository
-        : await DatasetRepository.load(version.datasetId);
       this.callbacks.validateRepository(installer);
       await installer.installOffline((progress) => {
         if (this.installingDatasetId === version.datasetId) this.installProgress = progress;

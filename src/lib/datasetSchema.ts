@@ -1,4 +1,5 @@
 import type { DatasetVersion, RecipeLayout } from './types';
+import type { RecordPageSelection } from './recordPages';
 
 export interface VersionsIndex {
   schemaVersion: number;
@@ -6,6 +7,8 @@ export interface VersionsIndex {
 }
 
 export interface DatasetAsset {
+  segments?: RecordPageSelection[];
+  oversizedSingleton?: boolean;
   id: string;
   url: string;
   bytes: number;
@@ -14,13 +17,24 @@ export interface DatasetAsset {
 }
 
 interface CatalogAsset extends DatasetAsset {
-  role?: 'core' | 'goods';
-  part?: number;
-  goodsCount?: number;
+  role: 'core' | 'goods' | 'goodsMetadata' | 'recipeTypes' | 'oreDictionaries'
+    | 'ingredientGroups' | 'recipeRemaps' | 'specialMetadata' | 'icons';
+  part: number;
+  goodsCount: number;
+  recordCount?: number;
+  prefix?: string;
+  logicalId: string;
+  oversizedSingleton?: boolean;
 }
 
 interface RecipeShardAsset extends DatasetAsset {
   recipeTypeId: string;
+  recipeTypeOrder: number;
+  part: number;
+  recipeCount: number;
+  prefix: string;
+  logicalId: string;
+  oversizedSingleton?: boolean;
 }
 
 interface IconSheetAsset extends DatasetAsset {
@@ -33,10 +47,13 @@ interface SpecialDataShardAsset extends DatasetAsset {
   specialViewTypeOrder: number;
   part: number;
   recordCount: number;
+  prefix: string;
+  logicalId: string;
+  oversizedSingleton?: boolean;
 }
 
 export interface DatasetManifest {
-  formatVersion: number;
+  formatVersion: 6;
   datasetId: string;
   gtnhVersion: string;
   revision: string;
@@ -44,11 +61,30 @@ export interface DatasetManifest {
   catalogAssets: CatalogAsset[];
   recipeShards: RecipeShardAsset[];
   iconSheets: IconSheetAsset[];
-  specialDataShards?: SpecialDataShardAsset[];
-  totals?: {
+  specialDataShards: SpecialDataShardAsset[];
+  recordPages: DatasetAsset[];
+  assetStore: 'global-sha256';
+  sharedLayout: {
+    schemaVersion: 1;
+    layoutSha256: string;
+    targets: {
+      recipes: number;
+      goods: number;
+      goodsMetadata: number;
+      special: number;
+      oreDictionaries: number;
+    };
+    prefixes: {
+      recipeTypes: Record<string, string[]>;
+      goods: string[];
+      oreDictionaries: string[];
+      specialViews: Record<string, string[]>;
+    };
+  };
+  totals: {
     assets: number;
     offlineBytes: number;
-    specialRecords?: number;
+    specialRecords: number;
   };
 }
 
@@ -61,7 +97,8 @@ export interface PackedGoods {
   internalName: string;
   unlocalizedName: string;
   nbt: string | null;
-  numericId: number;
+  /** Stored in a separate metadata record family rather than intrinsic goods identity. */
+  numericId?: number;
   damage?: number;
   searchMask: number[];
   searchable: boolean;
@@ -142,17 +179,91 @@ export interface PackedCatalog {
   }>;
 }
 
-export interface PackedCatalogCore extends Omit<PackedCatalog, 'goods'> {
-  schemaVersion: 2 | 3 | 4;
+export interface PackedCatalogCore extends Omit<PackedCatalog, 'goods' | 'datasetId'> {
+  schemaVersion: 5;
   kind: 'core';
+  logicalId: string;
+}
+
+export interface PackedCatalogIcons {
+  schemaVersion: 5;
+  kind: 'icons';
+  logicalId: string;
+  icons: Array<{ id: string; icon: PackedGoods['icon'] }>;
 }
 
 export interface PackedCatalogGoods {
-  schemaVersion: 2 | 3 | 4;
-  datasetId: string;
+  schemaVersion: 5;
   kind: 'goods';
-  part: number;
-  goods: PackedGoods[];
+  logicalId: string;
+  prefix: string;
+  goods: Array<Omit<PackedGoods, 'icon'>>;
+}
+
+export interface PackedCatalogGoodsMetadata {
+  schemaVersion: 5;
+  kind: 'goodsMetadata';
+  logicalId: string;
+  prefix: string;
+  goods: PackedGoodsMetadata[];
+}
+
+/** Fields that complete an intrinsic goods record at runtime. */
+export interface PackedGoodsMetadata {
+  id: string;
+  name: string;
+  tooltip: string | null;
+  unlocalizedName: string;
+  searchMask: number[];
+  searchable: boolean;
+  numericId: number;
+  productionShards: string[];
+  usageShards: string[];
+  productionCount: number;
+  usageCount: number;
+  specialProductionShards: string[];
+  specialUsageShards: string[];
+  specialProductionLookupIds: string[];
+  specialUsageLookupIds: string[];
+  specialProductionCount: number;
+  specialUsageCount: number;
+}
+
+export interface PackedCatalogRecipeTypes {
+  schemaVersion: 5;
+  kind: 'recipeTypes';
+  logicalId: string;
+  recipeTypes: PackedRecipeType[];
+}
+
+export interface PackedCatalogOreDictionaries {
+  schemaVersion: 5;
+  kind: 'oreDictionaries';
+  logicalId: string;
+  prefix: string;
+  oreDictionaries: PackedOreDictionary[];
+}
+
+export interface PackedCatalogIngredientGroups {
+  schemaVersion: 5;
+  kind: 'ingredientGroups';
+  logicalId: string;
+  ingredientGroups: PackedIngredientGroup[];
+}
+
+export interface PackedCatalogRecipeRemaps {
+  schemaVersion: 5;
+  kind: 'recipeRemaps';
+  logicalId: string;
+  obsoleteRecipeRemaps: Record<string, string>;
+}
+
+export interface PackedCatalogSpecialMetadata {
+  schemaVersion: 5;
+  kind: 'specialMetadata';
+  logicalId: string;
+  specialViewTypes: NonNullable<PackedCatalog['specialViewTypes']>;
+  specialServiceIcons: NonNullable<PackedCatalog['specialServiceIcons']>;
 }
 
 interface PackedIo {
@@ -180,7 +291,11 @@ export interface PackedRecipe {
 }
 
 export interface PackedShard {
-  datasetId: string;
+  schemaVersion: 5;
+  kind: 'recipeShard';
+  logicalId: string;
+  recipeTypeId: string;
+  prefix: string;
   recipes: PackedRecipe[];
 }
 
@@ -200,11 +315,10 @@ export interface PackedSpecialRecord {
 }
 
 export interface PackedSpecialShard {
-  schemaVersion: 4;
-  datasetId: string;
+  schemaVersion: 5;
   kind: 'special';
   specialViewTypeId: string;
-  specialViewTypeOrder: number;
-  part: number;
+  logicalId: string;
+  prefix: string;
   records: PackedSpecialRecord[];
 }

@@ -238,7 +238,7 @@
     datasetProgress = 0;
     datasetStage = 'Starting';
     errorCopied = false;
-    clearIconSheetCache();
+    const previousRepository = repository;
     repository = null;
     catalog = [];
     if (!preserveSelection) selectedId = '';
@@ -250,11 +250,17 @@
           if (gtnhVersion) datasetVersion = gtnhVersion;
           datasetProgress = percent;
           datasetStage = stage;
-        }
+        },
+        previousRepository ?? undefined
       );
       validateRepository(loaded);
       await loaded.activate();
-      await applyRepository(loaded, false);
+      await applyRepository(loaded, preserveSelection);
+      clearIconSheetCache(new Set(
+        loaded.entries
+          .map((entry) => entry.icon?.sha256)
+          .filter((sha256): sha256 is string => sha256 !== undefined)
+      ));
       datasetStatus = 'ready';
       await datasetManager.refreshAvailability();
       return true;
@@ -401,6 +407,9 @@
     installProgress={datasetManager.installProgress}
     storageUsage={datasetManager.storageUsage}
     storageQuota={datasetManager.storageQuota}
+    physicalAssetBytes={datasetManager.physicalAssetBytes}
+    physicalAssetCount={datasetManager.physicalAssetCount}
+    storageReport={datasetManager.storageReport}
     persistentStorage={datasetManager.persistentStorage}
     close={() => datasetManager.open = false}
     install={(version) => datasetManager.install(version)}

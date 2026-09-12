@@ -237,6 +237,9 @@ function decorateIngredient(
 ): Ingredient {
   return {
     ...withCatalogName(ingredient, ingredient.id, names),
+    ...(ingredient.ingredientGroupId
+      ? { ingredientGroupName: catalogNameForId(ingredient.ingredientGroupId, names) }
+      : {}),
     ...(ingredient.alternatives !== undefined
       ? { alternativeNames: namesForIds(ingredient.alternatives, names) }
       : {})
@@ -325,6 +328,7 @@ interface VeinExportLayer {
 }
 
 interface VeinExportPayload {
+  goodsId?: string;
   goodsIds?: readonly string[];
   layers?: readonly VeinExportLayer[];
   ores?: readonly SpecialGoods[];
@@ -357,6 +361,9 @@ function decorateVeinPayload(
 ): Record<string, unknown> {
   return {
     ...value,
+    ...(value.goodsId
+      ? { goodsName: catalogNameForId(value.goodsId, names) }
+      : {}),
     ...(value.goodsIds ? { goodsNames: namesForIds(value.goodsIds, names) } : {}),
     ...(value.layers
       ? { layers: value.layers.map((layer) => decorateVeinLayer(layer, names)) }

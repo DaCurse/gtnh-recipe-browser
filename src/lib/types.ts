@@ -91,6 +91,8 @@ export interface Ingredient {
   kind?: 'item' | 'fluid' | 'oreDict' | 'itemGroup';
   /** Stable named dictionary or anonymous recipe-group ID. */
   ingredientGroupId?: string;
+  /** Catalog-resolved name corresponding to ingredientGroupId in browser exports. */
+  ingredientGroupName?: string;
   ingredientGroupKind?: 'oreDict' | 'itemGroup';
   /** Every interchangeable item accepted by a grouped ingredient. */
   alternatives?: string[];
@@ -162,12 +164,40 @@ export interface DatasetState {
   revision: string;
   displayName: string;
   manifestUrl: string;
+  /** Current browser-cache bookkeeping version. Missing/older values are migrated on load. */
+  cacheVersion?: number;
   status: 'catalog' | 'partial' | 'complete';
   storedBytes: number;
   totalBytes: number;
   active: boolean;
   assetHashes: string[];
   updatedAt: number;
+}
+
+/** Physical/cache accounting for one installed dataset's referenced blobs. */
+export interface DatasetStorageUsage {
+  cachedBytes: number;
+  cachedAssets: number;
+  /** Bytes referenced only by this dataset; removing it would release these. */
+  exclusiveBytes: number;
+  exclusiveAssets: number;
+  /** Bytes also referenced by at least one other installed dataset. */
+  sharedBytes: number;
+  sharedAssets: number;
+}
+
+export interface DatasetStorageReport {
+  /** Sum of cached bytes counted once per installed dataset. */
+  logicalBytes: number;
+  /** Cached bytes referenced by at least one installed dataset. */
+  referencedBytes: number;
+  /** Logical bytes avoided by sharing exact blobs between installed datasets. */
+  sharedSavingsBytes: number;
+  /** Physical blobs left over from a deleted/legacy dataset. */
+  untrackedBytes: number;
+  sharedAssets: number;
+  untrackedAssets: number;
+  byDataset: Record<string, DatasetStorageUsage>;
 }
 
 export interface DatasetVersion {

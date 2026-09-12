@@ -128,6 +128,7 @@ export interface ProcessContext {
   sessionPath: string;
   workDirectory: string;
   repositoryRoot: string;
+  sharedLayoutPath: string;
 }
 
 export interface DirectExportDependencies {
@@ -162,6 +163,8 @@ export interface DirectExportOptions {
   useXvfb?: boolean;
   xms?: string;
   xmx?: string;
+  /** Persistent append-only prefix layout used by the canonical pack. */
+  sharedLayoutPath?: string;
   launchTimeoutMs?: number;
   automationTimeoutMs?: number;
   pollIntervalMs?: number;
@@ -661,7 +664,8 @@ async function invokeProcess(
 ): Promise<void> {
   await commandRunner(tsxInvocation(repositoryRoot, 'tools/data-export/process.ts', [
     '--session', context.sessionPath,
-    '--work-dir', context.workDirectory
+    '--work-dir', context.workDirectory,
+    '--layout', context.sharedLayoutPath
   ]));
 }
 
@@ -674,6 +678,7 @@ async function readProcessResult(path: string): Promise<Record<string, unknown>>
 export async function orchestrateDirectExport(options: DirectExportOptions = {}): Promise<DirectExportResult> {
   const dependencies = options.dependencies ?? {};
   const profile = profileFromInput(options.profile);
+  if (!options.sharedLayoutPath) throw new Error('--shared-layout is required for the canonical pack');
   const repositoryRoot = resolve(options.repositoryRoot ?? process.cwd());
   const cacheDirectory = resolve(options.cacheDirectory ?? DEFAULT_CACHE_DIRECTORY);
   const workDirectory = resolve(options.workDirectory ?? join(repositoryRoot, '.export-work', `${profile.version}-direct`));
@@ -800,7 +805,13 @@ export async function orchestrateDirectExport(options: DirectExportOptions = {})
       launcherState: monitored.launcher.state,
       automationPhase: monitored.automation.phase
     });
-    const processContext = { session, sessionPath, workDirectory, repositoryRoot };
+    const processContext = {
+      session,
+      sessionPath,
+      workDirectory,
+      repositoryRoot,
+      sharedLayoutPath: resolve(options.sharedLayoutPath)
+    };
     if (dependencies.process) await dependencies.process(processContext);
     else await invokeProcess(processContext, repositoryRoot, dependencies.commandRunner ?? defaultCommandRunner);
     const resultPath = join(workDirectory, 'process-result.json');

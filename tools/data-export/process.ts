@@ -19,6 +19,21 @@ import {
 } from './lib';
 import { readSpecialSidecar, validateCropsNhSeedReferences } from './special';
 
+function usage(): string {
+  return [
+    'Process a private NESQL export into a deterministic GTNH browser pack',
+    '',
+    'Usage:',
+    '  npm run export:process -- --session <export-session.json> [--work-dir <directory>]',
+    '    --layout <shared-layout.json> [--reuse-packs <pack-directory,...>]',
+    '    [--resume-processed true]',
+    '',
+    'The source exporter and processed input remain ShadowTheAge format-v5.',
+    'This command emits and verifies the canonical shared format-6 pack.',
+    'Reuse paths are existing format-6 build or published dataset directories whose record pages may be frozen.'
+  ].join('\n');
+}
+
 function run(
   command: string,
   args: string[],
@@ -34,8 +49,25 @@ function run(
   if (result.status !== 0) throw new Error(`${command} exited with status ${result.status}`);
 }
 
-const args = argumentsMap(process.argv.slice(2));
+const rawArguments = process.argv.slice(2);
+if (rawArguments.includes('--help') || rawArguments.includes('-h')) {
+  console.log(usage());
+  process.exit(0);
+}
+const args = argumentsMap(rawArguments);
 const repositoryRoot = process.cwd();
+if (args.has('format-version')) throw new Error('The source exporter emits format 5 only; --format-version is obsolete');
+const sharedLayoutPath = args.get('layout');
+if (!sharedLayoutPath) throw new Error('--layout is required for the canonical pack');
+const reusePacksArgument = args.get('reuse-packs');
+const reusePacks = reusePacksArgument === undefined
+  ? []
+  : reusePacksArgument.split(',').map((path) => path.trim());
+if (reusePacks.some((path) => path.length === 0)) {
+  throw new Error('--reuse-packs must contain comma-separated pack directories');
+}
+const resolvedLayoutPath = resolve(sharedLayoutPath);
+const resolvedReusePacks = reusePacks.map((path) => resolve(path));
 const sessionPath = resolve(requiredArgument(args, 'session'));
 const session = await readExportSession(sessionPath);
 const outputWorkDirectory = resolve(args.get('work-dir') ?? session.workDirectory);
@@ -214,10 +246,15 @@ const options = {
   revision: sourceRevision,
   ...(specialDataPath ? { specialDataPath } : {})
 };
-const firstBuildResult = await buildPack({ ...options, outputDirectory: firstBuild });
+const buildOptions = {
+  ...options,
+  layoutPath: resolvedLayoutPath,
+  reusePacks: resolvedReusePacks
+};
+const firstBuildResult = await buildPack({ ...buildOptions, outputDirectory: firstBuild });
 const datasetId = firstBuildResult.manifest.datasetId;
 const revision = firstBuildResult.manifest.revision;
-await buildPack({ ...options, outputDirectory: secondBuild });
+await buildPack({ ...buildOptions, outputDirectory: secondBuild });
 const firstDigest = await directoryDigest(firstBuild);
 const secondDigest = await directoryDigest(secondBuild);
 if (firstDigest !== secondDigest) {
@@ -225,12 +262,18 @@ if (firstDigest !== secondDigest) {
 }
 const verification = await verifyPack({
   packDirectory: firstBuild,
+  dataPath,
+  layoutPath: resolvedLayoutPath,
   atlasPath,
+  specialDataPath,
   spriteSamples: 100
 });
 await verifyPack({
   packDirectory: secondBuild,
+  dataPath,
+  layoutPath: resolvedLayoutPath,
   atlasPath,
+  specialDataPath,
   spriteSamples: 100
 });
 await rm(secondBuild, { recursive: true });
@@ -262,11 +305,16 @@ const provenance = {
     dataBin: { bytes: data.byteLength, sha256: await sha256File(dataPath) },
     atlasWebp: { bytes: atlas.byteLength, sha256: await sha256File(atlasPath) }
   },
+  pack: {
+    formatVersion: 6,
+    sourceFormatVersion: repository.formatVersion,
+    sharedLayoutSha256: await sha256File(resolvedLayoutPath)
+  },
   deterministicPackSha256: firstDigest,
   verification
 };
 await writeFile(
-  join(finalPack, 'provenance.json'),
+  join(outputWorkDirectory, 'provenance.json'),
   `${JSON.stringify(provenance, null, 2)}\n`,
   { flag: 'wx' }
 );

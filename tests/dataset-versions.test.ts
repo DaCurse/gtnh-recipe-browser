@@ -1,7 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
   hasRevisionUpdate,
+  CURRENT_DATASET_CACHE_VERSION,
+  isLegacyDatasetState,
+  legacyDatasetStatesFor,
   preferredDatasetId,
+  replacementDatasetActive,
   reconcileDatasetVersions
 } from '../src/lib/datasetVersions';
 import type { DatasetState, DatasetVersion } from '../src/lib/types';
@@ -21,6 +25,7 @@ function stored(datasetId: string, active = false): DatasetState {
     ...published,
     displayName: published.gtnhVersion,
     manifestUrl: published.packManifestUrl,
+    cacheVersion: CURRENT_DATASET_CACHE_VERSION,
     status: 'complete',
     storedBytes: 100,
     totalBytes: 100,
@@ -31,6 +36,30 @@ function stored(datasetId: string, active = false): DatasetState {
 }
 
 describe('dataset revision availability', () => {
+  it('transfers active state when a semantic version gets a new dataset ID', () => {
+    expect(replacementDatasetActive(undefined, [{ active: true }], [{ active: true }])).toBe(true);
+    expect(replacementDatasetActive(undefined, [{ active: false }], [{ active: false }])).toBe(true);
+    expect(replacementDatasetActive(undefined, [{ active: false }], [{ active: true }])).toBe(false);
+    expect(replacementDatasetActive({ active: false }, [{ active: true }], [{ active: true }])).toBe(false);
+  });
+
+  it('detects legacy cache rows generically, regardless of their old pack format', () => {
+    const current = stored('current', true);
+    const missingMarker = { ...stored('old-missing-marker'), cacheVersion: undefined };
+    const oldCacheVersion = { ...stored('old-cache-version'), cacheVersion: CURRENT_DATASET_CACHE_VERSION - 1 };
+
+    expect(isLegacyDatasetState(current)).toBe(false);
+    expect(isLegacyDatasetState(missingMarker)).toBe(true);
+    expect(isLegacyDatasetState(oldCacheVersion)).toBe(true);
+    expect(legacyDatasetStatesFor(
+      [current, missingMarker, oldCacheVersion],
+      current.gtnhVersion
+    ).map((state) => state.datasetId)).toEqual([
+      'old-missing-marker',
+      'old-cache-version'
+    ]);
+  });
+
   it('automatically selects the published replacement for a stale active revision', () => {
     const oldDataset = stored('2.9.0-beta-2-rold', true);
     const latest = version('2.9.0-beta-2-rnew');

@@ -117,5 +117,44 @@ describe('offline asset installation', () => {
 
     expect(Math.max(...loadedBytes)).toBe(assets[0].bytes + assets[1].bytes);
     expect(Math.min(...loadedBytes)).toBeGreaterThanOrEqual(0);
+    expect(loadedBytes).toEqual([...loadedBytes].sort((left, right) => left - right));
+  });
+
+  it('does not move progress backwards when a partial transfer retries', async () => {
+    const loadedBytes: number[] = [];
+    let attempt = 0;
+    await installOfflineAssets({
+      assets: [assets[0]!],
+      load: async (asset, progress) => {
+        attempt++;
+        progress(attempt === 1 ? asset.bytes - 1 : 1);
+        if (attempt === 1) throw new Error('retry');
+        progress(asset.bytes);
+      },
+      persist: async () => {},
+      retryDelay: async () => {},
+      onProgress: (progress) => loadedBytes.push(progress.loadedBytes)
+    });
+    expect(loadedBytes).toEqual([...loadedBytes].sort((left, right) => left - right));
+    expect(loadedBytes.at(-1)).toBe(assets[0]!.bytes);
+  });
+
+  it('downloads a content-addressed blob only once when manifests reference it twice', async () => {
+    const shared = { ...assets[0]!, id: 'shared-from-catalog' };
+    const loaded: string[] = [];
+    const progress: number[] = [];
+    const completed = await installOfflineAssets({
+      assets: [assets[0]!, shared, assets[1]!],
+      load: async (asset, onProgress) => {
+        loaded.push(asset.id);
+        onProgress(asset.bytes);
+      },
+      persist: async () => {},
+      onProgress: (value) => progress.push(value.totalBytes)
+    });
+
+    expect(loaded).toEqual(['asset-0', 'asset-1']);
+    expect(completed).toEqual(new Set(['hash-0', 'hash-1']));
+    expect(progress.at(-1)).toBe(21);
   });
 });

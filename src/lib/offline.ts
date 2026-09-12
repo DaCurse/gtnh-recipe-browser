@@ -51,24 +51,37 @@ export async function installOfflineAssets({
     throw new RangeError('Retry attempts must be a positive integer');
   }
 
+  const assetsByHash = new Map<string, AssetDescriptor>();
+  for (const asset of assets) {
+    const previous = assetsByHash.get(asset.sha256);
+    if (previous && (previous.bytes !== asset.bytes || previous.encoding !== asset.encoding)) {
+      throw new Error(`Conflicting descriptors share asset hash ${asset.sha256}`);
+    }
+    // Keep the first descriptor's URL/label; the SHA is the ownership key and
+    // later manifest references must not schedule a second physical download.
+    if (!previous) assetsByHash.set(asset.sha256, asset);
+  }
+  const uniqueAssets = [...assetsByHash.values()];
   const completed = new Set(completedHashes);
-  const remaining = assets.filter((asset) => !completed.has(asset.sha256));
-  const totalBytes = assets.reduce((total, asset) => total + asset.bytes, 0);
-  const completedBytes = () => assets.reduce(
+  const remaining = uniqueAssets.filter((asset) => !completed.has(asset.sha256));
+  const totalBytes = uniqueAssets.reduce((total, asset) => total + asset.bytes, 0);
+  const completedBytes = () => uniqueAssets.reduce(
     (total, asset) => total + (completed.has(asset.sha256) ? asset.bytes : 0),
     0
   );
   const liveBytes = new Map<string, number>();
+  let lastReportedBytes = 0;
   let next = 0;
   let saveQueue = Promise.resolve();
 
   const report = (asset?: AssetDescriptor, retry?: number) => {
     const inFlight = [...liveBytes.values()].reduce((total, loaded) => total + loaded, 0);
+    lastReportedBytes = Math.max(lastReportedBytes, Math.min(totalBytes, completedBytes() + inFlight));
     onProgress?.({
-      loadedBytes: Math.min(totalBytes, completedBytes() + inFlight),
+      loadedBytes: lastReportedBytes,
       totalBytes,
-      completedAssets: assets.filter((candidate) => completed.has(candidate.sha256)).length,
-      totalAssets: assets.length,
+      completedAssets: uniqueAssets.filter((candidate) => completed.has(candidate.sha256)).length,
+      totalAssets: uniqueAssets.length,
       currentAsset: asset?.id,
       retry
     });
@@ -94,7 +107,7 @@ export async function installOfflineAssets({
           assertActive(signal);
           liveBytes.delete(asset.sha256);
           completed.add(asset.sha256);
-          const complete = completed.size === new Set(assets.map((candidate) => candidate.sha256)).size;
+          const complete = completed.size >= uniqueAssets.length;
           saveQueue = saveQueue.then(() => persist(new Set(completed), complete));
           await saveQueue;
           report(asset);

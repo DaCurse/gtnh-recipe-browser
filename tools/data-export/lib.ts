@@ -55,6 +55,46 @@ export interface VersionsIndex {
   versions: VersionsIndexEntry[];
 }
 
+interface SharedObjectManifest {
+  formatVersion: number;
+  recordPages?: Array<{ sha256: string }>;
+  iconSheets?: Array<{ sha256: string }>;
+}
+
+const FULL_SHA256 = /^[a-f0-9]{64}$/;
+
+/** Collect the complete physical object set referenced by format-6 manifests. */
+export function referencedSharedObjectHashes(
+  manifests: readonly SharedObjectManifest[]
+): Set<string> {
+  const hashes = new Set<string>();
+  for (const manifest of manifests) {
+    if (manifest.formatVersion !== 6) continue;
+    if (!Array.isArray(manifest.recordPages) || !Array.isArray(manifest.iconSheets)) {
+      throw new Error('Format-6 manifest is missing physical object lists');
+    }
+    for (const asset of [...manifest.recordPages, ...manifest.iconSheets]) {
+      if (!FULL_SHA256.test(asset.sha256)) {
+        throw new Error(`Invalid shared object SHA-256 ${String(asset.sha256)}`);
+      }
+      hashes.add(asset.sha256);
+    }
+  }
+  return hashes;
+}
+
+/** Return immutable objects which no currently published manifest owns. */
+export function unreferencedSharedObjectNames(
+  objectNames: readonly string[],
+  manifests: readonly SharedObjectManifest[]
+): string[] {
+  const referenced = referencedSharedObjectHashes(manifests);
+  return objectNames.filter((name) => {
+    if (!FULL_SHA256.test(name)) throw new Error(`Invalid shared object filename ${name}`);
+    return !referenced.has(name);
+  }).sort();
+}
+
 export function argumentsMap(args: string[]): Map<string, string> {
   const result = new Map<string, string>();
   for (let index = 0; index < args.length; index += 2) {

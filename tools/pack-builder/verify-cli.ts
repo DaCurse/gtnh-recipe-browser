@@ -8,14 +8,18 @@ function argument(name: string): string | undefined {
 
 const packDirectory = argument('pack');
 if (!packDirectory) {
-  console.error('Usage: npm run verify-pack -- --pack <directory> [--atlas <atlas.webp>] [--sprite-samples <count>]');
+  console.error('Usage: npm run verify-pack -- --pack <directory> [--asset-directory <directory>] [--data <data.bin>] [--layout <shared-layout.json>] [--atlas <atlas.webp>] [--special-data <browser-nei-special.json>] [--sprite-samples <count>]');
   process.exit(2);
 }
 
 try {
   const result = await verifyPack({
     packDirectory,
+    assetDirectory: argument('asset-directory'),
+    dataPath: argument('data'),
+    layoutPath: argument('layout'),
     atlasPath: argument('atlas'),
+    specialDataPath: argument('special-data'),
     spriteSamples: argument('sprite-samples') ? Number.parseInt(argument('sprite-samples')!, 10) : undefined
   });
   console.log(JSON.stringify(result, null, 2));

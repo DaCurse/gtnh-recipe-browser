@@ -1,23 +1,22 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, stat, writeFile, readdir, unlink } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { gzipSync } from 'node:zlib';
-import { encode } from '@msgpack/msgpack';
-import sharp from 'sharp';
+import { decode, encode } from '@msgpack/msgpack';
+import { buildSharedIcons } from './sharedIcons';
 import { decodeFormat5 } from './decoder';
+import { buildRecordPages, readLogicalAsset, readReusePacks } from './recordPages';
 import type {
   DecodedAnonymousIngredientGroup,
   DecodedGoodsBase,
   DecodedItem,
   DecodedOreDictionary,
   DecodedRecipe,
-  DecodedRecipeType,
   DecodedRepository
 } from './model';
 import type {
   CatalogAsset,
   GeneratedPackManifest,
-  IconSheetAsset,
   ImmutableAsset,
   RecipeShardAsset,
   SpecialDataShardAsset
@@ -31,21 +30,27 @@ import {
   specialGoodsForDirection,
   validateSpecialGoodsReferences,
   type BrowserNeiSpecialData,
-  type SpecialRecord,
-  type SpecialViewType
+  type SpecialRecord
 } from './special';
 import { expandGtOreSpecialData } from './specialOreAliases';
 import { repairSpecialServiceIcons } from './specialServiceIcons';
+import {
+  groupSharedRecords,
+  sharedLogicalId,
+  sharedGoodsMetadataValue,
+  sharedGoodsStableValue,
+  sharedLayoutFingerprint,
+  sharedPrefixLayout,
+  sharedRepository,
+  validateSharedLayout,
+  type SharedPartitionLayout,
+  type SharedRecord
+} from './sharedLayout';
 
-const PACK_FORMAT_VERSION = 4;
-const DEFAULT_MAX_SHARD_BYTES = 2 * 1024 * 1024;
-const DEFAULT_MAX_CATALOG_BYTES = 2 * 1024 * 1024;
 const ICONS_PER_SHEET = 1024;
-const SHEET_COLUMNS = 32;
-const SPRITE_SIZE = 32;
-const SHEET_SIZE = SHEET_COLUMNS * SPRITE_SIZE;
 
 export interface BuildPackOptions {
+  reusePacks?: string[];
   dataPath: string;
   atlasPath: string;
   gtnhVersion: string;
@@ -54,13 +59,12 @@ export interface BuildPackOptions {
   datasetId?: string;
   displayName?: string;
   baseUrl?: string;
-  maxShardBytes?: number;
-  maxCatalogBytes?: number;
   /** Parsed sidecar value; useful to library callers and fixture tests. */
   specialData?: unknown;
   /** Path to browser-nei-special.json emitted by the special exporter. */
   specialDataPath?: string;
-  maxSpecialShardBytes?: number;
+  /** Persistent append-only prefix layout required by the shared pack. */
+  layoutPath?: string;
 }
 
 export interface BuildPackResult {
@@ -78,207 +82,6 @@ function sanitize(value: string): string {
 
 function gzipMessagePack(value: unknown): Buffer {
   return gzipSync(encode(value), { level: 9 });
-}
-
-function assetUrl(baseUrl: string, filename: string): string {
-  const base = baseUrl.replace(/\/+$/, '');
-  return `${base}/assets/${filename}`;
-}
-
-async function writeImmutableAsset(
-  assetsDirectory: string,
-  baseUrl: string,
-  id: string,
-  extension: string,
-  bytes: Buffer,
-  details: Omit<ImmutableAsset, 'id' | 'url' | 'bytes' | 'sha256' | 'encoding' | 'mediaType'> & {
-    encoding: ImmutableAsset['encoding'];
-    mediaType: string;
-  }
-): Promise<ImmutableAsset> {
-  const digest = sha256(bytes);
-  const filename = `${sanitize(id)}.${digest.slice(0, 16)}.${extension}`;
-  const path = join(assetsDirectory, filename);
-  await writeFile(path, bytes, { flag: 'wx' });
-  const verified = await readFile(path);
-  const verifiedDigest = sha256(verified);
-  if (verifiedDigest !== digest) throw new Error(`Digest mismatch after writing ${filename}`);
-  return {
-    id,
-    url: assetUrl(baseUrl, filename),
-    bytes: bytes.byteLength,
-    sha256: digest,
-    encoding: details.encoding,
-    mediaType: details.mediaType
-  };
-}
-
-interface EncodedRecipePart {
-  recipes: DecodedRecipe[];
-  bytes: Buffer;
-}
-
-function encodeRecipePart(
-  datasetId: string,
-  recipeType: DecodedRecipeType,
-  recipes: DecodedRecipe[]
-): Buffer {
-  return gzipMessagePack({
-    schemaVersion: PACK_FORMAT_VERSION,
-    datasetId,
-    recipeTypeId: recipeType.id,
-    recipes
-  });
-}
-
-function splitRecipeParts(
-  datasetId: string,
-  recipeType: DecodedRecipeType,
-  recipes: DecodedRecipe[],
-  maxBytes: number
-): EncodedRecipePart[] {
-  if (recipes.length === 0) return [];
-  const bytes = encodeRecipePart(datasetId, recipeType, recipes);
-  if (bytes.byteLength <= maxBytes || recipes.length === 1) return [{ recipes, bytes }];
-  const middle = Math.ceil(recipes.length / 2);
-  return [
-    ...splitRecipeParts(datasetId, recipeType, recipes.slice(0, middle), maxBytes),
-    ...splitRecipeParts(datasetId, recipeType, recipes.slice(middle), maxBytes)
-  ];
-}
-
-async function buildRecipeShards(
-  repository: DecodedRepository,
-  datasetId: string,
-  assetsDirectory: string,
-  baseUrl: string,
-  maxShardBytes: number
-): Promise<{ assets: RecipeShardAsset[]; shardByRecipeId: Map<string, string> }> {
-  const recipesByType = new Map<string, DecodedRecipe[]>();
-  for (const recipeType of repository.recipeTypes) recipesByType.set(recipeType.id, []);
-  for (const recipe of repository.recipes) {
-    const typeRecipes = recipesByType.get(recipe.recipeTypeId);
-    if (!typeRecipes) throw new Error(`Recipe ${recipe.id} references unknown type ${recipe.recipeTypeId}`);
-    typeRecipes.push(recipe);
-  }
-
-  const assets: RecipeShardAsset[] = [];
-  const shardByRecipeId = new Map<string, string>();
-  for (const recipeType of repository.recipeTypes) {
-    const parts = splitRecipeParts(datasetId, recipeType, recipesByType.get(recipeType.id)!, maxShardBytes);
-    for (const [part, encodedPart] of parts.entries()) {
-      const id = `recipes-${recipeType.order.toString().padStart(3, '0')}-${part.toString().padStart(3, '0')}`;
-      const immutable = await writeImmutableAsset(
-        assetsDirectory,
-        baseUrl,
-        id,
-        'mpk',
-        encodedPart.bytes,
-        { encoding: 'gzip', mediaType: 'application/msgpack' }
-      );
-      const descriptor: RecipeShardAsset = {
-        ...immutable,
-        kind: 'recipeShard',
-        recipeTypeId: recipeType.id,
-        recipeTypeOrder: recipeType.order,
-        part,
-        recipeCount: encodedPart.recipes.length
-      };
-      assets.push(descriptor);
-      for (const recipe of encodedPart.recipes) shardByRecipeId.set(recipe.id, id);
-    }
-  }
-  return { assets, shardByRecipeId };
-}
-
-interface EncodedSpecialPart {
-  records: SpecialRecord[];
-  bytes: Buffer;
-}
-
-function encodeSpecialPart(
-  datasetId: string,
-  viewType: SpecialViewType,
-  part: number,
-  records: SpecialRecord[]
-): Buffer {
-  return gzipMessagePack({
-    schemaVersion: PACK_FORMAT_VERSION,
-    datasetId,
-    kind: 'special',
-    specialViewTypeId: viewType.id,
-    specialViewTypeOrder: SPECIAL_CATEGORY_IDS.indexOf(viewType.id),
-    part,
-    records
-  });
-}
-
-function splitSpecialPart(
-  datasetId: string,
-  viewType: SpecialViewType,
-  records: SpecialRecord[],
-  maxBytes: number
-): EncodedSpecialPart[] {
-  if (records.length === 0) return [];
-  // Probe with a deliberately wide part number so the final (smaller) part
-  // number cannot grow beyond the requested byte cap.
-  const bytes = encodeSpecialPart(datasetId, viewType, 999_999, records);
-  if (bytes.byteLength <= maxBytes || records.length === 1) return [{ records, bytes }];
-  const middle = Math.ceil(records.length / 2);
-  return [
-    ...splitSpecialPart(datasetId, viewType, records.slice(0, middle), maxBytes),
-    ...splitSpecialPart(datasetId, viewType, records.slice(middle), maxBytes)
-  ];
-}
-
-/** Deterministically split special records without changing category/ID order. */
-export function splitSpecialRecords(
-  datasetId: string,
-  viewType: SpecialViewType,
-  records: SpecialRecord[],
-  maxBytes: number
-): SpecialRecord[][] {
-  return splitSpecialPart(datasetId, viewType, records, maxBytes).map((part) => part.records);
-}
-
-async function buildSpecialDataShards(
-  data: BrowserNeiSpecialData,
-  datasetId: string,
-  assetsDirectory: string,
-  baseUrl: string,
-  maxBytes: number
-): Promise<{ assets: SpecialDataShardAsset[]; shardByRecordId: Map<string, string> }> {
-  const assets: SpecialDataShardAsset[] = [];
-  const shardByRecordId = new Map<string, string>();
-  for (const viewType of buildSpecialViewTypes(data)) {
-    const records = data.records.filter((record) => record.category === viewType.id);
-    const parts = splitSpecialPart(datasetId, viewType, records, maxBytes);
-    for (const [part, encodedPart] of parts.entries()) {
-      const id = `special-${sanitize(viewType.id)}-${part.toString().padStart(3, '0')}`;
-      const bytes = encodeSpecialPart(datasetId, viewType, part, encodedPart.records);
-      // Re-encode with the actual part number before hashing.  The split probe
-      // intentionally uses part zero, which keeps the recursive size decision
-      // independent from the eventual number of shards.
-      const immutable = await writeImmutableAsset(
-        assetsDirectory,
-        baseUrl,
-        id,
-        'mpk',
-        bytes,
-        { encoding: 'gzip', mediaType: 'application/msgpack' }
-      );
-      assets.push({
-        ...immutable,
-        kind: 'specialData',
-        specialViewTypeId: viewType.id,
-        specialViewTypeOrder: SPECIAL_CATEGORY_IDS.indexOf(viewType.id),
-        part,
-        recordCount: encodedPart.records.length
-      });
-      for (const record of encodedPart.records) shardByRecordId.set(record.id, id);
-    }
-  }
-  return { assets, shardByRecordId };
 }
 
 function uniqueShards(recipeIds: string[], shardByRecipeId: Map<string, string>, context: string): string[] {
@@ -533,7 +336,11 @@ function buildCatalog(
   repository: DecodedRepository,
   shardByRecipeId: Map<string, string>,
   specialData: BrowserNeiSpecialData | undefined,
-  specialShardByRecordId: Map<string, string>
+  specialShardByRecordId: Map<string, string>,
+  iconResolver: (ownerId: string, iconId: number) => { sheetId: string; index: number } | null = (
+    _ownerId,
+    iconId
+  ) => iconReference(iconId)
 ) {
   const specialRecords = specialData?.records ?? [];
   const allGoods = [...repository.items, ...repository.fluids];
@@ -556,12 +363,13 @@ function buildCatalog(
   };
   const goods = allGoods.map((entry) => {
     const { productionRecipeIds, usageRecipeIds, ...catalogEntry } = entry;
+    delete (catalogEntry as Partial<DecodedGoodsBase>).iconId;
     const special = specialGoodsIndex.get(entry.id);
     const specialProduction = special?.recipes;
     const specialUsage = special?.usages;
     return {
       ...catalogEntry,
-      icon: iconReference(entry.iconId),
+      icon: iconResolver(entry.id, entry.iconId),
       productionShards: uniqueShards(productionRecipeIds, shardByRecipeId, `${entry.id} production`),
       usageShards: uniqueShards(usageRecipeIds, shardByRecipeId, `${entry.id} usage`),
       productionCount: productionRecipeIds.length,
@@ -586,10 +394,22 @@ function buildCatalog(
     })),
     recipeTypes: repository.recipeTypes.map((recipeType) => ({
       ...recipeType,
-      multiblocks: recipeType.multiblocks.map((crafter) => ({ ...crafter, icon: iconReference(crafter.iconId) })),
-      singleblocks: recipeType.singleblocks.map((crafter) => ({ ...crafter, icon: iconReference(crafter.iconId) })),
+      multiblocks: recipeType.multiblocks.map((crafter) => ({
+        id: crafter.id,
+        name: crafter.name,
+        icon: iconResolver(crafter.id, crafter.iconId)
+      })),
+      singleblocks: recipeType.singleblocks.map((crafter) => ({
+        id: crafter.id,
+        name: crafter.name,
+        icon: iconResolver(crafter.id, crafter.iconId)
+      })),
       defaultCrafter: recipeType.defaultCrafter
-        ? { ...recipeType.defaultCrafter, icon: iconReference(recipeType.defaultCrafter.iconId) }
+        ? {
+          id: recipeType.defaultCrafter.id,
+          name: recipeType.defaultCrafter.name,
+          icon: iconResolver(recipeType.defaultCrafter.id, recipeType.defaultCrafter.iconId)
+        }
         : null
     })),
     serviceItemIds: repository.serviceItemIds,
@@ -603,151 +423,13 @@ function buildCatalog(
     specialServiceIcons: specialData?.serviceIcons.map((serviceIcon) => ({
       ...serviceIcon,
       icon: serviceIcon.goodsId
-        ? iconReference(allGoods.find((entry) => entry.id === serviceIcon.goodsId)?.iconId ?? -1)
+        ? iconResolver(
+          serviceIcon.goodsId,
+          allGoods.find((entry) => entry.id === serviceIcon.goodsId)?.iconId ?? -1
+        )
         : null
     })) ?? []
   };
-}
-
-function encodeCatalogGoods(datasetId: string, part: number, goods: unknown[]): Buffer {
-  return gzipMessagePack({
-    schemaVersion: PACK_FORMAT_VERSION,
-    datasetId,
-    kind: 'goods',
-    part,
-    goods
-  });
-}
-
-export function splitCatalogGoods(
-  datasetId: string,
-  goods: unknown[],
-  maxBytes: number
-): unknown[][] {
-  if (goods.length === 0) return [[]];
-  const bytes = encodeCatalogGoods(datasetId, 0, goods);
-  if (bytes.byteLength <= maxBytes || goods.length === 1) return [goods];
-  const middle = Math.ceil(goods.length / 2);
-  return [
-    ...splitCatalogGoods(datasetId, goods.slice(0, middle), maxBytes),
-    ...splitCatalogGoods(datasetId, goods.slice(middle), maxBytes)
-  ];
-}
-
-async function buildCatalogAssets(
-  repository: DecodedRepository,
-  datasetId: string,
-  shardByRecipeId: Map<string, string>,
-  specialData: BrowserNeiSpecialData | undefined,
-  specialShardByRecordId: Map<string, string>,
-  assetsDirectory: string,
-  baseUrl: string,
-  maxBytes: number
-): Promise<CatalogAsset[]> {
-  const catalog = buildCatalog(repository, shardByRecipeId, specialData, specialShardByRecordId);
-  const { goods, ...core } = catalog;
-  const coreBytes = gzipMessagePack({
-    schemaVersion: PACK_FORMAT_VERSION,
-    datasetId,
-    kind: 'core',
-    ...core
-  });
-  const coreAsset = await writeImmutableAsset(
-    assetsDirectory,
-    baseUrl,
-    'catalog-core',
-    'mpk',
-    coreBytes,
-    { encoding: 'gzip', mediaType: 'application/msgpack' }
-  );
-  const assets: CatalogAsset[] = [{
-    ...coreAsset,
-    kind: 'catalog',
-    role: 'core',
-    part: 0,
-    goodsCount: 0
-  }];
-  const parts = splitCatalogGoods(datasetId, goods, maxBytes);
-  for (const [part, partGoods] of parts.entries()) {
-    const bytes = encodeCatalogGoods(datasetId, part, partGoods);
-    if (bytes.byteLength > maxBytes && partGoods.length !== 1) {
-      throw new Error(`Catalog goods part ${part} exceeds ${maxBytes} bytes`);
-    }
-    const id = `catalog-goods-${part.toString().padStart(3, '0')}`;
-    const immutable = await writeImmutableAsset(
-      assetsDirectory,
-      baseUrl,
-      id,
-      'mpk',
-      bytes,
-      { encoding: 'gzip', mediaType: 'application/msgpack' }
-    );
-    assets.push({
-      ...immutable,
-      kind: 'catalog',
-      role: 'goods',
-      part,
-      goodsCount: partGoods.length
-    });
-  }
-  return assets;
-}
-
-async function buildIconSheets(
-  atlasPath: string,
-  iconCount: number,
-  assetsDirectory: string,
-  baseUrl: string
-): Promise<IconSheetAsset[]> {
-  const { data: source, info } = await sharp(atlasPath).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
-  if (info.width !== 8192) throw new Error(`Expected upstream atlas width 8192, got ${info.width}`);
-  if (info.channels !== 4) throw new Error(`Expected RGBA atlas data, got ${info.channels} channels`);
-  const requiredRows = Math.ceil(iconCount / 256);
-  if (info.height < requiredRows * SPRITE_SIZE) {
-    throw new Error(`Atlas height ${info.height} cannot contain ${iconCount} 32x32 icons`);
-  }
-
-  const sheets: IconSheetAsset[] = [];
-  const sheetCount = Math.ceil(iconCount / ICONS_PER_SHEET);
-  for (let sheet = 0; sheet < sheetCount; sheet++) {
-    const firstIcon = sheet * ICONS_PER_SHEET;
-    const sheetIconCount = Math.min(ICONS_PER_SHEET, iconCount - firstIcon);
-    const output = Buffer.alloc(SHEET_SIZE * SHEET_SIZE * 4);
-    for (let localIcon = 0; localIcon < sheetIconCount; localIcon++) {
-      const sourceIcon = firstIcon + localIcon;
-      const sourceX = (sourceIcon % 256) * SPRITE_SIZE;
-      const sourceY = Math.floor(sourceIcon / 256) * SPRITE_SIZE;
-      const targetX = (localIcon % SHEET_COLUMNS) * SPRITE_SIZE;
-      const targetY = Math.floor(localIcon / SHEET_COLUMNS) * SPRITE_SIZE;
-      for (let row = 0; row < SPRITE_SIZE; row++) {
-        const sourceStart = ((sourceY + row) * info.width + sourceX) * 4;
-        const targetStart = ((targetY + row) * SHEET_SIZE + targetX) * 4;
-        source.copy(output, targetStart, sourceStart, sourceStart + SPRITE_SIZE * 4);
-      }
-    }
-    const encoded = await sharp(output, {
-      raw: { width: SHEET_SIZE, height: SHEET_SIZE, channels: 4 }
-    }).webp({ lossless: true, effort: 6 }).toBuffer();
-    const id = `icons-${sheet.toString().padStart(3, '0')}`;
-    const immutable = await writeImmutableAsset(
-      assetsDirectory,
-      baseUrl,
-      id,
-      'webp',
-      encoded,
-      { encoding: 'identity', mediaType: 'image/webp' }
-    );
-    sheets.push({
-      ...immutable,
-      kind: 'iconSheet',
-      firstIcon,
-      iconCount: sheetIconCount,
-      columns: SHEET_COLUMNS,
-      rows: SHEET_COLUMNS,
-      spriteSize: SPRITE_SIZE
-    });
-  }
-  return sheets;
 }
 
 async function ensureNewOutput(outputDirectory: string): Promise<void> {
@@ -759,17 +441,475 @@ async function ensureNewOutput(outputDirectory: string): Promise<void> {
   }
 }
 
+function sharedAssetUrl(baseUrl: string, filename: string): string {
+  const base = baseUrl.replace(/\/+$/, '');
+  return `${base}/assets/sha256/${filename}`;
+}
+
+async function writeSharedAsset(
+  assetsDirectory: string,
+  baseUrl: string,
+  id: string,
+  bytes: Buffer,
+  details: { encoding: ImmutableAsset['encoding']; mediaType: string }
+): Promise<ImmutableAsset> {
+  const digest = sha256(bytes);
+  // The shared object store is keyed by the complete digest. The media type
+  // lives in the manifest, so an extension would create duplicate physical
+  // objects when two roles happen to contain identical bytes.
+  const filename = digest;
+  const path = join(assetsDirectory, filename);
+  try {
+    await writeFile(path, bytes, { flag: 'wx' });
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error;
+    const existing = await readFile(path);
+    if (sha256(existing) !== digest) {
+      throw new Error(`Shared object collision at ${filename}`, { cause: error });
+    }
+  }
+  return {
+    id,
+    url: sharedAssetUrl(baseUrl, filename),
+    bytes: bytes.byteLength,
+    sha256: digest,
+    encoding: details.encoding,
+    mediaType: details.mediaType
+  };
+}
+
+function sharedRecipePayload(
+  logicalId: string,
+  recipeTypeId: string,
+  prefix: string,
+  recipes: readonly DecodedRecipe[]
+): Buffer {
+  return gzipMessagePack({
+    schemaVersion: 5,
+    kind: 'recipeShard',
+    logicalId,
+    recipeTypeId,
+    prefix,
+    recipes
+  });
+}
+
+async function buildSharedRecipeShards(
+  repository: DecodedRepository,
+  layout: SharedPartitionLayout,
+  assetsDirectory: string,
+  baseUrl: string
+): Promise<{ assets: RecipeShardAsset[]; shardByRecipeId: Map<string, string> }> {
+  const recipesByType = new Map<string, SharedRecord[]>();
+  for (const recipeType of repository.recipeTypes) recipesByType.set(recipeType.id, []);
+  for (const recipe of repository.recipes) {
+    const records = recipesByType.get(recipe.recipeTypeId);
+    if (!records) throw new Error(`Recipe ${recipe.id} references unknown type ${recipe.recipeTypeId}`);
+    records.push({ id: recipe.id, namespace: recipe.recipeTypeId, value: recipe });
+  }
+
+  const assets: RecipeShardAsset[] = [];
+  const shardByRecipeId = new Map<string, string>();
+  const usedIds = new Set<string>();
+  for (const recipeType of repository.recipeTypes) {
+    const records = recipesByType.get(recipeType.id)!;
+    const prefixes = layout.recipeTypes[recipeType.id];
+    if (prefixes === undefined) throw new Error(`Shared layout is missing recipe type ${recipeType.id}`);
+    const groups = [...groupSharedRecords(records, prefixes)].sort(([left], [right]) => left.localeCompare(right));
+    for (const [prefix, group] of groups) {
+      const logicalId = sharedLogicalId('recipes', recipeType.id, prefix);
+      if (usedIds.has(logicalId)) throw new Error(`Duplicate shared recipe shard ID ${logicalId}`);
+      usedIds.add(logicalId);
+      const recipeValues = group.map((record) => record.value as DecodedRecipe);
+      const bytes = sharedRecipePayload(logicalId, recipeType.id, prefix, recipeValues);
+      if (bytes.byteLength > layout.targets.recipes && recipeValues.length > 1) {
+        throw new Error(`${logicalId}: shared recipe layout target ${layout.targets.recipes} is too small`);
+      }
+      const immutable = await writeSharedAsset(
+        assetsDirectory,
+        baseUrl,
+        logicalId,
+        bytes,
+        { encoding: 'gzip', mediaType: 'application/msgpack' }
+      );
+      const part = assets.length;
+      assets.push({
+        ...immutable,
+        kind: 'recipeShard',
+        recipeTypeId: recipeType.id,
+        recipeTypeOrder: recipeType.order,
+        part,
+        recipeCount: recipeValues.length,
+        prefix,
+        logicalId,
+        oversizedSingleton: bytes.byteLength > layout.targets.recipes && recipeValues.length === 1
+      });
+      for (const record of group) shardByRecipeId.set(record.id, logicalId);
+    }
+  }
+  return { assets, shardByRecipeId };
+}
+
+function sharedSpecialPayload(
+  logicalId: string,
+  viewTypeId: string,
+  prefix: string,
+  records: readonly SpecialRecord[]
+): Buffer {
+  return gzipMessagePack({
+    schemaVersion: 5,
+    kind: 'special',
+    logicalId,
+    specialViewTypeId: viewTypeId,
+    prefix,
+    records
+  });
+}
+
+async function buildSharedSpecialDataShards(
+  data: BrowserNeiSpecialData,
+  layout: SharedPartitionLayout,
+  assetsDirectory: string,
+  baseUrl: string
+): Promise<{ assets: SpecialDataShardAsset[]; shardByRecordId: Map<string, string> }> {
+  const assets: SpecialDataShardAsset[] = [];
+  const shardByRecordId = new Map<string, string>();
+  const usedIds = new Set<string>();
+  for (const viewType of buildSpecialViewTypes(data)) {
+    const records: SharedRecord[] = data.records
+      .filter((record) => record.category === viewType.id)
+      .sort((left, right) => left.id.localeCompare(right.id))
+      .map((record) => ({ id: record.id, namespace: viewType.id, value: record }));
+    const prefixes = layout.specialViews[viewType.id];
+    if (prefixes === undefined) throw new Error(`Shared layout is missing special view ${viewType.id}`);
+    const groups = [...groupSharedRecords(records, prefixes)].sort(([left], [right]) => left.localeCompare(right));
+    for (const [prefix, group] of groups) {
+      const logicalId = sharedLogicalId('special', viewType.id, prefix);
+      if (usedIds.has(logicalId)) throw new Error(`Duplicate shared special shard ID ${logicalId}`);
+      usedIds.add(logicalId);
+      const specialRecords = group.map((record) => record.value as SpecialRecord);
+      const bytes = sharedSpecialPayload(logicalId, viewType.id, prefix, specialRecords);
+      if (bytes.byteLength > layout.targets.special && specialRecords.length > 1) {
+        throw new Error(`${logicalId}: shared special layout target ${layout.targets.special} is too small`);
+      }
+      const immutable = await writeSharedAsset(
+        assetsDirectory,
+        baseUrl,
+        logicalId,
+        bytes,
+        { encoding: 'gzip', mediaType: 'application/msgpack' }
+      );
+      const part = assets.length;
+      assets.push({
+        ...immutable,
+        kind: 'specialData',
+        specialViewTypeId: viewType.id,
+        specialViewTypeOrder: SPECIAL_CATEGORY_IDS.indexOf(viewType.id),
+        part,
+        recordCount: specialRecords.length,
+        prefix,
+        logicalId,
+        oversizedSingleton: bytes.byteLength > layout.targets.special && specialRecords.length === 1
+      });
+      for (const record of group) shardByRecordId.set(record.id, logicalId);
+    }
+  }
+  return { assets, shardByRecordId };
+}
+
+function sharedCatalogGoodsPayload(logicalId: string, prefix: string, goods: readonly unknown[]): Buffer {
+  return gzipMessagePack({
+    schemaVersion: 5,
+    kind: 'goods',
+    logicalId,
+    prefix,
+    goods
+  });
+}
+
+function sharedCatalogMetadataPayload(
+  kind: 'core' | 'recipeTypes' | 'ingredientGroups' | 'recipeRemaps' | 'specialMetadata' | 'icons',
+  logicalId: string,
+  value: Record<string, unknown>
+): Buffer {
+  return gzipMessagePack({
+    schemaVersion: 5,
+    kind,
+    logicalId,
+    ...value
+  });
+}
+
+function sharedCatalogGoodsMetadataPayload(
+  logicalId: string,
+  prefix: string,
+  goods: readonly Record<string, unknown>[]
+): Buffer {
+  return gzipMessagePack({
+    schemaVersion: 5,
+    kind: 'goodsMetadata',
+    logicalId,
+    prefix,
+    goods
+  });
+}
+
+function sharedCatalogOreDictionaryPayload(
+  logicalId: string,
+  prefix: string,
+  oreDictionaries: readonly unknown[]
+): Buffer {
+  return gzipMessagePack({
+    schemaVersion: 5,
+    kind: 'oreDictionaries',
+    logicalId,
+    prefix,
+    oreDictionaries
+  });
+}
+
+async function buildSharedCatalogAssets(
+  repository: DecodedRepository,
+  layout: SharedPartitionLayout,
+  specialData: BrowserNeiSpecialData | undefined,
+  specialShardByRecordId: Map<string, string>,
+  shardByRecipeId: Map<string, string>,
+  assetsDirectory: string,
+  baseUrl: string,
+  iconSlots: ReadonlyMap<string, { sheetId: string; index: number }>
+): Promise<CatalogAsset[]> {
+  const catalog = buildCatalog(
+    repository,
+    shardByRecipeId,
+    specialData,
+    specialShardByRecordId,
+    (ownerId) => {
+      const slot = iconSlots.get(ownerId);
+      return slot ? { sheetId: slot.sheetId, index: slot.index } : null;
+    }
+  );
+  const { goods } = catalog;
+  const coreLogicalId = 'catalog-core';
+  const coreBytes = sharedCatalogMetadataPayload('core', coreLogicalId, {
+    serviceItemIds: catalog.serviceItemIds
+  });
+  const coreImmutable = await writeSharedAsset(
+    assetsDirectory,
+    baseUrl,
+    coreLogicalId,
+    coreBytes,
+    { encoding: 'gzip', mediaType: 'application/msgpack' }
+  );
+  const assets: CatalogAsset[] = [{
+    ...coreImmutable,
+    kind: 'catalog',
+    role: 'core',
+    part: 0,
+    goodsCount: 0,
+    logicalId: coreLogicalId
+  }];
+
+  const fixedCatalogAssets: Array<{
+    role: CatalogAsset['role'];
+    kind: 'recipeTypes' | 'ingredientGroups' | 'recipeRemaps' | 'specialMetadata' | 'icons';
+    logicalId: string;
+    value: Record<string, unknown>;
+  }> = [
+    {
+      role: 'icons', kind: 'icons', logicalId: 'catalog-icons',
+      value: { icons: goods.map(({ id, icon }) => ({ id, icon })).sort((a, b) => a.id.localeCompare(b.id)) }
+    },
+    {
+      role: 'recipeTypes',
+      kind: 'recipeTypes',
+      logicalId: 'catalog-recipe-types',
+      value: {
+        recipeTypes: catalog.recipeTypes.slice().sort((left, right) => left.id.localeCompare(right.id))
+      }
+    },
+    {
+      role: 'ingredientGroups',
+      kind: 'ingredientGroups',
+      logicalId: 'catalog-ingredient-groups',
+      value: {
+        ingredientGroups: catalog.ingredientGroups.slice().sort((left, right) => left.id.localeCompare(right.id))
+      }
+    },
+    {
+      role: 'recipeRemaps',
+      kind: 'recipeRemaps',
+      logicalId: 'catalog-recipe-remaps',
+      value: {
+        obsoleteRecipeRemaps: Object.fromEntries(
+          Object.entries(catalog.obsoleteRecipeRemaps ?? {}).sort(([left], [right]) => left.localeCompare(right))
+        )
+      }
+    },
+    {
+      role: 'specialMetadata',
+      kind: 'specialMetadata',
+      logicalId: 'catalog-special-metadata',
+      value: {
+        specialViewTypes: catalog.specialViewTypes ?? [],
+        specialServiceIcons: catalog.specialServiceIcons ?? []
+      }
+    }
+  ];
+  for (const fixed of fixedCatalogAssets) {
+    const bytes = sharedCatalogMetadataPayload(fixed.kind, fixed.logicalId, fixed.value);
+    const immutable = await writeSharedAsset(
+      assetsDirectory,
+      baseUrl,
+      fixed.logicalId,
+      bytes,
+      { encoding: 'gzip', mediaType: 'application/msgpack' }
+    );
+    assets.push({
+      ...immutable,
+      kind: 'catalog',
+      role: fixed.role,
+      part: 0,
+      goodsCount: 0,
+      logicalId: fixed.logicalId
+    });
+  }
+
+  const oreRecords: SharedRecord[] = catalog.oreDictionaries
+    .map((value) => ({ id: value.id, namespace: 'oreDictionaries', value }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const oreGroups = [...groupSharedRecords(oreRecords, layout.oreDictionaries)]
+    .sort(([left], [right]) => left.localeCompare(right));
+  for (const [prefix, group] of oreGroups) {
+    const logicalId = `catalog-ore-dictionaries-${prefix || 'root'}`;
+    const values = group.map((record) => record.value);
+    const bytes = sharedCatalogOreDictionaryPayload(logicalId, prefix, values);
+    if (bytes.byteLength > layout.targets.oreDictionaries && values.length > 1) {
+      throw new Error(`${logicalId}: shared ore-dictionary layout target ${layout.targets.oreDictionaries} is too small`);
+    }
+    const immutable = await writeSharedAsset(
+      assetsDirectory,
+      baseUrl,
+      logicalId,
+      bytes,
+      { encoding: 'gzip', mediaType: 'application/msgpack' }
+    );
+    assets.push({
+      ...immutable,
+      kind: 'catalog',
+      role: 'oreDictionaries',
+      part: 0,
+      goodsCount: 0,
+      recordCount: values.length,
+      prefix,
+      logicalId,
+      oversizedSingleton: bytes.byteLength > layout.targets.oreDictionaries && values.length === 1
+    });
+  }
+
+  const records: SharedRecord[] = goods
+    .map((value) => ({
+      id: String((value as { id: string }).id),
+      namespace: 'goods',
+      value: sharedGoodsStableValue(Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'icon')))
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const metadataRecords = goods
+    .map((value) => ({
+      id: String((value as { id: string }).id),
+      namespace: 'goods',
+      value: sharedGoodsMetadataValue(value as Record<string, unknown>)
+    }))
+    .sort((left, right) => left.id.localeCompare(right.id));
+  const groups = [...groupSharedRecords(records, layout.goods)].sort(([left], [right]) => left.localeCompare(right));
+  const metadataGroups = new Map([...groupSharedRecords(metadataRecords, layout.goods)]);
+  const usedIds = new Set<string>([coreLogicalId]);
+  let goodsPart = 0;
+  let metadataPart = 0;
+  for (const [prefix, group] of groups) {
+    const logicalId = `catalog-goods-${prefix || 'root'}`;
+    if (usedIds.has(logicalId)) throw new Error(`Duplicate shared catalog shard ID ${logicalId}`);
+    usedIds.add(logicalId);
+    const partGoods = group.map((record) => record.value);
+    const bytes = sharedCatalogGoodsPayload(logicalId, prefix, partGoods);
+    if (bytes.byteLength > layout.targets.goods && partGoods.length > 1) {
+      throw new Error(`${logicalId}: shared goods layout target ${layout.targets.goods} is too small`);
+    }
+    const immutable = await writeSharedAsset(
+      assetsDirectory,
+      baseUrl,
+      logicalId,
+      bytes,
+      { encoding: 'gzip', mediaType: 'application/msgpack' }
+    );
+    assets.push({
+      ...immutable,
+      kind: 'catalog',
+      role: 'goods',
+      part: goodsPart++,
+      goodsCount: partGoods.length,
+      prefix,
+      logicalId,
+      oversizedSingleton: bytes.byteLength > layout.targets.goods && partGoods.length === 1
+    });
+
+    const metadataLogicalId = `catalog-goods-metadata-${prefix || 'root'}`;
+    const metadataGroup = metadataGroups.get(prefix);
+    if (!metadataGroup || metadataGroup.length !== group.length) {
+      throw new Error(`${metadataLogicalId}: shared goods metadata does not match the goods partition`);
+    }
+    const metadataValues = metadataGroup.map((record) => record.value as Record<string, unknown>);
+    if (metadataValues.some((record) => (
+      typeof record.id !== 'string'
+      || !Number.isInteger(record.numericId)
+    ))) {
+      throw new Error(`${metadataLogicalId}: goods metadata contains an invalid identity record`);
+    }
+    const metadataBytes = sharedCatalogGoodsMetadataPayload(metadataLogicalId, prefix, metadataValues);
+    if (metadataBytes.byteLength > layout.targets.goodsMetadata && metadataValues.length > 1) {
+      throw new Error(`${metadataLogicalId}: shared goods metadata layout target ${layout.targets.goodsMetadata} is too small`);
+    }
+    const metadataImmutable = await writeSharedAsset(
+      assetsDirectory,
+      baseUrl,
+      metadataLogicalId,
+      metadataBytes,
+      { encoding: 'gzip', mediaType: 'application/msgpack' }
+    );
+    assets.push({
+      ...metadataImmutable,
+      kind: 'catalog',
+      role: 'goodsMetadata',
+      part: metadataPart++,
+      goodsCount: metadataValues.length,
+      prefix,
+      logicalId: metadataLogicalId,
+      oversizedSingleton: metadataBytes.byteLength > layout.targets.goodsMetadata && metadataValues.length === 1
+    });
+  }
+  return assets;
+}
+
+
+function uniqueAssetBytes(assets: readonly ImmutableAsset[]): number {
+  return [...new Map(assets.map((asset) => [asset.sha256, asset.bytes])).values()]
+    .reduce((total, bytes) => total + bytes, 0);
+}
+
+/** Build the independently selectable, dataset-independent pack. */
 export async function buildPack(options: BuildPackOptions): Promise<BuildPackResult> {
   const outputDirectory = resolve(options.outputDirectory);
   await ensureNewOutput(outputDirectory);
+  if (!options.layoutPath) throw new Error('Format-6 packs require --layout with a persistent shared layout');
+  const layout = JSON.parse(await readFile(options.layoutPath, 'utf8')) as SharedPartitionLayout;
+  validateSharedLayout(layout);
   const parent = dirname(outputDirectory);
   const staging = join(parent, `.${basename(outputDirectory)}.staging-${process.pid}`);
-  const assetsDirectory = join(staging, 'assets');
+  const assetsDirectory = join(staging, 'assets', 'sha256');
   await mkdir(assetsDirectory, { recursive: true });
 
   const dataBytes = await readFile(options.dataPath);
   const atlasBytes = await readFile(options.atlasPath);
-  const repository = decodeFormat5(dataBytes);
+  const originalRepository = decodeFormat5(dataBytes);
   let specialData: BrowserNeiSpecialData | undefined;
   if (options.specialDataPath !== undefined && options.specialData !== undefined) {
     throw new Error('Specify only one of specialDataPath and specialData');
@@ -780,21 +920,20 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
     specialData = normalizeBrowserNeiSpecial(options.specialData);
   }
   if (specialData) {
-    specialData = repairSpecialServiceIcons(specialData, repository);
-    specialData = expandGtOreSpecialData(specialData, repository);
-  }
-  if (specialData) {
+    specialData = repairSpecialServiceIcons(specialData, originalRepository);
+    specialData = expandGtOreSpecialData(specialData, originalRepository);
     const repositoryGoodsIds = new Set([
-      ...repository.items.map((entry) => entry.id),
-      ...repository.fluids.map((entry) => entry.id),
-      ...repository.oreDictionaries.map((entry) => entry.id),
-      ...repository.ingredientGroups.map((entry) => entry.id)
+      ...originalRepository.items.map((entry) => entry.id),
+      ...originalRepository.fluids.map((entry) => entry.id),
+      ...originalRepository.oreDictionaries.map((entry) => entry.id),
+      ...originalRepository.ingredientGroups.map((entry) => entry.id)
     ]);
     validateSpecialGoodsReferences(specialData, repositoryGoodsIds);
-    validateSpecialOreDictionaries(specialData, repository);
+    validateSpecialOreDictionaries(specialData, originalRepository);
     for (const serviceIcon of specialData.serviceIcons) {
       if (!serviceIcon.goodsId) continue;
-      const goods = [...repository.items, ...repository.fluids].find((entry) => entry.id === serviceIcon.goodsId);
+      const goods = [...originalRepository.items, ...originalRepository.fluids]
+        .find((entry) => entry.id === serviceIcon.goodsId);
       if (!goods) throw new Error(`Special service icon ${serviceIcon.id} references unresolved goods ID ${serviceIcon.goodsId}`);
     }
   }
@@ -807,56 +946,89 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
     : options.revision;
   const datasetId = options.datasetId ?? `${sanitize(options.gtnhVersion)}-r${sanitize(effectiveRevision)}`;
   const displayName = options.displayName ?? `GTNH ${options.gtnhVersion} (revision ${effectiveRevision})`;
-  const baseUrl = options.baseUrl ?? '.';
-
-  const { assets: recipeShards, shardByRecipeId } = await buildRecipeShards(
+  // The published manifest lives at public/data/<dataset>/pack-manifest.json,
+  // so ../../assets/sha256 is the immutable global object store.  The local
+  // verifier resolves the same object by filename without interpreting URLs.
+  const baseUrl = options.baseUrl ?? '../..';
+  const repository = sharedRepository(originalRepository);
+  const reuse = await readReusePacks(options.reusePacks ?? []);
+  const ownerIcons = new Map<string, number>();
+  for (const entry of [...repository.items, ...repository.fluids]) ownerIcons.set(entry.id, entry.iconId);
+  for (const type of repository.recipeTypes) {
+    for (const crafter of [...type.singleblocks, ...type.multiblocks, ...(type.defaultCrafter ? [type.defaultCrafter] : [])]) {
+      if (!ownerIcons.has(crafter.id)) ownerIcons.set(crafter.id, crafter.iconId);
+    }
+  }
+  const icons = await buildSharedIcons({
+    atlasPath: options.atlasPath,
+    owners: [...ownerIcons].map(([id, iconId]) => ({ id, iconId })),
+    previous: await Promise.all(reuse.map(async (pack) => {
+      const descriptor = pack.manifest.catalogAssets.find((asset) => asset.role === 'icons');
+      if (!descriptor) throw new Error(`${pack.manifest.datasetId}: reusable pack has no catalog-icons asset`);
+      const payload = decode(await readLogicalAsset(descriptor, pack.manifest, pack.assetsDirectory)) as {
+        kind: string;
+        icons: Array<{ id: string; icon: { sheetId: string; index: number } | null }>;
+      };
+      if (payload.kind !== 'icons' || !Array.isArray(payload.icons)) {
+        throw new Error(`${pack.manifest.datasetId}: invalid reusable catalog-icons asset`);
+      }
+      return {
+        manifest: pack.manifest,
+        assetDirectory: pack.assetsDirectory,
+        ownerSlots: new Map(payload.icons.flatMap(({ id, icon }) => icon ? [[id, icon] as const] : []))
+      };
+    })),
+    outputDirectory: staging,
+    baseUrl
+  });
+  const { assets: recipeShards, shardByRecipeId } = await buildSharedRecipeShards(
     repository,
-    datasetId,
+    layout,
     assetsDirectory,
-    baseUrl,
-    options.maxShardBytes ?? DEFAULT_MAX_SHARD_BYTES
+    baseUrl
   );
-
   const { assets: specialDataShards, shardByRecordId: specialShardByRecordId } = specialData
-    ? await buildSpecialDataShards(
-      specialData,
-      datasetId,
-      assetsDirectory,
-      baseUrl,
-      options.maxSpecialShardBytes ?? options.maxShardBytes ?? DEFAULT_MAX_SHARD_BYTES
-    )
+    ? await buildSharedSpecialDataShards(specialData, layout, assetsDirectory, baseUrl)
     : { assets: [], shardByRecordId: new Map<string, string>() };
-
-  const catalogAssets = await buildCatalogAssets(
+  const catalogAssets = await buildSharedCatalogAssets(
     repository,
-    datasetId,
-    shardByRecipeId,
+    layout,
     specialData,
     specialShardByRecordId,
+    shardByRecipeId,
     assetsDirectory,
     baseUrl,
-    options.maxCatalogBytes ?? DEFAULT_MAX_CATALOG_BYTES
+    icons.slots
   );
-
-  const iconIds = [
-    ...repository.items.map((item) => item.iconId),
-    ...repository.fluids.map((fluid) => fluid.iconId),
-    ...repository.recipeTypes.flatMap((type) => [
-      ...type.singleblocks.map((crafter) => crafter.iconId),
-      ...type.multiblocks.map((crafter) => crafter.iconId),
-      type.defaultCrafter?.iconId ?? -1
-    ])
-  ];
-  const iconCount = Math.max(...iconIds) + 1;
-  const iconSheets = await buildIconSheets(options.atlasPath, iconCount, assetsDirectory, baseUrl);
-
-  const allAssets = [...catalogAssets, ...recipeShards, ...specialDataShards, ...iconSheets];
+  const iconSheets = icons.assets;
+  const recordPages = await buildRecordPages(
+    [...catalogAssets, ...recipeShards, ...specialDataShards], assetsDirectory, baseUrl,
+    reuse
+  );
+  const allAssets = [...recordPages, ...iconSheets];
+  const retained = new Set(allAssets.map((asset) => asset.sha256));
+  for (const filename of await readdir(assetsDirectory)) {
+    if (!retained.has(filename)) await unlink(join(assetsDirectory, filename));
+  }
+  const prefixLayout = sharedPrefixLayout(layout);
   const manifest: GeneratedPackManifest = {
-    formatVersion: PACK_FORMAT_VERSION,
+    formatVersion: 6,
     datasetId,
     gtnhVersion: options.gtnhVersion,
     revision: effectiveRevision,
     displayName,
+    assetStore: 'global-sha256',
+    sharedLayout: {
+      schemaVersion: layout.schemaVersion,
+      layoutSha256: sharedLayoutFingerprint(layout),
+      targets: layout.targets,
+      prefixes: {
+        recipeTypes: prefixLayout.recipeTypes,
+        goods: prefixLayout.goods,
+        oreDictionaries: prefixLayout.oreDictionaries,
+        specialViews: prefixLayout.specialViews
+      }
+    },
     source: {
       formatVersion: repository.formatVersion,
       dataSha256: sha256(dataBytes),
@@ -867,24 +1039,22 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
     recipeShards,
     iconSheets,
     specialDataShards,
+    recordPages,
     totals: {
       searchableEntries: repository.items.filter((item) => item.searchable).length
         + repository.fluids.filter((fluid) => fluid.searchable).length,
       recipes: repository.recipes.length,
       specialRecords: specialData?.records.length ?? 0,
       assets: allAssets.length,
-      offlineBytes: allAssets.reduce((total, asset) => total + asset.bytes, 0)
+      offlineBytes: uniqueAssetBytes(allAssets)
     }
   };
-  if (specialDataBytes) {
-    await writeFile(
-      join(staging, 'browser-nei-special.json'),
-      specialDataBytes,
-      { flag: 'wx' }
-    );
-  }
+  // The raw sidecar is an input/provenance artifact, not a browser asset. Its
+  // records are already materialized into the content-addressed special
+  // shards above; publishing it here would duplicate tens of MiB per
+  // dataset and would not be read by the runtime.
   const manifestPath = join(staging, 'pack-manifest.json');
-  await writeFile(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`, { flag: 'wx' });
+  await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`, { flag: 'wx' });
   await rename(staging, outputDirectory);
   return { manifest, manifestPath: join(outputDirectory, 'pack-manifest.json') };
 }

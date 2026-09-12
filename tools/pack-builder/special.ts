@@ -22,8 +22,7 @@ export {
 
 export type {
   SpecialData,
-  SpecialRecord,
-  SpecialViewType
+  SpecialRecord
 } from '../data-export/special';
 
 /** Name used by the pack builder for the canonical sidecar type. */

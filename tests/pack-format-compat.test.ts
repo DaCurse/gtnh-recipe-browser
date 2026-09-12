@@ -5,91 +5,134 @@ import { encode } from '@msgpack/msgpack';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it } from 'vitest';
 import { verifyPack } from '../tools/pack-builder/verifier';
+import { buildRecordPages } from '../tools/pack-builder/recordPages';
 
 const temporaryPacks: string[] = [];
 
-async function writeAsset(
-  root: string,
-  id: string,
-  value: unknown
-): Promise<{
-  id: string;
-  url: string;
-  bytes: number;
-  sha256: string;
-  encoding: 'gzip';
-  } & Record<string, unknown>> {
-  const bytes = gzipSync(encode(value), { level: 9 });
-  const sha256 = createHash('sha256').update(bytes).digest('hex');
-  const filename = `${id}.${sha256.slice(0, 16)}.mpk`;
-  await writeFile(join(root, 'assets', filename), bytes);
-  return {
-    id,
-    url: `./assets/${filename}`,
-    bytes: bytes.byteLength,
-    sha256,
-    encoding: 'gzip'
-  };
-}
-
-async function createLegacyPack(formatVersion: 1 | 2 | 3): Promise<string> {
-  const root = await mkdtemp('/tmp/gtnh-pack-compat-');
+async function createSharedPack(): Promise<string> {
+  const root = await mkdtemp('/tmp/gtnh-pack-shared-');
   temporaryPacks.push(root);
-  await mkdir(join(root, 'assets'));
-  const datasetId = `legacy-format-${formatVersion}`;
-  const goods = [{ id: 'i:fixture:test', name: 'Fixture', searchable: true }];
-  const catalogAssets = formatVersion === 1
-    ? [{
-      ...(await writeAsset(root, 'catalog', {
-        schemaVersion: 1,
-        datasetId,
-        goods
-      }))
+  await mkdir(join(root, 'assets', 'sha256'), { recursive: true });
+  const datasetId = 'shared-format-6';
+  const writeSharedAsset = async (value: unknown) => {
+    const bytes = gzipSync(encode(value), { level: 9 });
+    const sha256 = createHash('sha256').update(bytes).digest('hex');
+    await writeFile(join(root, 'assets', 'sha256', sha256), bytes);
+    return {
+      id: String((value as { logicalId: string }).logicalId),
+      url: `../../assets/sha256/${sha256}`,
+      bytes: bytes.byteLength,
+      sha256,
+      encoding: 'gzip' as const,
+      mediaType: 'application/msgpack'
+    };
+  };
+  const core = await writeSharedAsset({
+    schemaVersion: 5,
+    kind: 'core',
+    logicalId: 'catalog-core',
+    recipeTypes: [],
+    oreDictionaries: [],
+    ingredientGroups: []
+  });
+  const goods = await writeSharedAsset({
+    schemaVersion: 5,
+    kind: 'goods',
+    logicalId: 'catalog-goods-root',
+    prefix: '',
+    goods: [{ id: 'i:fixture:shared', name: 'Shared fixture' }]
+  });
+  const metadata = await writeSharedAsset({
+    schemaVersion: 5,
+    kind: 'goodsMetadata',
+    logicalId: 'catalog-goods-metadata-root',
+    prefix: '',
+    goods: [{
+      id: 'i:fixture:shared',
+      name: 'Shared fixture',
+      tooltip: null,
+      unlocalizedName: 'fixture.shared',
+      searchMask: [],
+      searchable: true,
+      numericId: 1,
+      productionShards: [],
+      usageShards: [],
+      productionCount: 0,
+      usageCount: 0,
+      specialProductionShards: [],
+      specialUsageShards: [],
+      specialProductionLookupIds: [],
+      specialUsageLookupIds: [],
+      specialProductionCount: 0,
+      specialUsageCount: 0
     }]
-    : [
-      {
-        ...(await writeAsset(root, 'catalog-core', {
-          schemaVersion: formatVersion,
-          datasetId,
-          kind: 'core',
-          recipeTypes: [],
-          oreDictionaries: [],
-          ingredientGroups: []
-        })),
-        kind: 'catalog',
-        role: 'core',
-        part: 0,
-        goodsCount: 0
-      },
-      {
-        ...(await writeAsset(root, 'catalog-goods', {
-          schemaVersion: formatVersion,
-          datasetId,
-          kind: 'goods',
-          part: 0,
-          goods
-        })),
-        kind: 'catalog',
-        role: 'goods',
-        part: 0,
-        goodsCount: goods.length
-      }
-    ];
+  });
+  const recipeTypes = await writeSharedAsset({
+    schemaVersion: 5,
+    kind: 'recipeTypes',
+    logicalId: 'catalog-recipe-types',
+    recipeTypes: []
+  });
+  const ingredientGroups = await writeSharedAsset({
+    schemaVersion: 5,
+    kind: 'ingredientGroups',
+    logicalId: 'catalog-ingredient-groups',
+    ingredientGroups: []
+  });
+  const recipeRemaps = await writeSharedAsset({
+    schemaVersion: 5,
+    kind: 'recipeRemaps',
+    logicalId: 'catalog-recipe-remaps',
+    obsoleteRecipeRemaps: {}
+  });
+  const specialMetadata = await writeSharedAsset({
+    schemaVersion: 5,
+    kind: 'specialMetadata',
+    logicalId: 'catalog-special-metadata',
+    specialViewTypes: [],
+    specialServiceIcons: []
+  });
+  const icons = await writeSharedAsset({ schemaVersion: 5, kind: 'icons', logicalId: 'catalog-icons',
+    icons: [{ id: 'i:fixture:shared', icon: null }] });
+  const catalogAssets = [
+    { ...icons, kind: 'catalog', role: 'icons', part: 0, goodsCount: 0, logicalId: 'catalog-icons' },
+    { ...core, kind: 'catalog', role: 'core', part: 0, goodsCount: 0, logicalId: 'catalog-core' },
+    { ...recipeTypes, kind: 'catalog', role: 'recipeTypes', part: 0, goodsCount: 0, logicalId: 'catalog-recipe-types' },
+    { ...ingredientGroups, kind: 'catalog', role: 'ingredientGroups', part: 0, goodsCount: 0, logicalId: 'catalog-ingredient-groups' },
+    { ...recipeRemaps, kind: 'catalog', role: 'recipeRemaps', part: 0, goodsCount: 0, logicalId: 'catalog-recipe-remaps' },
+    { ...specialMetadata, kind: 'catalog', role: 'specialMetadata', part: 0, goodsCount: 0, logicalId: 'catalog-special-metadata' },
+    { ...goods, kind: 'catalog', role: 'goods', part: 0, goodsCount: 1, logicalId: 'catalog-goods-root', prefix: '' },
+    { ...metadata, kind: 'catalog', role: 'goodsMetadata', part: 0, goodsCount: 1, logicalId: 'catalog-goods-metadata-root', prefix: '' }
+  ];
+  const targets = { recipes: 1024, goods: 1024, goodsMetadata: 1024, special: 1024, oreDictionaries: 1024 };
+  const prefixes = { recipeTypes: {}, goods: [''], oreDictionaries: [''], specialViews: {} };
+  const layoutBytes = JSON.stringify({ schemaVersion: 1, targets, ...prefixes });
+  const recordPages = await buildRecordPages(catalogAssets, join(root, 'assets', 'sha256'), '../..', []);
   const manifest = {
-    formatVersion,
+    formatVersion: 6,
     datasetId,
     gtnhVersion: 'fixture',
-    revision: `r${formatVersion}`,
-    displayName: `Legacy ${formatVersion}`,
+    revision: 'shared',
+    displayName: 'Shared format 6',
+    assetStore: 'global-sha256',
+    sharedLayout: {
+      schemaVersion: 1,
+      layoutSha256: createHash('sha256').update(layoutBytes).digest('hex'),
+      targets,
+      prefixes
+    },
     source: { formatVersion: 5, dataSha256: 'fixture', atlasSha256: 'fixture' },
     catalogAssets,
+    recordPages,
     recipeShards: [],
     iconSheets: [],
+    specialDataShards: [],
     totals: {
       searchableEntries: 1,
       recipes: 0,
-      assets: catalogAssets.length,
-      offlineBytes: catalogAssets.reduce((total, asset) => total + asset.bytes, 0)
+      specialRecords: 0,
+      assets: recordPages.length,
+      offlineBytes: recordPages.reduce((total, asset) => total + asset.bytes, 0)
     }
   };
   await writeFile(join(root, 'pack-manifest.json'), `${JSON.stringify(manifest)}\n`);
@@ -100,14 +143,14 @@ afterEach(async () => {
   await Promise.all(temporaryPacks.splice(0).map((path) => rm(path, { recursive: true, force: true })));
 });
 
-describe('legacy generated pack compatibility', () => {
-  it.each([1, 2, 3] as const)('verifies format-%i packs without special assets', async (formatVersion) => {
-    const root = await createLegacyPack(formatVersion);
+describe('canonical shared generated packs', () => {
+  it('verifies manifest membership and full-SHA objects without dataset ownership in blobs', async () => {
+    const root = await createSharedPack();
     await expect(verifyPack({ packDirectory: root })).resolves.toMatchObject({
-      assets: formatVersion === 1 ? 1 : 2,
+      assets: 1,
       goods: 1,
       recipes: 0,
-      spriteSamples: 0
+      bytes: expect.any(Number)
     });
   });
 });
