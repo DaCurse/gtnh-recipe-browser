@@ -546,7 +546,9 @@
       <button class="export-close" aria-label="Close" onclick={() => exportPrompt = null}>×</button>
       <p class="eyebrow">DOWNLOAD JSON</p>
       <h2>Choose records</h2>
-      <p>This export has an active filter. Download only matching records or all records in this view.</p>
+      <div class="export-message">
+        This export has an active filter: <pre class="export-filter">"{exportQuery(exportPrompt)}"</pre>. Would you like to download only matching records or all records in this view?
+      </div>
       <div class="export-choice-actions">
         <button class="primary" onclick={() => confirmExport('filtered')}>Filtered results</button>
         <button onclick={() => confirmExport('all')}>All results</button>

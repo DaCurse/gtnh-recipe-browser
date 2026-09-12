@@ -143,7 +143,8 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .export-scrim { position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }
 .export-dialog { position:relative; width:min(460px,100%); padding:28px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }
 .export-dialog h2 { margin:0 46px 10px 0; color:#f0f1f2; font:21px/1.25 Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
-.export-dialog>p:not(.eyebrow) { margin:0; color:#a5aaaf; font-size:13px; line-height:1.5; }
+.export-dialog>p:not(.eyebrow),.export-message { margin:0; color:#a5aaaf; font-size:13px; line-height:1.5; }
+.export-filter { display:inline; margin:0; padding:2px 5px; border:1px solid #3f4449; border-radius:4px; background:#151619; color:#e1e4e7; font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace; white-space:pre-wrap; overflow-wrap:anywhere; vertical-align:baseline; }
 .export-close { position:absolute; right:10px; top:10px; width:44px; height:44px; border:0; background:none; color:#aeb3b8; font-size:25px; cursor:pointer; }
 .export-choice-actions { display:flex; flex-wrap:wrap; gap:8px; margin-top:22px; }
 .export-choice-actions button { flex:1; min-height:44px; padding:0 12px; border:1px solid #5a5f65; border-radius:7px; background:#363a3f; color:#e1e4e7; font-size:12px; font-weight:700; cursor:pointer; }

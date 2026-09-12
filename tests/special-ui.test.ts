@@ -108,6 +108,9 @@ describe('NEI special browser presentation', () => {
     expect(categoryExport).toBeLessThan(machineTabs);
     expect(browser).toContain('const paneExportLabel = $derived');
     expect(browser).toContain("'Export data'");
+    expect(browser).toContain('<pre class="export-filter">"{exportQuery(exportPrompt)}"</pre>');
+    expect(browser).toContain('Would you like to download only matching records or all records in this view?');
+    expect(browser).toContain('oninput={(event) => updateRecipeQuery((event.currentTarget as HTMLInputElement).value)}');
   });
 
   it('does not carry a special tab into another item or recipe direction', async () => {
