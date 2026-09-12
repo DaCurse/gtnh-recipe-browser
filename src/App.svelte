@@ -317,6 +317,8 @@
       15 * 60 * 1_000
     );
     registerSW({
+      immediate: true,
+      onNeedReload: () => window.location.reload(),
       onNeedRefresh: () => updateReady = true,
       onRegisterError: (error) => console.error('Service worker registration failed', error)
     });
