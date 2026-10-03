@@ -56,7 +56,8 @@ Source sprite parity was verified with 100 samples; all physical hashes and logi
 Mobile-sized profiling at 390×844 confirmed zero lazy recipe/special/detail page requests before selection,
 zero dataset-asset requests on settled warm reload, one read per bootstrap page on warm startup, three detail
 pages on selection, preserved selected-item deep links, and no browser errors. Timings are local-host measurements,
-not a guarantee for mobile hardware.
+not a guarantee for mobile hardware. The production-build preview measured 3.16 seconds cold and
+2.99 seconds warm, including the profiler's 500 ms settling delay.
 
 ## Deployment policy
 
@@ -68,3 +69,7 @@ bootstrap retains the active v7 cache and leaves the epoch pending. Matching ite
 items return to browsing.
 
 The frozen v6 index, manifests, and referenced assets remain in place. No immutable dataset URL is replaced.
+
+The staged production-build preview passed a browser migration from saved beta-3/epoch 1 to RC1/epoch 2,
+retaining `i:EnderIO:itemEnderFood:0`. Explicit version-link choices and dataset-manager switches persisted across
+subsequent reloads, with no browser errors.
