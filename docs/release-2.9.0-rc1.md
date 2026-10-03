@@ -73,3 +73,8 @@ The frozen v6 index, manifests, and referenced assets remain in place. No immuta
 The staged production-build preview passed a browser migration from saved beta-3/epoch 1 to RC1/epoch 2,
 retaining `i:EnderIO:itemEnderFood:0`. Explicit version-link choices and dataset-manager switches persisted across
 subsequent reloads, with no browser errors.
+
+Immutable RC1 assets were staged in `3416eb9` and successfully deployed by `19578ce` after an initial failed
+Netlify build. All 1,002 deployed physical assets passed size and SHA-256 verification before the index change.
+The staged manifest matched the verified local bytes exactly. The configured Node 22 build and precache check
+also passed locally. Activation sets RC1 first in `versions-v7.json` and advances the rollout epoch from 1 to 2.

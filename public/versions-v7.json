@@ -1,7 +1,20 @@
 {
   "schemaVersion": 1,
-  "generatedAt": "2026-10-03T18:11:46.912Z",
+  "rollout": {
+    "epoch": 2,
+    "targetDatasetId": "2.9.0-RC-1-v7-rbf5fd70ecad0"
+  },
+  "generatedAt": "2026-10-03T22:18:24.680Z",
   "versions": [
+    {
+      "datasetId": "2.9.0-RC-1-v7-rbf5fd70ecad0",
+      "gtnhVersion": "2.9.0-RC-1",
+      "revision": "bf5fd70ecad0",
+      "publishedAt": "2026-10-03T22:18:24.680Z",
+      "packManifestUrl": "./data/2.9.0-RC-1-v7-rbf5fd70ecad0/pack-manifest.json",
+      "catalogBytes": 10034591,
+      "offlineBytes": 88802044
+    },
     {
       "datasetId": "2.9.0-beta-3-v7-r131dafd54f93",
       "gtnhVersion": "2.9.0-beta-3",
@@ -29,9 +42,5 @@
       "catalogBytes": 2077115,
       "offlineBytes": 31166046
     }
-  ],
-  "rollout": {
-    "epoch": 1,
-    "targetDatasetId": "2.9.0-beta-3-v7-r131dafd54f93"
-  }
+  ]
 }
