@@ -26,6 +26,7 @@ interface RecipeBrowserContext {
 export class RecipeBrowserState {
   allRecipes = $state<Recipe[]>([]);
   recipeLoading = $state(false);
+  itemDataLoading = $state(false);
   recipeError = $state('');
   recipeLoadedShards = $state(0);
   recipeTotalShards = $state(0);
@@ -294,6 +295,8 @@ export class RecipeBrowserState {
   specialCount(view: RecipeView, viewType = this.specialType): number | undefined {
     if (!viewType) return undefined;
     const selected = this.context.selected();
+    const counts = view === 'recipes' ? selected.specialProductionCounts : selected.specialUsageCounts;
+    if (counts) return counts[viewType] ?? 0;
     const declared = selected as CatalogEntry & {
       specialProductionCount?: number;
       specialUsageCount?: number;
@@ -406,6 +409,22 @@ export class RecipeBrowserState {
     const specialRequest = ++this.specialRequest;
     const entryId = selected.id;
     const view = mode;
+    this.itemDataLoading = true;
+    this.recipeLoading = true;
+    this.recipeError = '';
+    try {
+      await repository.entryFor(entryId, controller.signal);
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') return;
+      if (request === this.recipeRequest) {
+        this.recipeError = error instanceof Error ? error.message : String(error);
+        this.recipeLoading = false;
+      }
+      return;
+    } finally {
+      if (request === this.recipeRequest) this.itemDataLoading = false;
+    }
+    if (request !== this.recipeRequest) return;
     const specialType = this.specialTypes.some((viewType) => viewType.id === this.specialType)
       ? this.specialType
       : '';

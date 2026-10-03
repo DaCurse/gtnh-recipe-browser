@@ -1,11 +1,9 @@
 import { decode } from '@msgpack/msgpack';
-import {
-  materializeCatalog,
-  type MaterializedCatalog
-} from './catalogMaterialization';
+import { materializeCatalog } from './catalogMaterialization';
 import { buildCatalogBrowseEntries } from './catalogVariants';
 import {
   decompress,
+  decodePhysicalRecordPage,
   fetchJsonNetworkFirst,
   fetchVerified,
   yieldToBrowser
@@ -16,16 +14,15 @@ import type {
   PackedCatalog,
   PackedCatalogCore,
   PackedCatalogGoods,
-  PackedCatalogIcons,
-  PackedCatalogGoodsMetadata,
-  PackedCatalogIngredientGroups,
-  PackedCatalogOreDictionaries,
+  PackedCatalogGoodsSearch,
   PackedCatalogRecipeRemaps,
   PackedCatalogRecipeTypes,
   PackedCatalogSpecialMetadata,
   PackedGoods,
-  PackedGoodsMetadata,
+  PackedGoodsDetail,
+  PackedGoodsDetailsShard,
   PackedIngredientGroup,
+  PackedIngredientGroupsShard,
   PackedOreDictionary,
   PackedRecipe,
   PackedRecipeType,
@@ -35,7 +32,11 @@ import type {
   VersionsIndex
 } from './datasetSchema';
 import { ingredientMatchesEntry } from './oreDictionary';
-import { fluidRecipeScope } from './fluidContainers';
+import { assetDigest } from './integrity';
+import { goodsIdentityFromId } from './goodsIdentity';
+import { expandRelations } from './packedRelations';
+import { recordPageSelections } from './recordPages';
+import { restoreMinecraftFormatting } from './minecraftText';
 import { installOfflineAssets } from './offline';
 import { materializeRecipe } from './recipeMaterialization';
 import { machineCanProcessVoltage } from './recipePresentation';
@@ -129,32 +130,6 @@ function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 
-function isNumberArray(value: unknown): value is number[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === 'number' && Number.isFinite(entry));
-}
-
-function isPackedGoodsMetadata(value: unknown): value is PackedGoodsMetadata {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  return typeof record.id === 'string'
-    && typeof record.name === 'string'
-    && (record.tooltip === null || typeof record.tooltip === 'string')
-    && typeof record.unlocalizedName === 'string'
-    && isNumberArray(record.searchMask)
-    && typeof record.searchable === 'boolean'
-    && Number.isInteger(record.numericId)
-    && isStringArray(record.productionShards)
-    && isStringArray(record.usageShards)
-    && Number.isInteger(record.productionCount)
-    && Number.isInteger(record.usageCount)
-    && isStringArray(record.specialProductionShards)
-    && isStringArray(record.specialUsageShards)
-    && isStringArray(record.specialProductionLookupIds)
-    && isStringArray(record.specialUsageLookupIds)
-    && Number.isInteger(record.specialProductionCount)
-    && Number.isInteger(record.specialUsageCount);
-}
-
 type SharedPrefixFamily = 'goods' | 'oreDictionaries' | 'recipeTypes' | 'specialViews';
 
 function sharedPrefixIsPublished(
@@ -163,7 +138,7 @@ function sharedPrefixIsPublished(
   namespace: string,
   prefix: unknown
 ): boolean {
-  if (manifest.formatVersion !== 6 || typeof prefix !== 'string') return false;
+  if (typeof prefix !== 'string') return false;
   const prefixes = manifest.sharedLayout?.prefixes;
   if (!prefixes) return false;
   const list = family === 'recipeTypes' || family === 'specialViews'
@@ -217,7 +192,7 @@ function physicalHashesForLogicalAssets(
   const result = new Set<string>();
   for (const asset of assets) {
     if (asset.segments) {
-      for (const [pageIndex] of asset.segments) {
+      for (const [pageIndex] of recordPageSelections(asset)) {
         const page = physicalPages.get(pageIndex);
         if (!page) {
           throw new Error(`${asset.id}: record page index ${String(pageIndex)} is absent from the manifest`);
@@ -233,6 +208,34 @@ function isLogicalRecordAsset(asset: DatasetAsset): boolean {
   return asset.segments !== undefined;
 }
 
+function abortError(): DOMException {
+  return new DOMException('Operation was cancelled', 'AbortError');
+}
+
+async function withAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T> {
+  if (!signal) return promise;
+  if (signal.aborted) throw abortError();
+  return new Promise<T>((resolve, reject) => {
+    const abort = () => reject(abortError());
+    signal.addEventListener('abort', abort, { once: true });
+    void promise.then(
+      (value) => { signal.removeEventListener('abort', abort); resolve(value); },
+      (error) => { signal.removeEventListener('abort', abort); reject(error); }
+    );
+  });
+}
+
+function descriptorForStableId<T extends { prefix: string }>(
+  descriptors: readonly T[],
+  namespace: string,
+  id: string
+): T | undefined {
+  const hash = assetDigest(new TextEncoder().encode(`${namespace}\0${id}`));
+  return [...descriptors]
+    .filter((descriptor) => hash.startsWith(descriptor.prefix))
+    .sort((left, right) => right.prefix.length - left.prefix.length)[0];
+}
+
 function physicalDescriptorsFor(
   asset: DatasetAsset,
   recordPages: readonly DatasetAsset[]
@@ -241,7 +244,7 @@ function physicalDescriptorsFor(
   const pages = new Map(recordPages.map((page, index) => [index, page]));
   const result: DatasetAsset[] = [];
   const seen = new Set<string>();
-  for (const [pageIndex] of asset.segments) {
+  for (const [pageIndex] of recordPageSelections(asset)) {
     const page = pages.get(pageIndex);
     if (!page) throw new Error(`${asset.id}: record page index ${String(pageIndex)} is absent from the manifest`);
     if (seen.has(page.sha256)) continue;
@@ -253,44 +256,6 @@ function physicalDescriptorsFor(
 
 async function decodeAssetPayload(asset: DatasetAsset, bytes: Uint8Array): Promise<unknown> {
   return decode(asset.encoding === 'gzip' ? await decompress(bytes) : bytes);
-}
-
-function cropsNhSeedKey(goods: PackedGoods | undefined): string | undefined {
-  if (
-    !goods
-    || goods.kind !== 'item'
-    || goods.mod.toLocaleLowerCase() !== 'cropsnh'
-    || goods.internalName !== 'genericSeed'
-    || !goods.nbt
-  ) return undefined;
-  return goods.nbt.match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/i)?.[1]?.toLocaleLowerCase();
-}
-
-const GT_ORE_PRODUCT_GROUP_PREFIXES = [
-  'dust',
-  'dustpure',
-  'dustimpure',
-  'crushed',
-  'crushedpurified',
-  'crushedcentrifuged',
-  'rawore',
-  'gem',
-  'gemchipped',
-  'gemflawed',
-  'gemflawless',
-  'gemexquisite'
-];
-
-function isGtHostOreGoods(goods: PackedGoods | undefined): boolean {
-  return goods?.kind === 'item'
-    && goods.mod.toLocaleLowerCase() === 'gregtech'
-    && /^gt\.blockores\d*$/i.test(goods.internalName);
-}
-
-function isGtOreSpecialGroup(groupId: string, goods: PackedGoods | undefined): boolean {
-  const name = groupId.slice(2).toLocaleLowerCase();
-  if (name.startsWith('ore')) return isGtHostOreGoods(goods);
-  return GT_ORE_PRODUCT_GROUP_PREFIXES.some((prefix) => name.startsWith(prefix));
 }
 
 export interface DatasetLoadProgress {
@@ -305,187 +270,109 @@ export interface RecipeLoadProgress {
   batch: Recipe[];
 }
 
-type DecodedCatalogAsset = PackedCatalogCore
+async function loadVersionsIndex(): Promise<{ value: VersionsIndex; url: string }> {
+  const v7Url = new URL('./versions-v7.json', document.baseURI).href;
+  return fetchJsonNetworkFirst<VersionsIndex>(v7Url, `versions:${v7Url}`);
+}
+
+type DecodedBootstrapAsset = PackedCatalogCore
   | PackedCatalogGoods
-  | PackedCatalogIcons
-  | PackedCatalogGoodsMetadata
+  | PackedCatalogGoodsSearch
   | PackedCatalogRecipeTypes
-  | PackedCatalogOreDictionaries
-  | PackedCatalogIngredientGroups
   | PackedCatalogRecipeRemaps
   | PackedCatalogSpecialMetadata;
 
-type CatalogAssetDescriptor = DatasetManifest['catalogAssets'][number];
 type RecipeShardDescriptor = DatasetManifest['recipeShards'][number];
 type SpecialShardDescriptor = DatasetManifest['specialDataShards'][number];
 
-function validateCatalogAsset(
-  manifest: DatasetManifest,
-  asset: CatalogAssetDescriptor,
-  value: DecodedCatalogAsset
-): void {
-  if (value.schemaVersion !== 5) {
-    throw new Error(`${asset.id}: catalog identity mismatch`);
-  }
-  if (value.kind !== asset.role || value.logicalId !== asset.logicalId) {
-    throw new Error(`${asset.id}: shared catalog logical identity mismatch`);
-  }
-  if (asset.role === 'goods' || asset.role === 'goodsMetadata' || asset.role === 'oreDictionaries') {
-    const valuePrefix = 'prefix' in value ? value.prefix : undefined;
-    if (valuePrefix !== asset.prefix) {
-      throw new Error(`${asset.id}: shared catalog partition identity mismatch`);
-    }
-    if (!sharedPrefixIsPublished(
-      manifest,
-      asset.role === 'oreDictionaries' ? 'oreDictionaries' : 'goods',
-      'goods',
-      asset.prefix
-    )) {
-      throw new Error(`${asset.id}: shared catalog prefix is not in the published layout`);
-    }
-  }
-}
-
-async function loadCatalog(
+async function loadFormat7Bootstrap(
   manifest: DatasetManifest,
   manifestUrl: string,
   report: (percent: number, stage: string) => void,
-  reusableAssets?: ReadonlyMap<string, DecodedCatalogAsset>
-): Promise<{
-  catalog: PackedCatalog;
-  decodedByHash: Map<string, DecodedCatalogAsset>;
-}> {
-  if (manifest.catalogAssets.length === 0) throw new Error('Pack manifest has no catalog assets');
-  if (manifest.catalogAssets.some((asset) => !isLogicalRecordAsset(asset))) {
-    throw new Error('Format-6 catalog assets must use record-page segments');
-  }
-
+  reusableAssets?: ReadonlyMap<string, DecodedBootstrapAsset>
+): Promise<{ catalog: PackedCatalog; decodedByHash: Map<string, DecodedBootstrapAsset> }> {
+  if (manifest.catalogAssets.length === 0) throw new Error('Pack manifest has no bootstrap assets');
   const assetsToDecode = manifest.catalogAssets.filter((asset) => !reusableAssets?.has(asset.sha256));
-  const catalogPages = [...new Map(
-    assetsToDecode.flatMap((asset) => physicalDescriptorsFor(asset, manifest.recordPages))
-      .map((page) => [page.sha256, page] as const)
-  ).values()];
-  const loaded = new Array(catalogPages.length).fill(0) as number[];
-  const totalBytes = catalogPages.reduce((total, asset) => total + asset.bytes, 0);
-  await mapProgressively(
-    catalogPages,
-    3,
-    async (page, index) => fetchVerified(page, manifestUrl, ({ loaded: assetLoaded, cached }) => {
-      loaded[index] = Math.max(loaded[index]!, Math.min(page.bytes, assetLoaded));
+  const pages = [...new Map(assetsToDecode.flatMap((asset) => physicalDescriptorsFor(asset, manifest.recordPages))
+    .map((page) => [page.sha256, page] as const)).values()];
+  const loaded = new Array(pages.length).fill(0) as number[];
+  const totalBytes = pages.reduce((total, page) => total + page.bytes, 0);
+  await mapProgressively(pages, 3, async (page, index) => decodePhysicalRecordPage(
+    page,
+    manifestUrl,
+    ({ loaded: count, cached }) => {
+      loaded[index] = Math.max(loaded[index]!, Math.min(page.bytes, count));
       const ratio = loaded.reduce((total, value) => total + value, 0) / Math.max(1, totalBytes);
-      report(12 + Math.round(ratio * 52), cached ? 'Reading shared catalog data' : 'Downloading changed catalog data');
-    }),
-    ({ completed, total }) => report(
-      12 + Math.round(completed / Math.max(1, total) * 52),
-      `Loading shared catalog page ${completed.toLocaleString()} of ${total.toLocaleString()}`
-    )
-  );
-  const decoded = await mapProgressively(
-    manifest.catalogAssets,
-    3,
-    async (asset) => {
-      const reusable = reusableAssets?.get(asset.sha256);
-      if (reusable) {
-        validateCatalogAsset(manifest, asset, reusable);
-        return reusable;
-      }
-      const bytes = await fetchVerified(asset, manifestUrl, undefined, undefined, manifest);
-      const value = await decodeAssetPayload(asset, bytes) as DecodedCatalogAsset;
-      validateCatalogAsset(manifest, asset, value);
-      return value;
-    },
-    ({ completed, total }) => report(
-      65 + Math.round(completed / total * 22),
-      `Decoding catalog chunk ${completed.toLocaleString()} of ${total.toLocaleString()}`
-    )
-  );
-  const coreAssets = decoded.filter((asset): asset is PackedCatalogCore => asset.kind === 'core');
-  const goodsAssets = decoded
-    .filter((asset): asset is PackedCatalogGoods => asset.kind === 'goods');
-  if (coreAssets.length !== 1 || goodsAssets.length === 0) {
-    throw new Error('Catalog requires one core and at least one goods chunk');
-  }
-  const core = coreAssets[0]!;
-  const catalogRoleCounts = new Map<string, number>();
-  for (const asset of decoded) catalogRoleCounts.set(asset.kind, (catalogRoleCounts.get(asset.kind) ?? 0) + 1);
-  for (const role of ['core', 'recipeTypes', 'ingredientGroups', 'recipeRemaps', 'specialMetadata', 'icons']) {
-    if (catalogRoleCounts.get(role) !== 1) {
-      throw new Error(`Catalog requires exactly one ${role} asset`);
+      report(12 + Math.round(ratio * 58), cached ? 'Reading bootstrap data' : 'Downloading bootstrap data');
     }
-  }
-  const oreAssets = decoded
-    .filter((asset): asset is PackedCatalogOreDictionaries => asset.kind === 'oreDictionaries');
-  if (oreAssets.length === 0) throw new Error('Catalog requires at least one ore-dictionary asset');
-  if ((catalogRoleCounts.get('goodsMetadata') ?? 0) === 0) {
-    throw new Error('Catalog requires at least one goodsMetadata asset');
-  }
-  const typeAsset = decoded.find((asset): asset is PackedCatalogRecipeTypes => asset.kind === 'recipeTypes')!;
-  const ingredientAsset = decoded.find((asset): asset is PackedCatalogIngredientGroups => asset.kind === 'ingredientGroups')!;
-  const remapAsset = decoded.find((asset): asset is PackedCatalogRecipeRemaps => asset.kind === 'recipeRemaps')!;
-  const specialAsset = decoded.find((asset): asset is PackedCatalogSpecialMetadata => asset.kind === 'specialMetadata')!;
-  const iconAsset = decoded.find((asset): asset is PackedCatalogIcons => asset.kind === 'icons')!;
-  const oreDictionaries = oreAssets.flatMap((asset) => asset.oreDictionaries);
-  const goodsMetadata = new Map<string, PackedGoodsMetadata>();
-  for (const asset of decoded.filter((candidate): candidate is PackedCatalogGoodsMetadata => candidate.kind === 'goodsMetadata')) {
-    if (!sharedPrefixIsPublished(manifest, 'goods', 'goods', asset.prefix)) {
-      throw new Error('Goods metadata prefix is not in the published layout');
+  ), ({ completed, total }) => report(
+    12 + Math.round(completed / Math.max(1, total) * 58),
+    `Loading bootstrap page ${completed.toLocaleString()} of ${total.toLocaleString()}`
+  ));
+  const decoded = await mapProgressively(manifest.catalogAssets, 3, async (asset) => {
+    const reused = reusableAssets?.get(asset.sha256);
+    const value = (reused ?? await decodeAssetPayload(
+      asset,
+      await fetchVerified(asset, manifestUrl, undefined, undefined, manifest)
+    )) as DecodedBootstrapAsset;
+    if (value.schemaVersion !== 6 || value.kind !== asset.role || value.logicalId !== asset.logicalId) {
+      throw new Error(`${asset.id}: bootstrap logical identity mismatch`);
     }
-    for (const goods of asset.goods) {
-      if (!isPackedGoodsMetadata(goods)) {
-        throw new Error(`Invalid goods metadata record ${String((goods as { id?: unknown }).id)}`);
-      }
-      if (goodsMetadata.has(goods.id)) throw new Error(`Duplicate goods metadata ID ${goods.id}`);
-      goodsMetadata.set(goods.id, goods);
+    if ((asset.role === 'goods' || asset.role === 'goodsSearch')
+      && (('prefix' in value ? value.prefix : undefined) !== asset.prefix
+        || !sharedPrefixIsPublished(manifest, 'goods', 'goods', asset.prefix))) {
+      throw new Error(`${asset.id}: bootstrap partition identity mismatch`);
     }
+    return value;
+  }, ({ completed, total }) => report(
+    71 + Math.round(completed / Math.max(1, total) * 20),
+    'Preparing browse and search data'
+  ));
+  const exactlyOne = (kind: DecodedBootstrapAsset['kind']): DecodedBootstrapAsset => {
+    const values = decoded.filter((value) => value.kind === kind);
+    if (values.length !== 1) throw new Error(`Bootstrap requires exactly one ${kind} asset`);
+    return values[0]!;
+  };
+  const core = exactlyOne('core') as PackedCatalogCore;
+  const recipeTypes = exactlyOne('recipeTypes') as PackedCatalogRecipeTypes;
+  const recipeRemaps = exactlyOne('recipeRemaps') as PackedCatalogRecipeRemaps;
+  const specialMetadata = exactlyOne('specialMetadata') as PackedCatalogSpecialMetadata;
+  const goodsAssets = decoded.filter((value): value is PackedCatalogGoods => value.kind === 'goods');
+  if (goodsAssets.length === 0) throw new Error('Bootstrap requires at least one goods asset');
+  const searchAssets = decoded.filter((value): value is PackedCatalogGoodsSearch => value.kind === 'goodsSearch');
+  const tooltips = new Map(searchAssets.flatMap((asset) => asset.tooltips.map((value) => [value.id, value.text] as const)));
+  for (const value of goodsAssets.flatMap((asset) => asset.goods)) {
+    if (value.tooltipId && !tooltips.has(value.tooltipId)) throw new Error(`${value.id}: missing search tooltip`);
   }
-  const icons = new Map(iconAsset.icons.map((record) => [record.id, record.icon]));
-  const goodsValues = goodsAssets.flatMap((asset) => asset.goods.map((goods): PackedGoods => ({
-    ...goods,
-    ...goodsMetadata.get(goods.id),
-    icon: icons.get(goods.id) ?? null
+  const goods = goodsAssets.flatMap((asset) => asset.goods.map((value): PackedGoods => ({
+    ...goodsIdentityFromId(value.id),
+    ...value,
+    tooltip: tooltips.get(value.tooltipId ?? '') ?? null,
+    numericId: value.numericId,
+    damage: value.damage ?? goodsIdentityFromId(value.id).damage ?? 0,
+    unlocalizedName: value.unlocalizedName ?? '',
+    searchMask: value.searchMask ?? [],
+    productionShards: [],
+    usageShards: [],
+    productionCount: 0,
+    usageCount: 0
   })));
-  {
-    const goodsIds = new Set(goodsValues.map((goods) => goods.id));
-    if (goodsMetadata.size !== goodsIds.size || [...goodsMetadata.keys()].some((id) => !goodsIds.has(id))) {
-      throw new Error('Goods metadata does not cover exactly the goods catalog');
-    }
-    if (icons.size !== goodsIds.size || [...icons.keys()].some((id) => !goodsIds.has(id))) {
-      throw new Error('Icon references do not cover exactly the goods catalog');
-    }
-    const goodsIdsByPrefix = new Map<string, Set<string>>();
-    for (const asset of goodsAssets) {
-      if (typeof asset.prefix !== 'string' || typeof asset.logicalId !== 'string') {
-        throw new Error('Goods catalog asset is missing its persistent partition identity');
-      }
-      goodsIdsByPrefix.set(asset.prefix, new Set(asset.goods.map((goods) => goods.id)));
-    }
-    const metadataIdsByPrefix = new Map<string, Set<string>>();
-    for (const asset of decoded.filter((candidate): candidate is PackedCatalogGoodsMetadata => candidate.kind === 'goodsMetadata')) {
-      metadataIdsByPrefix.set(asset.prefix, new Set(asset.goods.map((goods) => goods.id)));
-    }
-    if (goodsIdsByPrefix.size !== metadataIdsByPrefix.size
-      || [...goodsIdsByPrefix.entries()].some(([prefix, ids]) => {
-        const metadataIds = metadataIdsByPrefix.get(prefix);
-        return metadataIds === undefined
-          || ids.size !== metadataIds.size
-          || [...ids].some((id) => !metadataIds.has(id));
-      })) {
-      throw new Error('Goods metadata partitions do not match goods partitions');
-    }
-  }
   return {
     catalog: {
       datasetId: manifest.datasetId,
-      goods: goodsValues,
-      recipeTypes: typeAsset?.recipeTypes ?? core.recipeTypes,
-      oreDictionaries,
-      ingredientGroups: ingredientAsset?.ingredientGroups ?? core.ingredientGroups ?? [],
+      goods,
+      recipeTypes: recipeTypes.recipeTypes,
+      oreDictionaries: [],
+      ingredientGroups: core.ingredientGroups ?? [],
       serviceItemIds: core.serviceItemIds,
-      obsoleteRecipeRemaps: remapAsset?.obsoleteRecipeRemaps ?? core.obsoleteRecipeRemaps,
-      specialViewTypes: specialAsset?.specialViewTypes ?? core.specialViewTypes,
-      specialServiceIcons: specialAsset?.specialServiceIcons ?? core.specialServiceIcons
+      obsoleteRecipeRemaps: recipeRemaps.obsoleteRecipeRemaps,
+      specialViewTypes: specialMetadata.specialViewTypes,
+      specialServiceIcons: specialMetadata.specialServiceIcons
     },
-    decodedByHash: new Map(manifest.catalogAssets.map((asset, index) => [asset.sha256, decoded[index]!] as const))
+    decodedByHash: new Map(manifest.catalogAssets.map((asset, index) => [
+      asset.sha256,
+      decoded[index] as DecodedBootstrapAsset
+    ]))
   };
 }
 
@@ -511,9 +398,15 @@ export class DatasetRepository {
   private readonly packedGoods: Map<string, PackedGoods>;
   private readonly types: Map<string, PackedRecipeType>;
   private readonly ingredientGroups: Map<string, PackedOreDictionary | PackedIngredientGroup>;
-  private readonly productionFallbacks: Map<string, PackedOreDictionary>;
+  private readonly entriesById: Map<string, CatalogEntry>;
+  private readonly goodsDetails = new Map<string, PackedGoodsDetail>();
+  private readonly hydratedGroups = new Set<string>();
+  private readonly detailShards = new Map<string, Promise<PackedGoodsDetail[]>>();
+  private readonly groupShards = new Map<string, Promise<Array<PackedOreDictionary | PackedIngredientGroup>>>();
+  private readonly reusableDetailShards = new Map<string, Promise<PackedGoodsDetail[]>>();
+  private readonly reusableGroupShards = new Map<string, Promise<Array<PackedOreDictionary | PackedIngredientGroup>>>();
   /** Decoded raw catalog chunks retained only for the next version switch. */
-  private readonly catalogAssetsByHash: Map<string, DecodedCatalogAsset>;
+  private readonly catalogAssetsByHash: Map<string, DecodedBootstrapAsset>;
   private readonly shards = new Map<string, Promise<PackedRecipe[]>>();
   private readonly specialShards = new Map<string, Promise<PackedSpecialRecord[]>>();
   /** Loaded shard promises borrowed from the repository being replaced. */
@@ -557,10 +450,7 @@ export class DatasetRepository {
     manifest: DatasetManifest,
     manifestUrl: string,
     catalog: PackedCatalog,
-    materialized?: MaterializedCatalog,
-    browseEntries?: CatalogBrowseEntry[],
-    searchDocuments?: CatalogSearchDocument[],
-    decodedCatalogAssets?: ReadonlyMap<string, DecodedCatalogAsset>,
+    decodedCatalogAssets?: ReadonlyMap<string, DecodedBootstrapAsset>,
     reuseFrom?: DatasetRepository
   ) {
     this.manifest = manifest;
@@ -568,16 +458,47 @@ export class DatasetRepository {
     this.datasetId = manifest.datasetId;
     this.gtnhVersion = manifest.gtnhVersion;
     this.revision = manifest.revision;
-    const resolved = materialized ?? materializeCatalog(manifest, manifestUrl, catalog);
+    const resolved = materializeCatalog(manifest, manifestUrl, catalog, false);
     this.entries = resolved.entries;
-    this.browseEntries = browseEntries ?? buildCatalogBrowseEntries(resolved.entries);
-    this.searchDocuments = searchDocuments
-      ?? buildCatalogSearchDocuments(this.browseEntries, this.entries);
     this.packedGoods = resolved.goods;
     this.types = resolved.recipeTypes;
     this.ingredientGroups = resolved.ingredientGroups;
-    this.productionFallbacks = resolved.productionFallbacks;
+    this.entriesById = new Map(this.entries.map((entry) => [entry.id, entry]));
+    if (manifest.formatVersion === 7) {
+      for (const entry of this.entries) {
+        entry.productionShards = undefined;
+        entry.usageShards = undefined;
+        entry.productionCount = undefined;
+        entry.usageCount = undefined;
+        entry.specialProductionShards = undefined;
+        entry.specialUsageShards = undefined;
+        entry.specialProductionLookupIds = undefined;
+        entry.specialUsageLookupIds = undefined;
+        entry.specialProductionCount = undefined;
+        entry.specialUsageCount = undefined;
+        entry.productionOreDictionaryId = undefined;
+        entry.oreDictionaryIds = undefined;
+        entry.machineCapabilities = undefined;
+        entry.members = undefined;
+      }
+    }
+    this.browseEntries = buildCatalogBrowseEntries(this.entries);
+    this.searchDocuments = buildCatalogSearchDocuments(this.browseEntries, this.entries);
     this.catalogAssetsByHash = new Map(decodedCatalogAssets ?? []);
+    for (const descriptor of manifest.goodsDetailShards ?? []) {
+      const source = reuseFrom?.manifest.goodsDetailShards?.find((candidate) =>
+        candidate.sha256 === descriptor.sha256 && candidate.logicalId === descriptor.logicalId
+      );
+      const pending = source && reuseFrom?.detailShards.get(source.id);
+      if (pending) this.reusableDetailShards.set(descriptor.sha256, pending);
+    }
+    for (const descriptor of manifest.ingredientGroupShards ?? []) {
+      const source = reuseFrom?.manifest.ingredientGroupShards?.find((candidate) =>
+        candidate.sha256 === descriptor.sha256 && candidate.logicalId === descriptor.logicalId
+      );
+      const pending = source && reuseFrom?.groupShards.get(source.id);
+      if (pending) this.reusableGroupShards.set(descriptor.sha256, pending);
+    }
     for (const descriptor of manifest.recipeShards) {
       const sourceDescriptor = reuseFrom?.manifest.recipeShards.find(
         (candidate) => candidate.sha256 === descriptor.sha256
@@ -623,11 +544,7 @@ export class DatasetRepository {
   }
 
   static async availableVersions(): Promise<DatasetVersion[]> {
-    const versionsUrl = new URL('./versions.json', document.baseURI).href;
-    return (await fetchJsonNetworkFirst<VersionsIndex>(
-      versionsUrl,
-      `versions:${versionsUrl}`
-    )).value.versions;
+    return (await loadVersionsIndex()).value.versions;
   }
 
   static async load(
@@ -646,9 +563,8 @@ export class DatasetRepository {
       gtnhVersion: progressContext.gtnhVersion
       });
     };
-    const versionsUrl = new URL('./versions.json', document.baseURI).href;
     report(3, 'Checking available GTNH versions');
-    const versionsResult = await fetchJsonNetworkFirst<VersionsIndex>(versionsUrl, `versions:${versionsUrl}`);
+    const versionsResult = await loadVersionsIndex();
     const versions = versionsResult.value;
     const installed = await listDatasets();
     const selectedId = preferredDatasetId(versions.versions, installed, datasetId);
@@ -670,16 +586,23 @@ export class DatasetRepository {
       `manifest:${manifestUrl}`
     );
     const manifest = manifestResult.value;
-    if (manifest.formatVersion !== 6) {
-      throw new Error(`Unsupported pack manifest format ${String(manifest.formatVersion)}; only format 6 is supported`);
+    if (manifest.formatVersion !== 7) {
+      throw new Error(`Unsupported pack manifest format ${String(manifest.formatVersion)}; only format 7 is supported`);
     }
     if (!Array.isArray(manifest.recordPages) || manifest.recordPages.length === 0) {
-      throw new Error('Format-6 manifest has no record pages');
+      throw new Error(`Format-${manifest.formatVersion} manifest has no record pages`);
     }
+    if (manifest.formatVersion === 7 && (
+      !Array.isArray(manifest.goodsDetailShards)
+      || !Array.isArray(manifest.ingredientGroupShards)
+      || manifest.goodsDetailShards.length === 0
+    )) throw new Error('Format-7 manifest is missing lazy detail families');
     if (manifest.catalogAssets.some((asset) => !isLogicalRecordAsset(asset))
+      || (manifest.goodsDetailShards ?? []).some((asset) => !isLogicalRecordAsset(asset))
+      || (manifest.ingredientGroupShards ?? []).some((asset) => !isLogicalRecordAsset(asset))
       || manifest.recipeShards.some((asset) => !isLogicalRecordAsset(asset))
       || manifest.specialDataShards.some((asset) => !isLogicalRecordAsset(asset))) {
-      throw new Error('Format-6 logical assets must use record-page segments');
+      throw new Error(`Format-${manifest.formatVersion} logical assets must use record-page segments`);
     }
     const recordPageHashes = new Set(manifest.recordPages.map((asset) => asset.sha256));
     if (recordPageHashes.size !== manifest.recordPages.length
@@ -690,15 +613,17 @@ export class DatasetRepository {
         || typeof asset.url !== 'string'
         || asset.url.length === 0
         || asset.segments !== undefined)) {
-      throw new Error('Format-6 manifest has invalid physical record pages');
+      throw new Error(`Format-${manifest.formatVersion} manifest has invalid physical record pages`);
     }
     for (const asset of [
       ...manifest.catalogAssets,
+      ...(manifest.goodsDetailShards ?? []),
+      ...(manifest.ingredientGroupShards ?? []),
       ...manifest.recipeShards,
       ...manifest.specialDataShards
     ]) {
       if (asset.encoding !== 'identity' || asset.url !== ''
-        || !asset.segments!.every(([pageIndex, first, count]) => Number.isSafeInteger(pageIndex)
+        || !recordPageSelections(asset).every(([pageIndex, first, count]) => Number.isSafeInteger(pageIndex)
           && pageIndex >= 0
           && pageIndex < manifest.recordPages.length
           && Number.isSafeInteger(first)
@@ -706,6 +631,23 @@ export class DatasetRepository {
           && first >= 0
           && count >= 1)) {
         throw new Error(`${asset.id}: invalid record-page logical descriptor`);
+      }
+    }
+    if (manifest.formatVersion === 7) {
+      const expectedFamilies = new Map<DatasetAsset, DatasetAsset['family']>([
+        ...manifest.catalogAssets.map((asset) => [asset, 'bootstrap'] as const),
+        ...manifest.goodsDetailShards!.map((asset) => [asset, 'goods-details'] as const),
+        ...manifest.ingredientGroupShards!.map((asset) => [asset, 'ingredient-groups'] as const),
+        ...manifest.recipeShards.map((asset) => [asset, 'recipes'] as const),
+        ...manifest.specialDataShards.map((asset) => [asset, 'special'] as const)
+      ]);
+      for (const [asset, family] of expectedFamilies) {
+        if (asset.family !== family) throw new Error(`${asset.id}: invalid load family`);
+        for (const [pageIndex] of recordPageSelections(asset)) {
+          if (manifest.recordPages[pageIndex]?.family !== family) {
+            throw new Error(`${asset.id}: record page crosses load-family boundary`);
+          }
+        }
       }
     }
     {
@@ -725,7 +667,8 @@ export class DatasetRepository {
       }
     }
     if (manifest.datasetId !== selected.datasetId) throw new Error('Manifest dataset identity mismatch');
-    const legacyStates = installed.filter(isLegacyDatasetState);
+    const legacyStates = installed.filter((state) => isLegacyDatasetState(state)
+      && state.gtnhVersion === manifest.gtnhVersion);
     const sameVersionStates = installed.filter((state) =>
       state.gtnhVersion === manifest.gtnhVersion && state.datasetId !== manifest.datasetId
     );
@@ -734,7 +677,7 @@ export class DatasetRepository {
         .map((state) => [state.datasetId, state] as const)
     ).values()];
     report(12, 'Loading catalog');
-    const loadedCatalog = await loadCatalog(
+    const loadedCatalog = await loadFormat7Bootstrap(
       manifest,
       manifestResult.url,
       report,
@@ -745,9 +688,6 @@ export class DatasetRepository {
       manifest,
       manifestResult.url,
       loadedCatalog.catalog,
-      undefined,
-      undefined,
-      undefined,
       loadedCatalog.decodedByHash,
       reuseFrom
     );
@@ -797,6 +737,156 @@ export class DatasetRepository {
 
   async activate(): Promise<void> {
     await activateDataset(this.datasetId);
+  }
+
+  private async loadGoodsDetailShard(
+    descriptor: NonNullable<DatasetManifest['goodsDetailShards']>[number]
+  ): Promise<PackedGoodsDetail[]> {
+    const bytes = await fetchVerified(descriptor, this.manifestUrl, undefined, undefined, this.manifest);
+    await this.recordAsset(descriptor);
+    const value = await decodeAssetPayload(descriptor, bytes) as PackedGoodsDetailsShard;
+    if (value.schemaVersion !== 6 || value.kind !== 'goodsDetails'
+      || value.logicalId !== descriptor.logicalId || value.prefix !== descriptor.prefix
+      || !Array.isArray(value.goods) || value.goods.length !== descriptor.recordCount) {
+      throw new Error(`${descriptor.id}: goods-detail identity mismatch`);
+    }
+    for (const detail of value.goods) {
+      if (!this.packedGoods.has(detail.id)
+        || descriptorForStableId(this.manifest.goodsDetailShards, 'goods', detail.id)?.id !== descriptor.id) {
+        throw new Error(`${descriptor.id}: invalid goods-detail membership ${detail.id}`);
+      }
+    }
+    const numericIds = new Map((value.goodsMetadata ?? []).map((record) => [record.id, record.numericId]));
+    const tooltips = new Map((value.goodsTooltips ?? []).map((record) => [record.id, record.formats]));
+    return expandRelations(value.goods, value.lists).map((record) => ({ ...record,
+      numericId: numericIds.get(record.id) ?? record.numericId,
+      tooltipFormats: tooltips.get(record.id) ?? [],
+      productionCount: record.productionCount ?? 0, usageCount: record.usageCount ?? 0,
+      specialProductionCount: record.specialProductionCount ?? 0, specialUsageCount: record.specialUsageCount ?? 0 }));
+  }
+
+  private async loadIngredientGroupShard(
+    descriptor: NonNullable<DatasetManifest['ingredientGroupShards']>[number]
+  ): Promise<Array<PackedOreDictionary | PackedIngredientGroup>> {
+    const bytes = await fetchVerified(descriptor, this.manifestUrl, undefined, undefined, this.manifest);
+    await this.recordAsset(descriptor);
+    const value = await decodeAssetPayload(descriptor, bytes) as PackedIngredientGroupsShard;
+    if (value.schemaVersion !== 6 || value.kind !== 'ingredientGroups'
+      || value.logicalId !== descriptor.logicalId || value.prefix !== descriptor.prefix
+      || !Array.isArray(value.ingredientGroups)
+      || value.ingredientGroups.length !== descriptor.recordCount) {
+      throw new Error(`${descriptor.id}: ingredient-group identity mismatch`);
+    }
+    const groups = expandRelations(value.ingredientGroups, value.lists);
+    for (const group of groups) {
+      if (!this.entriesById.has(group.id) || !isStringArray(group.itemIds)
+        || group.itemIds.some((id) => !this.packedGoods.has(id))
+        || descriptorForStableId(this.manifest.ingredientGroupShards, 'oreDictionaries', group.id)?.id !== descriptor.id) {
+        throw new Error(`${descriptor.id}: invalid ingredient-group membership ${group.id}`);
+      }
+    }
+    return groups;
+  }
+
+  private detailShard(descriptor: NonNullable<DatasetManifest['goodsDetailShards']>[number]): Promise<PackedGoodsDetail[]> {
+    let pending = this.detailShards.get(descriptor.id);
+    if (pending) return pending;
+    const reusable = this.reusableDetailShards.get(descriptor.sha256);
+    pending = reusable ? reusable.catch(() => this.loadGoodsDetailShard(descriptor)) : this.loadGoodsDetailShard(descriptor);
+    this.detailShards.set(descriptor.id, pending);
+    void pending.catch(() => this.detailShards.delete(descriptor.id));
+    return pending;
+  }
+
+  private groupShard(descriptor: NonNullable<DatasetManifest['ingredientGroupShards']>[number]): Promise<Array<PackedOreDictionary | PackedIngredientGroup>> {
+    let pending = this.groupShards.get(descriptor.id);
+    if (pending) return pending;
+    const reusable = this.reusableGroupShards.get(descriptor.sha256);
+    pending = reusable ? reusable.catch(() => this.loadIngredientGroupShard(descriptor)) : this.loadIngredientGroupShard(descriptor);
+    this.groupShards.set(descriptor.id, pending);
+    void pending.catch(() => this.groupShards.delete(descriptor.id));
+    return pending;
+  }
+
+  /** Hydrate exactly one stable detail partition and overlay its catalog entries. */
+  async entryFor(id: string, signal?: AbortSignal): Promise<CatalogEntry | undefined> {
+    if (signal?.aborted) throw new DOMException('Operation was cancelled', 'AbortError');
+    const entry = this.entriesById.get(id);
+    if (!entry || this.manifest.formatVersion !== 7) return entry;
+    if (this.packedGoods.has(id)) {
+      if (!this.goodsDetails.has(id)) {
+        const descriptor = descriptorForStableId(this.manifest.goodsDetailShards ?? [], 'goods', id);
+        if (!descriptor) throw new Error(`No goods-detail partition contains ${id}`);
+        const details = await withAbort(this.detailShard(descriptor), signal);
+        for (const detail of details) {
+          this.goodsDetails.set(detail.id, detail);
+          const packed = this.packedGoods.get(detail.id);
+          const target = this.entriesById.get(detail.id);
+          if (!packed || !target) throw new Error(`${descriptor.id}: detail references unknown goods ${detail.id}`);
+          Object.assign(packed, detail);
+          this.entriesById.set(detail.id, { ...target,
+            numericId: detail.numericId,
+            unlocalizedName: detail.unlocalizedName,
+            nbt: detail.nbt ?? target.nbt,
+            rawTooltip: detail.tooltip ?? packed.tooltip,
+            formattedTooltip: detail.tooltipFormats?.length
+              ? restoreMinecraftFormatting(packed.tooltip ?? '', detail.tooltipFormats) : undefined,
+            productionShards: detail.productionShards,
+            usageShards: detail.usageShards,
+            productionCount: detail.productionOreDictionaryId ? undefined : detail.productionCount,
+            usageCount: detail.usageCount,
+            specialProductionShards: detail.specialProductionShards,
+            specialUsageShards: detail.specialUsageShards,
+            specialProductionLookupIds: detail.specialProductionLookupIds,
+            specialUsageLookupIds: detail.specialUsageLookupIds,
+            specialProductionCounts: detail.specialProductionCounts,
+            specialUsageCounts: detail.specialUsageCounts,
+            specialProductionCount: detail.specialProductionCount,
+            specialUsageCount: detail.specialUsageCount,
+            productionOreDictionaryId: detail.productionOreDictionaryId,
+            oreDictionaryIds: detail.oreDictionaryIds,
+            container: detail.container,
+            containerItemIds: detail.containerItemIds,
+            machineCapabilities: detail.machineCapabilities
+          });
+        }
+      }
+      return this.entriesById.get(id);
+    }
+    const stub = this.ingredientGroups.get(id);
+    if (!stub) return undefined;
+    if (!this.hydratedGroups.has(id)) {
+      const descriptor = descriptorForStableId(this.manifest.ingredientGroupShards ?? [], 'oreDictionaries', id);
+      if (!descriptor) throw new Error(`No ingredient-group partition contains ${id}`);
+      const groups = await withAbort(this.groupShard(descriptor), signal);
+      for (const group of groups) {
+        this.ingredientGroups.set(group.id, group);
+        this.hydratedGroups.add(group.id);
+        const target = this.entriesById.get(group.id);
+        if (!target) throw new Error(`${descriptor.id}: group references unknown entry ${group.id}`);
+        const representative = group.itemIds.map((member) => this.entriesById.get(member)).find(Boolean);
+        this.entriesById.set(group.id, { ...target,
+          members: group.itemIds,
+          tooltip: [`${group.itemIds.length.toLocaleString('en-US')} interchangeable item${group.itemIds.length === 1 ? '' : 's'}`,
+            'All listed members are valid recipe ingredients.'],
+          icon: representative?.icon,
+          productionShards: group.productionShards ?? [],
+          usageShards: group.usageShards ?? [],
+          productionCount: group.productionCount,
+          usageCount: group.usageCount,
+          specialProductionShards: group.specialProductionShards ?? [],
+          specialUsageShards: group.specialUsageShards ?? [],
+          specialProductionLookupIds: group.specialProductionLookupIds ?? [],
+          specialUsageLookupIds: group.specialUsageLookupIds ?? [],
+          specialProductionCounts: group.specialProductionCounts,
+          specialUsageCounts: group.specialUsageCounts,
+          specialProductionCount: group.specialProductionCount ?? 0,
+          specialUsageCount: group.specialUsageCount ?? 0,
+          machineCapabilities: group.machineCapabilities
+        });
+      }
+    }
+    return this.entriesById.get(id);
   }
 
   async installOffline(
@@ -1018,57 +1108,15 @@ export class DatasetRepository {
 
   private specialRecordIds(entryId: string, view: RecipeView): Set<string> | null {
     if (view === 'machineUsages') return null;
-    const selectedGroup = this.ingredientGroups.get(entryId);
-    const fluidScope = fluidRecipeScope(entryId, this.packedGoods);
-    if (selectedGroup) return new Set([entryId, ...selectedGroup.itemIds]);
-    if (fluidScope) return new Set(fluidScope.memberIds);
-    if (!this.packedGoods.has(entryId)) return null;
-    const productionFallback = this.productionFallbacks.get(entryId);
-    const result = view === 'recipes' && productionFallback
-      ? new Set(productionFallback.itemIds)
-      : new Set([entryId]);
-    // GT's special ore handlers resolve a selected product/host stack through
-    // every named ore dictionary containing that stack.  The pack builder
-    // projects current records onto group members, but expanding the scope
-    // here also keeps older/externally-built packs correct when only the
-    // dictionary entry carries the special metadata.
-    for (const itemId of [...result]) {
-      const item = this.packedGoods.get(itemId);
-      for (const group of this.ingredientGroups.values()) {
-        if (
-          group.id.startsWith('o:')
-          && group.itemIds.includes(itemId)
-          && isGtOreSpecialGroup(group.id, item)
-        ) result.add(group.id);
-      }
+    if (this.manifest.formatVersion === 7) {
+      const detail = this.goodsDetails.get(entryId);
+      const group = this.ingredientGroups.get(entryId);
+      const ids = view === 'recipes'
+        ? detail?.specialProductionMatchIds ?? group?.specialProductionMatchIds
+        : detail?.specialUsageMatchIds ?? group?.specialUsageMatchIds;
+      return ids ? new Set(ids) : null;
     }
-    // CropsNH's NEI handlers resolve every literal genericSeed stack through
-    // the crop identity, while the sidecar retains the canonical analyzed
-    // stack. Expand the lookup set at read time so a visible variant cannot
-    // advertise a special tab whose shard then filters to zero records.
-    const crop = cropsNhSeedKey(this.packedGoods.get(entryId));
-    if (crop) {
-      for (const goods of this.packedGoods.values()) {
-        if (cropsNhSeedKey(goods) === crop) result.add(goods.id);
-      }
-    }
-    return result;
-  }
-
-  private specialShardIds(entryIds: ReadonlySet<string>, view: RecipeView): string[] {
-    const field = view === 'recipes' ? 'specialProductionShards' : 'specialUsageShards';
-    const result = new Set<string>();
-    for (const entryId of entryIds) {
-      const metadata = this.packedGoods.get(entryId) ?? this.ingredientGroups.get(entryId);
-      for (const shardId of metadata?.[field] ?? []) result.add(shardId);
-    }
-    return [...result].sort((left, right) => {
-      const a = this.manifest.specialDataShards.find((shard) => shard.id === left);
-      const b = this.manifest.specialDataShards.find((shard) => shard.id === right);
-      return (a?.specialViewTypeOrder ?? 0) - (b?.specialViewTypeOrder ?? 0)
-        || (a?.part ?? 0) - (b?.part ?? 0)
-        || left.localeCompare(right);
-    });
+    return null;
   }
 
   private specialShardIdsForViewType(viewType: string): string[] {
@@ -1156,12 +1204,21 @@ export class DatasetRepository {
     }) => void,
     signal?: AbortSignal
   ): Promise<SpecialRecord[]> {
+    await this.entryFor(entryId, signal);
+    const fallbackId = view === 'recipes' ? this.goodsDetails.get(entryId)?.productionOreDictionaryId : undefined;
+    if (fallbackId) await this.entryFor(fallbackId, signal);
     const entryIds = this.specialRecordIds(entryId, view);
+    if (entryIds && fallbackId) {
+      for (const id of this.ingredientGroups.get(fallbackId)?.itemIds ?? []) entryIds.add(id);
+    }
     if (!entryIds) {
       onProgress?.({ loadedShards: 0, totalShards: 0, batch: [] });
       return [];
     }
-    const shardIds = this.specialShardIds(entryIds, view).filter((id) => {
+    const scopedShardIds = [...new Set([...(view === 'recipes' ? this.entriesById.get(entryId)?.specialProductionShards
+      : this.entriesById.get(entryId)?.specialUsageShards) ?? [],
+      ...(fallbackId ? this.ingredientGroups.get(fallbackId)?.specialProductionShards ?? [] : [])])];
+    const shardIds = scopedShardIds.filter((id) => {
       const descriptor = this.manifest.specialDataShards.find((shard) => shard.id === id);
       return descriptor?.specialViewTypeId === viewType;
     });
@@ -1231,12 +1288,14 @@ export class DatasetRepository {
     onProgress?: (progress: RecipeLoadProgress) => void,
     signal?: AbortSignal
   ): Promise<Recipe[]> {
+    await this.entryFor(entryId, signal);
     const goods = this.packedGoods.get(entryId);
+    const fallbackId = view === 'recipes' ? this.goodsDetails.get(entryId)?.productionOreDictionaryId : undefined;
+    if (fallbackId) await this.entryFor(fallbackId, signal);
     const selectedGroup = this.ingredientGroups.get(entryId);
     if (!goods && !selectedGroup) return [];
-    const catalogEntry = this.entries.find((entry) => entry.id === entryId);
-    const productionFallback = this.productionFallbacks.get(entryId);
-    const fluidScope = fluidRecipeScope(entryId, this.packedGoods);
+    const catalogEntry = this.entriesById.get(entryId);
+    const lazyDetail = this.goodsDetails.get(entryId);
     const machineCapabilities = catalogEntry?.machineCapabilities ?? [];
     const shardIds = view === 'machineUsages'
       ? [...new Set(machineCapabilities.flatMap((capability) => capability.recipeShards))]
@@ -1245,13 +1304,13 @@ export class DatasetRepository {
         ? catalogEntry?.productionShards ?? []
         : catalogEntry?.usageShards ?? []
       : view === 'recipes'
-        ? catalogEntry?.productionShards ?? []
+        ? (fallbackId ? this.ingredientGroups.get(fallbackId)?.productionShards : catalogEntry?.productionShards) ?? []
         : goods!.usageShards;
     const selectedMembers = selectedGroup
       ? new Set(selectedGroup.itemIds)
-      : view === 'recipes' && productionFallback
-        ? new Set(productionFallback.itemIds)
-        : null;
+      : new Set(view === 'recipes'
+          ? (fallbackId ? this.ingredientGroups.get(fallbackId)?.itemIds : lazyDetail?.productionMatchIds) ?? [entryId]
+          : lazyDetail?.usageMatchIds ?? [entryId]);
     const matches = (recipe: PackedRecipe) => {
       if (view === 'machineUsages') {
         const capability = machineCapabilities.find(
@@ -1261,7 +1320,6 @@ export class DatasetRepository {
           && machineCanProcessVoltage(capability, recipe.gt?.voltageTier);
       }
       return (view === 'recipes' ? recipe.outputs : recipe.inputs).some((io) => {
-        if (fluidScope) return fluidScope.memberIds.has(io.goodsId);
         return ingredientMatchesEntry(io, entryId, selectedMembers, this.ingredientGroups);
       });
     };
@@ -1271,6 +1329,10 @@ export class DatasetRepository {
       2,
       async (shardId, shardIndex) => {
         const recipes = await this.loadShard(shardId);
+        const groupIds = new Set(recipes.flatMap((recipe) => [...recipe.inputs, ...recipe.outputs]
+          .filter((io) => io.kind === 'oreDict' || io.kind === 'itemGroup')
+          .map((io) => io.goodsId)));
+        await Promise.all([...groupIds].map((groupId) => this.entryFor(groupId, signal)));
         const batch = recipes
           .filter(matches)
           .map((recipe, recipeIndex) => materializeRecipe(

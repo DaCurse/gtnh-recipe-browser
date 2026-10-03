@@ -4,8 +4,8 @@ import type {
   ManagedDataset
 } from './types';
 
-/** Bumped for format-6 physical-page ownership and removal of catalog snapshots. */
-export const CURRENT_DATASET_CACHE_VERSION = 2;
+/** Bumped for format-7 bootstrap/detail/group ownership and generic v6 migration. */
+export const CURRENT_DATASET_CACHE_VERSION = 3;
 
 /** Old browser rows predate explicit cache-format bookkeeping. */
 export function isLegacyDatasetState(state: Pick<DatasetState, 'cacheVersion'>): boolean {

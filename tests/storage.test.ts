@@ -247,7 +247,7 @@ describe('IndexedDB dataset lifecycle', () => {
     expect(await getCachedAsset('migration-only')).toBeNull();
     expect(await getCachedAsset('other-legacy-only')).toBeNull();
     expect(await getCachedAsset('same-version-only')).toBeNull();
-    expect(await getCachedAsset('untracked-old-object')).toBeNull();
+    expect(await getCachedAsset('untracked-old-object')).toEqual(new Uint8Array([5]));
     expect(await getCachedAsset('migration-shared')).toEqual(new Uint8Array([2]));
     expect(await getCachedAsset('current-only')).toEqual(new Uint8Array([4]));
   });

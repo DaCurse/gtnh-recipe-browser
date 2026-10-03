@@ -9,6 +9,7 @@ import sharp from 'sharp';
 import { readLogicalAsset } from '../pack-builder/recordPages';
 import type { GeneratedPackManifest, ImmutableAsset } from '../pack-builder/manifest';
 import { sharedIconPixelHash } from '../pack-builder/sharedIcons';
+import { expandRelations, type PackedRelationList } from '../../src/lib/packedRelations';
 
 type JsonObject = Record<string, unknown>;
 type PackAsset = {
@@ -26,6 +27,8 @@ type PackManifest = {
   gtnhVersion: string;
   revision: string;
   catalogAssets: PackAsset[];
+  goodsDetailShards?: PackAsset[];
+  ingredientGroupShards?: PackAsset[];
   recipeShards: PackAsset[];
   specialDataShards: PackAsset[];
   iconSheets: PackAsset[];
@@ -110,7 +113,7 @@ function localAssetPath(directory: string, asset: PackAsset, assetDirectory?: st
 }
 
 async function readDecodedAsset(directory: string, asset: PackAsset, assetDirectory?: string, manifest?: PackManifest): Promise<unknown> {
-  if (manifest?.formatVersion === 6) {
+  if (manifest?.recordPages) {
     return decode(await readLogicalAsset(asset as unknown as ImmutableAsset, manifest as unknown as GeneratedPackManifest,
       assetDirectory ?? resolve(directory, 'assets', 'sha256')));
   }
@@ -203,21 +206,38 @@ async function loadPack(directoryArgument: string, name: string, assetDirectory?
     asset,
     value: await readDecodedAsset(directory, asset, assetDirectory, manifest) as JsonObject
   })));
+  const details = await Promise.all((manifest.goodsDetailShards ?? []).map(async (asset) => {
+    const value = await readDecodedAsset(directory, asset, assetDirectory, manifest) as JsonObject;
+    return expandRelations(value.goods as Array<{ id: string }>, value.lists as PackedRelationList[] | undefined);
+  }));
+  const groups = await Promise.all((manifest.ingredientGroupShards ?? []).map(async (asset) => {
+    const value = await readDecodedAsset(directory, asset, assetDirectory, manifest) as JsonObject;
+    return expandRelations(value.ingredientGroups as Array<{ id: string }>, value.lists as PackedRelationList[] | undefined);
+  }));
   const core = catalogs.find(({ value }) => value.kind === 'core')?.value ?? {};
   const goods = catalogs
     .filter(({ value }) => value.kind === 'goods')
     .flatMap(({ value }) => Array.isArray(value.goods) ? value.goods : []);
   const goodsMetadata = catalogs
     .filter(({ value }) => value.kind === 'goodsMetadata')
-    .flatMap(({ value }) => Array.isArray(value.goods) ? value.goods : []);
+    .flatMap(({ value }) => Array.isArray(value.goods) ? value.goods : []).concat(details.flat());
   const recipeTypes = catalogs.flatMap(({ value }) => Array.isArray(value.recipeTypes) ? value.recipeTypes : []);
   const oreDictionaries = catalogs.flatMap(({ value }) => Array.isArray(value.oreDictionaries) ? value.oreDictionaries : []);
-  const ingredientGroups = catalogs.flatMap(({ value }) => Array.isArray(value.ingredientGroups) ? value.ingredientGroups : []);
+  const ingredientGroups = catalogs.flatMap(({ value }) => Array.isArray(value.ingredientGroups) ? value.ingredientGroups : []).concat(groups.flat());
   const serviceIcons = catalogs.flatMap(({ value }) => Array.isArray(value.specialServiceIcons) ? value.specialServiceIcons : []);
   const specialViews = catalogs.flatMap(({ value }) => Array.isArray(value.specialViewTypes) ? value.specialViewTypes : []);
   const ownerIcons = catalogs.flatMap(({ value }) => Array.isArray(value.icons)
     ? value.icons as Array<{ id: string; icon: { sheetId: string; index: number } | null }>
     : []);
+  if (manifest.formatVersion === 7) {
+    for (const value of [...goods, ...recipeTypes, ...serviceIcons]) {
+      const record = value as { id: string; icon?: { sheetId: string; index: number } | null };
+      if (!record.icon) continue;
+      const sheet = manifest.iconSheets.find((sheet) => sheet.sha256.startsWith(record.icon!.sheetId));
+      if (!sheet) throw new Error(`${record.id}: missing icon sheet`);
+      ownerIcons.push({ id: record.id, icon: { ...record.icon, sheetId: sheet.sha256 } });
+    }
+  }
   const recipeTypeIds = new Map<string, string>();
   for (const value of recipeTypes) {
     const sourceId = String((value as JsonObject).id);
@@ -327,7 +347,7 @@ async function loadPack(directoryArgument: string, name: string, assetDirectory?
     manifest,
     assets,
     recordSets: [catalogGoods, catalogGoodsMetadata, recipeSet, specialSet, typeSet, oreSet, groupSet],
-    icons: await loadIcons(directory, manifest.iconSheets, assetDirectory, manifest.formatVersion === 6 ? ownerIcons : undefined),
+    icons: await loadIcons(directory, manifest.iconSheets, assetDirectory, manifest.recordPages ? ownerIcons : undefined),
     canonicalCore: stableJson(catalogValue, new Set(['order', 'icon']))
   };
 }

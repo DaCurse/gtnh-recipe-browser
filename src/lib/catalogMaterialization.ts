@@ -12,7 +12,7 @@ import type {
 } from './datasetSchema';
 import type { CatalogEntry } from './types';
 
-export interface MaterializedCatalog {
+interface MaterializedCatalog {
   entries: CatalogEntry[];
   goods: Map<string, PackedGoods>;
   recipeTypes: Map<string, PackedRecipeType>;
@@ -24,9 +24,12 @@ export interface MaterializedCatalog {
 export function materializeCatalog(
   manifest: DatasetManifest,
   manifestUrl: string,
-  catalog: PackedCatalog
+  catalog: PackedCatalog,
+  includeRelations = true
 ): MaterializedCatalog {
   const sheets = new Map(manifest.iconSheets.map((sheet) => [sheet.id, sheet]));
+  const shortSheets = new Map(manifest.iconSheets.map((sheet) => [sheet.sha256.slice(0, 16), sheet]));
+  if (shortSheets.size !== manifest.iconSheets.length) throw new Error('Ambiguous icon sheet fingerprint');
   const goodsById = new Map(catalog.goods.map((goods) => [goods.id, goods]));
   const recipeTypes = new Map(catalog.recipeTypes.map((type) => [type.id, type]));
   const oreDictionaries = new Map(catalog.oreDictionaries.map((ore) => [ore.id, ore]));
@@ -36,7 +39,7 @@ export function materializeCatalog(
     ...anonymousGroups.map((group) => [group.id, group] as const)
   ]);
   const itemOres = new Map<string, PackedOreDictionary[]>();
-  for (const ore of catalog.oreDictionaries) {
+  for (const ore of includeRelations ? catalog.oreDictionaries : []) {
     for (const itemId of ore.itemIds) {
       const memberships = itemOres.get(itemId) ?? [];
       memberships.push(ore);
@@ -45,7 +48,7 @@ export function materializeCatalog(
   }
 
   const productionFallbacks = new Map<string, PackedOreDictionary>();
-  for (const goods of catalog.goods) {
+  for (const goods of includeRelations ? catalog.goods : []) {
     if (goods.kind !== 'item' || goods.productionCount !== 0) continue;
     const fallback = productionFallbackDictionary(
       goods.id,
@@ -56,13 +59,13 @@ export function materializeCatalog(
   }
 
   const shardsByRecipeType = new Map<string, string[]>();
-  for (const shard of manifest.recipeShards) {
+  for (const shard of includeRelations ? manifest.recipeShards : []) {
     const shardIds = shardsByRecipeType.get(shard.recipeTypeId) ?? [];
     shardIds.push(shard.id);
     shardsByRecipeType.set(shard.recipeTypeId, shardIds);
   }
   const directCapabilities = new Map<string, NonNullable<CatalogEntry['machineCapabilities']>>();
-  for (const type of catalog.recipeTypes) {
+  for (const type of includeRelations ? catalog.recipeTypes : []) {
     for (const machine of recipeTypeMachineCapabilities(type)) {
       const capabilities = directCapabilities.get(machine.id) ?? [];
       capabilities.push({
@@ -80,10 +83,10 @@ export function materializeCatalog(
   );
 
   const goodsEntries = catalog.goods.map((goods): CatalogEntry => {
-    const sheet = goods.icon ? sheets.get(goods.icon.sheetId) : undefined;
+    const sheet = goods.icon ? sheets.get(goods.icon.sheetId) ?? shortSheets.get(goods.icon.sheetId) : undefined;
     const name = minecraftHtmlPlainText(goods.name).trim();
     const productionFallback = productionFallbacks.get(goods.id);
-    const fluidScope = fluidRecipeScope(goods.id, goodsById);
+    const fluidScope = includeRelations ? fluidRecipeScope(goods.id, goodsById) : null;
     const recipeScopeIds = fluidScope?.memberIds ?? productionFallback?.itemIds;
     const productionShards = recipeScopeIds
       ? [...new Set([...recipeScopeIds].flatMap((itemId) =>
@@ -104,6 +107,7 @@ export function materializeCatalog(
       numericId: goods.numericId,
       damage: goods.damage,
       nbt: goods.nbt,
+      variantNbtKey: goods.variantNbtKey,
       searchMask: goods.searchMask,
       rawTooltip: goods.tooltip,
       tooltip: [],

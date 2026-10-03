@@ -97,15 +97,9 @@ const GOODS_METADATA_FIELDS = [
 
 const GOODS_METADATA_FIELD_SET = new Set<string>(GOODS_METADATA_FIELDS);
 
-export function sharedGoodsStableValue(value: Record<string, unknown>): Record<string, unknown> {
+function sharedGoodsStableValue(value: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
     Object.entries(value).filter(([key]) => !GOODS_METADATA_FIELD_SET.has(key))
-  );
-}
-
-export function sharedGoodsMetadataValue(value: Record<string, unknown>): Record<string, unknown> {
-  return Object.fromEntries(
-    Object.entries(value).filter(([key]) => GOODS_METADATA_FIELD_SET.has(key) || key === 'id')
   );
 }
 

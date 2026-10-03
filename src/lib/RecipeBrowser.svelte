@@ -393,7 +393,13 @@
 </div>
 
 <div class="recipe-list">
-  {#if browserState.showingSpecial && browserState.specialLoading && browserState.specialRecords.length === 0}
+  {#if browserState.itemDataLoading}
+    <div class="recipe-loading" aria-live="polite">
+      <span class="spinner" aria-hidden="true"></span>
+      <b>Loading item data…</b>
+      <p>Reading the detail partition for this item.</p>
+    </div>
+  {:else if browserState.showingSpecial && browserState.specialLoading && browserState.specialRecords.length === 0}
     <div class:partial={browserState.specialRecords.length > 0} class="recipe-loading" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
       <b>Loading {browserState.specialTypeLabel}…</b>

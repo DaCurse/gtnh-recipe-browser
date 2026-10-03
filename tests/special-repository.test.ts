@@ -6,9 +6,10 @@ import { encode } from '@msgpack/msgpack';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DatasetRepository } from '../src/lib/dataset';
-import { getDataset, removeDataset } from '../src/lib/storage';
+import { getDataset, removeDataset, saveDataset } from '../src/lib/storage';
 import { sharedPrefixLayoutFingerprint } from '../tools/pack-builder/sharedLayout';
 import { buildRecordPages } from '../tools/pack-builder/recordPages';
+import { recordPageSelections } from '../src/lib/recordPages';
 
 const temporaryPacks: string[] = [];
 
@@ -50,34 +51,35 @@ describe('canonical DatasetRepository special shards', () => {
       };
     };
     const core = await asset('catalog-core', {
-      schemaVersion: 5,
+      schemaVersion: 6,
       kind: 'core',
       logicalId: 'catalog-core',
       serviceItemIds: [],
       recipeTypes: [],
       oreDictionaries: [],
-      ingredientGroups: []
+      ingredientGroups: [{ id: 'o:fixture', itemIds: [] }]
     });
-    const recipeTypes = await asset('catalog-recipe-types', { schemaVersion: 5, kind: 'recipeTypes', logicalId: 'catalog-recipe-types', recipeTypes: [] });
-    const ingredientGroups = await asset('catalog-ingredient-groups', { schemaVersion: 5, kind: 'ingredientGroups', logicalId: 'catalog-ingredient-groups', ingredientGroups: [] });
-    const recipeRemaps = await asset('catalog-recipe-remaps', { schemaVersion: 5, kind: 'recipeRemaps', logicalId: 'catalog-recipe-remaps', obsoleteRecipeRemaps: {} });
-    const oreDictionaries = await asset('catalog-ore-dictionaries-root', {
-      schemaVersion: 5, kind: 'oreDictionaries', logicalId: 'catalog-ore-dictionaries-root', prefix: '', oreDictionaries: []
-    });
+    const recipeTypeId = 'recipe:type';
+    const recipeTypes = await asset('catalog-recipe-types', { schemaVersion: 6, kind: 'recipeTypes', logicalId: 'catalog-recipe-types',
+      recipeTypes: [{ id: recipeTypeId, name: 'Fixture machine', order: 0, shapeless: true,
+        dimensions: {}, defaultCrafter: null, singleblocks: [], multiblocks: [] }] });
+    const recipeRemaps = await asset('catalog-recipe-remaps', { schemaVersion: 6, kind: 'recipeRemaps', logicalId: 'catalog-recipe-remaps', obsoleteRecipeRemaps: {} });
     const specialMetadata = await asset('catalog-special-metadata', {
-      schemaVersion: 5,
+      schemaVersion: 6,
       kind: 'specialMetadata',
       logicalId: 'catalog-special-metadata',
       specialViewTypes: [{ id: 'meteor-ritual', label: 'Meteor Rituals', serviceIconId: 'service:meteor', recordCount: 1 }],
       specialServiceIcons: [{ id: 'service:meteor', label: 'Meteor', searchable: false, icon: null }]
     });
     const goods = await asset('catalog-goods-root', {
-      schemaVersion: 5,
+      schemaVersion: 6,
       kind: 'goods',
       logicalId: 'catalog-goods-root',
       prefix: '',
       goods: [{
         id: goodsId,
+        name: 'Shared Fixture',
+        searchable: true,
         mod: 'fixture',
         kind: 'item',
         internalName: 'shared',
@@ -91,10 +93,14 @@ describe('canonical DatasetRepository special shards', () => {
         usageCount: 0
       }]
     });
-    const metadata = await asset('catalog-goods-metadata-root', {
-      schemaVersion: 5,
-      kind: 'goodsMetadata',
-      logicalId: 'catalog-goods-metadata-root',
+    const search = await asset('catalog-goods-search-root', {
+      schemaVersion: 6, kind: 'goodsSearch', logicalId: 'catalog-goods-search-root', prefix: '',
+      goods: [{ id: goodsId, tooltipId: null }], tooltips: []
+    });
+    const metadata = await asset('goods-details-root', {
+      schemaVersion: 6,
+      kind: 'goodsDetails',
+      logicalId: 'goods-details-root',
       prefix: '',
       goods: [{
         id: goodsId,
@@ -104,16 +110,19 @@ describe('canonical DatasetRepository special shards', () => {
         searchMask: [],
         searchable: true,
         numericId: 1,
-        productionShards: [],
-        usageShards: [],
-        productionCount: 0,
-        usageCount: 0,
+        productionShards: ['recipe-root'],
+        usageShards: ['recipe-root'],
+        productionCount: 1,
+        usageCount: 1,
+        machineCapabilities: [{ recipeTypeId, recipeTypeName: 'Fixture machine', recipeShards: ['recipe-root'] }],
         specialProductionShards: ['special-meteor-ritual-root'],
         specialUsageShards: ['special-meteor-ritual-root'],
         specialProductionLookupIds: ['shared:recipes'],
         specialUsageLookupIds: ['shared:usages'],
         specialProductionCount: 1,
-        specialUsageCount: 1
+        specialUsageCount: 1,
+        productionMatchIds: [goodsId], usageMatchIds: [goodsId],
+        specialProductionMatchIds: [goodsId], specialUsageMatchIds: [goodsId]
       }]
     });
     const special = await asset('special-meteor-ritual-root', {
@@ -134,22 +143,35 @@ describe('canonical DatasetRepository special shards', () => {
         payload: { goodsId }
       }]
     });
+    const group = await asset('ingredient-groups-root', {
+      schemaVersion: 6, kind: 'ingredientGroups', logicalId: 'ingredient-groups-root', prefix: '',
+      ingredientGroups: [{ id: 'o:fixture', itemIds: [goodsId], productionShards: ['recipe-root'], usageShards: ['recipe-root'] }]
+    });
+    const recipe = await asset('recipe-root', {
+      schemaVersion: 5, kind: 'recipeShard', logicalId: 'recipe-root', prefix: '', recipeTypeId,
+      recipes: [{ id: 'recipe:fixture', recipeTypeId, gt: null,
+        inputs: [{ kind: 'oreDict', goodsId: 'o:fixture', amount: 1, slot: 0 }],
+        outputs: [{ kind: 'item', goodsId, amount: 1, slot: 0 }] }]
+    });
     const descriptors = [
       { ...core, kind: 'catalog', role: 'core', part: 0, goodsCount: 0, logicalId: core.id },
       { ...recipeTypes, kind: 'catalog', role: 'recipeTypes', part: 0, goodsCount: 0, logicalId: recipeTypes.id },
-      { ...ingredientGroups, kind: 'catalog', role: 'ingredientGroups', part: 0, goodsCount: 0, logicalId: ingredientGroups.id },
       { ...recipeRemaps, kind: 'catalog', role: 'recipeRemaps', part: 0, goodsCount: 0, logicalId: recipeRemaps.id },
-      { ...oreDictionaries, kind: 'catalog', role: 'oreDictionaries', part: 0, goodsCount: 0, recordCount: 0, logicalId: oreDictionaries.id, prefix: '' },
       { ...specialMetadata, kind: 'catalog', role: 'specialMetadata', part: 0, goodsCount: 0, logicalId: specialMetadata.id },
-      { ...(await asset('catalog-icons', { schemaVersion: 5, kind: 'icons', logicalId: 'catalog-icons', icons: [{ id: goodsId, icon: null }] })), kind: 'catalog', role: 'icons', part: 0, goodsCount: 0, logicalId: 'catalog-icons' },
       { ...goods, kind: 'catalog', role: 'goods', part: 0, goodsCount: 1, logicalId: goods.id, prefix: '' },
-      { ...metadata, kind: 'catalog', role: 'goodsMetadata', part: 0, goodsCount: 1, logicalId: metadata.id, prefix: '' }
-    ];
+      { ...search, kind: 'catalog', role: 'goodsSearch', part: 0, goodsCount: 0, logicalId: search.id, prefix: '' }
+    ].map((descriptor) => ({ ...descriptor, family: 'bootstrap' as const }));
+    const detailDescriptor = { ...metadata, family: 'goods-details' as const, kind: 'goodsDetails', part: 0,
+      recordCount: 1, logicalId: metadata.id, prefix: '' };
+    const groupDescriptor = { ...group, family: 'ingredient-groups' as const, kind: 'ingredientGroups', part: 0,
+      recordCount: 1, logicalId: group.id, prefix: '' };
+    const recipeDescriptor = { ...recipe, family: 'recipes' as const, kind: 'recipeShard', part: 0,
+      recipeCount: 1, recipeTypeOrder: 0, recipeTypeId, logicalId: recipe.id, prefix: '' };
     const targets = { recipes: 1024, goods: 1024, goodsMetadata: 1024, special: 1024, oreDictionaries: 1024 };
-    const prefixes = { recipeTypes: {}, goods: [''], oreDictionaries: [''], specialViews: { 'meteor-ritual': [''] } };
-    const specialDescriptor = { ...special, kind: 'specialData', specialViewTypeId: 'meteor-ritual', specialViewTypeOrder: 0, part: 0, recordCount: 1, logicalId: special.id, prefix: '' };
+    const prefixes = { recipeTypes: { [recipeTypeId]: [''] }, goods: [''], oreDictionaries: [''], specialViews: { 'meteor-ritual': [''] } };
+    const specialDescriptor = { ...special, family: 'special' as const, kind: 'specialData', specialViewTypeId: 'meteor-ritual', specialViewTypeOrder: 0, part: 0, recordCount: 1, logicalId: special.id, prefix: '' };
     const recordPages = await buildRecordPages(
-      [...descriptors, specialDescriptor],
+      [...descriptors, detailDescriptor, groupDescriptor, recipeDescriptor, specialDescriptor],
       join(root, 'assets', 'sha256'),
       '../..',
       []
@@ -163,7 +185,7 @@ describe('canonical DatasetRepository special shards', () => {
       });
     }
     const manifest = {
-      formatVersion: 6,
+      formatVersion: 7,
       datasetId,
       gtnhVersion: 'fixture',
       revision: 'shared',
@@ -178,7 +200,9 @@ describe('canonical DatasetRepository special shards', () => {
       source: { formatVersion: 5, dataSha256: 'fixture', atlasSha256: 'fixture' },
       catalogAssets: descriptors,
       recordPages,
-      recipeShards: [],
+      recipeShards: [recipeDescriptor],
+      goodsDetailShards: [detailDescriptor],
+      ingredientGroupShards: [groupDescriptor],
       iconSheets: [],
       specialDataShards: [specialDescriptor],
       totals: {
@@ -193,7 +217,7 @@ describe('canonical DatasetRepository special shards', () => {
     vi.stubGlobal('document', { baseURI: baseUrl });
     const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
       const url = String(input);
-      if (url === `${baseUrl}versions.json`) {
+      if (url === `${baseUrl}versions-v7.json`) {
         return response(url, JSON.stringify({ schemaVersion: 1, versions: [{ datasetId, gtnhVersion: 'fixture', revision: 'shared', packManifestUrl: 'packs/manifest.json' }] }), 'application/json');
       }
       if (url === `${baseUrl}packs/manifest.json`) return response(url, JSON.stringify(manifest), 'application/json');
@@ -210,6 +234,53 @@ describe('canonical DatasetRepository special shards', () => {
     expect(loadPercents.at(-1)).toBe(100);
     expect(repository.specialViewTypes.map((view) => view.id)).toEqual(['meteor-ritual']);
     expect(repository.offlineBytes).toBe(manifest.totals.offlineBytes);
+    const pageUrls = (family: string) => new Set(recordPages.filter((page) => page.family === family)
+      .map((page) => new URL(page.url, `${baseUrl}packs/manifest.json`).href));
+    const lazyUrls = new Set([...pageUrls('goods-details'), ...pageUrls('ingredient-groups'),
+      ...pageUrls('recipes'), ...pageUrls('special')]);
+    expect(fetchMock.mock.calls.some(([url]) => lazyUrls.has(String(url)))).toBe(false);
+    expect(repository.entries[0]?.specialProductionShards).toBeUndefined();
+    const abortedDetail = new AbortController();
+    abortedDetail.abort();
+    await expect(repository.entryFor(goodsId, abortedDetail.signal)).rejects.toMatchObject({ name: 'AbortError' });
+    expect(fetchMock.mock.calls.some(([url]) => lazyUrls.has(String(url)))).toBe(false);
+    let releaseDetail!: () => void;
+    const detailGate = new Promise<void>((resolve) => { releaseDetail = resolve; });
+    const originalFetch = fetchMock.getMockImplementation()!;
+    fetchMock.mockImplementation(async (input) => {
+      if (pageUrls('goods-details').has(String(input))) await detailGate;
+      return originalFetch(input);
+    });
+    const navigation = new AbortController();
+    const pendingDetail = repository.entryFor(goodsId, navigation.signal);
+    await vi.waitFor(() => expect(fetchMock.mock.calls.some(([url]) => pageUrls('goods-details').has(String(url)))).toBe(true));
+    navigation.abort();
+    await expect(pendingDetail).rejects.toMatchObject({ name: 'AbortError' });
+    releaseDetail();
+    fetchMock.mockImplementation(originalFetch);
+    const hydrated = await repository.entryFor(goodsId);
+    expect(hydrated?.specialProductionShards).toEqual(['special-meteor-ritual-root']);
+    expect(repository.entries[0]?.specialProductionShards).toBeUndefined();
+    fetchMock.mockClear();
+    expect(await repository.entryFor(goodsId)).toBe(hydrated);
+    expect(fetchMock).not.toHaveBeenCalled();
+    const cached = (await getDataset(datasetId))!;
+    const legacyId = 'fixture-v6';
+    const otherLegacyId = 'other-version-v6';
+    await saveDataset({ ...cached, datasetId: legacyId, cacheVersion: 2 });
+    await saveDataset({ ...cached, datasetId: otherLegacyId, gtnhVersion: 'other-version', cacheVersion: 2 });
+    const warm = await DatasetRepository.load(datasetId);
+    expect(await getDataset(legacyId)).toBeNull();
+    expect(await getDataset(otherLegacyId)).not.toBeNull();
+    await removeDataset(otherLegacyId);
+    expect(fetchMock.mock.calls.some(([url]) => String(url).includes('/assets/sha256/'))).toBe(false);
+    expect(warm.entries[0]?.specialProductionShards).toBeUndefined();
+    expect((await repository.recipesFor(goodsId, 'recipes'))[0]?.inputs[0]?.alternatives).toEqual([goodsId]);
+    expect(await repository.recipesFor(goodsId, 'machineUsages')).toHaveLength(1);
+    expect((await repository.entryFor('o:fixture'))?.members).toEqual([goodsId]);
+    expect(repository.entries.find((entry) => entry.id === 'o:fixture')?.members).toBeUndefined();
+    const installed = await repository.installOffline();
+    expect(installed.status).toBe('complete');
     const progress: Array<{ loadedShards: number; totalShards: number }> = [];
     await expect(repository.specialFor(goodsId, 'recipes', 'meteor-ritual', (value) => progress.push(value))).resolves.toHaveLength(1);
     expect(progress.at(-1)).toEqual({ loadedShards: 1, totalShards: 1, batch: expect.any(Array) });
@@ -224,10 +295,8 @@ describe('canonical DatasetRepository special shards', () => {
     // A version switch can borrow decoded sidecar data from the active
     // repository. Remove the physical source assets to make sure this test is
     // exercising in-memory reuse rather than the SHA-keyed browser cache.
-    const specialSegments = (specialDescriptor as typeof specialDescriptor & {
-      segments?: Array<[number, number, number]>;
-    }).segments;
-    const specialPageUrls = new Set(specialSegments?.map(([index]) =>
+    const specialSegments = recordPageSelections(specialDescriptor as typeof specialDescriptor & { segments?: string });
+    const specialPageUrls = new Set(specialSegments.map(([index]) =>
       new URL(recordPages[index]!.url, `${baseUrl}packs/manifest.json`).href
     ));
     await removeDataset(datasetId);

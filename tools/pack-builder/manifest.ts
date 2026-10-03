@@ -1,6 +1,7 @@
 import type { RecordPageSelection } from '../../src/lib/recordPages';
 
 type AssetEncoding = 'gzip' | 'identity';
+export type RecordPageFamily = 'bootstrap' | 'goods-details' | 'ingredient-groups' | 'recipes' | 'special';
 
 interface SharedPrefixLayoutManifest {
   recipeTypes: Record<string, string[]>;
@@ -10,7 +11,7 @@ interface SharedPrefixLayoutManifest {
 }
 
 export interface ImmutableAsset {
-  segments?: RecordPageSelection[];
+  segments?: RecordPageSelection[] | string;
   /** Physical record pages may exceed the cap only for one complete record. */
   oversizedSingleton?: boolean;
   id: string;
@@ -19,12 +20,13 @@ export interface ImmutableAsset {
   sha256: string;
   encoding: AssetEncoding;
   mediaType: string;
+  /** Keeps unrelated lazy records from sharing a physical startup page. */
+  family?: RecordPageFamily;
 }
 
 export interface CatalogAsset extends ImmutableAsset {
   kind: 'catalog';
-  role: 'core' | 'goods' | 'goodsMetadata' | 'recipeTypes' | 'oreDictionaries'
-    | 'ingredientGroups' | 'recipeRemaps' | 'specialMetadata' | 'icons';
+  role: 'core' | 'goods' | 'goodsSearch' | 'recipeTypes' | 'recipeRemaps' | 'specialMetadata';
   part: number;
   goodsCount: number;
   recordCount?: number;
@@ -33,6 +35,22 @@ export interface CatalogAsset extends ImmutableAsset {
   prefix?: string;
   /** True only when one complete goods record is larger than the target cap. */
   oversizedSingleton?: boolean;
+}
+
+export interface GoodsDetailShardAsset extends ImmutableAsset {
+  kind: 'goodsDetails';
+  part: number;
+  recordCount: number;
+  prefix: string;
+  logicalId: string;
+}
+
+export interface IngredientGroupShardAsset extends ImmutableAsset {
+  kind: 'ingredientGroups';
+  part: number;
+  recordCount: number;
+  prefix: string;
+  logicalId: string;
 }
 
 export interface RecipeShardAsset extends ImmutableAsset {
@@ -71,7 +89,7 @@ export interface SpecialDataShardAsset extends ImmutableAsset {
 }
 
 export interface GeneratedPackManifest {
-  formatVersion: 6;
+  formatVersion: 7;
   datasetId: string;
   gtnhVersion: string;
   revision: string;
@@ -84,6 +102,8 @@ export interface GeneratedPackManifest {
     specialDataSha256?: string;
   };
   catalogAssets: CatalogAsset[];
+  goodsDetailShards: GoodsDetailShardAsset[];
+  ingredientGroupShards: IngredientGroupShardAsset[];
   recipeShards: RecipeShardAsset[];
   iconSheets: IconSheetAsset[];
   specialDataShards: SpecialDataShardAsset[];

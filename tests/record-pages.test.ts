@@ -47,7 +47,7 @@ describe('immutable record pages', () => {
   });
   it('keeps an oversized singleton intact and rejects invalid selections and missing membership', async () => {
     const path = await directory();
-    const logical = await asset(path, [{ id: 'large', text: 'x'.repeat(2_500_000) }]);
+    const logical = await asset(path, [{ id: 'large', text: 'x'.repeat(4_500_000) }]);
     const pages = await buildRecordPages([logical], path, '../..', []);
     expect(pages.some((page) => page.oversizedSingleton)).toBe(true);
     expect((decode(await readLogicalAsset(logical, { recordPages: pages } as GeneratedPackManifest, path)) as { recipes: unknown[] }).recipes).toHaveLength(1);

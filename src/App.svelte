@@ -47,9 +47,33 @@
   let sidebarWidth = $state(410);
   let sidebarResizing = $state(false);
   let searchInput = $state<HTMLInputElement>();
+  let hydratedSelection = $state<CatalogEntry>();
+  let itemDataLoading = $state(false);
+  let itemDataError = $state('');
 
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
-  const selected = $derived(entryById.get(selectedId));
+  const selected = $derived(hydratedSelection?.id === selectedId
+    ? hydratedSelection : entryById.get(selectedId));
+  $effect(() => {
+    const source = repository;
+    const id = selectedId;
+    const open = detailsOpen;
+    hydratedSelection = undefined;
+    itemDataError = '';
+    itemDataLoading = Boolean(source && id && open);
+    if (!source || !id || !open) return;
+    const controller = new AbortController();
+    void source.entryFor(id, controller.signal).then((entry) => {
+      if (controller.signal.aborted) return;
+      hydratedSelection = entry ? { ...entry } : undefined;
+      itemDataLoading = false;
+    }).catch((error: unknown) => {
+      if (controller.signal.aborted) return;
+      itemDataError = error instanceof Error ? error.message : String(error);
+      itemDataLoading = false;
+    });
+    return () => controller.abort();
+  });
   const specialContextViewType = $derived(
     specialScope === 'all'
       ? repository?.specialViewTypes.find((viewType) => viewType.id === specialType)
@@ -193,8 +217,6 @@
     selectedId = preferredId && loaded.entries.some((entry) => entry.id === preferredId)
       ? preferredId
       : loaded.entries.find((entry) => entry.searchable !== false)?.id ?? loaded.entries[0]?.id ?? '';
-    const selectedEntry = loaded.entries.find((entry) => entry.id === selectedId);
-    if (mode === 'machineUsages' && !selectedEntry?.machineCapabilities?.length) mode = 'recipes';
     if (preserveSelection && preferredId !== selectedId) detailsOpen = false;
     if (!preserveSelection) detailsOpen = Boolean(linkedId && linkedId === selectedId);
     const linkedSpecial = specialNavigationFromUrl(location.href);
@@ -380,19 +402,25 @@
         {entryById}
         navigate={(id, view) => select(id, true, view)}
       />
-      <RecipeBrowser
-        {repository}
-        {selected}
-        {mode}
-        {recipeQuery}
-        {specialType}
-        {specialScope}
-        active={detailsOpen}
-        setRecipeQuery={setRecipeQuery}
-        {setMode}
-        setSpecialNavigation={setSpecialNavigation}
-        navigate={(id, view) => select(id, true, view)}
-      />
+      {#if itemDataLoading}
+        <p role="status">Loading item data…</p>
+      {:else if itemDataError}
+        <p role="alert">{itemDataError}</p>
+      {:else}
+        <RecipeBrowser
+          {repository}
+          {selected}
+          {mode}
+          {recipeQuery}
+          {specialType}
+          {specialScope}
+          active={detailsOpen}
+          setRecipeQuery={setRecipeQuery}
+          {setMode}
+          setSpecialNavigation={setSpecialNavigation}
+          navigate={(id, view) => select(id, true, view)}
+        />
+      {/if}
     </section>
   </main>
   {/if}

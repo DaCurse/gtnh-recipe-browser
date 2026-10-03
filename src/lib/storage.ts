@@ -269,7 +269,7 @@ async function removeUnreferencedAssets(candidateHashes?: readonly string[]): Pr
 }
 
 /**
- * Finish the one-time replacement of every pre-current dataset row. The
+ * Finish replacement of the obsolete rows selected by semantic version. The
  * caller must save the selected replacement row first so same-ID upgrades
  * retain its shared blobs. Other obsolete rows are removed, while hashes
  * owned by any current-format dataset remain referenced and cannot be pruned.
@@ -282,10 +282,9 @@ export async function migrateObsoleteDatasetStates(
   for (const obsolete of obsoleteStates) {
     if (obsolete.datasetId !== replacementDatasetId) await removeDataset(obsolete.datasetId);
   }
-  // The app-specific object store may also contain blobs written by versions
-  // whose old rows predate assetHashes bookkeeping. Once the replacement row
-  // exists, every unowned blob is obsolete and can be removed safely.
-  await removeUnreferencedAssets();
+  // Only blobs owned by those obsolete rows are migration candidates. An
+  // unrelated version or another in-flight load must not lose its bytes.
+  await removeUnreferencedAssets(obsoleteStates.flatMap((state) => state.assetHashes ?? []));
 }
 
 /** Record an on-demand asset in the owning dataset for accounting and cleanup. */

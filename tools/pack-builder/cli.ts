@@ -22,7 +22,12 @@ function parseArguments(args: string[]): BuildPackOptions {
     values.set(key.slice(2), value);
   }
   const required = (key: string) => values.get(key) ?? usage();
-  if (values.has('format-version')) throw new Error('The pack builder emits format 6 only; --format-version is obsolete');
+  const supported = new Set(['data', 'atlas', 'gtnh-version', 'revision', 'output', 'dataset-id',
+    'display-name', 'base-url', 'special-data', 'layout', 'reuse-packs', 'format-version']);
+  for (const key of values.keys()) {
+    if (!supported.has(key)) throw new Error(`Unknown option --${key}`);
+  }
+  if (values.has('format-version')) throw new Error('The pack builder emits format 7 only; --format-version is obsolete');
   if (!values.has('layout')) throw new Error('--layout is required');
   return {
     dataPath: required('data'),

@@ -110,7 +110,7 @@ function memberMatches(member: CatalogSearchMemberDocument, query: CatalogSearch
       || member.normalizedMod.includes(term)
       || member.normalizedVariantLabel.includes(term)
     ) return true;
-    if (!searchMaskContains(member.searchMask, query.termMasks[index]!)) return false;
+    if (member.searchMask.length > 0 && !searchMaskContains(member.searchMask, query.termMasks[index]!)) return false;
     return member.normalizedName.includes(term) || member.normalizedTooltip.includes(term);
   });
 }

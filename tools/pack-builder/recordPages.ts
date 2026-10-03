@@ -4,8 +4,8 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { encode, decode } from '@msgpack/msgpack';
-import { assembleRecordPages, decodeRecordPage, RECORD_PAGE_TARGET_BYTES, type RecordPageSelection } from '../../src/lib/recordPages';
-import type { GeneratedPackManifest, ImmutableAsset } from './manifest';
+import { assembleRecordPages, compactRecordPageSelections, decodeRecordPage, recordPageSelections, RECORD_PAGE_TARGET_BYTES, type RecordPageSelection } from '../../src/lib/recordPages';
+import type { GeneratedPackManifest, ImmutableAsset, RecordPageFamily } from './manifest';
 
 const digest = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
 
@@ -49,7 +49,7 @@ async function resolveReuseAssetsDirectory(
   }
 
   if (manifest.recordPages.length === 0) {
-    throw new Error(`${packDirectory}: reusable format-6 pack has no record pages`);
+    throw new Error(`${packDirectory}: reusable format-7 pack has no record pages`);
   }
   const manifestUrl = pathToFileURL(join(packDirectory, 'pack-manifest.json'));
   const firstPageUrl = new URL(manifest.recordPages[0]!.url, manifestUrl);
@@ -77,7 +77,7 @@ export async function readReusePacks(paths: readonly string[]): Promise<ReusePac
     const manifest = JSON.parse(
       await readFile(join(packDirectory, 'pack-manifest.json'), 'utf8')
     ) as GeneratedPackManifest;
-    if (manifest.formatVersion !== 6) throw new Error(`${packDirectory}: reusable pack must use format 6`);
+    if (manifest.formatVersion !== 7) throw new Error(`${packDirectory}: reusable pack must use format 7`);
     return {
       manifest,
       assetsDirectory: await resolveReuseAssetsDirectory(packDirectory, manifest)
@@ -94,57 +94,134 @@ export async function buildRecordPages(
 ): Promise<ImmutableAsset[]> {
   const locations = new Map<string, [string, number]>();
   const existing = new Map<string, { asset: ImmutableAsset; directory: string }>();
+  const existingRecords = new Map<string, Uint8Array[]>();
   for (const pack of reuse) {
     for (const asset of pack.manifest.recordPages ?? []) {
       if (existing.has(asset.sha256)) continue;
       const compressed = await readFile(join(pack.assetsDirectory, asset.sha256));
       if (compressed.length !== asset.bytes || digest(compressed) !== asset.sha256) throw new Error('Corrupt reusable record page');
       const records = decodeRecordPage(gunzipSync(compressed));
+      existingRecords.set(asset.sha256, records);
       records.forEach((record, index) => {
-        const hash = digest(record);
-        if (!locations.has(hash)) locations.set(hash, [asset.sha256, index]);
+        const scopedHash = `${asset.family ?? 'bootstrap'}:${digest(record)}`;
+        if (!locations.has(scopedHash)) locations.set(scopedHash, [asset.sha256, index]);
       });
       existing.set(asset.sha256, { asset, directory: pack.assetsDirectory });
+    }
+    const lazyAssets = [
+      ...(pack.manifest.goodsDetailShards ?? []),
+      ...(pack.manifest.ingredientGroupShards ?? []),
+      ...(pack.manifest.recipeShards ?? []),
+      ...(pack.manifest.specialDataShards ?? [])
+    ];
+    for (const logical of lazyAssets) {
+      const family = logical.family;
+      if (!family || family === 'bootstrap') continue;
+      for (const [pageIndex, first, count] of recordPageSelections(logical)) {
+        const page = pack.manifest.recordPages[pageIndex];
+        const records = page ? existingRecords.get(page.sha256) : undefined;
+        if (!page || !records) throw new Error(`${logical.id}: reusable record page is absent`);
+        for (let index = first; index < first + count; index++) {
+          const record = records[index];
+          if (!record) throw new Error(`${logical.id}: reusable record selection is invalid`);
+          const key = family === 'goods-details' || family === 'ingredient-groups'
+            ? `${family}:${logical.id}:${digest(record)}` : `${family}:${digest(record)}`;
+          if (!locations.has(key)) locations.set(key, [page.sha256, index]);
+        }
+      }
     }
   }
   const plans: Array<{ asset: ImmutableAsset; hashes: string[]; raw: Buffer }> = [];
   let pending: Uint8Array[] = [];
+  let pendingKeys: string[] = [];
   let pendingSize = 0;
   const pendingHashes = new Set<string>();
+  let pendingFamily: RecordPageFamily | undefined;
   const pages = new Map<string, ImmutableAsset>();
   await mkdir(directory, { recursive: true });
   const flush = async () => {
     if (!pending.length) return;
     const bytes = gzipSync(encode(pending), { level: 9 });
     const hash = digest(bytes);
+    existingRecords.set(hash, pending.slice());
     await writeFile(join(directory, hash), bytes);
     pages.set(hash, { id: `page-${hash}`, sha256: hash, bytes: bytes.length,
       encoding: 'gzip', mediaType: 'application/msgpack', url: `${baseUrl.replace(/\/$/, '')}/assets/sha256/${hash}`,
+      family: pendingFamily,
       ...(pending.length === 1 && pendingSize > RECORD_PAGE_TARGET_BYTES ? { oversizedSingleton: true } : {}) });
-    pending.forEach((record, index) => locations.set(digest(record), [hash, index]));
+    pendingKeys.forEach((key, index) => locations.set(key, [hash, index]));
     pending = [];
+    pendingKeys = [];
     pendingSize = 0;
     pendingHashes.clear();
+    pendingFamily = undefined;
   };
   for (const asset of assets) {
+    const family = asset.family ?? 'bootstrap';
+    if (pending.length > 0 && pendingFamily !== family) await flush();
+    pendingFamily = family;
     const input = await readFile(join(directory, basename(asset.url)));
     const raw = asset.encoding === 'gzip' ? gunzipSync(input) : input;
     const records = recordsOf(decode(raw) as Record<string, unknown>);
     const reconstructed = Buffer.concat(records);
     if (!reconstructed.equals(raw)) throw new Error(`${asset.id}: record encoding changed`);
-    const hashes: string[] = [];
+    const isolated = family === 'goods-details' || family === 'ingredient-groups';
+    if (isolated) await flush();
+    const recordKey = (record: Uint8Array) => isolated
+      ? `${family}:${asset.id}:${digest(record)}` : `${family}:${digest(record)}`;
+    const hashes = records.map(recordKey);
+    // Reuse is global within a load family. Common headers may be shared,
+    // but no selection can pull lazy records into bootstrap pages.
     for (const record of records) {
       const hash = digest(record);
-      hashes.push(hash);
-      if (locations.has(hash) || pendingHashes.has(hash)) continue;
+      const scopedHash = isolated ? `${family}:${asset.id}:${hash}` : `${family}:${hash}`;
+      if (locations.has(scopedHash) || pendingHashes.has(scopedHash)) continue;
       if (pendingSize + record.length > RECORD_PAGE_TARGET_BYTES) await flush();
+      pendingFamily = family;
       pending.push(record);
+      pendingKeys.push(scopedHash);
       pendingSize += record.length;
-      pendingHashes.add(hash);
+      pendingHashes.add(scopedHash);
     }
     plans.push({ asset, hashes, raw });
+    if (isolated) await flush();
   }
   await flush();
+  // A complete newer bootstrap must not inherit superseded records forever.
+  // Replace only waste-bearing bootstrap pages when the startup byte budget
+  // is exceeded; frozen predecessor pages and unrelated full pages stay intact.
+  const bootstrapKeys = new Set(plans.filter(({ asset }) => (asset.family ?? 'bootstrap') === 'bootstrap')
+    .flatMap(({ hashes }) => hashes));
+  const bootstrapSelections = () => {
+    const selected = new Map<string, Set<number>>();
+    for (const key of bootstrapKeys) {
+      const [hash, index] = locations.get(key)!;
+      const indexes = selected.get(hash) ?? new Set<number>();
+      indexes.add(index);
+      selected.set(hash, indexes);
+    }
+    return selected;
+  };
+  let selections = bootstrapSelections();
+  const physical = (hash: string) => pages.get(hash) ?? existing.get(hash)!.asset;
+  while ([...selections.keys()].reduce((sum, hash) => sum + physical(hash).bytes, 0) > 10 * 1024 * 1024) {
+    const candidates = [...selections].map(([hash, indexes]) => {
+      const records = existingRecords.get(hash)!;
+      const kept = [...indexes].sort((a, b) => a - b).map((index) => records[index]!);
+      const bytes = gzipSync(encode(kept), { level: 9 });
+      return { hash, kept, bytes, saved: physical(hash).bytes - bytes.length };
+    }).filter((candidate) => candidate.saved > 0).sort((a, b) => b.saved - a.saved);
+    const candidate = candidates[0];
+    if (!candidate) break;
+    const hash = digest(candidate.bytes);
+    await writeFile(join(directory, hash), candidate.bytes);
+    const asset = physical(candidate.hash);
+    pages.set(hash, { ...asset, id: `page-${hash}`, sha256: hash, bytes: candidate.bytes.length,
+      url: `${baseUrl.replace(/\/$/, '')}/assets/sha256/${hash}` });
+    existingRecords.set(hash, candidate.kept);
+    candidate.kept.forEach((record, index) => locations.set(`bootstrap:${digest(record)}`, [hash, index]));
+    selections = bootstrapSelections();
+  }
   const used = new Map<string, number>();
   for (const { asset, hashes, raw } of plans) {
     const segments: RecordPageSelection[] = [];
@@ -156,7 +233,7 @@ export async function buildRecordPages(
       if (previous && previous[0] === pageIndex && previous[1] + previous[2] === index) previous[2]++;
       else segments.push([pageIndex, index, 1]);
     }
-    Object.assign(asset, { segments, sha256: digest(raw), bytes: raw.length, encoding: 'identity', url: '' });
+    Object.assign(asset, { segments: compactRecordPageSelections(segments), sha256: digest(raw), bytes: raw.length, encoding: 'identity', url: '' });
   }
   for (const hash of used.keys()) {
     if (pages.has(hash)) continue;
@@ -181,7 +258,7 @@ export async function readLogicalAsset(
     verifiedPages.set(manifest, cache);
   }
   const pages = new Map<number, Uint8Array[]>();
-  for (const index of new Set(asset.segments.map(([index]) => index))) {
+  for (const index of new Set(recordPageSelections(asset).map(([index]) => index))) {
     const descriptor = manifest.recordPages?.[index];
     if (!descriptor) throw new Error(`${asset.id}: record page absent from manifest`);
     const hash = descriptor.sha256;

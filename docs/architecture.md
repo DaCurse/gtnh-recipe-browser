@@ -24,7 +24,8 @@ Stateful feature workflows use Svelte 5 rune modules:
 - `datasetSchema.ts` defines immutable manifest and MessagePack wire shapes.
 - `datasetAssets.ts` performs verified network/cache reads and decompression.
 - `storage.ts` owns versioned IndexedDB records for verified blobs and a lightweight size index.
-- `catalogMaterialization.ts` builds searchable items, ore dictionaries, and machine capabilities in memory.
+- `catalogMaterialization.ts` projects lightweight goods and group stubs for browse/search.
+- `packedRelations.ts` interns repeated relation lists; `recordPages.ts` reconstructs complete logical assets.
 - `recipeMaterialization.ts` converts packed recipes into display-domain recipes.
 - `specialData.ts` defines and normalizes the discriminated display records
   used by the special cards and ore-processing graph.
@@ -49,16 +50,18 @@ loading, request cancellation, offline accounting, and dataset deletion without
 exposing packed wire records to Svelte components. Service icons referenced only
 by special views are retained in the catalog but remain non-searchable.
 
-Format 6 is the canonical shared-data pack path. A dataset manifest remains complete and
+Format 7 is the canonical shared-data pack path. A dataset manifest remains complete and
 independently selectable, but its asset descriptors can point at immutable,
 full-SHA-256-named objects in the global `assets/sha256/` store. Reusable payloads
 carry schema/kind and stable logical-shard metadata rather than a dataset owner;
 membership in the manifest, the object SHA, and runtime schema checks provide
 ownership and integrity. A logical shard ID is separate from its current content
 hash. Logical shards select runs of complete encoded records from immutable
-2-MiB record pages. Pages are gzip-compressed MessagePack arrays of binary
-record values. A later build reuses existing record locations and writes only
-new records into new pages; its manifest lists every physical page it needs.
+4-MiB record pages. Pages are gzip-compressed MessagePack arrays of binary
+record values. Manifest selectors are base64 unsigned-varint triples. A later build reuses existing
+record locations and writes new records into new pages; its manifest lists every physical page it needs.
+Bootstrap-only compaction may replace pages containing superseded records to meet the startup budget;
+the predecessor pages remain immutable and unrelated fully referenced pages are retained.
 It never needs another dataset's manifest, a patch chain, or a base dataset.
 Deleted records are omitted by the selectors; unused bytes in a retained page
 are the bounded tradeoff for keeping object counts and requests practical.
@@ -79,8 +82,8 @@ record that is still above the byte target is explicitly marked as an
 secondary index, model that index as a separate record family instead; never
 distort the trie to hide the exception. See
 [`pack-reuse-beta-2-beta-3.md`](pack-reuse-beta-2-beta-3.md) for the measured
-comparison with record-aware CDC. Format-6 manifests carry the compact prefix
-map and its fingerprint; publishing compares it with every existing format-6
+comparison with record-aware CDC. Format-7 manifests carry the compact prefix
+map and its fingerprint; publishing compares it with every existing format-7
 manifest and rejects removal, reassignment, or a changed target cap.
 
 The browser cache is already physical and SHA-keyed. Installing two manifests
@@ -93,7 +96,7 @@ catalog/search snapshots. A lightweight size index avoids loading binary data
 just to display storage usage. Decoded pages may be retained in bounded memory.
 
 When switching versions, the active repository lends the replacement any
-decoded catalog chunks and lazy recipe or special shard promises whose SHA and
+decoded bootstrap chunks and lazy detail, group, recipe, or special shard promises whose SHA and
 logical identity match. The replacement validates them against its own
 manifest and catalog, so this is an in-memory acceleration rather than a
 cross-version dependency. The switch loads the target manifest and catalog,
@@ -104,17 +107,27 @@ hashes already present in the physical cache. That keeps shared blobs owned by
 both manifests during later deletion and lets an offline install skip them in
 one indexed lookup rather than probing every descriptor separately.
 
-The first format-6 load also performs the one-time browser migration from all
-older dataset bookkeeping rows, including a prior row for the same semantic
-GTNH version under an old immutable dataset ID. It keeps cached blobs whose hashes are
-referenced by any current manifest, removes obsolete decoded catalog snapshots,
-marks the selected row with the current cache format, and removes every legacy
-row and unreferenced blob. Detection uses the cache marker rather than
-beta-specific IDs or old manifest format numbers, so the migration remains
-generic for prior and future revisions. The new manifest is still downloaded
-and validated in full; this is cache migration, not a delta-chain dependency.
-New format-6 dataset IDs include `v6`, and the publisher rejects changing
-manifest bytes behind an existing immutable URL.
+Format-7 bootstrap contains core metadata, browse goods with icon references and tooltip-text references,
+recipe types, and special-category metadata. It never selects detail, group, recipe, or special pages.
+Physical record reuse is scoped by load family: bootstrap, goods-details, ingredient-groups, recipes, special.
+Detail/group partitions additionally isolate reuse within their logical partition to bound selection fan-out.
+
+`DatasetRepository.entryFor(id, signal)` hydrates and memoizes one detail partition. The application overlays
+that immutable result on the lightweight selected entry and cancels stale navigation. Recipe and special
+loaders call this boundary themselves. Recipe batches hydrate every referenced ingredient-group partition
+before filtering or materialization. Production fallbacks reference their effective ore dictionary instead
+of duplicating its membership in every goods row; that group loads when recipes or special results need it.
+Matching scopes, shard relationships, and machine capabilities are computed at build time. Special tabs
+use precomputed per-category lookup counts; full handler lookup IDs remain in lazy special records.
+Tooltip text is stored once in bootstrap, with lazy formatting spans restoring the selected tooltip losslessly.
+Unused exporter numeric IDs and unlocalized names are not published. Ordinary NBT is represented by a stable
+variant fingerprint; CropsNH state remains in browse records because seed variants require it before selection.
+
+The new shell reads only `versions-v7.json`. The existing `versions.json` and v6 public manifests are
+frozen for old PWA shells until a service-worker update reloads them. Canonical build, verification,
+and publication are v7-only. Cache bookkeeping version 3 migrates same-semantic-version obsolete rows
+only after successful bootstrap load, retaining shared hashes and pruning only those rows' unreferenced blobs.
+Each v7 manifest remains independently selectable; no runtime patch chain or expanded catalog cache exists.
 
 Special records are semantic data, not exported screenshots. In particular, the
 GT ore-processing view lays out typed nodes and edges in the browser. Its layout

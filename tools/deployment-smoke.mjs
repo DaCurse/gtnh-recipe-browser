@@ -56,6 +56,23 @@ function assertPhysicalDescriptor(asset, label) {
 }
 
 function assertVirtualDescriptor(asset, label, recordPageCount) {
+  let segments = asset?.segments;
+  if (typeof segments === 'string') {
+    const numbers = [];
+    let value = 0;
+    let shift = 0;
+    for (const byte of Buffer.from(segments, 'base64')) {
+      value += (byte & 127) * 2 ** shift;
+      if (shift > 28 || value > 0xffffffff) throw new Error(`${label}: invalid packed selector`);
+      if (byte & 128) { shift += 7; continue; }
+      numbers.push(value);
+      value = 0;
+      shift = 0;
+    }
+    if (shift || numbers.length % 3) throw new Error(`${label}: truncated packed selector`);
+    segments = [];
+    for (let index = 0; index < numbers.length; index += 3) segments.push(numbers.slice(index, index + 3));
+  }
   if (
     !asset
     || typeof asset !== 'object'
@@ -65,12 +82,12 @@ function assertVirtualDescriptor(asset, label, recordPageCount) {
     || asset.bytes < 0
     || typeof asset.sha256 !== 'string'
     || !SHA256_PATTERN.test(asset.sha256)
-    || !Array.isArray(asset.segments)
-    || asset.segments.length === 0
+    || !Array.isArray(segments)
+    || segments.length === 0
   ) {
     throw new Error(`${label}: invalid virtual asset descriptor`);
   }
-  for (const [index, segment] of asset.segments.entries()) {
+  for (const [index, segment] of segments.entries()) {
     if (
       !Array.isArray(segment)
       || segment.length !== 3
@@ -87,11 +104,13 @@ function assertVirtualDescriptor(asset, label, recordPageCount) {
   }
 }
 
-function validateFormat6Manifest(manifest) {
+function validateFormat7Manifest(manifest) {
   if (
-    manifest.formatVersion !== 6
+    manifest.formatVersion !== 7
     || typeof manifest.datasetId !== 'string'
     || !Array.isArray(manifest.catalogAssets)
+    || !Array.isArray(manifest.goodsDetailShards)
+    || !Array.isArray(manifest.ingredientGroupShards)
     || !Array.isArray(manifest.recipeShards)
     || !Array.isArray(manifest.specialDataShards)
     || !Array.isArray(manifest.recordPages)
@@ -109,6 +128,12 @@ function validateFormat6Manifest(manifest) {
   }
   for (const [index, asset] of manifest.catalogAssets.entries()) {
     assertVirtualDescriptor(asset, `catalog asset ${index}`, manifest.recordPages.length);
+  }
+  for (const [index, asset] of manifest.goodsDetailShards.entries()) {
+    assertVirtualDescriptor(asset, `goods detail shard ${index}`, manifest.recordPages.length);
+  }
+  for (const [index, asset] of manifest.ingredientGroupShards.entries()) {
+    assertVirtualDescriptor(asset, `ingredient group shard ${index}`, manifest.recordPages.length);
   }
   for (const [index, asset] of manifest.recipeShards.entries()) {
     assertVirtualDescriptor(asset, `recipe shard ${index}`, manifest.recordPages.length);
@@ -130,7 +155,7 @@ let manifestUrl;
 if (directManifest) {
   manifestUrl = new URL(directManifest, appUrl);
 } else {
-  const versionsUrl = new URL('versions.json', appUrl);
+  const versionsUrl = new URL('versions-v7.json', appUrl);
   const versionIndex = await fetchJson(versionsUrl, 'version index');
   if (
     versionIndex.schemaVersion !== 1
@@ -145,15 +170,15 @@ if (directManifest) {
 }
 const manifest = await fetchJson(manifestUrl, 'pack manifest');
 if (
-  manifest.formatVersion !== 6
+  manifest.formatVersion !== 7
   || typeof manifest.datasetId !== 'string'
   || (expectedDatasetId && manifest.datasetId !== expectedDatasetId)
 ) {
   throw new Error('pack manifest: identity or format mismatch');
 }
-const physicalAssets = validateFormat6Manifest(manifest);
+const physicalAssets = validateFormat7Manifest(manifest);
 if (requireSpecial && (
-  manifest.formatVersion !== 6
+  manifest.formatVersion !== 7
   || !Array.isArray(manifest.specialDataShards)
   || manifest.specialDataShards.length === 0
   || (manifest.totals?.specialRecords ?? 0) <= 0

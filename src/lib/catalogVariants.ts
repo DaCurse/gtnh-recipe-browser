@@ -87,7 +87,7 @@ export interface DeduplicatedVariant {
 }
 
 function duplicateVariantKey(entry: CatalogEntry): string | undefined {
-  const nbt = canonicalVariantNbt(entry.nbt ?? undefined);
+  const nbt = entry.variantNbtKey ?? canonicalVariantNbt(entry.nbt ?? undefined);
   if (!nbt) return undefined;
   return JSON.stringify([
     entry.name,
@@ -152,7 +152,7 @@ export function deduplicateVariantMembers(entries: readonly CatalogEntry[]): Ded
 function variantFamily(entry: CatalogEntry): VariantFamily | null {
   if (
     entry.kind === 'item'
-    && entry.nbt
+    && (entry.nbt || entry.variantNbtKey)
     && entry.internalName
     && entry.damage !== undefined
   ) {

@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 1,
+  "generatedAt": "2026-10-03T18:11:46.912Z",
+  "versions": [
+    {
+      "datasetId": "2.9.0-beta-3-v7-r131dafd54f93",
+      "gtnhVersion": "2.9.0-beta-3",
+      "revision": "131dafd54f93",
+      "publishedAt": "2026-10-03T18:11:46.912Z",
+      "packManifestUrl": "./data/2.9.0-beta-3-v7-r131dafd54f93/pack-manifest.json",
+      "catalogBytes": 10322134,
+      "offlineBytes": 76962151
+    },
+    {
+      "datasetId": "2.9.0-beta-2-v7-r7fdce46a5a5a",
+      "gtnhVersion": "2.9.0-beta-2",
+      "revision": "7fdce46a5a5a",
+      "publishedAt": "2026-10-03T18:11:33.420Z",
+      "packManifestUrl": "./data/2.9.0-beta-2-v7-r7fdce46a5a5a/pack-manifest.json",
+      "catalogBytes": 7969440,
+      "offlineBytes": 68765885
+    },
+    {
+      "datasetId": "2.8.0-v7-r6d351536",
+      "gtnhVersion": "2.8.0",
+      "revision": "6d351536",
+      "publishedAt": "2026-10-03T18:11:20.427Z",
+      "packManifestUrl": "./data/2.8.0-v7-r6d351536/pack-manifest.json",
+      "catalogBytes": 2077115,
+      "offlineBytes": 31166046
+    }
+  ]
+}

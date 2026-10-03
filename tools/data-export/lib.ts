@@ -63,15 +63,15 @@ interface SharedObjectManifest {
 
 const FULL_SHA256 = /^[a-f0-9]{64}$/;
 
-/** Collect the complete physical object set referenced by format-6 manifests. */
+/** Collect physical objects referenced by the frozen v6 bridge and current v7 packs. */
 export function referencedSharedObjectHashes(
   manifests: readonly SharedObjectManifest[]
 ): Set<string> {
   const hashes = new Set<string>();
   for (const manifest of manifests) {
-    if (manifest.formatVersion !== 6) continue;
+    if (manifest.formatVersion !== 6 && manifest.formatVersion !== 7) continue;
     if (!Array.isArray(manifest.recordPages) || !Array.isArray(manifest.iconSheets)) {
-      throw new Error('Format-6 manifest is missing physical object lists');
+      throw new Error(`Format-${manifest.formatVersion} manifest is missing physical object lists`);
     }
     for (const asset of [...manifest.recordPages, ...manifest.iconSheets]) {
       if (!FULL_SHA256.test(asset.sha256)) {

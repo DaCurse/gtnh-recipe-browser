@@ -22,6 +22,8 @@ export interface CatalogEntry {
   numericId?: number;
   damage?: number;
   nbt?: string | null;
+  /** Bootstrap fingerprint used to group variants without loading full NBT. */
+  variantNbtKey?: string;
   searchMask?: number[];
   rawTooltip?: string | null;
   formula?: string;
@@ -52,6 +54,8 @@ export interface CatalogEntry {
   /** Per-category lookup IDs used to decide which NEI special tabs apply. */
   specialProductionLookupIds?: string[];
   specialUsageLookupIds?: string[];
+  specialProductionCounts?: Record<string, number>;
+  specialUsageCounts?: Record<string, number>;
   specialProductionCount?: number;
   specialUsageCount?: number;
   /** Ore dictionary used when this item has no direct production recipes. */

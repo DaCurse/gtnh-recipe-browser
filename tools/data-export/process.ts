@@ -306,7 +306,7 @@ const provenance = {
     atlasWebp: { bytes: atlas.byteLength, sha256: await sha256File(atlasPath) }
   },
   pack: {
-    formatVersion: 6,
+    formatVersion: 7,
     sourceFormatVersion: repository.formatVersion,
     sharedLayoutSha256: await sha256File(resolvedLayoutPath)
   },

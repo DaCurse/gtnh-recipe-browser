@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
+import { expandRelations, type PackedRelationList } from '../../src/lib/packedRelations';
 import { readFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { readLogicalAsset } from './recordPages';
-import { decodeRecordPage, RECORD_PAGE_TARGET_BYTES } from '../../src/lib/recordPages';
+import { decodeRecordPage, recordPageSelections, RECORD_PAGE_TARGET_BYTES } from '../../src/lib/recordPages';
 import { decode } from '@msgpack/msgpack';
 import sharp from 'sharp';
 import { sharedIconPixelsEquivalent } from './sharedIcons';
@@ -99,48 +100,39 @@ interface DecodedRecipeShard {
 
 interface DecodedCatalog {
   schemaVersion: number;
-  kind: 'core' | 'goods' | 'goodsMetadata' | 'recipeTypes' | 'oreDictionaries' | 'icons'
-    | 'ingredientGroups' | 'recipeRemaps' | 'specialMetadata';
+  kind: 'core' | 'goods' | 'goodsSearch' | 'recipeTypes' | 'recipeRemaps' | 'specialMetadata';
   logicalId: string;
   prefix?: string;
   goods?: unknown[];
+  tooltips?: Array<{ id: string; text: string }>;
   recipeTypes?: unknown[];
   oreDictionaries?: unknown[];
   ingredientGroups?: unknown[];
   obsoleteRecipeRemaps?: Record<string, string>;
   specialViewTypes?: unknown[];
   specialServiceIcons?: unknown[];
-  icons?: Array<{ id: string; icon: { sheetId: string; index: number } | null }>;
+}
+
+interface DecodedDetails {
+  lists?: PackedRelationList[];
+  schemaVersion: number;
+  kind: 'goodsDetails';
+  logicalId: string;
+  prefix: string;
+  goods: Array<{ id: string; productionShards: string[]; usageShards: string[] }>;
+}
+
+interface DecodedGroups {
+  lists?: PackedRelationList[];
+  schemaVersion: number;
+  kind: 'ingredientGroups';
+  logicalId: string;
+  prefix: string;
+  ingredientGroups: Array<{ id: string; itemIds: string[] }>;
 }
 
 function isStringArray(value: unknown): value is string[] {
   return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
-}
-
-function isNumberArray(value: unknown): value is number[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === 'number' && Number.isFinite(entry));
-}
-
-function isGoodsMetadata(value: unknown): value is { id: string; numericId: number } {
-  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
-  const record = value as Record<string, unknown>;
-  return typeof record.id === 'string'
-    && typeof record.name === 'string'
-    && (record.tooltip === null || typeof record.tooltip === 'string')
-    && typeof record.unlocalizedName === 'string'
-    && isNumberArray(record.searchMask)
-    && typeof record.searchable === 'boolean'
-    && Number.isInteger(record.numericId)
-    && isStringArray(record.productionShards)
-    && isStringArray(record.usageShards)
-    && Number.isInteger(record.productionCount)
-    && Number.isInteger(record.usageCount)
-    && isStringArray(record.specialProductionShards)
-    && isStringArray(record.specialUsageShards)
-    && isStringArray(record.specialProductionLookupIds)
-    && isStringArray(record.specialUsageLookupIds)
-    && Number.isInteger(record.specialProductionCount)
-    && Number.isInteger(record.specialUsageCount);
 }
 
 interface DecodedSpecialShard {
@@ -175,8 +167,9 @@ function verifyShardSize(
 export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPackResult> {
   const manifestBytes = await readFile(join(options.packDirectory, 'pack-manifest.json'));
   const manifest = JSON.parse(manifestBytes.toString('utf8')) as GeneratedPackManifest;
-  if (manifest.formatVersion !== 6) {
-    throw new Error(`Unsupported generated pack format ${manifest.formatVersion}; only format 6 is supported`);
+  const formatVersion = (manifest as { formatVersion: number }).formatVersion;
+  if (formatVersion !== 7) {
+    throw new Error(`Unsupported generated pack format ${formatVersion}; only format 7 is supported`);
   }
   if (manifest.assetStore !== 'global-sha256') {
     throw new Error('The manifest must use the global SHA-256 asset store');
@@ -198,6 +191,23 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
     ...manifest.recordPages,
     ...manifest.iconSheets
   ];
+  const logicalFamilies = formatVersion === 7 ? [
+    ...manifest.catalogAssets.map((asset) => [asset, 'bootstrap'] as const),
+    ...(manifest.goodsDetailShards ?? []).map((asset) => [asset, 'goods-details'] as const),
+    ...(manifest.ingredientGroupShards ?? []).map((asset) => [asset, 'ingredient-groups'] as const),
+    ...manifest.recipeShards.map((asset) => [asset, 'recipes'] as const),
+    ...manifest.specialDataShards.map((asset) => [asset, 'special'] as const)
+  ] : [];
+  for (const [logical, family] of logicalFamilies) {
+    if (logical.family !== family || !logical.segments?.length) {
+      throw new Error(`${logical.id}: invalid ${family} logical descriptor`);
+    }
+    for (const [page] of recordPageSelections(logical)) {
+      if (manifest.recordPages[page]?.family !== family) {
+        throw new Error(`${logical.id}: record page crosses load-family boundary`);
+      }
+    }
+  }
   if (assets.length !== manifest.totals.assets) {
     throw new Error(`Manifest declares ${manifest.totals.assets} assets but lists ${assets.length}`);
   }
@@ -371,9 +381,7 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
   let goods = 0;
   const catalogGoodsIds = new Set<string>();
   const catalogItemIds = new Set<string>();
-  const catalogMetadataIds = new Set<string>();
-  const goodsIdsByPrefix = new Map<string, Set<string>>();
-  const metadataIdsByPrefix = new Map<string, Set<string>>();
+  const catalogSearchIds = new Set<string>();
   const decodedCatalogs = new Map<string, DecodedCatalog>();
   let coreAssets = 0;
   const catalogRoleCounts = new Map<string, number>();
@@ -382,7 +390,7 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
     const sizeDescriptor = { ...descriptor, bytes: gzipSync(raw, { level: 9 }).length };
     const catalog = decode(raw) as DecodedCatalog;
     decodedCatalogs.set(descriptor.id, catalog);
-    const identityMismatch = catalog.schemaVersion !== 5
+    const identityMismatch = catalog.schemaVersion !== 6
       || catalog.logicalId !== descriptor.id
       || catalog.kind !== descriptor.role
       || (descriptor.prefix !== undefined && catalog.prefix !== descriptor.prefix);
@@ -411,58 +419,23 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
       }
       continue;
     }
-    if (descriptor.role === 'icons') {
-      if (!Array.isArray(catalog.icons)) throw new Error('Catalog icon references are missing');
-      continue;
-    }
-    if (descriptor.role === 'goodsMetadata') {
-      if (!Array.isArray(catalog.goods)) {
-        throw new Error(`${descriptor.id}: goods metadata payload is missing goods`);
-      }
-      if (descriptor.goodsCount !== catalog.goods.length) {
-        throw new Error(`${descriptor.id}: expected ${descriptor.goodsCount} goods metadata records, decoded ${catalog.goods.length}`);
-      }
-      verifyShardSize(
-        sizeDescriptor,
-        catalog.goods.length,
-        sharedTargets.goodsMetadata,
-        'catalog goods metadata shard'
-      );
-      for (const value of catalog.goods) {
-        if (!isGoodsMetadata(value)) {
-          throw new Error(`${descriptor.id}: invalid goods metadata record`);
-        }
-        const id = (value as { id: string }).id;
-        if (catalogMetadataIds.has(id)) throw new Error(`${descriptor.id}: duplicate goods metadata ID ${id}`);
-        catalogMetadataIds.add(id);
-      }
-      if (descriptor.prefix !== undefined) {
-        metadataIdsByPrefix.set(descriptor.prefix, new Set(
-          catalog.goods.map((value) => (value as { id: string }).id)
-        ));
+    if (descriptor.role === 'goodsSearch') {
+      if (!Array.isArray(catalog.tooltips) || descriptor.goodsCount !== 0) {
+        throw new Error(`${descriptor.id}: invalid goods-search payload`);
       }
       requireSharedPrefix('goods', 'goods', descriptor.prefix, descriptor.id);
+      for (const record of catalog.tooltips) {
+        if (typeof record.id !== 'string'
+          || typeof record.text !== 'string') {
+          throw new Error(`${descriptor.id}: invalid or duplicate goods-search record`);
+        }
+        catalogSearchIds.add(record.id);
+      }
       continue;
     }
     if (descriptor.role === 'recipeTypes') {
       if (!Array.isArray(catalog.recipeTypes) || catalog.goods !== undefined) {
         throw new Error(`${descriptor.id}: invalid recipe-type catalog payload`);
-      }
-      continue;
-    }
-    if (descriptor.role === 'oreDictionaries') {
-      if (!Array.isArray(catalog.oreDictionaries) || catalog.goods !== undefined) {
-        throw new Error(`${descriptor.id}: invalid ore-dictionary catalog payload`);
-      }
-      if (descriptor.recordCount !== undefined && descriptor.recordCount !== catalog.oreDictionaries.length) {
-        throw new Error(`${descriptor.id}: ore-dictionary record count does not match`);
-      }
-      requireSharedPrefix('oreDictionaries', 'oreDictionaries', descriptor.prefix, descriptor.id);
-      continue;
-    }
-    if (descriptor.role === 'ingredientGroups') {
-      if (!Array.isArray(catalog.ingredientGroups) || catalog.goods !== undefined) {
-        throw new Error(`${descriptor.id}: invalid ingredient-group catalog payload`);
       }
       continue;
     }
@@ -508,50 +481,65 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
         catalogItemIds.add(id);
       }
     }
-    if (descriptor.role === 'goods') {
-      if (typeof descriptor.prefix !== 'string') {
-        throw new Error(`${descriptor.id}: goods descriptor is missing its prefix`);
-      }
-      goodsIdsByPrefix.set(descriptor.prefix, new Set(
-        (catalog.goods ?? [])
-          .filter((value): value is { id: string } => value !== null && typeof value === 'object' && typeof (value as { id?: unknown }).id === 'string')
-          .map((value) => value.id)
-      ));
-    }
     goods += descriptor.goodsCount;
   }
-  if (catalogMetadataIds.size > 0) {
-    if (catalogMetadataIds.size !== catalogItemIds.size
-      || [...catalogItemIds].some((id) => !catalogMetadataIds.has(id))) {
-      throw new Error('Goods metadata does not cover exactly the goods catalog');
-    }
-    if (goodsIdsByPrefix.size > 0 || metadataIdsByPrefix.size > 0) {
-      if (goodsIdsByPrefix.size !== metadataIdsByPrefix.size
-        || [...goodsIdsByPrefix.entries()].some(([prefix, ids]) => {
-          const metadataIds = metadataIdsByPrefix.get(prefix);
-          return metadataIds === undefined
-            || ids.size !== metadataIds.size
-            || [...ids].some((id) => !metadataIds.has(id));
-        })) {
-        throw new Error('Goods metadata partitions do not match goods partitions');
-      }
-    }
-  }
   {
-    if (catalogMetadataIds.size === 0 || catalogItemIds.size === 0) {
-      throw new Error('Goods metadata is empty');
-    }
-    for (const role of ['core', 'recipeTypes', 'ingredientGroups', 'recipeRemaps', 'specialMetadata']) {
+    if (catalogItemIds.size === 0) throw new Error('Bootstrap goods are empty');
+    const requiredRoles = ['core', 'recipeTypes', 'recipeRemaps', 'specialMetadata'];
+    for (const role of requiredRoles) {
       if (catalogRoleCounts.get(role) !== 1) {
-        throw new Error(`Format-6 pack requires exactly one ${role} catalog role`);
+        throw new Error(`Format-${formatVersion} pack requires exactly one ${role} catalog role`);
       }
-    }
-    if ((catalogRoleCounts.get('goodsMetadata') ?? 0) === 0) {
-      throw new Error('Format-6 pack requires at least one goodsMetadata catalog role');
     }
   }
   if (coreAssets !== 1 || catalogRoleCounts.get('goods') === undefined) {
     throw new Error('Pack requires one catalog core and at least one goods part');
+  }
+  for (const catalog of decodedCatalogs.values()) for (const goods of catalog.goods ?? []) {
+    const record = goods as { id: string; tooltipId?: string | null };
+    if (record.tooltipId && !catalogSearchIds.has(record.tooltipId)) throw new Error(`${record.id}: missing search tooltip`);
+  }
+
+  const detailIds = new Set<string>();
+  for (const descriptor of manifest.goodsDetailShards ?? []) {
+    const raw = await readLogicalAsset(descriptor, manifest, options.assetDirectory ?? join(options.packDirectory, 'assets', 'sha256'));
+    const value = decode(raw) as DecodedDetails;
+    if (value.schemaVersion !== 6 || value.kind !== 'goodsDetails'
+      || value.logicalId !== descriptor.logicalId || value.prefix !== descriptor.prefix
+      || value.goods.length !== descriptor.recordCount) {
+      throw new Error(`${descriptor.id}: invalid goods-detail shard`);
+    }
+    requireSharedPrefix('goods', 'goods', descriptor.prefix, descriptor.id);
+    for (const detail of expandRelations(value.goods, value.lists)) {
+      if (!catalogItemIds.has(detail.id) || detailIds.has(detail.id)
+        || !isStringArray(detail.productionShards) || !isStringArray(detail.usageShards)) {
+        throw new Error(`${descriptor.id}: invalid or duplicate goods detail ${detail.id}`);
+      }
+      detailIds.add(detail.id);
+    }
+  }
+  if (formatVersion === 7 && detailIds.size !== catalogItemIds.size) {
+    throw new Error('Goods details do not cover exactly the bootstrap goods');
+  }
+
+  const groupIds = new Set<string>();
+  for (const descriptor of manifest.ingredientGroupShards ?? []) {
+    const raw = await readLogicalAsset(descriptor, manifest, options.assetDirectory ?? join(options.packDirectory, 'assets', 'sha256'));
+    const value = decode(raw) as DecodedGroups;
+    if (value.schemaVersion !== 6 || value.kind !== 'ingredientGroups'
+      || value.logicalId !== descriptor.logicalId || value.prefix !== descriptor.prefix
+      || value.ingredientGroups.length !== descriptor.recordCount) {
+      throw new Error(`${descriptor.id}: invalid ingredient-group shard`);
+    }
+    requireSharedPrefix('oreDictionaries', 'oreDictionaries', descriptor.prefix, descriptor.id);
+    for (const group of expandRelations(value.ingredientGroups, value.lists)) {
+      if (groupIds.has(group.id) || !isStringArray(group.itemIds)
+        || group.itemIds.some((id) => !catalogItemIds.has(id))) {
+        throw new Error(`${descriptor.id}: invalid ingredient group ${group.id}`);
+      }
+      groupIds.add(group.id);
+      catalogGoodsIds.add(group.id);
+    }
   }
 
   if (specialRecords.length > 0) {
@@ -589,22 +577,18 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
   }
 
   const catalogIconSlots = new Map<string, { sheetId: string; index: number }>();
-  const iconCatalogs = [...decodedCatalogs.values()].filter((catalog) => catalog.kind === 'icons');
-  if (iconCatalogs.length !== 1) throw new Error('Catalog requires exactly one icon reference asset');
-  const iconIds = iconCatalogs[0]!.icons!.map((record) => record.id);
-  if (iconIds.length !== catalogItemIds.size || new Set(iconIds).size !== iconIds.length
-    || iconIds.some((id) => !catalogItemIds.has(id))) throw new Error('Catalog icons do not cover exactly the goods catalog');
   const collectIcons = (value: unknown): void => {
     if (Array.isArray(value)) { value.forEach(collectIcons); return; }
     if (value === null || typeof value !== 'object') return;
     const object = value as Record<string, unknown>;
     if (object.icon !== null && typeof object.icon === 'object') {
       const icon = object.icon as { sheetId: string; index: number };
-      const sheet = manifest.iconSheets.find((candidate) => candidate.id === icon.sheetId);
+      const sheet = manifest.iconSheets.find((candidate) => candidate.id === icon.sheetId
+        || candidate.sha256.startsWith(icon.sheetId));
       if (!sheet || !Number.isSafeInteger(icon.index) || icon.index < 0 || icon.index >= sheet.iconCount) {
         throw new Error(`${String(object.id)}: invalid catalog sprite reference`);
       }
-      if (typeof object.id === 'string') catalogIconSlots.set(object.id, icon);
+      if (typeof object.id === 'string') catalogIconSlots.set(object.id, { ...icon, sheetId: sheet.id });
     }
     Object.values(object).forEach(collectIcons);
   };

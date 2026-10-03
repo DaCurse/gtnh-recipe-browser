@@ -18,8 +18,9 @@ npm run quality
 The runtime module boundaries and maintenance rules are documented in
 [`docs/architecture.md`](docs/architecture.md).
 
-The application loads the real GTNH dataset indexed by `public/versions.json`. Catalog, recipe, and icon assets
-are immutable and content-hashed. The client verifies them before caching catalogs and on-demand recipe shards in
+The application loads the real GTNH dataset indexed by `public/versions-v7.json`. Catalog, recipe, and icon assets
+are immutable and content-hashed. Startup loads browse/search bootstrap pages; item details, ingredient groups,
+recipes, and special data are hydrated on demand. The client verifies every physical page before caching it in
 IndexedDB. The dataset manager can install every immutable chunk with resumable progress, switch retained versions,
 and explicitly delete local copies. Dataset loading failures are shown instead of substituting placeholder entries.
 
@@ -43,7 +44,7 @@ the 2.8.0 benchmark.
 
 `gtnh@ShadowTheAge` and `nesql-exporter@ShadowTheAge` are read-only MIT-licensed upstream submodules. The
 reproducible release workflow directly launches a disposable client from the official archive, processes its private NESQL output twice,
-verifies the unchanged format-v5 source and deterministic format-6 shared browser pack, and publishes one revision per GTNH version. The disposable processor applies the documented
+verifies the unchanged format-v5 source and deterministic format-7 shared browser pack, and publishes one revision per GTNH version. The disposable processor applies the documented
 [`browser catalog retention policy`](docs/browser-catalog-policy.md) so valid tools and configurable variants
 filtered from the upstream production calculator remain browseable.
 
@@ -66,31 +67,33 @@ npm run pack -- \
   --atlas tests/fixtures/shadowtheage-v5-2.8.0/atlas.webp \
   --gtnh-version 2.8.0 \
   --revision 6d351536 \
-  --output .pack-output/2.8.0-v6-r6d351536 \
+  --output .pack-output/2.8.0-v7-r6d351536 \
   --layout tools/pack-builder/layouts/2.9.0.json
 
 npm run verify-pack -- \
-  --pack .pack-output/2.8.0-v6-r6d351536 \
+  --pack .pack-output/2.8.0-v7-r6d351536 \
   --atlas tests/fixtures/shadowtheage-v5-2.8.0/atlas.webp
 ```
 
 The source NESQL export remains private. Processed compatibility fixtures are immutable and versioned separately;
 add a sibling fixture when supporting a new upstream shape.
 
-Browser packs use format 6: complete manifests select immutable shared record
+Browser packs use format 7: complete manifests select immutable shared record
 pages and sprite sheets. For a nearby version, pass `--reuse-packs <pack-a>,<pack-b>`
 to `pack` so unchanged records retain their existing physical pages. This is
 build-time reuse, not a runtime dependency on another version. Storage accounting
 can be reproduced with `npm run analyze:storage -- <pack-a> <pack-b>`.
 
 `tests/fixtures/shadowtheage-v5-2.8.0/` is the pinned, network-independent compatibility source for decoder and
-recipe-parity tests. The current format-6 release is indexed by
-`public/versions.json`: `public/data/2.9.0-beta-2-v6-rfd81b2eed8b0/` and
-`public/data/2.9.0-beta-3-v6-rd5d4ec826817/`; the immutable 2.8.0 pack remains
+recipe-parity tests. The current format-7 release is indexed by
+`public/versions-v7.json`: `public/data/2.9.0-beta-2-v7-r7fdce46a5a5a/` and
+`public/data/2.9.0-beta-3-v7-r131dafd54f93/`; the immutable 2.8.0 pack remains
 available as a benchmark and historical version.
 
 Dataset URLs include the pack format, and the publisher never replaces an immutable dataset URL with bytes from
-another pack format. Existing browsers migrate their cached old-format rows after the new shell loads successfully.
+another pack format. `public/versions.json` and its v6 manifests are frozen as a returning-PWA bridge.
+Old shells continue using v6 until the service worker updates them. New shells read only `versions-v7.json`
+and migrate same-version cache rows after v7 bootstrap loads successfully.
 
 ## Assets and attribution
 

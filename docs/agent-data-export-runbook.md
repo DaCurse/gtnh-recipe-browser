@@ -9,7 +9,7 @@ that must remain true as new GTNH profiles are added.
 - Use a fresh disposable workspace below `.export-work/`; never touch a player installation.
 - Keep raw NESQL output private and never weaken archive, schema, hash, determinism, sprite, or size validation.
 - Add a new immutable fixture only for a genuinely new upstream data shape.
-- A format-6 shared layout is persistent metadata, not a disposable optimization. Every published prefix is
+- A format-7 shared layout is persistent metadata, not a disposable optimization. Every published prefix is
   append-only: an existing prefix keeps its meaning and may gain descendants, but prefixes are never merged,
   reassigned, or rebuilt from scratch for a later dataset.
 - A complete record that exceeds the target cap is allowed only as a marked `oversizedSingleton`. If the oversized
@@ -63,7 +63,7 @@ Processing must:
 1. validate the combined tooltip schema and image-path audit;
 2. apply the browser retention, named-ore, and special-retention patches to a disposable processor copy;
 3. decode format-v5 output and enforce the item/recipe/tool/tooltip sanity thresholds;
-4. build the format-6 pack twice and compare directory digests; it requires the persistent published shared layout
+4. build the format-7 pack twice and compare directory digests; it requires the persistent published shared layout
    and passes the same reuse list to both builds;
 5. verify all asset hashes, special shards, shard limits, and sprite samples; and
 6. write provenance containing source, patch, processed-data, and deterministic-pack hashes.
@@ -73,7 +73,7 @@ after the cause is corrected. Never resume after changing a patch or against inc
 
 ## Shared format workflow
 
-For a format-6 release, construct the initial layout from the union of the nearby datasets, or extend the last
+For a format-7 release, construct the initial layout from the union of the nearby datasets, or extend the last
 published layout with `--existing-layout`:
 
 ```sh
@@ -85,12 +85,12 @@ npm run shared-layout -- \
 ```
 
 Pass that layout to processing with `--layout <layout.json>`, or to the pack builder with the same option. The
-processor decodes the unchanged format-v5 source export and the builder emits the canonical format-6,
+processor decodes the unchanged format-v5 source export and the builder emits the canonical format-7,
 dataset-independent MessagePack payloads and full-SHA object names. The raw sidecar is
 consumed as an input and is not published because its records are already present in the special shards. The verifier
 checks manifest membership, the full object SHA, schema/kind, logical ID, the manifest's published prefix map,
 recipe type or special category, sorted record IDs, reference counts, and the singleton marker; a payload does not
-need to claim a dataset ID. The publisher compares that prefix map against every already-published format-6
+need to claim a dataset ID. The publisher compares that prefix map against every already-published format-7
 manifest, so a release cannot accidentally rebuild or rebalance the persistent trie.
 
 When processing a later export, pass prior local build directories and/or published dataset directories as a
@@ -103,11 +103,11 @@ npm run export:process -- \
   --session .export-work/2.9.0-beta-3-direct/export-session.json \
   --work-dir .export-work/2.9.0-beta-3-direct \
   --layout tools/pack-builder/layouts/2.9.0.json \
-  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-v6-r<revision>
+  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-v7-r<revision>
 ```
 
 Do not include the output directory in its own reuse list. Reuse preserves page-level physical bytes while each
-manifest remains a complete, independently selectable format-6 dataset; the logical prefix layout remains the
+manifest remains a complete, independently selectable format-7 dataset; the logical prefix layout remains the
 lineage contract and is still checked by the publisher.
 
 The analysis command compares actual packs at record level and evaluates both persistent union hash-prefix and
@@ -124,24 +124,27 @@ records, but independently computed CDC layouts do not preserve a stable logical
 beta2/beta3 measurements therefore favor the persistent trie. The detailed figures and decision are recorded in
 [`pack-reuse-beta-2-beta-3.md`](pack-reuse-beta-2-beta-3.md).
 
-Existing browsers migrate on the first successful format-6 catalog load. Every
-older cache row is recognized by its missing or older cache marker, not by a
-beta-specific ID or manifest version. The selected replacement manifest is
-loaded normally, matching SHA-keyed blobs are retained, and its new row is
-written without an expanded catalog snapshot. All obsolete rows and every blob
-not referenced by a current-format row are then removed, including orphaned
-objects left by older bookkeeping. Because each format-6 manifest remains
-complete, users do not depend on an old pack or a version-delta chain after
-migration.
+New shells read `public/versions-v7.json` and accept only format 7. Keep the existing
+`public/versions.json` and v6 manifests byte-for-byte frozen as a returning-PWA bridge.
+Old shells continue loading v6 until a service-worker update reloads them. Do not pass frozen v6 packs
+as reuse inputs to the v7 builder. First successful v7 bootstrap load migrates obsolete same-version cache
+rows using the generic cache marker; only their unreferenced blobs are pruning candidates.
+
+Run `npm run analyze:storage -- <beta-2-pack> <beta-3-pack>` for bootstrap physical bytes/pages, detail
+fan-out, unique storage including manifests, incremental installation bytes, and object counts.
+Acceptance requires beta-3 bootstrap <=10 MiB/16 pages, p95 detail lookup <=4 physical pages,
+beta-pair total storage <=82,370,877 bytes, and beta-3 incremental installation <=12,509,650 bytes.
+Profile cold/warm loads on a mobile-sized viewport and verify no lazy pages before selection and no
+dataset-asset network requests on warm reload. Warm reload must read each bootstrap page at most once.
 
 ## Release gate
 
 Stage the verified pack, deploy it, run `smoke:deploy --all-assets` against the deployed origin, and only then run
-`export:publish --mode activate`. For format 6, staging publishes the manifest under `public/data/<dataset-id>/`
+`export:publish --mode activate`. For format 7, staging publishes the manifest under `public/data/<dataset-id>/`
 and copies each immutable object once into `public/assets/sha256/`; it does not duplicate an `assets/` tree per
 dataset. Existing global objects are accepted only when their bytes match the requested SHA. The version index keeps
 one revision per GTNH version and retains the 2.8.0 benchmark. After staging or activation, the publisher removes
-global objects that are not referenced by any published format-6 manifest. Do not call a revision released until the
+global objects that are not referenced by any published v7 or frozen v6 bridge manifest. Do not call a revision released until the
 deployed-origin fetch succeeds.
 
 The retired interactive export procedure is intentionally documented only as history in Git.

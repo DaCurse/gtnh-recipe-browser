@@ -1,7 +1,8 @@
 import {
   assembleRecordPages,
   decodeRecordPage,
-  RECORD_PAGE_TARGET_BYTES
+  RECORD_PAGE_TARGET_BYTES,
+  recordPageSelections
 } from './recordPages';
 import { verifyAssetBytes } from './integrity';
 import {
@@ -196,7 +197,7 @@ function recordPageMap(manifest: RecordPageManifest): Map<number, DatasetAsset> 
   return pages;
 }
 
-async function decodePhysicalRecordPage(
+export async function decodePhysicalRecordPage(
   page: DatasetAsset,
   manifestUrl: string,
   onProgress: AssetProgressHandler | undefined,
@@ -250,12 +251,12 @@ async function fetchLogicalVerified(
   if (asset.encoding !== 'identity' || asset.url !== '') {
     throw new Error(`${asset.id}: logical record-page assets must use identity encoding and an empty URL`);
   }
-  if (!Array.isArray(asset.segments)) {
+  if (asset.segments === undefined) {
     throw new Error(`${asset.id}: logical asset has no record-page segments`);
   }
 
   const pagesByHash = recordPageMap(manifest);
-  const selectedPageIndices = [...new Set(asset.segments.map((selection) => selection[0]))];
+  const selectedPageIndices = [...new Set(recordPageSelections(asset).map((selection) => selection[0]))];
   const selectedPages: DatasetAsset[] = [];
   const selectedPageIndexByHash = new Map<string, number>();
   for (const pageIndex of selectedPageIndices) {

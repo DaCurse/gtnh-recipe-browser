@@ -17,6 +17,8 @@ import type {
 import type {
   CatalogAsset,
   GeneratedPackManifest,
+  GoodsDetailShardAsset,
+  IngredientGroupShardAsset,
   ImmutableAsset,
   RecipeShardAsset,
   SpecialDataShardAsset
@@ -34,11 +36,17 @@ import {
 } from './special';
 import { expandGtOreSpecialData } from './specialOreAliases';
 import { repairSpecialServiceIcons } from './specialServiceIcons';
+import { fluidRecipeScope } from '../../src/lib/fluidContainers';
+import { canonicalVariantNbt } from '../../src/lib/catalogVariants';
+import { goodsIdentityFromId } from '../../src/lib/goodsIdentity';
+import { compactRelations } from '../../src/lib/packedRelations';
+import { specialLookupMatchesView } from '../../src/lib/specialData';
+import { minecraftFormattingSpans, minecraftHtmlPlainText } from '../../src/lib/minecraftText';
+import { productionFallbackDictionary } from '../../src/lib/oreDictionary';
+import { propagateOreMachineCapabilities, recipeTypeMachineCapabilities } from '../../src/lib/recipePresentation';
 import {
   groupSharedRecords,
   sharedLogicalId,
-  sharedGoodsMetadataValue,
-  sharedGoodsStableValue,
   sharedLayoutFingerprint,
   sharedPrefixLayout,
   sharedRepository,
@@ -535,6 +543,7 @@ async function buildSharedRecipeShards(
       const part = assets.length;
       assets.push({
         ...immutable,
+        family: 'recipes',
         kind: 'recipeShard',
         recipeTypeId: recipeType.id,
         recipeTypeOrder: recipeType.order,
@@ -602,6 +611,7 @@ async function buildSharedSpecialDataShards(
       const part = assets.length;
       assets.push({
         ...immutable,
+        family: 'special',
         kind: 'specialData',
         specialViewTypeId: viewType.id,
         specialViewTypeOrder: SPECIAL_CATEGORY_IDS.indexOf(viewType.id),
@@ -619,7 +629,7 @@ async function buildSharedSpecialDataShards(
 
 function sharedCatalogGoodsPayload(logicalId: string, prefix: string, goods: readonly unknown[]): Buffer {
   return gzipMessagePack({
-    schemaVersion: 5,
+    schemaVersion: 6,
     kind: 'goods',
     logicalId,
     prefix,
@@ -627,44 +637,61 @@ function sharedCatalogGoodsPayload(logicalId: string, prefix: string, goods: rea
   });
 }
 
+function sharedCatalogGoodsSearchPayload(logicalId: string, prefix: string, goods: readonly unknown[]): Buffer {
+  const tooltips = new Map<string, string>();
+  (goods as Array<{ id: string; tooltip: string | null }>).forEach(({ tooltip }) => {
+    const tooltipId = tooltip ? sha256(Buffer.from(tooltip)).slice(0, 16) : null;
+    if (tooltipId && tooltip) {
+      const previous = tooltips.get(tooltipId);
+      if (previous !== undefined && previous !== tooltip) throw new Error('Tooltip fingerprint collision');
+      tooltips.set(tooltipId, tooltip);
+    }
+  });
+  return gzipMessagePack({ schemaVersion: 6, kind: 'goodsSearch', logicalId, prefix,
+    tooltips: [...tooltips].sort(([a], [b]) => a.localeCompare(b)).map(([id, text]) => ({ id, text })) });
+}
+
 function sharedCatalogMetadataPayload(
-  kind: 'core' | 'recipeTypes' | 'ingredientGroups' | 'recipeRemaps' | 'specialMetadata' | 'icons',
+  kind: 'core' | 'recipeTypes' | 'recipeRemaps' | 'specialMetadata',
   logicalId: string,
   value: Record<string, unknown>
 ): Buffer {
   return gzipMessagePack({
-    schemaVersion: 5,
+    schemaVersion: 6,
     kind,
     logicalId,
     ...value
   });
 }
 
-function sharedCatalogGoodsMetadataPayload(
-  logicalId: string,
-  prefix: string,
-  goods: readonly Record<string, unknown>[]
-): Buffer {
+function sharedGoodsDetailsPayload(logicalId: string, prefix: string, goods: readonly Record<string, unknown>[]): Buffer {
+  const compact = compactRelations(goods.map((value) => Object.fromEntries(Object.entries(value)
+    .filter(([key]) => key !== 'numericId' && key !== 'tooltip'))), logicalId);
   return gzipMessagePack({
-    schemaVersion: 5,
-    kind: 'goodsMetadata',
+    schemaVersion: 6,
+    kind: 'goodsDetails',
     logicalId,
     prefix,
-    goods
+    goods: compact.records,
+    lists: compact.lists,
+    goodsTooltips: goods.map(({ id, tooltip }) => ({ id,
+      formats: minecraftFormattingSpans(tooltip as string | null) })).filter((value) => value.formats.length > 0)
   });
 }
 
-function sharedCatalogOreDictionaryPayload(
+function sharedIngredientGroupsPayload(
   logicalId: string,
   prefix: string,
-  oreDictionaries: readonly unknown[]
+  ingredientGroups: readonly Record<string, unknown>[]
 ): Buffer {
+  const compact = compactRelations(ingredientGroups, logicalId);
   return gzipMessagePack({
-    schemaVersion: 5,
-    kind: 'oreDictionaries',
+    schemaVersion: 6,
+    kind: 'ingredientGroups',
     logicalId,
     prefix,
-    oreDictionaries
+    ingredientGroups: compact.records,
+    lists: compact.lists
   });
 }
 
@@ -677,7 +704,11 @@ async function buildSharedCatalogAssets(
   assetsDirectory: string,
   baseUrl: string,
   iconSlots: ReadonlyMap<string, { sheetId: string; index: number }>
-): Promise<CatalogAsset[]> {
+): Promise<{
+  catalogAssets: CatalogAsset[];
+  goodsDetailShards: GoodsDetailShardAsset[];
+  ingredientGroupShards: IngredientGroupShardAsset[];
+}> {
   const catalog = buildCatalog(
     repository,
     shardByRecipeId,
@@ -685,13 +716,19 @@ async function buildSharedCatalogAssets(
     specialShardByRecordId,
     (ownerId) => {
       const slot = iconSlots.get(ownerId);
-      return slot ? { sheetId: slot.sheetId, index: slot.index } : null;
+      return slot ? { sheetId: slot.sheetId.slice(0, 16), index: slot.index } : null;
     }
   );
   const { goods } = catalog;
   const coreLogicalId = 'catalog-core';
+  const allGroups = [...catalog.oreDictionaries, ...catalog.ingredientGroups];
   const coreBytes = sharedCatalogMetadataPayload('core', coreLogicalId, {
-    serviceItemIds: catalog.serviceItemIds
+    serviceItemIds: catalog.serviceItemIds,
+    ingredientGroups: allGroups.map((group) => ({
+      id: group.id,
+      itemIds: [],
+      ...(group.id.startsWith('g:') ? { kind: 'itemGroup' as const } : {})
+    })).sort((left, right) => left.id.localeCompare(right.id))
   });
   const coreImmutable = await writeSharedAsset(
     assetsDirectory,
@@ -702,6 +739,7 @@ async function buildSharedCatalogAssets(
   );
   const assets: CatalogAsset[] = [{
     ...coreImmutable,
+    family: 'bootstrap',
     kind: 'catalog',
     role: 'core',
     part: 0,
@@ -711,28 +749,16 @@ async function buildSharedCatalogAssets(
 
   const fixedCatalogAssets: Array<{
     role: CatalogAsset['role'];
-    kind: 'recipeTypes' | 'ingredientGroups' | 'recipeRemaps' | 'specialMetadata' | 'icons';
+    kind: 'recipeTypes' | 'recipeRemaps' | 'specialMetadata';
     logicalId: string;
     value: Record<string, unknown>;
   }> = [
-    {
-      role: 'icons', kind: 'icons', logicalId: 'catalog-icons',
-      value: { icons: goods.map(({ id, icon }) => ({ id, icon })).sort((a, b) => a.id.localeCompare(b.id)) }
-    },
     {
       role: 'recipeTypes',
       kind: 'recipeTypes',
       logicalId: 'catalog-recipe-types',
       value: {
         recipeTypes: catalog.recipeTypes.slice().sort((left, right) => left.id.localeCompare(right.id))
-      }
-    },
-    {
-      role: 'ingredientGroups',
-      kind: 'ingredientGroups',
-      logicalId: 'catalog-ingredient-groups',
-      value: {
-        ingredientGroups: catalog.ingredientGroups.slice().sort((left, right) => left.id.localeCompare(right.id))
       }
     },
     {
@@ -766,6 +792,7 @@ async function buildSharedCatalogAssets(
     );
     assets.push({
       ...immutable,
+      family: 'bootstrap',
       kind: 'catalog',
       role: fixed.role,
       part: 0,
@@ -774,57 +801,33 @@ async function buildSharedCatalogAssets(
     });
   }
 
-  const oreRecords: SharedRecord[] = catalog.oreDictionaries
-    .map((value) => ({ id: value.id, namespace: 'oreDictionaries', value }))
-    .sort((left, right) => left.id.localeCompare(right.id));
-  const oreGroups = [...groupSharedRecords(oreRecords, layout.oreDictionaries)]
-    .sort(([left], [right]) => left.localeCompare(right));
-  for (const [prefix, group] of oreGroups) {
-    const logicalId = `catalog-ore-dictionaries-${prefix || 'root'}`;
-    const values = group.map((record) => record.value);
-    const bytes = sharedCatalogOreDictionaryPayload(logicalId, prefix, values);
-    if (bytes.byteLength > layout.targets.oreDictionaries && values.length > 1) {
-      throw new Error(`${logicalId}: shared ore-dictionary layout target ${layout.targets.oreDictionaries} is too small`);
-    }
-    const immutable = await writeSharedAsset(
-      assetsDirectory,
-      baseUrl,
-      logicalId,
-      bytes,
-      { encoding: 'gzip', mediaType: 'application/msgpack' }
-    );
-    assets.push({
-      ...immutable,
-      kind: 'catalog',
-      role: 'oreDictionaries',
-      part: 0,
-      goodsCount: 0,
-      recordCount: values.length,
-      prefix,
-      logicalId,
-      oversizedSingleton: bytes.byteLength > layout.targets.oreDictionaries && values.length === 1
-    });
-  }
-
+  const searchTextById = new Map(goods.map((value) => [value.id, minecraftHtmlPlainText(value.tooltip) || null]));
   const records: SharedRecord[] = goods
     .map((value) => ({
       id: String((value as { id: string }).id),
       namespace: 'goods',
-      value: sharedGoodsStableValue(Object.fromEntries(Object.entries(value).filter(([key]) => key !== 'icon')))
-    }))
-    .sort((left, right) => left.id.localeCompare(right.id));
-  const metadataRecords = goods
-    .map((value) => ({
-      id: String((value as { id: string }).id),
-      namespace: 'goods',
-      value: sharedGoodsMetadataValue(value as Record<string, unknown>)
+      value: { ...Object.fromEntries(Object.entries(value).filter(([key, field]) => ![
+        'tooltip', 'unlocalizedName', 'searchMask', 'numericId',
+        'productionShards', 'usageShards', 'productionCount', 'usageCount',
+        'specialProductionShards', 'specialUsageShards',
+        'specialProductionLookupIds', 'specialUsageLookupIds',
+        'specialProductionCount', 'specialUsageCount', 'container', 'containerItemIds', 'stackSize', 'isGas'
+      ].includes(key) && !(key in goodsIdentityFromId(value.id)
+        && field === goodsIdentityFromId(value.id)[key as keyof ReturnType<typeof goodsIdentityFromId>]))),
+        nbt: value.mod.toLocaleLowerCase() === 'cropsnh' ? value.nbt : null,
+        tooltipId: searchTextById.get(value.id) ? sha256(Buffer.from(searchTextById.get(value.id)!)).slice(0, 16) : null,
+        ...(value.nbt ? { variantNbtKey: sha256(Buffer.from(canonicalVariantNbt(value.nbt)!)).slice(0, 16) } : {})
+      }
     }))
     .sort((left, right) => left.id.localeCompare(right.id));
   const groups = [...groupSharedRecords(records, layout.goods)].sort(([left], [right]) => left.localeCompare(right));
-  const metadataGroups = new Map([...groupSharedRecords(metadataRecords, layout.goods)]);
+  const searchGroups = new Map([...groupSharedRecords(goods.map((value) => ({
+    id: value.id,
+    namespace: 'goods',
+    value: { id: value.id, tooltip: searchTextById.get(value.id) ?? null }
+  })), layout.goods)]);
   const usedIds = new Set<string>([coreLogicalId]);
   let goodsPart = 0;
-  let metadataPart = 0;
   for (const [prefix, group] of groups) {
     const logicalId = `catalog-goods-${prefix || 'root'}`;
     if (usedIds.has(logicalId)) throw new Error(`Duplicate shared catalog shard ID ${logicalId}`);
@@ -843,6 +846,7 @@ async function buildSharedCatalogAssets(
     );
     assets.push({
       ...immutable,
+      family: 'bootstrap',
       kind: 'catalog',
       role: 'goods',
       part: goodsPart++,
@@ -851,42 +855,174 @@ async function buildSharedCatalogAssets(
       logicalId,
       oversizedSingleton: bytes.byteLength > layout.targets.goods && partGoods.length === 1
     });
-
-    const metadataLogicalId = `catalog-goods-metadata-${prefix || 'root'}`;
-    const metadataGroup = metadataGroups.get(prefix);
-    if (!metadataGroup || metadataGroup.length !== group.length) {
-      throw new Error(`${metadataLogicalId}: shared goods metadata does not match the goods partition`);
-    }
-    const metadataValues = metadataGroup.map((record) => record.value as Record<string, unknown>);
-    if (metadataValues.some((record) => (
-      typeof record.id !== 'string'
-      || !Number.isInteger(record.numericId)
-    ))) {
-      throw new Error(`${metadataLogicalId}: goods metadata contains an invalid identity record`);
-    }
-    const metadataBytes = sharedCatalogGoodsMetadataPayload(metadataLogicalId, prefix, metadataValues);
-    if (metadataBytes.byteLength > layout.targets.goodsMetadata && metadataValues.length > 1) {
-      throw new Error(`${metadataLogicalId}: shared goods metadata layout target ${layout.targets.goodsMetadata} is too small`);
-    }
-    const metadataImmutable = await writeSharedAsset(
-      assetsDirectory,
-      baseUrl,
-      metadataLogicalId,
-      metadataBytes,
-      { encoding: 'gzip', mediaType: 'application/msgpack' }
-    );
+    const searchLogicalId = `catalog-goods-search-${prefix || 'root'}`;
+    const searchValues = (searchGroups.get(prefix) ?? []).map((record) => record.value);
+    const searchBytes = sharedCatalogGoodsSearchPayload(searchLogicalId, prefix, searchValues);
+    const searchImmutable = await writeSharedAsset(assetsDirectory, baseUrl, searchLogicalId, searchBytes,
+      { encoding: 'gzip', mediaType: 'application/msgpack' });
     assets.push({
-      ...metadataImmutable,
-      kind: 'catalog',
-      role: 'goodsMetadata',
-      part: metadataPart++,
-      goodsCount: metadataValues.length,
-      prefix,
-      logicalId: metadataLogicalId,
-      oversizedSingleton: metadataBytes.byteLength > layout.targets.goodsMetadata && metadataValues.length === 1
+      ...searchImmutable, family: 'bootstrap', kind: 'catalog', role: 'goodsSearch',
+      part: goodsPart - 1, goodsCount: 0, prefix, logicalId: searchLogicalId,
+      oversizedSingleton: searchBytes.byteLength > layout.targets.goodsMetadata && searchValues.length === 1
+    });
+
+  }
+
+  const goodsById = new Map(goods.map((value) => [value.id, value]));
+  const groupsById = new Map(allGroups.map((value) => [value.id, value]));
+  const itemOres = new Map<string, typeof catalog.oreDictionaries>();
+  for (const ore of catalog.oreDictionaries) for (const id of ore.itemIds) {
+    const memberships = itemOres.get(id) ?? [];
+    memberships.push(ore);
+    itemOres.set(id, memberships);
+  }
+  const shardsByRecipeType = new Map<string, string[]>();
+  for (const descriptor of repository.recipes) {
+    const shard = shardByRecipeId.get(descriptor.id);
+    if (!shard) continue;
+    const values = shardsByRecipeType.get(descriptor.recipeTypeId) ?? [];
+    if (!values.includes(shard)) values.push(shard);
+    shardsByRecipeType.set(descriptor.recipeTypeId, values);
+  }
+  const directCapabilities = new Map<string, Array<{
+    recipeTypeId: string; recipeTypeName: string; recipeShards: string[]; maxVoltageTier?: number;
+  }>>();
+  for (const type of catalog.recipeTypes) for (const machine of recipeTypeMachineCapabilities(type)) {
+    const values = directCapabilities.get(machine.id) ?? [];
+    values.push({
+      recipeTypeId: type.id,
+      recipeTypeName: type.name,
+      recipeShards: [...(shardsByRecipeType.get(type.id) ?? [])].sort(),
+      maxVoltageTier: machine.maxVoltageTier
+    });
+    directCapabilities.set(machine.id, values);
+  }
+  const capabilities = propagateOreMachineCapabilities(directCapabilities, allGroups);
+  const cropMembers = new Map<string, string[]>();
+  const lookupCounts = (lookupIds: string[]) => Object.fromEntries((catalog.specialViewTypes ?? [])
+    .map((view) => [view.id, lookupIds.filter((id) => specialLookupMatchesView(id, view.id)).length])
+    .filter(([, count]) => Number(count) > 0));
+  for (const value of goods) {
+    if (value.kind !== 'item' || value.mod.toLocaleLowerCase() !== 'cropsnh'
+      || value.internalName !== 'genericSeed' || !value.nbt) continue;
+    const crop = value.nbt.match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/i)?.[1]?.toLocaleLowerCase();
+    if (crop) cropMembers.set(crop, [...(cropMembers.get(crop) ?? []), value.id]);
+  }
+  const details = goods.map((value) => {
+    const fluidScope = fluidRecipeScope(value.id, goodsById);
+    const fallback = value.kind === 'item' && value.productionCount === 0
+      ? productionFallbackDictionary(value.id, itemOres.get(value.id) ?? [],
+        (id) => (goodsById.get(id)?.productionCount ?? 0) > 0)
+      : undefined;
+    const productionMatchIds = [...(fluidScope?.memberIds ?? new Set(fallback?.itemIds ?? [value.id]))].sort();
+    const usageMatchIds = [...(fluidScope?.memberIds ?? new Set([value.id]))].sort();
+    const expandSpecialScope = (matches: string[]) => {
+    const specialScope = new Set(matches);
+    for (const id of [...specialScope]) {
+      const item = goodsById.get(id);
+      for (const ore of itemOres.get(id) ?? []) {
+        const name = ore.id.slice(2).toLocaleLowerCase();
+        const gtProduct = ['dust', 'dustpure', 'dustimpure', 'crushed', 'crushedpurified', 'crushedcentrifuged', 'rawore', 'gem']
+          .some((prefix) => name.startsWith(prefix));
+        const gtHost = name.startsWith('ore') && item?.kind === 'item'
+          && item.mod.toLocaleLowerCase() === 'gregtech' && /^gt\.blockores\d*$/i.test(item.internalName);
+        if (gtProduct || gtHost) specialScope.add(ore.id);
+      }
+    }
+    if (value.kind === 'item' && value.mod.toLocaleLowerCase() === 'cropsnh' && value.nbt) {
+      const crop = value.nbt.match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/i)?.[1]?.toLocaleLowerCase();
+      for (const id of crop ? cropMembers.get(crop) ?? [] : []) specialScope.add(id);
+    }
+    return [...specialScope].sort();
+    };
+    const specialProductionMatchIds = expandSpecialScope(productionMatchIds);
+    const specialUsageMatchIds = expandSpecialScope(usageMatchIds);
+    const specialUnion = (scope: string[], field: 'specialProductionShards' | 'specialUsageShards'
+      | 'specialProductionLookupIds' | 'specialUsageLookupIds') => [...new Set(scope.flatMap((id) =>
+        (goodsById.get(id) ?? groupsById.get(id))?.[field] ?? []))].sort();
+    const productionShards = [...new Set(productionMatchIds.flatMap((id) => goodsById.get(id)?.productionShards ?? []))].sort();
+    const usageShards = [...new Set(usageMatchIds.flatMap((id) => goodsById.get(id)?.usageShards ?? []))].sort();
+    return {
+      id: value.id,
+      tooltip: value.tooltip,
+      productionShards: fallback ? [] : productionShards,
+      usageShards,
+      productionCount: value.productionCount,
+      usageCount: value.usageCount,
+      specialProductionShards: fallback ? value.specialProductionShards ?? []
+        : specialUnion(specialProductionMatchIds, 'specialProductionShards'),
+      specialUsageShards: specialUnion(specialUsageMatchIds, 'specialUsageShards'),
+      specialProductionCounts: lookupCounts(specialUnion(specialProductionMatchIds, 'specialProductionLookupIds')),
+      specialUsageCounts: lookupCounts(specialUnion(specialUsageMatchIds, 'specialUsageLookupIds')),
+      specialProductionCount: value.specialProductionCount ?? 0,
+      specialUsageCount: value.specialUsageCount ?? 0,
+      productionMatchIds: fallback ? [value.id] : productionMatchIds,
+      usageMatchIds,
+      specialProductionMatchIds: fallback
+        ? specialProductionMatchIds.filter((id) => !fallback.itemIds.includes(id)) : specialProductionMatchIds,
+      specialUsageMatchIds,
+      ...(fallback ? { productionOreDictionaryId: fallback.id } : {}),
+      oreDictionaryIds: (itemOres.get(value.id) ?? []).map((ore) => ore.id).sort(),
+      container: 'container' in value ? value.container : undefined,
+      containerItemIds: 'containerItemIds' in value ? value.containerItemIds : undefined,
+      machineCapabilities: capabilities.get(value.id)
+    };
+  });
+  const detailRecords = details.map((value) => ({ id: value.id, namespace: 'goods', value }));
+  const detailGroups = [...groupSharedRecords(detailRecords, layout.goods)].sort(([a], [b]) => a.localeCompare(b));
+  const goodsDetailShards: GoodsDetailShardAsset[] = [];
+  for (const [prefix, group] of detailGroups) {
+    const logicalId = `goods-details-${prefix || 'root'}`;
+    const values = group.map((record) => record.value as Record<string, unknown>);
+    const bytes = sharedGoodsDetailsPayload(logicalId, prefix, values);
+    const immutable = await writeSharedAsset(assetsDirectory, baseUrl, logicalId, bytes,
+      { encoding: 'gzip', mediaType: 'application/msgpack' });
+    goodsDetailShards.push({
+      ...immutable, family: 'goods-details', kind: 'goodsDetails', part: goodsDetailShards.length,
+      recordCount: values.length, prefix, logicalId,
+      oversizedSingleton: bytes.byteLength > layout.targets.goodsMetadata && values.length === 1
     });
   }
-  return assets;
+
+  const detailById = new Map(details.map((detail) => [detail.id, detail]));
+  const groupValues = allGroups.map((group) => {
+    const members = group.itemIds.map((id) => detailById.get(id)).filter((value) => value !== undefined);
+    const union = (field: 'productionShards' | 'usageShards' | 'specialProductionShards' | 'specialUsageShards'
+      ) =>
+      [...new Set([...(field in group ? group[field as keyof typeof group] as string[] ?? [] : []),
+        ...group.itemIds.flatMap((id) => goodsById.get(id)?.[field] ?? [])])].sort();
+    return {
+      ...group,
+      productionShards: union('productionShards'),
+      usageShards: union('usageShards'),
+      productionCount: members.reduce((total, member) => total + member.productionCount, 0),
+      usageCount: members.reduce((total, member) => total + member.usageCount, 0),
+      specialProductionShards: union('specialProductionShards'),
+      specialUsageShards: union('specialUsageShards'),
+      specialProductionLookupIds: undefined,
+      specialUsageLookupIds: undefined,
+      specialProductionCounts: lookupCounts([...new Set([...(group.specialProductionLookupIds ?? []),
+        ...group.itemIds.flatMap((id) => goodsById.get(id)?.specialProductionLookupIds ?? [])])]),
+      specialUsageCounts: lookupCounts([...new Set([...(group.specialUsageLookupIds ?? []),
+        ...group.itemIds.flatMap((id) => goodsById.get(id)?.specialUsageLookupIds ?? [])])]),
+      machineCapabilities: capabilities.get(group.id)
+    };
+  });
+  const groupRecords = groupValues.map((value) => ({ id: value.id, namespace: 'oreDictionaries', value }));
+  const ingredientGroupShards: IngredientGroupShardAsset[] = [];
+  for (const [prefix, group] of [...groupSharedRecords(groupRecords, layout.oreDictionaries)].sort(([a], [b]) => a.localeCompare(b))) {
+    const logicalId = `ingredient-groups-${prefix || 'root'}`;
+    const values = group.map((record) => record.value);
+    const bytes = sharedIngredientGroupsPayload(logicalId, prefix, values);
+    const immutable = await writeSharedAsset(assetsDirectory, baseUrl, logicalId, bytes,
+      { encoding: 'gzip', mediaType: 'application/msgpack' });
+    ingredientGroupShards.push({
+      ...immutable, family: 'ingredient-groups', kind: 'ingredientGroups', part: ingredientGroupShards.length,
+      recordCount: values.length, prefix, logicalId,
+      oversizedSingleton: bytes.byteLength > layout.targets.oreDictionaries && values.length === 1
+    });
+  }
+  return { catalogAssets: assets, goodsDetailShards, ingredientGroupShards };
 }
 
 
@@ -899,7 +1035,7 @@ function uniqueAssetBytes(assets: readonly ImmutableAsset[]): number {
 export async function buildPack(options: BuildPackOptions): Promise<BuildPackResult> {
   const outputDirectory = resolve(options.outputDirectory);
   await ensureNewOutput(outputDirectory);
-  if (!options.layoutPath) throw new Error('Format-6 packs require --layout with a persistent shared layout');
+  if (!options.layoutPath) throw new Error('Format-7 packs require --layout with a persistent shared layout');
   const layout = JSON.parse(await readFile(options.layoutPath, 'utf8')) as SharedPartitionLayout;
   validateSharedLayout(layout);
   const parent = dirname(outputDirectory);
@@ -948,7 +1084,7 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   // identity so a format migration cannot reuse an older manifest URL that a
   // browser or CDN has cached as immutable.
   const datasetId = options.datasetId
-    ?? `${sanitize(options.gtnhVersion)}-v6-r${sanitize(effectiveRevision)}`;
+    ?? `${sanitize(options.gtnhVersion)}-v7-r${sanitize(effectiveRevision)}`;
   const displayName = options.displayName ?? `GTNH ${options.gtnhVersion} (revision ${effectiveRevision})`;
   // The published manifest lives at public/data/<dataset>/pack-manifest.json,
   // so ../../assets/sha256 is the immutable global object store.  The local
@@ -967,20 +1103,22 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
     atlasPath: options.atlasPath,
     owners: [...ownerIcons].map(([id, iconId]) => ({ id, iconId })),
     previous: await Promise.all(reuse.map(async (pack) => {
-      const descriptor = pack.manifest.catalogAssets.find((asset) => asset.role === 'icons');
-      if (!descriptor) throw new Error(`${pack.manifest.datasetId}: reusable pack has no catalog-icons asset`);
-      const payload = decode(await readLogicalAsset(descriptor, pack.manifest, pack.assetsDirectory)) as {
-        kind: string;
-        icons: Array<{ id: string; icon: { sheetId: string; index: number } | null }>;
-      };
-      if (payload.kind !== 'icons' || !Array.isArray(payload.icons)) {
-        throw new Error(`${pack.manifest.datasetId}: invalid reusable catalog-icons asset`);
+      const ownerSlots = new Map<string, { sheetId: string; index: number }>();
+      for (const descriptor of pack.manifest.catalogAssets.filter((asset) => asset.role === 'goods')) {
+        const payload = decode(await readLogicalAsset(descriptor, pack.manifest, pack.assetsDirectory)) as {
+          kind: string;
+          goods: Array<{ id: string; icon: { sheetId: string; index: number } | null }>;
+        };
+        if (payload.kind !== 'goods' || !Array.isArray(payload.goods)) {
+          throw new Error(`${pack.manifest.datasetId}: invalid reusable bootstrap goods asset`);
+        }
+        for (const goods of payload.goods) if (goods.icon) {
+          const sheet = pack.manifest.iconSheets.find((sheet) => sheet.sha256.startsWith(goods.icon!.sheetId));
+          if (!sheet) throw new Error(`Unknown reusable icon sheet ${goods.icon.sheetId}`);
+          ownerSlots.set(goods.id, { ...goods.icon, sheetId: sheet.sha256 });
+        }
       }
-      return {
-        manifest: pack.manifest,
-        assetDirectory: pack.assetsDirectory,
-        ownerSlots: new Map(payload.icons.flatMap(({ id, icon }) => icon ? [[id, icon] as const] : []))
-      };
+      return { manifest: pack.manifest, assetDirectory: pack.assetsDirectory, ownerSlots };
     })),
     outputDirectory: staging,
     baseUrl
@@ -994,7 +1132,7 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   const { assets: specialDataShards, shardByRecordId: specialShardByRecordId } = specialData
     ? await buildSharedSpecialDataShards(specialData, layout, assetsDirectory, baseUrl)
     : { assets: [], shardByRecordId: new Map<string, string>() };
-  const catalogAssets = await buildSharedCatalogAssets(
+  const { catalogAssets, goodsDetailShards, ingredientGroupShards } = await buildSharedCatalogAssets(
     repository,
     layout,
     specialData,
@@ -1006,7 +1144,7 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   );
   const iconSheets = icons.assets;
   const recordPages = await buildRecordPages(
-    [...catalogAssets, ...recipeShards, ...specialDataShards], assetsDirectory, baseUrl,
+    [...catalogAssets, ...goodsDetailShards, ...ingredientGroupShards, ...recipeShards, ...specialDataShards], assetsDirectory, baseUrl,
     reuse
   );
   const allAssets = [...recordPages, ...iconSheets];
@@ -1016,7 +1154,7 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   }
   const prefixLayout = sharedPrefixLayout(layout);
   const manifest: GeneratedPackManifest = {
-    formatVersion: 6,
+    formatVersion: 7,
     datasetId,
     gtnhVersion: options.gtnhVersion,
     revision: effectiveRevision,
@@ -1040,6 +1178,8 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
       ...(specialDataSha256 ? { specialDataSha256 } : {})
     },
     catalogAssets,
+    goodsDetailShards,
+    ingredientGroupShards,
     recipeShards,
     iconSheets,
     specialDataShards,

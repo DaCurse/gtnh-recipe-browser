@@ -17,6 +17,48 @@ export interface MinecraftText {
   plainText: string;
 }
 
+export type MinecraftFormattingSpan = [start: number, end: number, codes: string];
+
+/** Text is already in bootstrap; lazy details retain only its formatting spans. */
+export function minecraftFormattingSpans(html: string | null | undefined): MinecraftFormattingSpan[] {
+  const parsed = parseMinecraftHtml(html);
+  if (parsed.plainText !== minecraftHtmlPlainText(html)) throw new Error('Tooltip text/formatting mismatch');
+  const spans: MinecraftFormattingSpan[] = [];
+  let offset = 0;
+  for (const line of parsed.lines) {
+    for (const segment of line.segments) {
+      if (segment.formats.length) spans.push([offset, offset + segment.text.length, segment.formats.join('')]);
+      offset += segment.text.length;
+    }
+    offset++;
+  }
+  return spans;
+}
+
+export function restoreMinecraftFormatting(text: string, spans: readonly MinecraftFormattingSpan[]): MinecraftTextLine[] {
+  for (const [start, end, codes] of spans) {
+    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start
+      || end > text.length || !/^[0-9a-fklmno]+$/.test(codes)) throw new Error('Invalid tooltip formatting span');
+  }
+  let offset = 0;
+  return text.split('\n').map((line) => {
+    const start = offset;
+    const end = start + line.length;
+    const relevant = spans.filter(([a, b]) => a < end && b > start);
+    const boundaries = [...new Set([start, end, ...relevant.flatMap(([a, b]) => [Math.max(start, a), Math.min(end, b)])])].sort((a, b) => a - b);
+    const segments: MinecraftTextSegment[] = [];
+    for (let index = 1; index < boundaries.length; index++) {
+      const a = boundaries[index - 1]!;
+      const b = boundaries[index]!;
+      if (a === b) continue;
+      const formats = relevant.find(([from, to]) => from <= a && to >= b)?.[2] ?? '';
+      segments.push({ text: text.slice(a, b), formats: formats.split('') as MinecraftFormatCode[] });
+    }
+    offset = end + 1;
+    return { segments };
+  });
+}
+
 const validFormat = /^[0-9a-fklmno]$/;
 
 function decodeEntities(text: string): string {

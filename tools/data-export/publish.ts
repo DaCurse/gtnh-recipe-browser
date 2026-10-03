@@ -4,6 +4,7 @@ import { basename, join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { GeneratedPackManifest, ImmutableAsset } from '../pack-builder/manifest';
 import { verifyPack } from '../pack-builder/verifier';
+import { recordPageSelections } from '../../src/lib/recordPages';
 import {
   assertSharedLayoutExtension,
   type SharedPrefixLayout
@@ -28,15 +29,15 @@ if (mode !== 'stage' && mode !== 'activate' && mode !== 'publish') {
 }
 const sourceManifestBytes = await readFile(join(packDirectory, 'pack-manifest.json'));
 const manifest = JSON.parse(sourceManifestBytes.toString('utf8')) as GeneratedPackManifest;
-if (manifest.formatVersion !== 6) {
-  throw new Error(`Unsupported generated pack format ${manifest.formatVersion}; only format 6 is publishable`);
+if (manifest.formatVersion !== 7) {
+  throw new Error(`Unsupported generated pack format ${manifest.formatVersion}; only format 7 is publishable`);
 }
 await verifyPack({ packDirectory });
 
 const publicData = join(repositoryRoot, 'public/data');
 const destination = join(publicData, manifest.datasetId);
 const globalAssets = join(repositoryRoot, 'public/assets/sha256');
-const versionsPath = join(repositoryRoot, 'public/versions.json');
+const versionsPath = join(repositoryRoot, 'public/versions-v7.json');
 
 function assetFilename(asset: { url: string }): string {
   return basename(new URL(asset.url, 'https://publisher.invalid/').pathname);
@@ -49,7 +50,7 @@ function physicalAssets(): ImmutableAsset[] {
 function catalogPhysicalBytes(): number {
   const pageIndexes = new Set<number>();
   for (const asset of manifest.catalogAssets) {
-    for (const segment of asset.segments ?? []) {
+    for (const segment of recordPageSelections(asset)) {
       const pageIndex = segment[0];
       if (!Number.isSafeInteger(pageIndex) || pageIndex < 0 || pageIndex >= manifest.recordPages.length) {
         throw new Error(`${asset.id}: catalog segment references invalid record page ${String(pageIndex)}`);
@@ -151,12 +152,12 @@ async function assertPublishedLayoutLineage(): Promise<void> {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') continue;
       throw error;
     }
-    if (existing.formatVersion !== 6) continue;
+    if (existing.formatVersion !== 7) continue;
     try {
       assertSharedLayoutExtension(prefixLayoutFromManifest(existing.sharedLayout), nextLayout);
     } catch (error) {
       throw new Error(
-        `Format-6 layout for ${manifest.datasetId} is not an append-only extension of ${existing.datasetId}: `
+        `Format-7 layout for ${manifest.datasetId} is not an append-only extension of ${existing.datasetId}: `
           + `${error instanceof Error ? error.message : String(error)}`,
         { cause: error }
       );
@@ -244,7 +245,9 @@ if (mode === 'stage') {
   process.exit(0);
 }
 
-const versions = JSON.parse(await readFile(versionsPath, 'utf8')) as VersionsIndex;
+const versions = await pathExists(versionsPath)
+  ? JSON.parse(await readFile(versionsPath, 'utf8')) as VersionsIndex
+  : { schemaVersion: 1, generatedAt: '', versions: [] } as VersionsIndex;
 const replacedDatasetIds = mode === 'activate'
   ? versions.versions
     .filter((candidate) => candidate.gtnhVersion === manifest.gtnhVersion
