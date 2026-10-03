@@ -1,9 +1,10 @@
 import { createHash } from 'node:crypto';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { encode } from '@msgpack/msgpack';
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
+import { canonicalSpecialDataJson, parseBrowserNeiSpecial } from '../tools/pack-builder/special';
 import { verifyPack } from '../tools/pack-builder/verifier';
 import { buildRecordPages } from '../tools/pack-builder/recordPages';
 import { sharedPrefixLayoutFingerprint } from '../tools/pack-builder/sharedLayout';
@@ -40,7 +41,7 @@ describe('canonical format-7 generated packs', () => {
       const prefixes = { recipeTypes: {}, goods: [''], oreDictionaries: [''], specialViews: {} };
       const manifest = { formatVersion: 7, datasetId: 'fixture-v7', gtnhVersion: 'fixture',
         revision: 'shared', displayName: 'Fixture', assetStore: 'global-sha256',
-        source: { formatVersion: 5, dataSha256: 'fixture', atlasSha256: 'fixture' },
+        source: { formatVersion: 5, dataSha256: 'fixture', atlasSha256: 'fixture', specialDataSha256: undefined as string | undefined },
         sharedLayout: { schemaVersion: 1, targets, prefixes,
           layoutSha256: sharedPrefixLayoutFingerprint({ schemaVersion: 1, targets, ...prefixes }) },
         catalogAssets: assets.filter((asset) => asset.family === 'bootstrap'),
@@ -51,6 +52,15 @@ describe('canonical format-7 generated packs', () => {
       const manifestPath = join(root, 'pack-manifest.json');
       await writeFile(manifestPath, JSON.stringify(manifest));
       await expect(verifyPack({ packDirectory: root })).resolves.toMatchObject({ assets: 2, goods: 1, recipes: 0 });
+      const specialInput = parseBrowserNeiSpecial(await readFile('tests/fixtures/nei-special-v1/browser-nei-special.json'));
+      const specialDataPath = join(root, 'special.json');
+      await writeFile(specialDataPath, JSON.stringify(specialInput, null, 3));
+      manifest.source.specialDataSha256 = createHash('sha256').update(canonicalSpecialDataJson(specialInput)).digest('hex');
+      await writeFile(manifestPath, JSON.stringify(manifest));
+      await expect(verifyPack({ packDirectory: root, specialDataPath })).resolves.toMatchObject({ assets: 2 });
+      specialInput.records[0]!.searchText += ' changed';
+      await writeFile(specialDataPath, JSON.stringify(specialInput));
+      await expect(verifyPack({ packDirectory: root, specialDataPath })).rejects.toThrow('Special input SHA-256');
       manifest.recordPages.find((page) => page.family === 'goods-details')!.family = 'bootstrap';
       await writeFile(manifestPath, JSON.stringify(manifest));
       await expect(verifyPack({ packDirectory: root })).rejects.toThrow('load-family boundary');

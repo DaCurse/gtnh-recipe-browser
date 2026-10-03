@@ -242,12 +242,18 @@ export async function auditRenderedItemPaths(
 export function withPublishedVersion(
   index: VersionsIndex,
   version: VersionsIndexEntry,
-  generatedAt: string
+  generatedAt: string,
+  rolloutEpoch?: number
 ): VersionsIndex {
   if (index.schemaVersion !== 1) throw new Error(`Unsupported versions index ${index.schemaVersion}`);
+  if (rolloutEpoch !== undefined && (!Number.isSafeInteger(rolloutEpoch)
+    || rolloutEpoch <= (index.rollout?.epoch ?? 0))) {
+    throw new Error('Rollout epoch must be a positive integer greater than the published epoch');
+  }
   return {
     schemaVersion: 1,
-    ...(index.rollout ? { rollout: index.rollout } : {}),
+    ...(rolloutEpoch !== undefined ? { rollout: { epoch: rolloutEpoch, targetDatasetId: version.datasetId } }
+      : index.rollout ? { rollout: index.rollout } : {}),
     generatedAt,
     // Keep one immutable release per GTNH version. A replacement revision must
     // become the first entry without leaving the previous release selectable.

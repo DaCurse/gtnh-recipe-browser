@@ -20,6 +20,7 @@ function usage(): string {
     '  --work-dir <directory>    Fresh disposable export workspace',
     '  --instance-dir <dir>      Fresh prepared client directory',
     '  --shared-layout <file>    Persistent append-only layout for the pack',
+    '  --reuse-packs <dirs>      Comma-separated previous v7 pack directories',
     '',
     'Client identity/automation:',
     '  --username <name>         Offline Minecraft identity (default: GTNH)',
@@ -93,6 +94,10 @@ function parseCli(args: string[]): CliOptions {
     } else if (flag === '--shared-layout') {
       [value, index] = takeValue(args, index, flag);
       result.sharedLayoutPath = value;
+    } else if (flag === '--reuse-packs') {
+      [value, index] = takeValue(args, index, flag);
+      result.reusePacks = value.split(',').map((path) => path.trim());
+      if (result.reusePacks.some((path) => !path)) throw new Error('--reuse-packs requires nonempty directories');
     } else if (flag === '--username') {
       [value, index] = takeValue(args, index, flag);
       result.username = value;

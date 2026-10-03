@@ -69,6 +69,17 @@ const BETA_3_RUNTIME_MODS: readonly RuntimeModPin[] = [
   { jarName: 'TwilightForest-2.7.40.jar', modId: 'TwilightForest', version: '2.7.40', sourceName: 'TwilightForest' }
 ];
 
+const RC_1_RUNTIME_MODS: readonly RuntimeModPin[] = [
+  { jarName: 'cropsnh-2.0.129.jar', modId: 'cropsnh', version: '2.0.129', sourceName: 'CropsNH' },
+  { jarName: 'gregtech-5.09.54.183.jar', modId: 'gregtech', version: '5.09.54.183', sourceName: 'GT5-Unofficial' },
+  { jarName: 'BloodMagic-1.9.13.jar', modId: 'AWWayofTime', version: '1.9.13', sourceName: 'BloodMagic' },
+  { jarName: 'EnhancedLootBags-1.3.5.jar', modId: 'enhancedlootbags', version: '1.3.5', sourceName: 'EnhancedLootBags' },
+  { jarName: 'vendingmachine-0.4.100.jar', modId: 'vendingmachine', version: '0.4.100', sourceName: 'VendingMachine' },
+  { jarName: 'NEICustomDiagram-1.8.35.jar', modId: 'neicustomdiagram', version: '1.8.35', sourceName: 'NEICustomDiagram' },
+  { jarName: 'roguelike-1.6.6-GTNH.jar', modId: 'Roguelike', version: '1.6.6-GTNH', sourceName: 'RoguelikeDungeons' },
+  { jarName: 'TwilightForest-2.7.42.jar', modId: 'TwilightForest', version: '2.7.42', sourceName: 'TwilightForest' }
+];
+
 export const DIRECT_EXPORT_PROFILES: Readonly<Record<string, DirectExportProfile>> = {
   '2.9.0-beta-2': {
     version: '2.9.0-beta-2',
@@ -89,6 +100,16 @@ export const DIRECT_EXPORT_PROFILES: Readonly<Record<string, DirectExportProfile
     sha256: 'f814cca68c7d4be529ce1247c5dcc9d665a65e7136a885b69f52175a4e0c8aed',
     sourcePage: 'https://www.gtnewhorizons.com/version-history/',
     runtimeMods: BETA_3_RUNTIME_MODS
+  },
+  '2.9.0-RC-1': {
+    version: '2.9.0-RC-1',
+    archiveFileName: 'GT_New_Horizons_2.9.0-RC-1_Java_17-26.zip',
+    clientUrl:
+      'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-RC-1_Java_17-26.zip',
+    bytes: 727_184_781,
+    sha256: 'a665e7cfdfa79cd260a7c60816658a75a3c58eaacf9268478ac07e3413241368',
+    sourcePage: 'https://www.gtnewhorizons.com/version-history/',
+    runtimeMods: RC_1_RUNTIME_MODS
   }
 };
 
@@ -129,6 +150,7 @@ export interface ProcessContext {
   workDirectory: string;
   repositoryRoot: string;
   sharedLayoutPath: string;
+  reusePacks?: string[];
 }
 
 export interface DirectExportDependencies {
@@ -165,6 +187,7 @@ export interface DirectExportOptions {
   xmx?: string;
   /** Persistent append-only prefix layout used by the canonical pack. */
   sharedLayoutPath?: string;
+  reusePacks?: string[];
   launchTimeoutMs?: number;
   automationTimeoutMs?: number;
   pollIntervalMs?: number;
@@ -665,7 +688,8 @@ async function invokeProcess(
   await commandRunner(tsxInvocation(repositoryRoot, 'tools/data-export/process.ts', [
     '--session', context.sessionPath,
     '--work-dir', context.workDirectory,
-    '--layout', context.sharedLayoutPath
+    '--layout', context.sharedLayoutPath,
+    ...(context.reusePacks?.length ? ['--reuse-packs', context.reusePacks.join(',')] : [])
   ]));
 }
 
@@ -810,7 +834,8 @@ export async function orchestrateDirectExport(options: DirectExportOptions = {})
       sessionPath,
       workDirectory,
       repositoryRoot,
-      sharedLayoutPath: resolve(options.sharedLayoutPath)
+      sharedLayoutPath: resolve(options.sharedLayoutPath),
+      reusePacks: options.reusePacks?.map((path) => resolve(path))
     };
     if (dependencies.process) await dependencies.process(processContext);
     else await invokeProcess(processContext, repositoryRoot, dependencies.commandRunner ?? defaultCommandRunner);

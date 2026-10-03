@@ -24,6 +24,11 @@ const repositoryRoot = process.cwd();
 const packDirectory = resolve(requiredArgument(args, 'pack'));
 const mode = args.get('mode') ?? 'publish';
 const replaceExisting = args.get('replace') === 'true';
+const rolloutArgument = args.get('rollout-epoch');
+const rolloutEpoch = rolloutArgument === undefined ? undefined : Number(rolloutArgument);
+if (rolloutEpoch !== undefined && (mode !== 'activate' || !Number.isSafeInteger(rolloutEpoch) || rolloutEpoch <= 0)) {
+  throw new Error('--rollout-epoch requires --mode activate and a positive integer');
+}
 if (mode !== 'stage' && mode !== 'activate' && mode !== 'publish') {
   throw new Error(`Unsupported publish mode ${mode}; expected stage, activate, or publish`);
 }
@@ -263,7 +268,7 @@ const next = withPublishedVersion(versions, {
   packManifestUrl: `./data/${basename(destination)}/pack-manifest.json`,
   catalogBytes: catalogPhysicalBytes(),
   offlineBytes: manifest.totals.offlineBytes
-}, now);
+}, now, rolloutEpoch);
 const temporaryVersions = `${versionsPath}.tmp-${process.pid}`;
 await writeFile(temporaryVersions, `${JSON.stringify(next, null, 2)}\n`, { flag: 'wx' });
 await rename(temporaryVersions, versionsPath);

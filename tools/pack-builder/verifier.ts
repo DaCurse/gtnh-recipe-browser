@@ -13,7 +13,9 @@ import type {
   GeneratedPackManifest,
   ImmutableAsset
 } from './manifest';
-import type { SpecialRecord } from './special';
+import { canonicalSpecialDataJson, parseBrowserNeiSpecial, type SpecialRecord } from './special';
+import { repairSpecialServiceIcons } from './specialServiceIcons';
+import { expandGtOreSpecialData } from './specialOreAliases';
 import {
   sharedPrefixLayoutFingerprint,
   sharedRepository,
@@ -252,8 +254,17 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
     } catch (error) {
       throw new Error(`Special input is missing: ${error instanceof Error ? error.message : String(error)}`, { cause: error });
     }
-    if (sha256(sidecar) !== manifest.source.specialDataSha256) {
-      throw new Error('Special input SHA-256 does not match manifest');
+    let specialData = parseBrowserNeiSpecial(sidecar);
+    if (options.dataPath) {
+      const sourceBytes = await readFile(options.dataPath);
+      if (sha256(sourceBytes) !== manifest.source.dataSha256) {
+        throw new Error('Source data SHA-256 does not match manifest');
+      }
+      const source = decodeFormat5(sourceBytes);
+      specialData = expandGtOreSpecialData(repairSpecialServiceIcons(specialData, source), source);
+    }
+    if (sha256(Buffer.from(canonicalSpecialDataJson(specialData))) !== manifest.source.specialDataSha256) {
+      throw new Error('Special input SHA-256 does not match manifest; pass --data for source-dependent normalization');
     }
   }
 

@@ -1,7 +1,7 @@
 # Exporting a GTNH dataset
 
 There is one supported release path. It launches a fresh GTNH client directly from the reviewed archive, runs the
-unchanged format-v5 source exporter, processes the private NESQL output, builds the format-6 browser pack twice, and
+unchanged format-v5 source exporter, processes the private NESQL output, builds the format-7 browser pack twice, and
 verifies every result.
 Both `gtnh@ShadowTheAge/` and `nesql-exporter@ShadowTheAge/` remain pinned, read-only submodules.
 
@@ -21,8 +21,10 @@ player installation.
 
 ```sh
 npm run export:direct -- \
-  --version 2.9.0-beta-2 \
-  --shared-layout tools/pack-builder/layouts/2.9.0.json
+  --version 2.9.0-RC-1 \
+  --shared-layout tools/pack-builder/layouts/2.9.0.json \
+  --reuse-packs public/data/2.9.0-beta-3-v7-r131dafd54f93 \
+  --java /usr/lib/jvm/java-21-openjdk/bin/java
 ```
 
 The profile pins the official archive URL, byte size, and SHA-256. A local archive can be supplied with
@@ -38,19 +40,22 @@ and processing must write `process-result.json`.
 ## Verify and release
 
 Processing validates the combined tooltip schema, all ten special-data categories, every goods/ore-dictionary/icon
-reference, the browser retention policy, deterministic format-6 pack bytes, hashes, shard limits, and sprite samples. The
+reference, the browser retention policy, deterministic format-7 pack bytes, hashes, shard limits, and sprite samples. The
 sidecar digest participates in the generated revision, but the raw sidecar is not copied into the browser pack: its
 records are already present in the shared special shards. Verify a generated pack explicitly when diagnosing a run:
 
 ```sh
 npm run verify-pack -- \
   --pack .export-work/2.9.0-beta-2-direct/pack \
-  --atlas .export-work/2.9.0-beta-2-direct/processed/atlas.webp
+  --atlas .export-work/2.9.0-beta-2-direct/processed/atlas.webp \
+  --data .export-work/2.9.0-beta-2-direct/processed/data.bin \
+  --layout .export-work/2.9.0-beta-2-direct/shared-layout.json
 ```
 
 Format-6 logical catalog, recipe, and special descriptors reconstruct from record-page segments; only record pages
 and icon sheets are physical assets. A local build's physical objects are verified from its `assets/sha256/` directory. Add
-`--special-data <browser-nei-special.json>` when you also want the verifier to check the recorded input digest.
+`--special-data <browser-nei-special.json>` with `--data <processed-data.bin>` when you also want the verifier to check the recorded
+normalized input digest, including repaired service icons and generated ore aliases.
 For a staged global object store, pass `--asset-directory public/assets/sha256`.
 
 To reuse frozen record pages from previous releases, pass a comma-separated list to processing. Build directories use
@@ -62,21 +67,22 @@ npm run export:process -- \
   --session .export-work/2.9.0-beta-3-direct/export-session.json \
   --work-dir .export-work/2.9.0-beta-3-direct \
   --layout tools/pack-builder/layouts/2.9.0.json \
-  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-v6-r<revision>
+  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-v7-r<revision>
 ```
 
-The reuse list is applied identically to both deterministic builds. The source exporter remains format5; `--reuse-packs`
-only affects format-6 record-page construction.
+Processing append-only extends the supplied published layout with the processed records and writes
+`shared-layout.json` beside the pack. It uses that same resolved layout and reuse list for both deterministic builds. The source exporter remains format5; `--reuse-packs`
+only affects format-7 record-page construction.
 
 The canonical pack directory contains only `pack-manifest.json` and its local
 `assets/sha256/` object source. Run provenance stays beside the pack in the
 ignored work directory and is not part of the browser dataset. Publishing
-accepts only format 6, copies only the manifest into the dataset directory, and
+accepts only format 7, copies only the manifest into the dataset directory, and
 places immutable physical objects in the global SHA-256 store. Generated
-dataset IDs include `v6`; the publisher rejects replacing a different manifest
+dataset IDs include `v7`; the publisher rejects replacing a different manifest
 at an existing immutable dataset URL.
 
-Stage the immutable format-6 manifest and its physical objects first:
+Stage the immutable format-7 manifest and its physical objects first:
 
 ```sh
 npm run export:publish -- \
@@ -99,15 +105,18 @@ Only after that succeeds, activate the already staged bytes:
 ```sh
 npm run export:publish -- \
   --pack .export-work/2.9.0-beta-2-direct/pack \
-  --mode activate
+  --mode activate \
+  --rollout-epoch <new-positive-epoch>
 ```
 
+Use a rollout epoch greater than the current `versions-v7.json` epoch (RC1 uses 2). It targets the
+activated dataset once for returning users; subsequent deliberate version choices persist.
 Run `npm run quality` before committing the index change. The 2.9.0 beta
-releases use the persistent shared layout; the 2.8.0 pack remains as a small
+releases and RC1 use the persistent shared layout; the 2.8.0 pack remains as a small
 historical/benchmark dataset.
 
 Staging and activation garbage-collect global SHA objects not referenced by
-any published format-6 manifest, so replaced or abandoned builds do not remain
+any published format-7 or frozen v6 bridge manifest, so replaced or abandoned builds do not remain
 in the deployed object pool.
 
 The former interactive/launcher-assisted export procedure is retired; its implementation history is preserved in

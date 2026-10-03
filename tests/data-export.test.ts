@@ -242,6 +242,11 @@ describe('data export tooling', () => {
 
     expect(withPublishedVersion(existing, latest, 'now').versions.map((entry) => entry.datasetId))
       .toEqual(['2.9.0-beta-2-r2', '2.8.0-r1']);
+    const rollout = withPublishedVersion(existing, latest, 'now', 2);
+    expect(rollout.rollout).toEqual({ epoch: 2, targetDatasetId: latest.datasetId });
+    expect(withPublishedVersion(rollout, latest, 'later').rollout).toEqual(rollout.rollout);
+    expect(() => withPublishedVersion(rollout, latest, 'later', 2)).toThrow('greater than');
+    expect(() => withPublishedVersion(existing, latest, 'later', -1)).toThrow('positive integer');
   });
 
   it('keeps the current format index on format-safe immutable dataset URLs', async () => {

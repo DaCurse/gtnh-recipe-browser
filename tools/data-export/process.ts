@@ -5,6 +5,9 @@ import { dirname, join, resolve } from 'node:path';
 import { buildPack } from '../pack-builder/builder';
 import { decodeFormat5 } from '../pack-builder/decoder';
 import { verifyPack } from '../pack-builder/verifier';
+import { extendSharedLayout, type SharedPartitionLayout } from '../pack-builder/sharedLayout';
+import { expandGtOreSpecialData } from '../pack-builder/specialOreAliases';
+import { repairSpecialServiceIcons } from '../pack-builder/specialServiceIcons';
 import {
   argumentsMap,
   assertPathMissing,
@@ -29,8 +32,8 @@ function usage(): string {
     '    [--resume-processed true]',
     '',
     'The source exporter and processed input remain ShadowTheAge format-v5.',
-    'This command emits and verifies the canonical shared format-6 pack.',
-    'Reuse paths are existing format-6 build or published dataset directories whose record pages may be frozen.'
+    'This command emits and verifies the canonical shared format-7 pack.',
+    'Reuse paths are existing format-7 build or published dataset directories whose record pages may be frozen.'
   ].join('\n');
 }
 
@@ -66,11 +69,12 @@ const reusePacks = reusePacksArgument === undefined
 if (reusePacks.some((path) => path.length === 0)) {
   throw new Error('--reuse-packs must contain comma-separated pack directories');
 }
-const resolvedLayoutPath = resolve(sharedLayoutPath);
+const baseLayoutPath = resolve(sharedLayoutPath);
 const resolvedReusePacks = reusePacks.map((path) => resolve(path));
 const sessionPath = resolve(requiredArgument(args, 'session'));
 const session = await readExportSession(sessionPath);
 const outputWorkDirectory = resolve(args.get('work-dir') ?? session.workDirectory);
+const resolvedLayoutPath = join(outputWorkDirectory, 'shared-layout.json');
 const resumeProcessed = args.get('resume-processed') === 'true';
 const nesqlRoot = join(session.instanceDirectory, '.minecraft/nesql');
 const scripts = await findFiles(nesqlRoot, 'nesql-db.script');
@@ -238,6 +242,13 @@ if (!tooltips.some((tooltip) => tooltip.includes('\n') || /<br\s*\/?>/i.test(too
   throw new Error('Processed repository has no multiline tooltips');
 }
 
+// Extend the published trie using processed records before either deterministic build.
+// The source layout stays immutable; the resolved layout is release provenance in the workspace.
+const baseLayout = JSON.parse(await readFile(baseLayoutPath, 'utf8')) as SharedPartitionLayout;
+const layoutSpecial = expandGtOreSpecialData(repairSpecialServiceIcons(specialData, repository), repository);
+const releaseLayout = extendSharedLayout(baseLayout, [repository], [layoutSpecial]);
+await writeFile(resolvedLayoutPath, `${JSON.stringify(releaseLayout, null, 2)}\n`);
+
 const sourceRevision = combinedRevision(data, atlas);
 const options = {
   dataPath,
@@ -308,7 +319,9 @@ const provenance = {
   pack: {
     formatVersion: 7,
     sourceFormatVersion: repository.formatVersion,
-    sharedLayoutSha256: await sha256File(resolvedLayoutPath)
+    sharedLayoutSha256: await sha256File(resolvedLayoutPath),
+    baseLayoutSha256: await sha256File(baseLayoutPath),
+    reusePacks: resolvedReusePacks
   },
   deterministicPackSha256: firstDigest,
   verification
