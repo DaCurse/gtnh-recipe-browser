@@ -47,6 +47,8 @@ import {
 } from './catalogSearch';
 import {
   activateDataset,
+  cacheMetadata,
+  getCachedMetadata,
   cachedAssetSizes,
   getDataset,
   listDatasets,
@@ -69,6 +71,7 @@ import {
   CURRENT_DATASET_CACHE_VERSION,
   isLegacyDatasetState,
   preferredDatasetId,
+  startupDatasetSelection,
   replacementDatasetActive
 } from './datasetVersions';
 
@@ -551,7 +554,31 @@ export class DatasetRepository {
     datasetId?: string,
     onProgress?: (progress: DatasetLoadProgress) => void,
     /** The active repository, whose already-decoded immutable data may be borrowed. */
-    reuseFrom?: DatasetRepository
+    reuseFrom?: DatasetRepository,
+    startup = false
+  ): Promise<DatasetRepository> {
+    try {
+      return await DatasetRepository.loadSelected(datasetId, onProgress, reuseFrom, startup);
+    } catch (error) {
+      if (!startup) throw error;
+      const installed = await listDatasets();
+      const active = installed.find((state) => state.active && !isLegacyDatasetState(state));
+      const indexUrl = new URL('./versions-v7.json', document.baseURI).href;
+      const index = await getCachedMetadata<VersionsIndex>(`versions:${indexUrl}`);
+      const epoch = await getCachedMetadata<number>('dataset-rollout-epoch');
+      const selection = index && startupDatasetSelection(index.value, installed, datasetId, epoch?.value);
+      if (!active || !selection?.rolloutEpoch || selection.datasetId === active.datasetId
+        || selection.datasetId !== index?.value.rollout?.targetDatasetId) throw error;
+      // Keep the usable v7 cache when a rollout bootstrap is unavailable. Retry the epoch next startup.
+      return DatasetRepository.loadSelected(active.datasetId, onProgress, reuseFrom);
+    }
+  }
+
+  private static async loadSelected(
+    datasetId?: string,
+    onProgress?: (progress: DatasetLoadProgress) => void,
+    reuseFrom?: DatasetRepository,
+    startup = false
   ): Promise<DatasetRepository> {
     const progressContext: { gtnhVersion?: string } = {};
     let lastPercent = 0;
@@ -567,9 +594,14 @@ export class DatasetRepository {
     const versionsResult = await loadVersionsIndex();
     const versions = versionsResult.value;
     const installed = await listDatasets();
-    const selectedId = preferredDatasetId(versions.versions, installed, datasetId);
+    const applied = startup ? await getCachedMetadata<number>('dataset-rollout-epoch') : null;
+    const selection = startup
+      ? startupDatasetSelection(versions, installed, datasetId, applied?.value)
+      : { datasetId: preferredDatasetId(versions.versions, installed, datasetId), rolloutEpoch: undefined };
+    const selectedId = selection.datasetId;
     const published = versions.versions.find((version) => version.datasetId === selectedId);
-    const installedSelection = installed.find((dataset) => dataset.datasetId === selectedId);
+    const installedSelection = installed.find((dataset) => dataset.datasetId === selectedId
+      && !isLegacyDatasetState(dataset) && !dataset.datasetId.includes('-v6-'));
     const selected = published ?? (installedSelection ? {
       datasetId: installedSelection.datasetId,
       gtnhVersion: installedSelection.gtnhVersion,
@@ -727,6 +759,7 @@ export class DatasetRepository {
       report(97, 'Migrating cached dataset bookkeeping');
       await migrateObsoleteDatasetStates(manifest.datasetId, obsoleteStates);
     }
+    repository.pendingRolloutEpoch = selection.rolloutEpoch;
     report(100, 'Catalog ready');
     return repository;
   }
@@ -735,8 +768,14 @@ export class DatasetRepository {
     return DatasetRepository.load(undefined, onProgress);
   }
 
+  private pendingRolloutEpoch?: number;
+
   async activate(): Promise<void> {
     await activateDataset(this.datasetId);
+    if (this.pendingRolloutEpoch !== undefined) {
+      await cacheMetadata('dataset-rollout-epoch', this.manifestUrl, this.pendingRolloutEpoch);
+      this.pendingRolloutEpoch = undefined;
+    }
   }
 
   private async loadGoodsDetailShard(

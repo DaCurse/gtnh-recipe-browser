@@ -124,7 +124,10 @@ Unused exporter numeric IDs and unlocalized names are not published. Ordinary NB
 variant fingerprint; CropsNH state remains in browse records because seed variants require it before selection.
 
 The new shell reads only `versions-v7.json`. The existing `versions.json` and v6 public manifests are
-frozen for old PWA shells until a service-worker update reloads them. Canonical build, verification,
+frozen for old PWA shells. The generated worker imports a takeover hook that navigates legacy windows
+after successful shell activation, preserving their URLs even when catalog loading is stalled. Current shells
+answer its probe and reload once on controller replacement. Startup registers and checks the worker before
+loading data, with a three-second bound for unavailable update servers. Canonical build, verification,
 and publication are v7-only. Cache bookkeeping version 3 migrates same-semantic-version obsolete rows
 only after successful bootstrap load, retaining shared hashes and pruning only those rows' unreferenced blobs.
 Each v7 manifest remains independently selectable; no runtime patch chain or expanded catalog cache exists.
@@ -166,3 +169,10 @@ starts NESQL only after the client player and NEI item registry are ready.
 - Move reusable test builders to `tests/support/`; keep immutable compatibility data in `tests/fixtures/`.
 
 Run `npm run quality` before committing. `npm run deadcode` must remain clean; configure genuine dynamic entry points explicitly instead of broadly ignoring source directories.
+
+The optional v7 index `rollout` policy carries a positive integer `epoch` and a published `targetDatasetId`.
+Startup treats a URL repeating the saved active dataset as saved state and applies an unacknowledged epoch once.
+Other explicit supported links and manager selections remain deliberate choices. Successful activation records
+its epoch in IndexedDB metadata; a failed target load leaves it pending. If a usable active v7 dataset exists,
+startup falls back to it while the rollout target is unavailable. Legacy cache rows and frozen bridge links are
+resolved to published semantic-version replacements before any manifest fetch. No v6 manifest is selectable.

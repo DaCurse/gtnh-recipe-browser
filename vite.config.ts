@@ -1,13 +1,26 @@
+import { createHash } from 'node:crypto';
+import { readFileSync, readdirSync } from 'node:fs';
 import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 
+// One token identifies the shell and worker, including changes to either side.
+function shellSources(directory: string): string {
+  return readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
+    .map((entry) => entry.isDirectory() ? shellSources(`${directory}/${entry.name}`)
+      : readFileSync(`${directory}/${entry.name}`, 'utf8')).join('');
+}
+const shellRevision = createHash('sha256').update(shellSources('src'))
+  .update(readFileSync('public/sw-takeover.js')).digest('hex').slice(0, 16);
+
 export default defineConfig({
+  define: { __SHELL_REVISION__: JSON.stringify(shellRevision) },
   base: './',
   plugins: [
     svelte(),
     VitePWA({
-      registerType: 'autoUpdate',
+      registerType: 'prompt',
+      injectRegister: null,
       includeAssets: [
         'favicon.ico',
         'assets/inventory-slot.webp',
@@ -36,8 +49,11 @@ export default defineConfig({
         ]
       },
       workbox: {
+        clientsClaim: false,
+        skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,otf}'],
-        navigateFallback: 'index.html'
+        navigateFallback: 'index.html',
+        importScripts: [`sw-takeover.js?revision=${shellRevision}`]
       }
     })
   ]

@@ -6,7 +6,7 @@ import { encode } from '@msgpack/msgpack';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DatasetRepository } from '../src/lib/dataset';
-import { getDataset, removeDataset, saveDataset } from '../src/lib/storage';
+import { getCachedMetadata, getDataset, removeDataset, saveDataset } from '../src/lib/storage';
 import { sharedPrefixLayoutFingerprint } from '../tools/pack-builder/sharedLayout';
 import { buildRecordPages } from '../tools/pack-builder/recordPages';
 import { recordPageSelections } from '../src/lib/recordPages';
@@ -309,5 +309,43 @@ describe('canonical DatasetRepository special shards', () => {
     expect(fetchMock.mock.calls.some(([input]) => assetUrls.has(String(input)))).toBe(false);
     expect(fetchMock.mock.calls.some(([input]) => specialPageUrls.has(String(input)))).toBe(false);
     expect(await getDataset(datasetId)).toMatchObject({ assetHashes: [] });
+
+    // A rollout outage must retain the active dataset and leave the epoch pending.
+    await switched.activate();
+    const rolloutId = 'fixture-rc';
+    let targetAvailable = false;
+    fetchMock.mockImplementation(async (input) => {
+      const url = String(input);
+      if (url === `${baseUrl}versions-v7.json`) {
+        return response(url, JSON.stringify({ schemaVersion: 1,
+          rollout: { epoch: 2, targetDatasetId: rolloutId },
+          versions: [
+            { datasetId: rolloutId, gtnhVersion: 'fixture-rc', revision: 'rc', packManifestUrl: 'packs/rc.json' },
+            { datasetId, gtnhVersion: 'fixture', revision: 'shared', packManifestUrl: 'packs/manifest.json' }
+          ] }), 'application/json');
+      }
+      if (url === `${baseUrl}packs/rc.json`) {
+        return targetAvailable
+          ? response(url, JSON.stringify({ ...manifest, datasetId: rolloutId, gtnhVersion: 'fixture-rc' }), 'application/json')
+          : new Response('unavailable', { status: 503 });
+      }
+      return originalFetch(input);
+    });
+    const deferred = await DatasetRepository.load(datasetId, undefined, switched, true);
+    expect(deferred.datasetId).toBe(datasetId);
+    await deferred.activate();
+    expect(await getCachedMetadata('dataset-rollout-epoch')).toBeNull();
+    expect(await getDataset(datasetId)).toMatchObject({ active: true });
+    expect(await getDataset(rolloutId)).toBeNull();
+    targetAvailable = true;
+    const migrated = await DatasetRepository.load(datasetId, undefined, switched, true);
+    expect(migrated.datasetId).toBe(rolloutId);
+    expect(await getCachedMetadata('dataset-rollout-epoch')).toBeNull();
+    await migrated.activate();
+    expect(await getCachedMetadata('dataset-rollout-epoch')).toMatchObject({ value: 2 });
+    const manual = await DatasetRepository.load(datasetId);
+    await manual.activate();
+    expect((await DatasetRepository.load(datasetId, undefined, manual, true)).datasetId).toBe(datasetId);
+
   });
 });

@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { registerSW } from 'virtual:pwa-register';
+  import { initializeShellUpdate } from './lib/shellUpdate';
   import AppHeader from './lib/AppHeader.svelte';
   import ApplicationState from './lib/ApplicationState.svelte';
   import CatalogPane from './lib/CatalogPane.svelte';
@@ -273,7 +273,8 @@
           datasetProgress = percent;
           datasetStage = stage;
         },
-        previousRepository ?? undefined
+        previousRepository ?? undefined,
+        targetDatasetId === undefined
       );
       validateRepository(loaded);
       await loaded.activate();
@@ -338,13 +339,7 @@
       () => void datasetManager.refreshAvailability(),
       15 * 60 * 1_000
     );
-    registerSW({
-      immediate: true,
-      onNeedReload: () => window.location.reload(),
-      onNeedRefresh: () => updateReady = true,
-      onRegisterError: (error) => console.error('Service worker registration failed', error)
-    });
-    void loadDataset();
+    void initializeShellUpdate().then(() => loadDataset());
     return () => {
       removeEventListener('popstate', handlePopState);
       removeEventListener('keydown', handleShortcut);

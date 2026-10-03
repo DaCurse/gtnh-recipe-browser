@@ -6,6 +6,7 @@ import type { MinecraftFormattingSpan } from './minecraftText';
 export interface VersionsIndex {
   schemaVersion: number;
   versions: DatasetVersion[];
+  rollout?: { epoch: number; targetDatasetId: string };
 }
 
 export interface DatasetAsset {

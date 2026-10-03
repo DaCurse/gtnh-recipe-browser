@@ -53,6 +53,7 @@ export interface VersionsIndex {
   schemaVersion: 1;
   generatedAt: string;
   versions: VersionsIndexEntry[];
+  rollout?: { epoch: number; targetDatasetId: string };
 }
 
 interface SharedObjectManifest {
@@ -246,6 +247,7 @@ export function withPublishedVersion(
   if (index.schemaVersion !== 1) throw new Error(`Unsupported versions index ${index.schemaVersion}`);
   return {
     schemaVersion: 1,
+    ...(index.rollout ? { rollout: index.rollout } : {}),
     generatedAt,
     // Keep one immutable release per GTNH version. A replacement revision must
     // become the first entry without leaving the previous release selectable.

@@ -5,6 +5,7 @@ import {
   isLegacyDatasetState,
   legacyDatasetStatesFor,
   preferredDatasetId,
+  startupDatasetSelection,
   replacementDatasetActive,
   reconcileDatasetVersions
 } from '../src/lib/datasetVersions';
@@ -113,5 +114,40 @@ describe('dataset revision availability', () => {
       [oldDataset, latestState],
       latest.datasetId
     )).toBe(false);
+  });
+});
+
+
+describe('startup rollout', () => {
+  const beta = version('2.9.0-beta-3-v7-current', '2.9.0-beta-3');
+  const rc = version('2.9.0-RC-1-v7-current', '2.9.0-RC-1');
+  const active = { ...stored(beta.datasetId, true), gtnhVersion: beta.gtnhVersion };
+  const index = { schemaVersion: 1, versions: [rc, beta], rollout: { epoch: 2, targetDatasetId: rc.datasetId } };
+
+  it('migrates saved active URLs once and preserves later manual choices', () => {
+    expect(startupDatasetSelection(index, [active], beta.datasetId, 1))
+      .toEqual({ datasetId: rc.datasetId, rolloutEpoch: 2 });
+    expect(startupDatasetSelection(index, [active], beta.datasetId, 2))
+      .toEqual({ datasetId: beta.datasetId, rolloutEpoch: undefined });
+    expect(startupDatasetSelection(index, [active], undefined, undefined).datasetId).toBe(rc.datasetId);
+  });
+
+  it('honors another explicit link and acknowledges its choice only after success', () => {
+    const old = version('old', '2.8.0');
+    expect(startupDatasetSelection({ ...index, versions: [rc, beta, old] }, [active], old.datasetId, 1))
+      .toEqual({ datasetId: old.datasetId, rolloutEpoch: 2 });
+    expect(startupDatasetSelection(index, [active], beta.datasetId, 1).rolloutEpoch).toBe(2);
+  });
+
+  it('maps frozen bookmarks without installed rows and never selects legacy manifests', () => {
+    expect(preferredDatasetId([beta], [], '2.9.0-beta-3-v6-rd5d4ec826817')).toBe(beta.datasetId);
+    const legacy = { ...active, cacheVersion: 2, datasetId: 'unknown-v6-row' };
+    expect(preferredDatasetId([rc], [legacy])).toBe(rc.datasetId);
+    expect(preferredDatasetId([rc], [legacy], legacy.datasetId)).toBeUndefined();
+  });
+
+  it('ignores invalid or unpublished rollout targets', () => {
+    expect(startupDatasetSelection({ ...index, rollout: { epoch: 3, targetDatasetId: 'missing' } }, [active], undefined, 1))
+      .toEqual({ datasetId: beta.datasetId, rolloutEpoch: undefined });
   });
 });

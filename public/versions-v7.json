@@ -29,5 +29,9 @@
       "catalogBytes": 2077115,
       "offlineBytes": 31166046
     }
-  ]
+  ],
+  "rollout": {
+    "epoch": 1,
+    "targetDatasetId": "2.9.0-beta-3-v7-r131dafd54f93"
+  }
 }
