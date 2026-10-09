@@ -397,25 +397,21 @@
         {entryById}
         navigate={(id, view) => select(id, true, view)}
       />
-      {#if itemDataLoading}
-        <p role="status">Loading item data…</p>
-      {:else if itemDataError}
-        <p role="alert">{itemDataError}</p>
-      {:else}
-        <RecipeBrowser
-          {repository}
-          {selected}
-          {mode}
-          {recipeQuery}
-          {specialType}
-          {specialScope}
-          active={detailsOpen}
-          setRecipeQuery={setRecipeQuery}
-          {setMode}
-          setSpecialNavigation={setSpecialNavigation}
-          navigate={(id, view) => select(id, true, view)}
-        />
-      {/if}
+      <RecipeBrowser
+        {repository}
+        {selected}
+        {mode}
+        {recipeQuery}
+        {specialType}
+        {specialScope}
+        active={detailsOpen}
+        {itemDataLoading}
+        {itemDataError}
+        setRecipeQuery={setRecipeQuery}
+        {setMode}
+        setSpecialNavigation={setSpecialNavigation}
+        navigate={(id, view) => select(id, true, view)}
+      />
     </section>
   </main>
   {/if}

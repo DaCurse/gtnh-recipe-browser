@@ -22,6 +22,8 @@
     specialType,
     specialScope,
     active,
+    itemDataLoading,
+    itemDataError,
     recipeQuery,
     setRecipeQuery,
     setMode,
@@ -34,6 +36,8 @@
     specialType: string;
     specialScope: SpecialScope;
     active: boolean;
+    itemDataLoading: boolean;
+    itemDataError: string;
     recipeQuery: string;
     setRecipeQuery: (query: string) => void;
     setMode: (view: RecipeView) => void;
@@ -46,6 +50,7 @@
     selected: () => selected,
     mode: () => mode,
     active: () => active,
+    detailReady: () => !itemDataLoading && !itemDataError,
     specialType: () => specialType,
     specialScope: () => specialScope,
     onSpecialNavigation: (nextType, nextScope) => setSpecialNavigation(nextType, nextScope)
@@ -61,8 +66,8 @@
     if (nextQuery !== browserState.recipeQuery) browserState.recipeQuery = nextQuery;
   });
   const entryById = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
-  const related = $derived(browserState.related);
-  const types = $derived(browserState.types);
+  const related = $derived(itemDataLoading || itemDataError ? [] : browserState.related);
+  const types = $derived(itemDataLoading || itemDataError ? [] : browserState.types);
   const specialTypes = $derived(browserState.specialTypes);
   const visibleSpecialRecords = $derived(browserState.visibleSpecialRecords);
   const visibleRecipes = $derived(browserState.visibleRecipes);
@@ -250,7 +255,7 @@
       class="category-export"
       type="button"
       onclick={() => requestExport('category')}
-      disabled={exportWorking || browserState.recipeLoading || browserState.specialLoading}
+      disabled={itemDataLoading || Boolean(itemDataError) || exportWorking || browserState.recipeLoading || browserState.specialLoading}
       title={categoryExportLabel}
       aria-label={categoryExportLabel}
     >
@@ -367,7 +372,7 @@
     <button
       type="button"
       onclick={() => requestExport('pane')}
-      disabled={exportWorking || browserState.recipeLoading || browserState.specialLoading}
+      disabled={itemDataLoading || Boolean(itemDataError) || exportWorking || browserState.recipeLoading || browserState.specialLoading}
       title={paneExportLabel}
       aria-label={paneExportLabel}
     >
@@ -380,7 +385,7 @@
       <button
         type="button"
         onclick={() => requestExport('machine')}
-        disabled={exportWorking || browserState.recipeLoading}
+        disabled={itemDataLoading || Boolean(itemDataError) || exportWorking || browserState.recipeLoading}
       >
         <svg class="export-icon" viewBox="0 0 24 24" aria-hidden="true">
           <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 20h14"></path>
@@ -393,11 +398,17 @@
 </div>
 
 <div class="recipe-list">
-  {#if browserState.itemDataLoading}
-    <div class="recipe-loading" aria-live="polite">
+  {#if itemDataError}
+    <div class="no-recipes recipe-error" role="alert">
+      <span aria-hidden="true">!</span>
+      <b>Could not load this item</b>
+      <p>{itemDataError}</p>
+    </div>
+  {:else if itemDataLoading || browserState.itemDataLoading}
+    <div class="recipe-loading" role="status">
       <span class="spinner" aria-hidden="true"></span>
-      <b>Loading item data…</b>
-      <p>Reading the detail partition for this item.</p>
+      <b>Loading {modeLabel}…</b>
+      <div class="load-progress compact indeterminate" aria-hidden="true"><span></span></div>
     </div>
   {:else if browserState.showingSpecial && browserState.specialLoading && browserState.specialRecords.length === 0}
     <div class:partial={browserState.specialRecords.length > 0} class="recipe-loading" aria-live="polite">

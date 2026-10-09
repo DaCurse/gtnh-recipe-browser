@@ -30,6 +30,7 @@ Optional browser checks use an externally installed Playwright module:
 ```sh
 npm run profile:incremental -- http://localhost:4173 <pack-dir> <playwright-module> 4
 npm run test:cached-startup -- http://localhost:4173 <playwright-module>
+npm run test:item-loading -- http://localhost:4173 <playwright-module> [screenshot-directory]
 ```
 
 The profile compares cold and warm mobile browsing under an optional CPU throttle. The cache check covers

@@ -135,8 +135,8 @@ Detail/group partitions additionally isolate reuse within their logical partitio
 
 `DatasetRepository.entryFor(id, signal)` hydrates and memoizes one detail partition. The application overlays
 that immutable result on the lightweight selected entry and cancels stale navigation. Recipe and special
-loaders call this boundary themselves. Recipe batches hydrate every referenced ingredient-group partition
-before filtering or materialization. Production fallbacks reference their effective ore dictionary instead
+loaders call this boundary themselves. Recipe batches hydrate the matching-side ingredient groups before filtering, then load presentation
+groups only for matching recipes. Production fallbacks reference their effective ore dictionary instead
 of duplicating its membership in every goods row; that group loads when recipes or special results need it.
 Matching scopes, shard relationships, and machine capabilities are computed at build time. Special tabs
 use precomputed per-category lookup counts; full handler lookup IDs remain in lazy special records.
@@ -148,10 +148,12 @@ The new shell reads only `versions-v7.json`. The existing `versions.json` and v6
 frozen for old PWA shells. The generated worker imports a takeover hook that navigates legacy windows
 after successful shell activation, preserving their URLs even when catalog loading is stalled. Current shells
 answer its probe and reload once on controller replacement. Startup registers and checks the worker before
-loading data, with a three-second bound for unavailable update servers. Canonical build, verification,
+loading data, with a 150-millisecond startup budget for unavailable update servers. Canonical build, verification,
 and publication are v7-only. Cache bookkeeping version 3 migrates same-semantic-version obsolete rows
 only after successful bootstrap load, retaining shared hashes and pruning only those rows' unreferenced blobs.
-Each v7 manifest remains independently selectable; no runtime patch chain or expanded catalog cache exists.
+Each v7 manifest remains independently selectable. Prepared catalogs and decoded lazy shards are cached
+per dataset; identical immutable downloads remain shared by hash. The detail pane mounts immediately on
+selection, displaying its tabs and loading indicator while details hydrate and recipe search initializes.
 
 Special records are semantic data, not exported screenshots. In particular, the
 GT ore-processing view lays out typed nodes and edges in the browser. Its layout

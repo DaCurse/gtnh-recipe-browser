@@ -41,3 +41,15 @@ warm startup took 2,158 ms, a stalled version-index refresh took 2,612 ms, and o
 2,440 ms. Saved searches and cached item bookmarks passed; cached item hydration reread zero
 compressed pages. Browser checks wait until requested assets appear in the verified cache index
 before measuring a settled warm refresh, including slower CDN sprite downloads.
+
+Item selection keeps the recipe pane mounted while detail data loads. Recipe-search preparation runs
+alongside detail hydration; exports remain disabled until details are ready.
+`npm run test:item-loading -- <preview-url> <playwright-module> [screenshot-directory]` stalls
+detail downloads and checks the immediate tabs/loading bar and subsequent view switching at desktop
+and mobile sizes with four-times CPU throttling.
+
+Sharing applies only to identical immutable physical downloads. Fully caching beta-3 and RC1 separately
+would require 165,764,195 bytes; 696 identical assets save 61,011,958 bytes (36.8%), leaving
+104,752,237 bytes combined. RC1 adds 27,790,086 bytes to a fully cached beta-3 installation.
+These figures come from the unique SHA-256 entries in each published manifest’s `recordPages` and
+`iconSheets`; they exclude per-version prepared/decoded caches, which trade extra storage for speed.

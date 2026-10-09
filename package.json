@@ -26,7 +26,8 @@
     "smoke:deploy": "node tools/deployment-smoke.mjs",
     "test:upgrade": "node tools/test-shell-upgrade.mjs",
     "test:rollout": "node tools/test-startup-rollout.mjs",
-    "test:cached-startup": "node tools/test-cached-startup.mjs"
+    "test:cached-startup": "node tools/test-cached-startup.mjs",
+    "test:item-loading": "node tools/test-item-loading.mjs"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3",

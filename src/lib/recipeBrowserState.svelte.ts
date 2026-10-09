@@ -18,6 +18,7 @@ interface RecipeBrowserContext {
   selected: () => CatalogEntry;
   mode: () => RecipeView;
   active: () => boolean;
+  detailReady?: () => boolean;
   specialType?: () => string;
   specialScope?: () => SpecialScope;
   onSpecialNavigation?: (specialType: string, specialScope: SpecialScope) => void;
@@ -169,7 +170,8 @@ export class RecipeBrowserState {
       const selected = this.context.selected();
       const mode = this.context.mode();
       const active = this.context.active();
-      if (!active || !this.recipeSearchReady) {
+      const detailReady = this.context.detailReady?.() ?? true;
+      if (!active || !detailReady || !this.recipeSearchReady) {
         this.recipeAbortController?.abort();
         this.specialAbortController?.abort();
         return;
@@ -389,6 +391,7 @@ export class RecipeBrowserState {
   }
 
   async refresh() {
+    if (!(this.context.detailReady?.() ?? true)) return;
     const repository = this.context.repository();
     const selected = this.context.selected();
     const mode = this.context.mode();
