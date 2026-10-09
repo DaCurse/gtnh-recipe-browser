@@ -33,3 +33,11 @@ A separate run with the production service worker measured warm refresh at 2,400
 - RC1 rollout browser test: beta-3 startup state migrated once to RC1; matching items survived, and later explicit links and dataset-manager switching remained selected.
 
 Browser reports are retained locally under `.export-work/performance-review/`. The new prepared cache is created once after the first successful startup; interrupted or quota-limited preparation falls back to verified source pages. Subsequent refreshes use the completed cache. Immutable source manifests, pages, and sprites were not regenerated for this change.
+
+## Live deployment
+
+The Netlify release was verified after publishing. With the production worker and 4× CPU throttling,
+warm startup took 2,158 ms, a stalled version-index refresh took 2,612 ms, and offline startup took
+2,440 ms. Saved searches and cached item bookmarks passed; cached item hydration reread zero
+compressed pages. Browser checks wait until requested assets appear in the verified cache index
+before measuring a settled warm refresh, including slower CDN sprite downloads.

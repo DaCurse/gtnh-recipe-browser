@@ -24,9 +24,14 @@ try {
   });
   const errors = [];
   const assets = [];
+  const requestedHashes = new Set();
   page.on('pageerror', (error) => errors.push(error.message));
   context.on('request', (request) => {
-    if (new URL(request.url()).pathname.includes('/assets/sha256/')) assets.push(request.url());
+    const path = new URL(request.url()).pathname;
+    if (path.includes('/assets/sha256/')) {
+      assets.push(request.url());
+      requestedHashes.add(path.split('/').at(-1));
+    }
   });
   const session = await context.newCDPSession(page);
   const keys = () => page.evaluate(() => new Promise((resolve, reject) => {
@@ -47,11 +52,33 @@ try {
     }
     throw new Error('Prepared cache did not finish');
   };
+  const waitForVerifiedAssets = async () => {
+    const deadline = performance.now() + 60_000;
+    while (performance.now() < deadline) {
+      const complete = await page.evaluate((hashes) => new Promise((resolve, reject) => {
+        const opening = indexedDB.open('gtnh-recipe-browser');
+        opening.onerror = () => reject(opening.error);
+        opening.onsuccess = () => {
+          const db = opening.result;
+          const request = db.transaction('asset-index').objectStore('asset-index').getAllKeys();
+          request.onsuccess = () => {
+            const saved = new Set(request.result);
+            db.close(); resolve(hashes.every((hash) => saved.has(hash)));
+          };
+          request.onerror = () => { db.close(); reject(request.error); };
+        };
+      }), [...requestedHashes]);
+      if (complete) return;
+      await page.waitForTimeout(100);
+    }
+    throw new Error('Dataset downloads were not verified and cached before refresh');
+  };
   await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
   await page.locator('.item-tile').first().waitFor({ timeout: 120_000 });
   await waitForCache((key) => /^prepared-v5:[a-f0-9]{64}$/.test(key));
   await page.evaluate(() => navigator.serviceWorker.ready.then(() => true));
   await page.waitForTimeout(500);
+  await waitForVerifiedAssets();
   assert(!(await keys()).some((key) => key.includes(':search')), 'Blank browsing must not prepare search data');
 
   await session.send('Emulation.setCPUThrottlingRate', { rate: 4 });
@@ -105,13 +132,14 @@ try {
   await page.waitForFunction(() => !document.querySelector('.recipe-loading') && !document.body.innerText.includes('Loading item data…'), undefined, { timeout: 60_000 });
   const itemUrl = page.url();
   await page.waitForTimeout(500);
+  await waitForVerifiedAssets();
   assets.length = 0;
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.locator('.detail.mobile-visible').waitFor({ timeout: 60_000 });
   await page.waitForFunction(() => !document.querySelector('.recipe-loading') && !document.body.innerText.includes('Loading item data…'), undefined, { timeout: 60_000 });
   await page.waitForTimeout(500);
   assert.equal(page.url(), itemUrl);
-  assert.equal(assets.length, 0, 'A cached item bookmark must not redownload lazy pages');
+  assert.equal(assets.length, 0, 'A cached item bookmark must not redownload lazy pages: ' + assets.join(', '));
   const lazyPageReads = (await page.evaluate(() => window.__assetReads)).filter((hash) => recordPageHashes.has(hash));
   assert.equal(lazyPageReads.length, 0, 'Cached item hydration must use decoded shards without rereading compressed pages');
   assert.deepEqual(await page.locator('[role="alert"]').allTextContents(), []);
