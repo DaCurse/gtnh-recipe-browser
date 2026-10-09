@@ -25,7 +25,8 @@
     "fixture:browser-policy": "tsx tools/data-export/create-browser-policy-fixture.ts",
     "smoke:deploy": "node tools/deployment-smoke.mjs",
     "test:upgrade": "node tools/test-shell-upgrade.mjs",
-    "test:rollout": "node tools/test-startup-rollout.mjs"
+    "test:rollout": "node tools/test-startup-rollout.mjs",
+    "test:cached-startup": "node tools/test-cached-startup.mjs"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3",

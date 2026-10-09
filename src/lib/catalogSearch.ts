@@ -44,9 +44,9 @@ export interface CatalogSearchQuery {
 
 function buildCatalogSearchEntries(
   catalog: readonly CatalogBrowseEntry[],
-  exactCatalog: readonly CatalogEntry[]
+  exactCatalog: readonly CatalogEntry[],
+  exactById: ReadonlyMap<string, CatalogEntry> = new Map(exactCatalog.map((entry) => [entry.id, entry]))
 ): CatalogSearchEntry[] {
-  const exactById = new Map(exactCatalog.map((entry) => [entry.id, entry]));
   return catalog
     .filter((entry) => entry.searchable !== false)
     .map((entry) => ({
@@ -69,9 +69,10 @@ function buildCatalogSearchEntries(
 
 export function buildCatalogSearchDocuments(
   catalog: readonly CatalogBrowseEntry[],
-  exactCatalog: readonly CatalogEntry[]
+  exactCatalog: readonly CatalogEntry[],
+  exactById?: ReadonlyMap<string, CatalogEntry>
 ): CatalogSearchDocument[] {
-  return buildCatalogSearchEntries(catalog, exactCatalog).map(buildCatalogSearchDocument);
+  return buildCatalogSearchEntries(catalog, exactCatalog, exactById).map(buildCatalogSearchDocument);
 }
 
 export function buildCatalogSearchDocument(entry: CatalogSearchEntry): CatalogSearchDocument {

@@ -30,6 +30,10 @@ export function materializeCatalog(
   const sheets = new Map(manifest.iconSheets.map((sheet) => [sheet.id, sheet]));
   const shortSheets = new Map(manifest.iconSheets.map((sheet) => [sheet.sha256.slice(0, 16), sheet]));
   if (shortSheets.size !== manifest.iconSheets.length) throw new Error('Ambiguous icon sheet fingerprint');
+  const resolvedIcons = new Map(manifest.iconSheets.map((sheet) => [sheet.id, {
+    id: sheet.id, url: new URL(sheet.url, manifestUrl).href, columns: sheet.columns,
+    sha256: sheet.sha256, bytes: sheet.bytes, encoding: sheet.encoding, datasetId: manifest.datasetId
+  }]));
   const goodsById = new Map(catalog.goods.map((goods) => [goods.id, goods]));
   const recipeTypes = new Map(catalog.recipeTypes.map((type) => [type.id, type]));
   const oreDictionaries = new Map(catalog.oreDictionaries.map((ore) => [ore.id, ore]));
@@ -114,16 +118,7 @@ export function materializeCatalog(
       color: '#aeb3b8',
       glyph: goods.kind === 'fluid' ? '≈' : '□',
       searchable: goods.searchable,
-      icon: goods.icon && sheet ? {
-        id: sheet.id,
-        url: new URL(sheet.url, manifestUrl).href,
-        index: goods.icon.index,
-        columns: sheet.columns,
-        sha256: sheet.sha256,
-        bytes: sheet.bytes,
-        encoding: sheet.encoding,
-        datasetId: manifest.datasetId
-      } : undefined,
+      icon: goods.icon && sheet ? { ...resolvedIcons.get(sheet.id)!, index: goods.icon.index } : undefined,
       productionShards,
       usageShards,
       productionCount: recipeScopeIds ? undefined : goods.productionCount,

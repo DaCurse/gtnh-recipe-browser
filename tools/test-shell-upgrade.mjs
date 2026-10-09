@@ -10,8 +10,9 @@ const { chromium } = await import(playwrightModule);
 const oldRoot = resolve(oldDirectory);
 const newRoot = resolve(newDirectory);
 const newIndex = JSON.parse(await readFile(join(newRoot, 'versions-v7.json'), 'utf8'));
-const targetDatasetId = newIndex.rollout?.targetDatasetId ?? newIndex.versions[0].datasetId;
 const oldIndex = JSON.parse(await readFile(join(oldRoot, 'versions.json'), 'utf8'));
+const targetDatasetId = newIndex.versions.find((version) => version.gtnhVersion === oldIndex.versions[0].gtnhVersion)?.datasetId
+  ?? newIndex.rollout?.targetDatasetId ?? newIndex.versions[0].datasetId;
 const manifest = JSON.parse(await readFile(join(oldRoot, oldIndex.versions[0].packManifestUrl), 'utf8'));
 const stalledPaths = new Set(manifest.recordPages.filter((page) => page.family === 'bootstrap' || !page.family).slice(0, 1)
   .map((page) => new URL(page.url, `http://localhost/${oldIndex.versions[0].packManifestUrl}`).pathname));

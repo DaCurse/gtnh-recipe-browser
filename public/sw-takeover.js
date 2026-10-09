@@ -1,6 +1,11 @@
 /* global self, MessageChannel, setTimeout, clearTimeout */
 // Imported by the generated worker; activation follows successful shell precaching.
+const readyClients = new Set();
+self.addEventListener('message', (event) => {
+  if (event.data?.type === 'GTNH_SHELL_READY' && event.source?.id) readyClients.add(event.source.id);
+});
 function currentShell(client) {
+  if (readyClients.has(client.id)) return Promise.resolve(true);
   return new Promise((resolve) => {
     const channel = new MessageChannel();
     const timer = setTimeout(() => { channel.port1.close(); resolve(false); }, 500);

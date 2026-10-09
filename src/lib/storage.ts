@@ -12,7 +12,8 @@ const ASSET_STORE = 'assets';
 const METADATA_STORE = 'metadata';
 const ASSET_INDEX_STORE = 'asset-index';
 const LEGACY_CATALOG_STORE = 'catalogs';
-const DATABASE_VERSION = 4;
+const RUNTIME_STORE = 'runtime-cache';
+const DATABASE_VERSION = 5;
 
 interface CachedAsset {
   sha256: string;
@@ -199,10 +200,21 @@ function database() {
       if (!db.objectStoreNames.contains(ASSET_INDEX_STORE)) {
         db.createObjectStore(ASSET_INDEX_STORE, { keyPath: 'sha256' });
       }
+      if (!db.objectStoreNames.contains(RUNTIME_STORE)) {
+        db.createObjectStore(RUNTIME_STORE, { keyPath: ['datasetId', 'key'] })
+          .createIndex('datasetId', 'datasetId');
+      }
       if (db.objectStoreNames.contains(LEGACY_CATALOG_STORE)) {
         db.deleteObjectStore(LEGACY_CATALOG_STORE);
       }
-      if (oldVersion < DATABASE_VERSION) void migrateAssetIndex(transaction);
+      if (oldVersion < 4) void migrateAssetIndex(transaction);
+    },
+    blocking() {
+      void databasePromise?.then((db) => db.close());
+      databasePromise = undefined;
+    },
+    terminated() {
+      databasePromise = undefined;
     }
   });
   return databasePromise;
@@ -233,12 +245,14 @@ export async function activateDataset(datasetId: string): Promise<void> {
 
 export async function removeDataset(datasetId: string): Promise<void> {
   const db = await database();
-  const transaction = db.transaction([DATASET_STORE, ASSET_STORE, ASSET_INDEX_STORE], 'readwrite');
+  const transaction = db.transaction([DATASET_STORE, ASSET_STORE, ASSET_INDEX_STORE, RUNTIME_STORE], 'readwrite');
   const datasets = await transaction.objectStore(DATASET_STORE).getAll() as DatasetState[];
   for (const hash of unreferencedDatasetAssets(datasets, datasetId)) {
     await transaction.objectStore(ASSET_STORE).delete(hash);
     await transaction.objectStore(ASSET_INDEX_STORE).delete(hash);
   }
+  const runtime = transaction.objectStore(RUNTIME_STORE);
+  for (const key of await runtime.index('datasetId').getAllKeys(datasetId)) await runtime.delete(key);
   await transaction.objectStore(DATASET_STORE).delete(datasetId);
   await transaction.done;
 }
@@ -427,5 +441,35 @@ export async function cacheMetadata(key: string, url: string, value: unknown): P
     } satisfies CachedMetadata);
   } catch (error) {
     console.warn('Unable to persist dataset metadata', error);
+  }
+}
+
+/** Disposable, versioned projections of already verified immutable data. */
+export async function getRuntimeCache<T>(datasetId: string, key: string): Promise<T | null> {
+  if (!('indexedDB' in globalThis)) return null;
+  try {
+    const record = await (await database()).get(RUNTIME_STORE, [datasetId, key]);
+    return record?.value as T ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export async function cacheRuntimeData(datasetId: string, key: string, value: unknown): Promise<boolean> {
+  if (!('indexedDB' in globalThis)) return false;
+  try {
+    const db = await database();
+    const transaction = db.transaction([DATASET_STORE, RUNTIME_STORE], 'readwrite');
+    if (await transaction.objectStore(DATASET_STORE).getKey(datasetId)) {
+      await transaction.objectStore(RUNTIME_STORE).put({ datasetId, key, value });
+      await transaction.done;
+      return true;
+    }
+    await transaction.done;
+    return false;
+  } catch (error) {
+    // Quota exhaustion must never prevent browsing or discard the verified source cache.
+    console.warn('Unable to persist prepared dataset data', error);
+    return false;
   }
 }

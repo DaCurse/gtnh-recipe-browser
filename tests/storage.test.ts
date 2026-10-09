@@ -2,6 +2,8 @@ import 'fake-indexeddb/auto';
 import { describe, expect, it, vi } from 'vitest';
 import {
   activateDataset,
+  cacheRuntimeData,
+  getRuntimeCache,
   cacheAsset,
   cachedAssetSizes,
   cachedAssetStats,
@@ -129,7 +131,7 @@ describe('IndexedDB dataset lifecycle', () => {
     expect(await cachedAssetSizes()).toEqual(new Map([['legacy-hash', 3]]));
     expect(await getCachedAsset('legacy-hash')).toEqual(new Uint8Array([1, 2, 3]));
     expect(await inspectDatabase()).toEqual({
-      storeNames: ['asset-index', 'assets', 'datasets', 'metadata'],
+      storeNames: ['asset-index', 'assets', 'datasets', 'metadata', 'runtime-cache'],
       assetIndex: { sha256: 'legacy-hash', byteLength: 3 }
     });
 
@@ -250,5 +252,23 @@ describe('IndexedDB dataset lifecycle', () => {
     expect(await getCachedAsset('untracked-old-object')).toEqual(new Uint8Array([5]));
     expect(await getCachedAsset('migration-shared')).toEqual(new Uint8Array([2]));
     expect(await getCachedAsset('current-only')).toEqual(new Uint8Array([4]));
+  });
+});
+
+describe('prepared dataset caches', () => {
+  it('preserves Maps and shared references, isolates versions, and deletes only the removed dataset cache', async () => {
+    const item = { id: 'item', name: 'cached' };
+    const projection = { entries: [item], byId: new Map([['item', item]]) };
+    await saveDataset(dataset('prepared-a', false, []));
+    await saveDataset(dataset('prepared-b', false, []));
+    await cacheRuntimeData('prepared-a', 'projection-v1', projection);
+    await cacheRuntimeData('prepared-b', 'projection-v1', { name: 'other version' });
+    const restored = await getRuntimeCache<typeof projection>('prepared-a', 'projection-v1');
+    expect(restored?.byId.get('item')).toBe(restored?.entries[0]);
+    expect(await getRuntimeCache('prepared-a', 'projection-v2')).toBeNull();
+    await removeDataset('prepared-a');
+    expect(await getRuntimeCache('prepared-a', 'projection-v1')).toBeNull();
+    expect(await getRuntimeCache('prepared-b', 'projection-v1')).toEqual({ name: 'other version' });
+    await removeDataset('prepared-b');
   });
 });

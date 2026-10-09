@@ -24,6 +24,7 @@ Stateful feature workflows use Svelte 5 rune modules:
 - `datasetSchema.ts` defines immutable manifest and MessagePack wire shapes.
 - `datasetAssets.ts` performs verified network/cache reads and decompression.
 - `storage.ts` owns versioned IndexedDB records for verified blobs and a lightweight size index.
+- `preparedCatalogCache.ts` persists CPU-ready catalogs and search documents as bounded JSON chunks.
 - `catalogMaterialization.ts` projects lightweight goods and group stubs for browse/search.
 - `packedRelations.ts` interns repeated relation lists; `recordPages.ts` reconstructs complete logical assets.
 - `recipeMaterialization.ts` converts packed recipes into display-domain recipes.
@@ -90,13 +91,33 @@ The browser cache is already physical and SHA-keyed. Installing two manifests
 stores one copy of an identical object; dataset state records which hashes each
 dataset references, and deletion removes only hashes no other dataset references.
 Offline progress and the manager report both logical dataset totals and physical
-cache bytes, so shared objects are not counted twice. Only compressed physical
-pages and sheets are persisted, not reconstructed shards or expanded per-dataset
-catalog/search snapshots. A lightweight size index avoids loading binary data
-just to display storage usage. Decoded pages may be retained in bounded memory.
+cache bytes, so shared objects are not counted twice. Startup favors CPU and latency over minimum disk usage. In addition to verified
+compressed pages and sheets, IndexedDB stores prepared catalog entries and variant
+grouping, normalized search documents, and decoded lazy shards in `runtime-cache`.
+Prepared catalogs and search documents use small UTF-8 JSON buffers to avoid blocking
+native structured-clone operations and browser per-record size limits. A final header
+commits each complete projection; missing chunks fall back to verified source data.
+The prepared catalog key includes an application projection version, manifest SHA,
+and resolved manifest URL, so a changed projection, dataset revision, or asset base
+cannot reuse stale display data. These disposable caches can be rebuilt from verified
+source bytes. Search data is read or built progressively only on the first query;
+blank browsing uses the already sorted catalog and renders 60 tiles per batch.
+Lazy shards are cached only after selection and validation. Dataset deletion removes
+its projections along with its source references. Quota failures leave browsing usable.
+Browser storage usage includes these projections; immutable-object accounting and
+offline download estimates describe source assets only. A lightweight size index
+avoids reading binary data to display source usage. Decoded pages also remain in bounded memory.
+
+Cached startups give version-index revalidation 150 ms before using saved metadata,
+while immutable manifest revalidation runs in the background without delaying
+browsing. The shell update check is likewise bounded to 150 ms; a later activating
+worker still performs takeover. Current shells announce readiness before catalog work
+so a busy slow-device client is not mistaken for a legacy window. Fresh metadata is saved for subsequent startup
+and availability checks. Offline or stalled-network refreshes retain their selected
+catalog and do not wait for a network timeout.
 
 When switching versions, the active repository lends the replacement any
-decoded bootstrap chunks and lazy detail, group, recipe, or special shard promises whose SHA and
+lazy detail, group, recipe, or special shard promises whose SHA and
 logical identity match. The replacement validates them against its own
 manifest and catalog, so this is an in-memory acceleration rather than a
 cross-version dependency. The switch loads the target manifest and catalog,

@@ -77,14 +77,14 @@
     <button class="close" onclick={close}>×</button>
     <p class="eyebrow">DATASET MANAGER</p>
     <h2>Your GTNH versions</h2>
-    <p>Catalogs stay available after loading. Install every recipe and icon chunk for complete offline use.</p>
-    <section class="storage-overview" aria-label="Shared asset storage">
+    <p>Items and opened recipes stay cached for fast refreshes. Install all recipes and icons for complete offline use.</p>
+    <section class="storage-overview" aria-label="Dataset asset storage">
       <div class="storage-overview-heading">
         <span class="storage-overview-icon" aria-hidden="true">
           <svg viewBox="0 0 24 24"><path d="M4 7.5 12 4l8 3.5L12 11 4 7.5Z"></path><path d="M4 12.5 12 16l8-3.5M4 17.5 12 21l8-3.5"></path></svg>
         </span>
         <div>
-          <b>Shared asset cache</b>
+          <b>Downloaded assets</b>
           <small>{physicalAssetCount.toLocaleString('en-US')} immutable objects · {formatBytes(storageReport.referencedBytes)} referenced</small>
         </div>
         <strong>{formatBytes(physicalAssetBytes)}</strong>
@@ -108,6 +108,7 @@
           {formatBytes(storageReport.untrackedBytes)} in {storageReport.untrackedAssets.toLocaleString('en-US')} unassigned objects
         </small>
       {/if}
+      <small class="storage-overview-note">Browser storage also includes prepared items and search data for faster loading.</small>
     </section>
     {#if loading && datasets.length === 0}
       <div class="manager-loading"><span class="mini-spinner"></span> Checking local datasets…</div>

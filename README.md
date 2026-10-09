@@ -19,10 +19,22 @@ The runtime module boundaries and maintenance rules are documented in
 [`docs/architecture.md`](docs/architecture.md).
 
 The application loads the real GTNH dataset indexed by `public/versions-v7.json`. Catalog, recipe, and icon assets
-are immutable and content-hashed. Startup loads browse/search bootstrap pages; item details, ingredient groups,
+are immutable and content-hashed. First startup loads browse/search bootstrap pages; refreshes restore a prepared catalog from IndexedDB.
+Search indexes are loaded or built only after entering a query, and validated decoded shards are retained for later refreshes; item details, ingredient groups,
 recipes, and special data are hydrated on demand. The client verifies every physical page before caching it in
 IndexedDB. The dataset manager can install every immutable chunk with resumable progress, switch retained versions,
 and explicitly delete local copies. Dataset loading failures are shown instead of substituting placeholder entries.
+
+Optional browser checks use an externally installed Playwright module:
+
+```sh
+npm run profile:incremental -- http://localhost:4173 <pack-dir> <playwright-module> 4
+npm run test:cached-startup -- http://localhost:4173 <playwright-module>
+```
+
+The profile compares cold and warm mobile browsing under an optional CPU throttle. The cache check covers
+stalled metadata requests, offline refreshes, saved searches, repeated queries, and cached item bookmarks with
+the production service worker. See [`docs/cached-startup-performance.md`](docs/cached-startup-performance.md).
 
 ## Deployment
 

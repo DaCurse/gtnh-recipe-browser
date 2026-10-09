@@ -322,18 +322,33 @@ export async function fetchVerified(
 
 export async function fetchJsonNetworkFirst<T>(
   url: string,
-  cacheKey: string
+  cacheKey: string,
+  cachedWaitMs?: number
 ): Promise<{ url: string; value: T }> {
+  const cached = cachedWaitMs === undefined ? null : await getCachedMetadata<T>(cacheKey);
+  const network = (async () => {
+    try {
+      const response = await fetch(url, { cache: 'no-cache' });
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const value = await response.json() as T;
+      const result = { url: response.url || url, value };
+      await cacheMetadata(cacheKey, result.url, value);
+      return result;
+    } catch (networkError) {
+      const fallback = cached ?? await getCachedMetadata<T>(cacheKey);
+      if (fallback) return fallback;
+      throw networkError;
+    }
+  })();
+  if (!cached || cachedWaitMs === undefined) return network;
+  // Continue revalidation in the background; a stalled server cannot delay a cached startup.
+  let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    const response = await fetch(url, { cache: 'no-cache' });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const value = await response.json() as T;
-    await cacheMetadata(cacheKey, response.url, value);
-    return { url: response.url, value };
-  } catch (networkError) {
-    const cached = await getCachedMetadata<T>(cacheKey);
-    if (cached) return cached;
-    throw networkError;
+    return await Promise.race([network, new Promise<typeof cached>((resolve) => {
+      timer = setTimeout(() => resolve(cached), cachedWaitMs);
+    })]);
+  } finally {
+    clearTimeout(timer);
   }
 }
 

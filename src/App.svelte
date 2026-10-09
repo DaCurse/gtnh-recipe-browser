@@ -24,7 +24,7 @@
   } from './lib/navigation';
   import type { CatalogEntry, RecipeView, SpecialScope } from './lib/types';
 
-  let catalog = $state<CatalogEntry[]>([]);
+  let catalog = $state.raw<CatalogEntry[]>([]);
   let repository = $state<DatasetRepository | null>(null);
   let datasetVersion = $state('…');
   let datasetStatus = $state<'loading' | 'ready' | 'error'>('loading');
@@ -381,7 +381,7 @@
       bind:searchInput
       catalog={repository.browseEntries}
       exactCatalog={catalog}
-      searchDocuments={repository.searchDocuments}
+      loadSearchDocuments={() => repository!.loadSearchDocuments()}
       bind:sidebarWidth
       bind:sidebarResizing
       select={(id) => select(id)}

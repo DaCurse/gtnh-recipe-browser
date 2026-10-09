@@ -18,7 +18,7 @@
     searchInput = $bindable(),
     catalog,
     exactCatalog,
-    searchDocuments,
+    loadSearchDocuments,
     sidebarWidth = $bindable(),
     sidebarResizing = $bindable(),
     select,
@@ -29,7 +29,7 @@
     searchInput?: HTMLInputElement;
     catalog: CatalogBrowseEntry[];
     exactCatalog: CatalogEntry[];
-    searchDocuments?: CatalogSearchDocument[];
+    loadSearchDocuments?: () => Promise<CatalogSearchDocument[]>;
     sidebarWidth: number;
     sidebarResizing: boolean;
     select: (id: string) => void;
@@ -37,7 +37,7 @@
 
   let searchIds = $state<string[]>([]);
   let searchTotal = $state(0);
-  let searchPending = $state(true);
+  let searchPending = $state(false);
   let searchLoadingMore = $state(false);
   let searchReady = $state(false);
   let searchInitProgress = $state(0);
@@ -57,16 +57,33 @@
     .map((id) => entryById.get(id))
     .filter((entry): entry is CatalogBrowseEntry => entry !== undefined));
 
+  const searchRequested = $derived(query.trim().length > 0);
+  let initializedCatalog: CatalogBrowseEntry[] | undefined;
+
+  // Browsing the sorted catalog needs neither a search index nor a worker scan.
+  $effect(() => {
+    const entries = searchableCatalog;
+    if (searchRequested) return;
+    searchRequest += 1;
+    const ids = entries.map((entry) => entry.id);
+    fallbackIds = ids;
+    searchIds = ids.slice(0, 60);
+    searchTotal = entries.length;
+    searchPending = false;
+    searchLoadingMore = false;
+  });
+
   $effect(() => {
     const worker = searchWorker;
     const nextCatalog = searchableCatalog;
-    const nextDocuments = searchDocuments;
-    if (!worker) return;
+    const getDocuments = loadSearchDocuments;
+    if (!worker || !searchRequested || initializedCatalog === nextCatalog) return;
+    initializedCatalog = nextCatalog;
     const generation = ++searchGeneration;
     searchRequest += 1;
     const nextFallbackIds = nextCatalog.map((entry) => entry.id);
     fallbackIds = nextFallbackIds;
-    searchIds = nextFallbackIds.slice(0, 300);
+    searchIds = nextFallbackIds.slice(0, 60);
     searchTotal = nextFallbackIds.length;
     searchPending = true;
     searchLoadingMore = false;
@@ -80,6 +97,7 @@
       return;
     }
     const initialize = async () => {
+      const nextDocuments = await getDocuments?.();
       for (let start = 0; start < nextCatalog.length; start += 1_000) {
         if (generation !== searchGeneration || worker !== searchWorker) return;
         const end = Math.min(start + 1_000, nextCatalog.length);
@@ -128,7 +146,7 @@
     const nextQuery = query;
     const worker = searchWorker;
     const ready = searchReady;
-    if (!worker || !ready) return;
+    if (!worker || !ready || !nextQuery.trim()) return;
     searchPending = true;
     const request = ++searchRequest;
     searchLoadingMore = false;
@@ -139,7 +157,7 @@
         id: request,
         query: nextQuery,
         offset: 0,
-        limit: 300
+        limit: 60
       });
     }, nextQuery ? 80 : 0);
     return () => window.clearTimeout(timeout);
@@ -150,7 +168,7 @@
     if (terms.length === 0) {
       const ids = searchableCatalog.map((entry) => entry.id);
       fallbackIds = ids;
-      searchIds = ids.slice(0, 300);
+      searchIds = ids.slice(0, 60);
       searchTotal = ids.length;
       searchPending = false;
       searchLoadingMore = false;
@@ -175,7 +193,7 @@
     }
     if (request !== searchRequest) return;
     fallbackIds = matches;
-    searchIds = matches.slice(0, 300);
+    searchIds = matches.slice(0, 60);
     searchTotal = matches.length;
     searchPending = false;
     searchLoadingMore = false;
@@ -236,8 +254,8 @@
 
   function requestMoreItems() {
     if (searchPending || searchLoadingMore || searchIds.length >= searchTotal) return;
-    if (searchWorkerError) {
-      searchIds = fallbackIds.slice(0, Math.min(searchIds.length + 300, fallbackIds.length));
+    if (!query.trim() || searchWorkerError) {
+      searchIds = fallbackIds.slice(0, Math.min(searchIds.length + 60, fallbackIds.length));
       return;
     }
     if (!searchWorker) return;
@@ -248,7 +266,7 @@
       id: searchRequest,
       query,
       offset: searchIds.length,
-      limit: 300
+      limit: 60
     });
   }
 
@@ -338,7 +356,7 @@
         searchInitProgress = 100;
         return;
       }
-      if (event.data.id !== searchRequest) return;
+      if (event.data.id !== searchRequest || !query.trim()) return;
       searchIds = event.data.offset === 0
         ? event.data.ids
         : [...searchIds, ...event.data.ids];
@@ -439,7 +457,7 @@
         <button class="item-more" use:loadMoreItems onclick={requestMoreItems}>
           {searchLoadingMore
             ? 'Loading more items…'
-            : `Showing ${visibleEntries.length.toLocaleString()} of ${searchTotal.toLocaleString()} · Load next 300`}
+            : `Showing ${visibleEntries.length.toLocaleString()} of ${searchTotal.toLocaleString()} · Load next 60`}
         </button>
       {/if}
     {/if}
