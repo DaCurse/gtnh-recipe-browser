@@ -45,6 +45,35 @@ describe('immutable record pages', () => {
       for (const page of pages) expect(await readFile(join(next, page.sha256))).toEqual(await readFile(join(first, page.sha256)));
     }
   });
+  it('consolidates fragmented bootstrap reuse without rewriting predecessor or lazy pages', async () => {
+    const first = await directory();
+    const records = Array.from({ length: 17 }, (_, id) => ({ id: `item-${id}` }));
+    const pages: ImmutableAsset[] = [];
+    for (const record of records) {
+      const bytes = gzipSync(encode([encode(record)]), { level: 9 });
+      const hash = createHash('sha256').update(bytes).digest('hex');
+      await writeFile(join(first, hash), bytes);
+      pages.push({ id: hash, sha256: hash, bytes: bytes.length, family: 'bootstrap',
+        encoding: 'gzip', mediaType: 'application/msgpack', url: hash });
+    }
+    const previousLazy = { ...await asset(first, [{ id: 'lazy-recipe' }]), family: 'recipes' as const };
+    const lazyPages = await buildRecordPages([previousLazy], first, '../..', []);
+    const prior = { recordPages: [...pages, ...lazyPages] } as GeneratedPackManifest;
+    const next = await directory();
+    const logical = await asset(next, records);
+    const lazy = { ...await asset(next, [{ id: 'lazy-recipe' }]), family: 'recipes' as const };
+    const nextPages = await buildRecordPages([logical, lazy], next, '../..', [{ manifest: prior, assetsDirectory: first }]);
+    expect(nextPages.filter((page) => page.family === 'bootstrap')).toHaveLength(1);
+    expect(nextPages.filter((page) => page.family === 'recipes').map((page) => page.sha256))
+      .toEqual(lazyPages.map((page) => page.sha256));
+    const manifest = { recordPages: nextPages } as GeneratedPackManifest;
+    expect((decode(await readLogicalAsset(logical, manifest, next)) as { recipes: unknown[] }).recipes).toEqual(records);
+    expect((decode(await readLogicalAsset(lazy, manifest, next)) as { recipes: unknown[] }).recipes).toEqual([{ id: 'lazy-recipe' }]);
+    for (const page of [...pages, ...lazyPages]) {
+      const bytes = await readFile(join(first, page.sha256));
+      expect(createHash('sha256').update(bytes).digest('hex')).toBe(page.sha256);
+    }
+  });
   it('keeps an oversized singleton intact and rejects invalid selections and missing membership', async () => {
     const path = await directory();
     const logical = await asset(path, [{ id: 'large', text: 'x'.repeat(4_500_000) }]);

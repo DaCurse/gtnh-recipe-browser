@@ -80,7 +80,32 @@ const RC_1_RUNTIME_MODS: readonly RuntimeModPin[] = [
   { jarName: 'TwilightForest-2.7.42.jar', modId: 'TwilightForest', version: '2.7.42', sourceName: 'TwilightForest' }
 ];
 
+const RELEASE_290_RUNTIME_MODS: readonly RuntimeModPin[] = [
+  { jarName: 'cropsnh-2.0.140.jar', modId: 'cropsnh', version: '2.0.140', sourceName: 'CropsNH' },
+  { jarName: 'gregtech-5.09.54.265.jar', modId: 'gregtech', version: '5.09.54.265', sourceName: 'GT5-Unofficial' },
+  { jarName: 'BloodMagic-1.9.16.jar', modId: 'AWWayofTime', version: '1.9.16', sourceName: 'BloodMagic' },
+  { jarName: 'EnhancedLootBags-1.3.5.jar', modId: 'enhancedlootbags', version: '1.3.5', sourceName: 'EnhancedLootBags' },
+  { jarName: 'vendingmachine-0.4.103.jar', modId: 'vendingmachine', version: '0.4.103', sourceName: 'VendingMachine' },
+  { jarName: 'NEICustomDiagram-1.8.36.jar', modId: 'neicustomdiagram', version: '1.8.36', sourceName: 'NEICustomDiagram' },
+  { jarName: 'roguelike-1.6.6-GTNH.jar', modId: 'Roguelike', version: '1.6.6-GTNH', sourceName: 'RoguelikeDungeons' },
+  { jarName: 'TwilightForest-2.7.45.jar', modId: 'TwilightForest', version: '2.7.45', sourceName: 'TwilightForest' }
+];
+
 export const DIRECT_EXPORT_PROFILES: Readonly<Record<string, DirectExportProfile>> = {
+  // Locally assembled with the pinned official DreamAssemblerXXL release manifest.
+  // This is not the config-only GitHub ZIP or a nightly client. See docs/release-2.9.0.md.
+  '2.9.0': {
+    version: '2.9.0',
+    archiveFileName: 'GT_New_Horizons_2.9.0_Java_17-26.zip',
+    clientUrl: new URL(
+      '../../.export-work/release-2.9.0-source/DreamAssemblerXXL/releases/multi_poly/GT_New_Horizons_2.9.0_Java_17-26.zip',
+      import.meta.url
+    ).href,
+    bytes: 747_604_764,
+    sha256: 'dba6da2daa53925f12755172fd7d508ebcc5d23aa3c28a36c57db8e30070aa44',
+    sourcePage: 'https://github.com/GTNewHorizons/DreamAssemblerXXL/blob/1b62ef00ad679c51ab0ec67f8a8e42778a059ce6/releases/manifests/2.9.0.json',
+    runtimeMods: RELEASE_290_RUNTIME_MODS
+  },
   '2.9.0-beta-2': {
     version: '2.9.0-beta-2',
     archiveFileName: 'GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip',

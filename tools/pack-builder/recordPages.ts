@@ -203,6 +203,22 @@ export async function buildRecordPages(
     return selected;
   };
   let selections = bootstrapSelections();
+  // Reusing many sparse predecessor pages can meet the byte budget while
+  // exceeding the startup request budget. Repack only the selected bootstrap
+  // records; old objects and every lazy family's reuse remain unchanged.
+  if (selections.size > 16) {
+    for (const key of bootstrapKeys) {
+      const [hash, index] = locations.get(key)!;
+      const record = existingRecords.get(hash)![index]!;
+      if (pendingSize + record.length > RECORD_PAGE_TARGET_BYTES) await flush();
+      pendingFamily = 'bootstrap';
+      pending.push(record);
+      pendingKeys.push(key);
+      pendingSize += record.length;
+    }
+    await flush();
+    selections = bootstrapSelections();
+  }
   const physical = (hash: string) => pages.get(hash) ?? existing.get(hash)!.asset;
   while ([...selections.keys()].reduce((sum, hash) => sum + physical(hash).bytes, 0) > 10 * 1024 * 1024) {
     const candidates = [...selections].map(([hash, indexes]) => {
