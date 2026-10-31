@@ -15,7 +15,16 @@
   } = $props();
   const finderState = new RecipeFinderState({ repository: () => repository, constraints: () => constraints });
   const entries = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
-  const machines = $derived([...new Set(finderState.recipes.map((recipe) => recipe.type))].sort());
+  const machines = $derived.by(() => {
+    const types = new Map<string, { name: string; count: number; iconId?: string }>();
+    for (const recipe of finderState.recipes) {
+      const machine = types.get(recipe.type) ?? { name: recipe.type, count: 0 };
+      machine.count += 1;
+      machine.iconId ??= recipe.typeIconId ?? recipe.crafterId;
+      types.set(recipe.type, machine);
+    }
+    return [...types.values()].sort((a, b) => a.name.localeCompare(b.name));
+  });
   const filtered = $derived(finderState.machine ? finderState.recipes.filter((recipe) => recipe.type === finderState.machine) : finderState.recipes);
   const pageCount = $derived(Math.max(1, Math.ceil(filtered.length / 20)));
   const visible = $derived(filtered.slice(finderState.page * 20, (finderState.page + 1) * 20));
@@ -81,8 +90,22 @@
     {#if missing}<p class="finder-warning" role="alert">A selected ingredient is unavailable in this version. Remove it or switch versions to continue.</p>{/if}
     <div class="finder-results-bar">
       <h2 aria-live="polite">{hasConstraints ? `${filtered.length.toLocaleString()} matching recipes${finderState.loading ? ' so far' : ''}` : 'Start with one ingredient'}</h2>
-      {#if finderState.recipes.length}<label>Machine <select aria-label="Filter by machine" bind:value={finderState.machine} onchange={() => finderState.page = 0}><option value="">All machines</option>{#each machines as machine (machine)}<option value={machine}>{machine}</option>{/each}</select></label>{/if}
     </div>
+    {#if finderState.recipes.length}
+      <nav class="machine-ruler" aria-label="Filter by machine">
+        <button class="machine-choice" class:active={!finderState.machine} aria-pressed={!finderState.machine} onclick={() => { finderState.machine = ''; finderState.page = 0; }} title="All machines">
+          <span class="all-machines-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></span>
+          <span class="machine-name">All machines</span><small>{finderState.recipes.length.toLocaleString()}</small>
+        </button>
+        {#each machines as machine (machine.name)}
+          {@const icon = machine.iconId ? entries.get(machine.iconId) : undefined}
+          <button class="machine-choice" class:active={finderState.machine === machine.name} aria-pressed={finderState.machine === machine.name} aria-label={machine.name} title={`${machine.name} · ${machine.count.toLocaleString()} recipes`} onclick={() => { finderState.machine = machine.name; finderState.page = 0; }}>
+            {#if icon}<ItemIcon entry={icon} size={54} selected={finderState.machine === machine.name} crisp={false} />{:else}<span class="all-machines-icon" aria-hidden="true">⚙</span>{/if}
+            <span class="machine-name">{machine.name}</span><small>{machine.count.toLocaleString()}</small>
+          </button>
+        {/each}
+      </nav>
+    {/if}
     {#if finderState.error}
       <div class="finder-message" role="alert"><b>Could not finish loading recipes</b><p>{finderState.error}</p><button class="finder-button" onclick={() => finderState.retry()}>Try again</button></div>
     {:else if !hasConstraints}
@@ -124,8 +147,13 @@
   .ingredient-chip { display:flex; align-items:center; gap:8px; max-width:100%; padding:6px 8px; border:1px solid #5b6570; border-radius:7px; background:#2c333a; text-align:left; cursor:pointer; }
   .ingredient-chip span { min-width:0; overflow-wrap:anywhere; font-size:13px; }.ingredient-chip small { display:block; color:#a1aab4; margin-top:3px; }.ingredient-chip b { padding:0 4px; font-size:20px; color:#aeb6bf; }
   .side-hint { font-size:13px; margin:4px 0 8px; }.finder-hint { font-size:12px; margin:12px 0 26px; }
-  .finder-results-bar { margin-bottom:18px; flex-wrap:wrap; }.finder-results-bar label { font-size:12px; color:#a9b0b8; display:flex; align-items:center; gap:8px; }
-  select { min-height:40px; max-width:240px; padding:8px; background:#20252b; border:1px solid #50575f; border-radius:6px; color:#e7e9eb; }
+  .finder-results-bar { margin-bottom:16px; flex-wrap:wrap; }
+  .machine-ruler { display:flex; gap:6px; max-width:100%; min-width:0; overflow-x:auto; overscroll-behavior-x:contain; scroll-snap-type:x proximity; scrollbar-color:#566170 #1a1e23; padding:0 0 8px; margin-bottom:20px; border-bottom:1px solid #3e4752; }
+  .machine-choice { position:relative; flex:0 0 96px; display:flex; flex-direction:column; align-items:center; gap:7px; padding:10px 5px 8px; border:1px solid transparent; border-bottom:3px solid transparent; border-radius:8px 8px 0 0; background:transparent; cursor:pointer; scroll-snap-align:start; }
+  .machine-choice:hover { background:#ffffff09; }.machine-choice.active { background:#a8bfdc12; border-color:#7289a644; border-bottom-color:#b6cce7; }.machine-choice:focus-visible { outline:2px solid #c2d8f3; outline-offset:-3px; }
+  .machine-name { display:block; max-width:100%; white-space:nowrap; text-overflow:ellipsis; overflow:hidden; min-height:15px; font-size:11px; line-height:15px; text-align:center; color:#b5bec9; }.active .machine-name { color:#eff5fc; }
+  .machine-choice small { position:absolute; top:5px; right:4px; border:1px solid #435166; color:#bacbdf; font-size:10px; background:#18212deb; padding:2px 7px; border-radius:10px; }
+  .all-machines-icon { width:54px; height:54px; display:grid; place-items:center; border:1px solid #586575; border-radius:5px; background:#252d36; font-size:30px; color:#b8cce4; }.all-machines-icon svg { width:28px; height:28px; fill:currentColor; }
   .finder-message { padding:50px 16px; border:1px dashed #3a424b; border-radius:10px; text-align:center; }.finder-message b { display:block; }.finder-message p { margin:10px auto; max-width:450px; font-size:14px; }.finder-symbol { display:block; font-size:40px; color:#c8d5e4; margin-bottom:12px; }
   .finder-progress { display:flex; gap:10px; align-items:center; padding:12px 0 18px; color:#bac2cb; font-size:13px; }.finder-progress small { color:#919ba7; }
   .finder-warning { color:#e4ca8b; }.finder-recipes { max-width:none; }.finder-pagination { display:flex; gap:16px; align-items:center; justify-content:center; margin-top:24px; font-size:13px; }

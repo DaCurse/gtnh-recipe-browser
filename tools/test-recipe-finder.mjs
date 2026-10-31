@@ -48,7 +48,17 @@ try {
   await pick('output', iron);
   console.log(JSON.stringify({ phase: 'output-ready' }));
   assert.equal(await count(), outputRecipes.length);
-  assert((await page.getByRole('combobox', { name: 'Filter by machine' }).locator('option').count()) > 2);
+  const ruler = page.getByRole('navigation', { name: 'Filter by machine', exact: true });
+  assert((await ruler.getByRole('button').count()) > 2);
+  await ruler.locator('.atlas-sprite').first().waitFor();
+  if (screenshotDirectory) {
+    await mkdir(screenshotDirectory, { recursive: true });
+    await page.screenshot({ path: `${screenshotDirectory}/finder-machines-desktop.png` });
+  }
+  await page.setViewportSize({ width: 390, height: 844 });
+  assert.equal(await ruler.evaluate((el) => el.scrollWidth > el.clientWidth), true);
+  if (screenshotDirectory) await page.screenshot({ path: `${screenshotDirectory}/finder-machines-mobile.png` });
+  await page.setViewportSize({ width: 1280, height: 900 });
   assert.equal(await page.locator('.finder-recipes article').count(), 20);
   await page.getByRole('navigation', { name: 'Finder result pages' }).getByRole('button', { name: 'Next', exact: true }).click();
   assert.match(await page.locator('.finder-pagination').innerText(), /Page 2/);
@@ -68,9 +78,10 @@ try {
   assert.equal(recipePageReads, 0, 'Adding a constraint must reuse complete candidate results');
   const mixedUrl = page.url();
   const machine = expectedMixed[0].type;
-  await page.getByRole('combobox', { name: 'Filter by machine' }).selectOption(machine);
+  await ruler.getByRole('button', { name: machine, exact: true }).click();
+  assert.equal(await ruler.getByRole('button', { name: machine, exact: true }).getAttribute('aria-pressed'), 'true');
   assert.equal(await count(), expectedMixed.filter((recipe) => recipe.type === machine).length);
-  await page.getByRole('combobox', { name: 'Filter by machine' }).selectOption('');
+  await ruler.getByRole('button', { name: /All machines/ }).click();
   // An impossible second output must remove results, never act as an OR query.
   await pick('output', fluid.id);
   assert.equal(await count(), outputRecipes.filter((recipe) => contains(recipe.inputs, fluid.id) && contains(recipe.outputs, fluid.id)).length);
@@ -86,6 +97,11 @@ try {
   }
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
+  const lastMachine = ruler.getByRole('button').last();
+  await lastMachine.focus();
+  await page.keyboard.press('Space');
+  assert.equal(await lastMachine.getAttribute('aria-pressed'), 'true');
+  await ruler.getByRole('button', { name: /All machines/ }).click();
   if (screenshotDirectory) await page.screenshot({ path: `${screenshotDirectory}/finder-mobile.png` });
   await page.getByRole('button', { name: '+ Add input', exact: true }).click();
   const picker = page.locator('dialog.finder-picker');

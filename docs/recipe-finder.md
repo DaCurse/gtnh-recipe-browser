@@ -5,7 +5,7 @@ the item/fluid search, then add more clues to narrow the result. Every selected 
 present on its chosen side, while additional ingredients and any quantities are allowed. An item
 accepted by an interchangeable recipe slot matches that slot. Exact variants are selected explicitly.
 
-Results include ordinary recipes across all machines by default. The machine menu can narrow the
+Results include ordinary recipes across all machines by default. The horizontal machine icon strip shows recipe counts and can narrow the
 results further. Remove a chip to broaden the search, or use **Clear all** to start again. The current
 inputs, outputs, and dataset are recorded in the URL, so searches can be bookmarked or shared.
 
