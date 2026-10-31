@@ -98,5 +98,16 @@ Staged commit `89b3735` was deployed by Netlify deployment `6ae619d673fe3d939d25
 The deployed-origin smoke test fetched and verified all 1,282 final-dataset assets successfully before activation.
 The version index now configures rollout epoch 3 targeting `2.9.0-v7-rbd0b48ae8ad7`. RC1, both betas and
 2.8.0 remain selectable; no datasets or shared objects were removed. The rollout applies once and preserves
-subsequent deliberate version choices. Final activation deployment and live browser checks must also pass
-before reporting the release as live.
+subsequent deliberate version choices.
+
+Activation commit `e5baadf` was deployed successfully by Netlify deployment `6ae61b0485cb755b087f5c96`.
+Live checks passed for the default final manifest, epoch-3 migration with item preservation, explicit-link and
+dataset-manager choices across refresh, real service-worker warm/offline/stalled-network startup, cached item
+hydration with zero compressed-page reads, and desktop/mobile loading states with deliberately delayed details.
+No browser errors were reported.
+
+The rollout test models receipt of the actual live policy in the returning client's metadata cache. This avoids
+racing its own synthetic old index against the app's 150 ms cached-startup budget. A client still holding an old
+index may finish that startup on its saved version while the background index request completes; a subsequent
+startup applies the newly received rollout policy. Service workers are blocked only in this synthetic routing
+test; `test-cached-startup.mjs` separately exercises the real deployed service worker and offline cache.

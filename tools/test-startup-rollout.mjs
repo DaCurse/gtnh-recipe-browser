@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-/* global indexedDB */
+/* global indexedDB, document */
 
 const [appUrl, previousId, targetId, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-startup-rollout.mjs <app-url> <previous-id> <target-id> <playwright-module>');
@@ -10,7 +10,11 @@ const previous = index.versions.find((version) => version.datasetId === previous
 assert(previous, 'Previous selectable dataset must still be published');
 const browser = await chromium.launch({ headless: true });
 try {
-  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  // The old-index response below must be deterministic: service-worker requests
+  // bypass context routes. Real service-worker/offline behavior is covered by
+  // test-cached-startup.mjs against the deployed index.
+  const context = await browser.newContext({ serviceWorkers: 'block',
+    viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
   const page = await context.newPage();
   const errors = [];
   page.on('pageerror', (error) => errors.push(error.message));
@@ -33,6 +37,26 @@ try {
   const itemId = new URL(page.url()).searchParams.get('item');
   assert(itemId);
   await context.unroute('**/versions-v7.json');
+  // Model the moment the returning client has received the new live policy.
+  // Otherwise the 150 ms startup budget can legitimately use the mocked old
+  // cached index while its network-first update completes in the background.
+  const activeId = await page.evaluate((policy) => new Promise((resolve, reject) => {
+    const opening = indexedDB.open('gtnh-recipe-browser');
+    opening.onerror = () => reject(opening.error);
+    opening.onsuccess = () => {
+      const db = opening.result;
+      const transaction = db.transaction(['metadata', 'datasets'], 'readwrite');
+      const url = new URL('./versions-v7.json', document.baseURI).href;
+      transaction.objectStore('metadata').put({ key: `versions:${url}`, url, value: policy, cachedAt: Date.now() });
+      const datasets = transaction.objectStore('datasets').getAll();
+      let active;
+      datasets.onsuccess = () => { active = datasets.result.find((dataset) => dataset.active)?.datasetId; };
+      transaction.oncomplete = () => { db.close(); resolve(active); };
+      transaction.onerror = () => { db.close(); reject(transaction.error); };
+    };
+  }), index);
+  assert.equal(activeId, previousId, 'Returning-user fixture must have a persisted active dataset');
+  console.log(JSON.stringify({ phase: 'policy-received', activeId, targetId }));
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.waitForURL((url) => url.searchParams.get('version') === targetId, { timeout: 120_000, waitUntil: 'domcontentloaded' });
   assert.equal(new URL(page.url()).searchParams.get('item'), itemId, 'Matching item must survive rollout');
@@ -59,7 +83,7 @@ try {
     const version = index.versions.find((candidate) => candidate.datasetId === datasetId);
     await page.locator('header .version').click();
     const row = page.getByRole('dialog', { name: 'Dataset manager' }).locator('.dataset')
-      .filter({ has: page.locator('.dataset-title b', { hasText: version.gtnhVersion }) });
+      .filter({ has: page.getByText(version.gtnhVersion, { exact: true }) });
     await row.getByRole('button', { name: 'Switch', exact: true }).click();
     await page.waitForURL((url) => url.searchParams.get('version') === datasetId,
       { timeout: 120_000, waitUntil: 'domcontentloaded' });
