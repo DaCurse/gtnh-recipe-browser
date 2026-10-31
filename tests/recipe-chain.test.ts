@@ -42,6 +42,44 @@ describe('recipe chain reachability', () => {
     expect((await graph.search(['a'], ['c'], { maxDepth: 1, allowExtras: false }))[0]!.status).toBe('not-found');
     expect(records(await graph.search(['a'], ['c'], { maxDepth: 2, allowExtras: false }))).toEqual([0, 1]);
   });
+  it('rejects borrowed tungsten recovered after mixing instead of crediting it to the source', async () => {
+    const graph = fixture(['pu241', 'tungsten', 'mixture', 'pu239'], [
+      [[0, 1], [2]], [[2], [1]], [[1], [3]]
+    ]);
+    expect((await graph.search(['pu241'], ['pu239'], options))[0]!.status).toBe('not-found');
+  });
+  it('rejects recovery through a different form when the extras alone can make the target', async () => {
+    const graph = fixture(['source', 'borrowedDust', 'mixture', 'borrowedFluid', 'target'], [
+      [[0, 1], [2]], [[2], [3]], [[3], [4]], [[1], [3]]
+    ]);
+    expect((await graph.search(['source'], ['target'], options))[0]!.status).toBe('not-found');
+  });
+  it('keeps a genuine alternative history through the same intermediate', async () => {
+    const graph = fixture(['source', 'borrowed', 'intermediate', 'newForm'], [
+      [[0, 1], [2]], [[2], [1]], [[0], [3]], [[3], [2]]
+    ]);
+    const paths = await graph.search(['source'], ['borrowed'], options);
+    expect(paths[0]!.status).toBe('found');
+    expect(records(paths)).toEqual([2, 3, 1]);
+  });
+  it('does not count non-consumed molds as borrowed source material', async () => {
+    const graph = fixture(['molten', 'mold', 'ingot', 'dust'], [
+      [[0], [2], [1]], [[2], [3]], [[1], [2]]
+    ]);
+    expect(records(await graph.search(['molten'], ['dust'], options))).toEqual([0, 1]);
+  });
+  it('reports distinct alternatives in both extra-ingredient and strict modes', async () => {
+    const graph = fixture(['a', 'b', 'c'], [[[0], [1]], [[0], [1]], [[0], [2]], [[2], [1]]]);
+    for (const allowExtras of [true, false]) {
+      const [path] = await graph.search(['a'], ['b'], { ...options, allowExtras });
+      expect(path!.status).toBe('found');
+      const routes = [path!.steps, ...(path!.alternatives ?? [])];
+      expect(routes.length).toBeGreaterThan(1);
+      expect(new Set(routes.map((route) => JSON.stringify(route))).size).toBe(routes.length);
+      expect(routes.length).toBeLessThanOrEqual(5);
+      expect(path!.steps).toHaveLength(1);
+    }
+  });
   it('handles cycles, supplied outputs, depth bounds, unknown identities, and multiple targets', async () => {
     const graph = fixture(['a', 'b', 'c'], [[[0], [1]], [[1], [0]], [[1], [2]]]);
     const paths = await graph.search(['a'], ['a', 'c', 'missing'], options);

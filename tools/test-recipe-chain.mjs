@@ -32,6 +32,22 @@ try {
   assert.equal(graphReads.length, 1);
   console.log(JSON.stringify({ phase: 'route-ready' }));
   const link = page.url();
+  const alternatives = page.getByRole('navigation', { name: 'Alternative routes to Iron Dust', exact: true });
+  assert.match(await alternatives.innerText(), /[2-5] verified routes found/);
+  await alternatives.getByRole('button', { name: 'Next route', exact: true }).click();
+  await alternatives.getByText('Route 2 of 5', { exact: true }).waitFor({ timeout: 120000 });
+  assert.equal(await page.locator('.chain-steps > li').count(), 2);
+  await alternatives.getByRole('button', { name: 'Previous route', exact: true }).click();
+  await alternatives.getByText('Route 1 of 5', { exact: true }).waitFor();
+  assert.equal(graphReads.length, 1);
+  await page.setViewportSize({ width: 1100, height: 900 });
+  const scroller = page.locator('.chain-scroll');
+  assert.equal(await scroller.evaluate((el) => el.scrollWidth > el.clientWidth), true);
+  const boxes = await page.locator('.chain-steps > li').evaluateAll((items) => items.map((el) => { const box = el.getBoundingClientRect(); return { x: box.x, y: box.y }; }));
+  assert(boxes[1].x > boxes[0].x && Math.abs(boxes[1].y - boxes[0].y) < 1);
+  await scroller.evaluate((el) => { el.scrollLeft = 400; });
+  assert((await scroller.evaluate((el) => el.scrollLeft)) > 0);
+  assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   if (screenshotDirectory) { await mkdir(screenshotDirectory, { recursive: true }); await page.screenshot({ path: `${screenshotDirectory}/chain-desktop.png` }); }
   await page.getByRole('checkbox', { name: 'Allow additional ingredients' }).uncheck(); await finish();
   assert.equal(await page.locator('.chain-steps > li').count(), 0);
@@ -42,6 +58,8 @@ try {
   await page.setViewportSize({ width: 390, height: 844 });
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), true);
   if (screenshotDirectory) await page.screenshot({ path: `${screenshotDirectory}/chain-mobile.png` });
+  const mobileBoxes = await page.locator('.chain-steps > li').evaluateAll((items) => items.map((el) => { const box = el.getBoundingClientRect(); return { x: box.x, y: box.y }; }));
+  assert(mobileBoxes[1].y > mobileBoxes[0].y);
   // Cache refresh must restore the graph without another immutable download.
   await page.reload(); await page.locator('.chain-view').waitFor({ timeout: 120000 }); await finish();
   assert.equal(page.url(), link); assert.equal(await page.locator('.chain-steps > li').count(), 2);
@@ -59,6 +77,17 @@ try {
   assert.equal(await page.locator('.chain-extras').count(), 0);
   await page.getByRole('combobox', { name: 'Maximum chain depth' }).selectOption('6'); await finish();
   assert.equal(await page.locator('.chain-steps > li').count(), 2);
+  // The reported Pu241 -> borrowed tungsten recovery -> Pu239 route must never reappear.
+  await page.getByRole('checkbox', { name: 'Allow additional ingredients' }).check();
+  await page.evaluate(() => {
+    const url = new URL(location.href); url.searchParams.delete('input'); url.searchParams.delete('output');
+    url.searchParams.set('input', 'i:gregtech:gt.metaitem.01:2101');
+    url.searchParams.set('output', 'i:gregtech:gt.metaitem.01:2100');
+    history.pushState({}, '', url); dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await finish();
+  assert.equal(await page.locator('.chain-steps > li').count(), 0);
+  assert.match(await page.locator('.chain-empty').innerText(), /exploration limit|No route found/);
   // Changing modes and clearing must suppress stale worker and detail responses.
   await page.getByRole('button', { name: 'Single recipe', exact: true }).click();
   assert.equal(await page.locator('.chain-view').count(), 0);
@@ -69,6 +98,6 @@ try {
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ realItemFluidConversion: true, steps: 2, missingToolVisible: true, strictWithTool: true,
     strictWithoutToolRejected: true, workerGraphReuse: true, cachedGraphRefresh: true, shareableMode: true,
-    mobileLayout: true, staleClear: true, normalBrowseGraphReads: 0, errors }));
+    mobileLayout: true, horizontalDesktopScroller: true, selectableAlternatives: true, borrowedTungstenRejected: true, staleClear: true, normalBrowseGraphReads: 0, errors }));
   await context.close();
 } finally { await browser.close(); }

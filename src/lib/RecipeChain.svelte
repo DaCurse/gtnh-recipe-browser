@@ -8,7 +8,9 @@
   let { repository, constraints, navigate }: {
     repository: DatasetRepository; constraints: RecipeConstraints; navigate: (id: string, view: RecipeView) => void;
   } = $props();
+  let selectedRoutes = $state<Record<string, number>>({});
   const chain = new RecipeChainState({ repository: () => repository, constraints: () => constraints });
+  $effect(() => { if (chain.loading) selectedRoutes = {}; });
   const entries = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
   function summarize(recipes: Recipe[]) {
     const available = new Set(constraints.inputs);
@@ -34,26 +36,37 @@
   {#if chain.loading}<div class="chain-status" role="status"><span class="mini-spinner" aria-hidden="true"></span>{chain.stage}{#if chain.visited}<small>{chain.visited.toLocaleString()} item/form nodes explored</small>{/if}</div>{/if}
   {#if chain.error}<div class="chain-error" role="alert"><p>{chain.error}</p><button onclick={() => chain.retry()}>Try again</button></div>{/if}
   {#each chain.paths as path (path.targetId)}
+    {@const routeIndex = Math.min(selectedRoutes[path.targetId] ?? 0, Math.max(0, path.routes.length - 1))}
+    {@const route = path.routes[routeIndex] ?? path.recipes}
     <section class="chain-route" aria-label={`Route to ${label(path.targetId)}`}>
-      <h2>{#if entry(path.targetId)}<ItemIcon entry={entry(path.targetId)!} size={36} />{/if}<span>{label(path.targetId)}<small>{path.status === 'found' ? `${path.recipes.length} recipe steps` : 'No route displayed'}</small></span></h2>
+      <h2>{#if entry(path.targetId)}<ItemIcon entry={entry(path.targetId)!} size={36} />{/if}<span>{label(path.targetId)}<small>{path.status === 'found' ? `${route.length} recipe steps` : 'No route displayed'}</small></span></h2>
+      {#if path.status === 'found' && route.length}
+        <nav class="route-choices" aria-label={`Alternative routes to ${label(path.targetId)}`}>
+          <span>{path.routes.length} verified {path.routes.length === 1 ? 'route' : 'routes'} found{path.limited ? ' · more may exist' : ''}</span>
+          {#if path.routes.length > 1}<button disabled={routeIndex === 0 || chain.routeLoading} onclick={async () => { if (await chain.loadRoute(repository, path.targetId, routeIndex - 1)) selectedRoutes[path.targetId] = routeIndex - 1; }}>Previous route</button><b>Route {routeIndex + 1} of {path.routes.length}</b><button disabled={routeIndex + 1 === path.routes.length || chain.routeLoading} onclick={async () => { if (await chain.loadRoute(repository, path.targetId, routeIndex + 1)) selectedRoutes[path.targetId] = routeIndex + 1; }}>Next route</button>{/if}
+          {#if chain.routeLoading}<small role="status">Loading route…</small>{/if}
+        </nav>
+      {/if}
       {#if path.status === 'not-found'}<p class="chain-empty">No route found within {chain.maxDepth} steps{chain.allowExtras ? '' : ' using only supplied ingredients'}. Try a greater depth, another starting form, or allow additional ingredients.</p>
+      {:else if path.status === 'search-limit'}<p class="chain-empty">The provenance search reached its exploration limit without a verified route. Supply more starting ingredients or try an intermediate target.</p>
       {:else if path.status === 'proof-limit'}<p class="chain-empty">The dependency route is too large to display (more than 128 recipes). Try allowing additional ingredients or supplying an intermediate.</p>
-      {:else if !path.recipes.length}<p class="chain-empty">This output is already among the supplied inputs.</p>
+      {:else if !route.length}<p class="chain-empty">This output is already among the supplied inputs.</p>
       {:else}
-        <ol class="chain-steps">
-          {#each summarize(path.recipes) as step, index (index)}
+        <div class="chain-scroll" role="region" aria-label={`Recipe steps to ${label(path.targetId)}`}><ol class="chain-steps">
+          {#each summarize(route) as step, index (index)}
             <li><div class="chain-step-heading"><b>Step {index + 1}</b><span>{step.recipe.type}</span></div>
               {#if step.extras.length}<div class="chain-extras"><b>Also needs</b>{#each step.extras as extra, index (`${extra.id}:${index}`)}<button onclick={() => navigate(extra.id, 'recipes')}>{label(extra.id)}{extra.amount === 0 ? ' (tool / catalyst)' : ''}</button>{/each}</div>{/if}
               <RecipeCard recipe={step.recipe} {navigate} resolve={(id) => entries.get(id)} />
             </li>
           {/each}
-        </ol>
+        </ol></div>
       {/if}
     </section>
   {/each}
 </section>
 
 <style>
+  .route-choices { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:14px 0; font-size:12px; color:#a7bad1; }.route-choices button { padding:7px 10px; border:1px solid #536780; border-radius:5px; background:#243246; color:#e2ecfa; cursor:pointer; }.route-choices button:disabled { opacity:.4; cursor:default; }
   .chain-options { display:flex; flex-wrap:wrap; gap:16px 24px; align-items:center; margin:18px 0 10px; }.chain-options label { display:flex; align-items:center; gap:9px; font-size:13px; }.chain-options input { width:18px; height:18px; accent-color:#abc9ed; }
   select,.chain-error button { padding:8px; border:1px solid #536172; border-radius:6px; background:#242c36; color:#e8eef6; }
   .chain-help { margin:12px 0; color:#97a7ba; font-size:12px; line-height:1.5; }.chain-help summary { cursor:pointer; }
@@ -61,5 +74,12 @@
   .chain-route { margin-top:24px; border-top:1px solid #3c4857; padding-top:18px; }.chain-route h2 { display:flex; gap:12px; align-items:center; font-size:18px; }.chain-route h2 small { display:block; color:#94a9c2; font-size:12px; font-weight:400; margin-top:6px; }
   .chain-steps { list-style:none; padding:0; margin:20px auto; max-width:760px; }.chain-steps li { position:relative; padding:0 0 28px 24px; border-left:2px solid #455b76; }.chain-steps li::before { content:''; position:absolute; left:-6px; top:7px; width:10px; height:10px; border-radius:50%; background:#b2cae8; }.chain-steps li:last-child { border-color:transparent; }
   .chain-step-heading { display:flex; flex-wrap:wrap; gap:12px; align-items:center; margin-bottom:10px; font-size:13px; }.chain-step-heading span { color:#8fa8c7; }.chain-extras { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin-bottom:10px; color:#d4bd89; font-size:12px; }.chain-extras b { margin-right:5px; }.chain-extras button { border:1px solid #665b42; border-radius:5px; background:#302b21; padding:5px 8px; color:#e0d0aa; cursor:pointer; }
+  @media(min-width:1000px) {
+    .chain-scroll { max-width:100%; overflow-x:auto; padding:0 4px 14px; scrollbar-color:#8198b7 #1b2532; scrollbar-width:auto; scroll-snap-type:x proximity; }
+    .chain-scroll:focus-visible { outline:2px solid #a9c5e9; outline-offset:3px; }
+    .chain-steps { display:flex; align-items:flex-start; gap:28px; width:max-content; max-width:none; margin:20px 0 0; padding:0; }
+    .chain-steps li { flex:0 0 560px; width:560px; padding:24px 0 0; border-left:0; border-top:2px solid #455b76; scroll-snap-align:start; }
+    .chain-steps li::before { left:0; top:-6px; }.chain-steps li:last-child { border-top-color:#455b76; }
+  }
   @media(max-width:600px) { .chain-steps li { padding-left:14px; }.chain-route h2 { font-size:16px; } }
 </style>

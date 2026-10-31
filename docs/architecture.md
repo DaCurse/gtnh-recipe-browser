@@ -268,3 +268,9 @@ The optional index is generated from complete, verified published recipe/group r
 Accepted alternatives are directional input matches, not free conversions between member items. Strict
 search reconstructs all ingredient dependencies; extra-ingredient search lists unprovided co-inputs.
 Read [recipe-chain.md](recipe-chain.md) for semantics, limits, generation, and release coverage.
+
+Extra-ingredient chain traversal lives in `recipeChainExtras.ts`: bounded multi-history search,
+borrowed-input provenance, counterfactual source-independence checks, and optimistic reverse pruning.
+The strict solver remains an all-input dependency traversal and enumerates alternative proofs by
+excluding prior steps. Both return a bounded set of alternatives; feature state lazily resolves a
+selected alternative and guards it against stale requests. Wide-screen routes own horizontal overflow.

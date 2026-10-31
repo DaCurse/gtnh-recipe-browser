@@ -1,3 +1,4 @@
+import { searchWithExtras } from './recipeChainExtras';
 /** Dataset-derived incidence graph. Nodes keep exact IDs, including NBT and fluid identity. */
 export type ChainRecipe = [shard: number, record: number, inputs: number[], outputs: number[], tools: number[]];
 export interface ChainGraph {
@@ -10,7 +11,7 @@ export interface ChainGraph {
   recipes: ChainRecipe[];
 }
 export interface ChainReference { shardId: string; record: number }
-export interface ChainPath { targetId: string; status: 'found' | 'not-found' | 'proof-limit'; steps: ChainReference[] }
+export interface ChainPath { targetId: string; status: 'found' | 'not-found' | 'proof-limit' | 'search-limit'; steps: ChainReference[]; alternatives?: ChainReference[][]; limited?: boolean }
 export interface ChainProgress { visited: number; recipes: number }
 
 export function validateChainGraph(value: unknown, datasetId: string, manifestSha256: string): ChainGraph {
@@ -56,8 +57,9 @@ export class RecipeChainGraph {
   }
 
   async search(inputs: string[], outputs: string[], options: { maxDepth: number; allowExtras: boolean },
-    signal?: AbortSignal, onProgress?: (progress: ChainProgress) => void): Promise<ChainPath[]> {
+    signal?: AbortSignal, onProgress?: (progress: ChainProgress) => void, excluded = new Set<number>(), enumerate = true): Promise<ChainPath[]> {
     const maxDepth = Math.max(1, Math.min(32, Math.floor(options.maxDepth) || 12));
+    if (options.allowExtras) return searchWithExtras(this.graph, { members: this.members, memberOf: this.memberOf, consumers: this.consumers }, inputs, outputs, maxDepth, signal, onProgress);
     const depth = new Int16Array(this.graph.ids.length).fill(-1);
     const via = new Int32Array(this.graph.ids.length).fill(-1);
     const representative = new Int32Array(this.graph.ids.length).fill(-1);
@@ -86,7 +88,7 @@ export class RecipeChainGraph {
       const current = queue[head]!;
       if (depth[current]! >= maxDepth) continue;
       for (const index of this.consumers.get(current) ?? []) {
-        if (fired[index]) continue;
+        if (fired[index] || excluded.has(index)) continue;
         considered++;
         const recipe = this.graph.recipes[index]!;
         if (options.allowExtras) {
@@ -102,7 +104,8 @@ export class RecipeChainGraph {
     }
     active();
     onProgress?.({ visited: queue.length, recipes: considered });
-    return outputs.map((targetId, targetIndex) => {
+    const proofs = new Map<string, number[]>();
+    const paths: ChainPath[] = outputs.map((targetId, targetIndex) => {
       const target = targets[targetIndex];
       if (target === undefined || depth[target]! < 0) return { targetId, status: 'not-found', steps: [] };
       const steps = new Set<number>();
@@ -120,10 +123,23 @@ export class RecipeChainGraph {
         return steps.size <= 128;
       };
       if (!visit(target)) return { targetId, status: 'proof-limit', steps: [] };
+      proofs.set(targetId, [...steps]);
       return { targetId, status: 'found', steps: [...steps].map((index) => {
         const recipe = this.graph.recipes[index]!;
         return { shardId: this.graph.shards[recipe[0]]!, record: recipe[1] };
       }) };
     });
+    if (enumerate) for (const path of paths) {
+      if (path.status !== 'found' || !path.steps.length) continue;
+      const routes = [path.steps];
+      for (const banned of (proofs.get(path.targetId) ?? []).slice(0, 12)) {
+        if (routes.length >= 5) break;
+        active();
+        const [alternative] = await this.search(inputs, [path.targetId], options, signal, onProgress, new Set([...excluded, banned]), false);
+        if (alternative?.status === 'found' && !routes.some((route) => JSON.stringify(route) === JSON.stringify(alternative.steps))) routes.push(alternative.steps);
+      }
+      path.alternatives = routes.slice(1); path.limited = true;
+    }
+    return paths;
   }
 }

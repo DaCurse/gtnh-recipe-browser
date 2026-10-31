@@ -68,7 +68,7 @@
 </script>
 
 <main class="finder-page" aria-labelledby="finder-title">
-  <div class="finder-content">
+  <div class="finder-content" class:chain-mode={mode === 'chain'}>
     <div class="finder-heading">
       <div><h1 id="finder-title">{mode === 'chain' ? 'Recipe chain' : 'Recipe finder'}</h1><p>{mode === 'chain' ? 'Trace a route from available inputs to the outputs you want.' : 'Know part of a recipe? Add its inputs or outputs to find it across all machines.'}</p></div>
       {#if hasConstraints}<button class="finder-button" onclick={() => change({ inputs: [], outputs: [] })}>Clear all</button>{/if}
@@ -146,6 +146,7 @@
 <style>
   .finder-page { display:block; flex:1; min-height:0; overflow:auto; padding:28px 24px 60px; }
   .finder-content { max-width:1120px; margin:auto; }
+  @media(min-width:1000px) { .finder-content.chain-mode { max-width:none; } }
   .finder-heading,.side-heading,.finder-results-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; }
   h1 { font-size:26px; margin:0 0 8px; } h2 { font-size:16px; margin:0; }
   p { color:#969da5; line-height:1.5; } .finder-heading p { margin:0; }

@@ -9,10 +9,11 @@ export class RecipeChainState {
   loading = $state(true);
   stage = $state('Loading recipe graph…');
   error = $state('');
-  paths = $state.raw<Array<ChainPath & { recipes: Recipe[] }>>([]);
+  paths = $state.raw<Array<ChainPath & { recipes: Recipe[]; routes: Array<Recipe[] | null> }>>([]);
   allowExtras = $state(true);
   maxDepth = $state(12);
   visited = $state(0);
+  routeLoading = $state(false);
   private worker?: Worker;
   private request = 0;
   private resolveController?: AbortController;
@@ -37,9 +38,10 @@ export class RecipeChainState {
         const id = this.request;
         const resolveController = new AbortController(); this.resolveController = resolveController;
         this.stage = 'Loading route recipes…';
-        void Promise.all((message.paths as ChainPath[]).map(async (path) => ({
-          ...path, recipes: await repository.chainRecipes(path.steps, resolveController.signal)
-        }))).then((paths) => {
+        void Promise.all((message.paths as ChainPath[]).map(async (path) => {
+          const recipes = await repository.chainRecipes(path.steps, resolveController.signal);
+          return { ...path, recipes, routes: [recipes, ...(path.alternatives ?? []).map(() => null)] };
+        })).then((paths) => {
           if (controller.signal.aborted || resolveController.signal.aborted || id !== this.request) return;
           this.paths = paths; this.loading = false;
         }).catch((error: unknown) => {
@@ -63,7 +65,7 @@ export class RecipeChainState {
       const maxDepth = this.maxDepth, allowExtras = this.allowExtras;
       untrack(() => {
         this.resolveController?.abort(); this.request++;
-        this.paths = []; this.error = ''; this.loading = true; this.visited = 0; this.stage = 'Searching recipe chains…';
+        this.paths = []; this.error = ''; this.loading = true; this.routeLoading = false; this.visited = 0; this.stage = 'Searching recipe chains…';
         try {
           this.worker?.postMessage({ type: 'search', id: this.request, inputs: [...constraints.inputs], outputs: [...constraints.outputs], maxDepth, allowExtras });
         } catch (error) {
@@ -73,6 +75,26 @@ export class RecipeChainState {
       });
       return () => { this.worker?.postMessage({ type: 'cancel' }); this.resolveController?.abort(); };
     });
+  }
+  async loadRoute(repository: DatasetRepository, targetId: string, index: number): Promise<boolean> {
+    const path = this.paths.find((path) => path.targetId === targetId);
+    if (!path) return false;
+    if (path.routes[index]) return true;
+    const references = [path.steps, ...(path.alternatives ?? [])][index];
+    if (!references) return false;
+    const request = this.request, controller = this.resolveController;
+    this.routeLoading = true;
+    try {
+      const recipes = await repository.chainRecipes(references, controller?.signal);
+      if (request !== this.request || controller?.signal.aborted) return false;
+      this.paths = this.paths.map((current) => current !== path ? current : {
+        ...current, routes: current.routes.map((route, routeIndex) => routeIndex === index ? recipes : route)
+      });
+      return true;
+    } catch (error) {
+      if (request === this.request && !controller?.signal.aborted) this.error = error instanceof Error ? error.message : String(error);
+      return false;
+    } finally { if (request === this.request) this.routeLoading = false; }
   }
   retry() { this.revision += 1; }
 }

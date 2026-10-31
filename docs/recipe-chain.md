@@ -12,10 +12,28 @@ This stricter search includes branching dependencies and displays them in depend
 
 This is a reachability tool, not a factory balance calculator. It ignores quantities, energy, voltage
 tiers, machine ownership, and throughput. A chance output is a possible result, not guaranteed production.
-Extra-ingredient mode prefers the first minimum-hop reachable route; strict mode provides an available
-proof, without claiming to minimize total machines or recipes. Search depth is adjustable from 6 to 32;
+The tool shows up to five distinct verified routes per target, with Previous/Next route controls.
+Extra-ingredient mode prefers shorter discovered routes; strict mode also looks for alternative proofs
+by excluding steps from its first proof. Neither mode claims to enumerate every solution or minimize
+total machines, resources, or energy. Additional route recipes load only when selected. Search depth is adjustable from 6 to 32;
 the default is 12. A failed bounded search reports the bound rather than claiming no chain exists.
 Proofs larger than 128 recipes get an explicit display-limit message.
+
+Extra-ingredient searches retain separate histories for each intermediate, including which consumed
+co-inputs were borrowed. A borrowed material cannot be recovered and credited as a conversion product
+of the starting material. Candidate targets are also checked against a counterfactual closure: if the
+borrowed consumed inputs alone can make the target, without the supplied source, that candidate is
+rejected. This includes form conversions of borrowed materials. Non-consumed tools do not count as
+borrowed source material. This is a conservative causal check, not atomic or stoichiometric tracing.
+
+An optimistic reverse graph prunes directions that cannot reach a target within the depth bound.
+Extra-ingredient searches are bounded to 20,000 labels, eight retained histories per intermediate,
+three equivalent histories per state, and three million exploration checks. Results say **more may
+exist** when route/history caps apply. If the budget is reached without a verified route, the page says
+so explicitly; it does not claim there is no possible conversion.
+
+On screens at least 1,000 pixels wide, recipe steps run left to right in a dedicated horizontal scroll
+region. Smaller screens retain the vertical step list.
 
 ## Material forms and exact identity
 
