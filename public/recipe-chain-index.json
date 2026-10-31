@@ -1,0 +1,55 @@
+{
+  "schemaVersion": 1,
+  "indexes": {
+    "2.9.0-v7-rbd0b48ae8ad7": {
+      "id": "recipe-chain-index",
+      "bytes": 4743580,
+      "sha256": "b07173980e7276f976ee0425af06efe8665754e54bee46f4b06658b1ef78cec9",
+      "url": "./assets/recipe-chains/b07173980e7276f976ee0425af06efe8665754e54bee46f4b06658b1ef78cec9",
+      "encoding": "gzip",
+      "manifestSha256": "e28a24f4c0a84f2538eb59e1beaa2894e6bb235667a2d89645f292b06dcbff91",
+      "recipes": 287414,
+      "nodes": 135962
+    },
+    "2.9.0-RC-1-v7-rbf5fd70ecad0": {
+      "id": "recipe-chain-index",
+      "bytes": 4703131,
+      "sha256": "de1190ecfcf839b9f845fa11d1fa5e4ebeb8f2eec3afe3456121c900480891d0",
+      "url": "./assets/recipe-chains/de1190ecfcf839b9f845fa11d1fa5e4ebeb8f2eec3afe3456121c900480891d0",
+      "encoding": "gzip",
+      "manifestSha256": "e09381f0a5dc8c623db82d8322ab9e2464c32311dc6d969a34c668c8b72115e9",
+      "recipes": 286630,
+      "nodes": 135703
+    },
+    "2.9.0-beta-3-v7-r131dafd54f93": {
+      "id": "recipe-chain-index",
+      "bytes": 4701142,
+      "sha256": "8c4b0a588d22dbe1aa04bb8bbbae95e48511817c7b009ba050e502e865289e9d",
+      "url": "./assets/recipe-chains/8c4b0a588d22dbe1aa04bb8bbbae95e48511817c7b009ba050e502e865289e9d",
+      "encoding": "gzip",
+      "manifestSha256": "050debd4ecd5b4f6018423258ec2044545b4e6ff8089c7818adc92dcd26c7997",
+      "recipes": 286455,
+      "nodes": 135596
+    },
+    "2.9.0-beta-2-v7-r7fdce46a5a5a": {
+      "id": "recipe-chain-index",
+      "bytes": 4688189,
+      "sha256": "344dafef5ded9d986fe4255fd17ffee996f139adf4f843ad4bca9b208c86d759",
+      "url": "./assets/recipe-chains/344dafef5ded9d986fe4255fd17ffee996f139adf4f843ad4bca9b208c86d759",
+      "encoding": "gzip",
+      "manifestSha256": "aef816018522b4bb5af3a1e5d12068031085f006748ad3f807c1d5059c270965",
+      "recipes": 285691,
+      "nodes": 135206
+    },
+    "2.8.0-v7-r6d351536": {
+      "id": "recipe-chain-index",
+      "bytes": 2123555,
+      "sha256": "b56b3c3d9ba499cc157a51c36132e9f983f6a93cc65a1b3e922c1bcfd591a66b",
+      "url": "./assets/recipe-chains/b56b3c3d9ba499cc157a51c36132e9f983f6a93cc65a1b3e922c1bcfd591a66b",
+      "encoding": "gzip",
+      "manifestSha256": "14d3868df8ad47f84a677cf08da2ddf740f4fc80acdc42376a5ad55a6657164a",
+      "recipes": 190080,
+      "nodes": 43265
+    }
+  }
+}

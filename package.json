@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "dev:lan": "vite --host 0.0.0.0",
+    "build:chain-index": "tsx tools/build-chain-index.ts",
     "build": "vite build && node tools/verify-precache.mjs",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "lint": "eslint .",
@@ -29,6 +30,7 @@
     "test:cached-startup": "node tools/test-cached-startup.mjs",
     "test:item-loading": "node tools/test-item-loading.mjs",
     "test:deferred-rollout": "node tools/test-deferred-rollout.mjs",
+    "test:recipe-chain": "node tools/test-recipe-chain.mjs",
     "test:recipe-finder": "node tools/test-recipe-finder.mjs",
     "test:recipe-streaming": "node tools/test-recipe-streaming.mjs"
   },

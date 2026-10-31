@@ -49,6 +49,7 @@ export function recipeFilterUrl(
 export function itemListUrl(currentUrl: string | URL): URL {
   const url = new URL(currentUrl);
   url.searchParams.delete('page');
+  url.searchParams.delete('finder-mode');
   url.searchParams.delete('input');
   url.searchParams.delete('output');
   url.searchParams.delete('item');
@@ -126,9 +127,10 @@ export function finderFromUrl(currentUrl: string | URL | URLSearchParams): Recip
   };
 }
 
-export function finderUrl(currentUrl: string | URL, constraints: RecipeConstraints): URL {
+export function finderUrl(currentUrl: string | URL, constraints: RecipeConstraints, mode: 'recipes' | 'chain' = 'recipes'): URL {
   const url = itemListUrl(currentUrl);
   url.searchParams.set('page', 'finder');
+  if (mode === 'chain') url.searchParams.set('finder-mode', 'chain');
   for (const id of new Set(constraints.inputs)) url.searchParams.append('input', id);
   for (const id of new Set(constraints.outputs)) url.searchParams.append('output', id);
   return url;

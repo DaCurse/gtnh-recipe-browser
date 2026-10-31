@@ -253,3 +253,18 @@ normal shared/cache-aware facade when the previous candidate set cannot prove co
 No additional global index or dataset format change is required. `test-recipe-finder.mjs` compares
 real-data subsets against the existing item browser export and checks navigation, variants, mobile
 keyboard handling, cached refinement, and clearing a held network request.
+
+## Recipe chain graph
+
+`RecipeChain.svelte` is the finder chain-mode view. `recipeChainState.svelte.ts` owns the worker,
+index lifetime, cancellation, and lazy resolution of proof recipes. `recipeChain.ts` provides a
+UI-independent incidence graph and bounded reachability solver; `recipeChain.worker.ts` decompresses,
+validates, constructs, and searches it off the main thread. `DatasetRepository.chainIndex` verifies the
+projection against its exact source manifest and caches compressed bytes in the dataset runtime store.
+`chainRecipes` resolves returned shard/record references through the normal validation/materialization path.
+
+The optional index is generated from complete, verified published recipe/group records by
+`tools/build-chain-index.ts`, independently of immutable pack layout. Normal browsing never fetches it.
+Accepted alternatives are directional input matches, not free conversions between member items. Strict
+search reconstructs all ingredient dependencies; extra-ingredient search lists unprovided co-inputs.
+Read [recipe-chain.md](recipe-chain.md) for semantics, limits, generation, and release coverage.

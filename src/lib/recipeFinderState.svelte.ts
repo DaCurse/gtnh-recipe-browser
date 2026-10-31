@@ -14,10 +14,11 @@ export class RecipeFinderState {
   private revision = $state(0);
   private cached?: { repository: DatasetRepository; constraints: RecipeConstraints; recipes: Recipe[] };
 
-  constructor(context: { repository: () => DatasetRepository; constraints: () => RecipeConstraints }) {
+  constructor(context: { repository: () => DatasetRepository; constraints: () => RecipeConstraints; enabled?: () => boolean }) {
     $effect(() => {
       const repository = context.repository();
       const constraints = context.constraints();
+      const enabled = context.enabled?.() ?? true;
       void this.revision;
       const controller = new AbortController();
       untrack(() => {
@@ -26,7 +27,7 @@ export class RecipeFinderState {
         this.machine = '';
         this.error = '';
         this.loaded = this.total = 0;
-        this.loading = constraints.inputs.length + constraints.outputs.length > 0;
+        this.loading = enabled && constraints.inputs.length + constraints.outputs.length > 0;
         if (!this.loading) return;
         const cached = this.cached;
         if (cached?.repository === repository

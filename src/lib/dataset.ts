@@ -34,7 +34,8 @@ import type {
   VersionsIndex
 } from './datasetSchema';
 import { ingredientMatchesEntry } from './oreDictionary';
-import { assetDigest } from './integrity';
+import { assetDigest, verifyAssetBytesAsync } from './integrity';
+import type { ChainReference } from './recipeChain';
 import { goodsIdentityFromId } from './goodsIdentity';
 import { expandRelations } from './packedRelations';
 import { recordPageSelections } from './recordPages';
@@ -1396,6 +1397,54 @@ export class DatasetRepository {
     signal?: AbortSignal
   ): Promise<SpecialRecord[]> {
     return this.specialForAll(view, viewType, onProgress, signal);
+  }
+
+  /** Optional, verified application projection; loaded only when the chain tool is used. */
+  async chainIndex(signal?: AbortSignal): Promise<{ bytes: Uint8Array<ArrayBuffer>; manifestSha256: string }> {
+    const registryUrl = new URL('./recipe-chain-index.json', document.baseURI).href;
+    const registry = await withAbort(fetchJsonNetworkFirst<{
+      schemaVersion: number;
+      indexes: Record<string, AssetDescriptor & { manifestSha256: string }>;
+    }>(registryUrl, `chain-index:${registryUrl}`, 150), signal);
+    const asset = registry.value.indexes?.[this.datasetId];
+    if (registry.value.schemaVersion !== 1 || !asset || !/^[a-f0-9]{64}$/.test(asset.manifestSha256)) {
+      throw new Error('A matching recipe chain index is not available for this dataset');
+    }
+    const manifestBytes = new TextEncoder().encode(JSON.stringify(this.manifest));
+    await verifyAssetBytesAsync({ id: 'Chain source manifest', bytes: manifestBytes.length, sha256: asset.manifestSha256 }, manifestBytes);
+    const manifestSha256 = asset.manifestSha256;
+    const key = `chain-index-v1:${asset.sha256}`;
+    const cached = await getRuntimeCache<Uint8Array>(this.datasetId, key);
+    if (cached instanceof Uint8Array) {
+      try {
+        await verifyAssetBytesAsync(asset, cached);
+        if (signal?.aborted) throw new DOMException('Search cancelled', 'AbortError');
+        return { bytes: Uint8Array.from(cached), manifestSha256 };
+      } catch (error) { if (signal?.aborted) throw error; }
+    }
+    const response = await fetch(new URL(asset.url, registry.url), { signal });
+    if (!response.ok) throw new Error(`Unable to load recipe chain index: HTTP ${response.status}`);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    await verifyAssetBytesAsync(asset, bytes);
+    if (signal?.aborted) throw new DOMException('Search cancelled', 'AbortError');
+    // Finish the IndexedDB clone before the caller transfers this buffer to a worker.
+    await cacheRuntimeData(this.datasetId, key, bytes);
+    return { bytes, manifestSha256 };
+  }
+
+  async chainRecipes(references: ChainReference[], signal?: AbortSignal): Promise<Recipe[]> {
+    return mapProgressively(references, 2, async (reference, index) => {
+      const descriptor = this.manifest.recipeShards.find((asset) => asset.id === reference.shardId);
+      if (!descriptor || !Number.isSafeInteger(reference.record) || reference.record < 0 || reference.record >= descriptor.recipeCount) {
+        throw new Error('Invalid chain recipe reference');
+      }
+      const recipe = (await this.loadShard(reference.shardId))[reference.record];
+      if (!recipe) throw new Error('Chain recipe is missing');
+      const groups = new Set([...recipe.inputs, ...recipe.outputs]
+        .filter((io) => io.kind === 'oreDict' || io.kind === 'itemGroup').map((io) => io.goodsId));
+      await Promise.all([...groups].map((id) => this.entryFor(id, signal)));
+      return materializeRecipe(recipe, index, this.types, this.ingredientGroups);
+    }, undefined, signal);
   }
 
   /** Use the narrowest indexed ingredient, then verify the complete subset on both sides. */

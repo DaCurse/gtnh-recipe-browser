@@ -41,6 +41,7 @@
   let loadTargetVersion = $state<string>();
   let loadPreserveSelection = $state(false);
   let finderOpen = $state(false);
+  let finderMode = $state<'recipes' | 'chain'>('recipes');
   let finderConstraints = $state<RecipeConstraints>({ inputs: [], outputs: [] });
   let query = $state('');
   let recipeQuery = $state('');
@@ -197,7 +198,7 @@
     detailsOpen = false;
     recipeQuery = '';
     finderConstraints = next;
-    history.pushState({ route: 'finder' }, '', finderUrl(location.href, next));
+    history.pushState({ route: 'finder' }, '', finderUrl(location.href, next, finderMode));
   }
 
   function diagnostic(error: unknown): string {
@@ -322,6 +323,7 @@
 
   onMount(() => {
     const params = new URLSearchParams(location.search);
+    finderMode = params.get('finder-mode') === 'chain' ? 'chain' : 'recipes';
     const linkedFinder = finderFromUrl(params);
     finderOpen = linkedFinder !== null;
     if (linkedFinder) finderConstraints = linkedFinder;
@@ -334,6 +336,7 @@
     specialScope = linkedSpecial.specialScope;
     const handlePopState = () => {
       const currentParams = new URLSearchParams(location.search);
+      finderMode = currentParams.get('finder-mode') === 'chain' ? 'chain' : 'recipes';
       const currentFinder = finderFromUrl(currentParams);
       finderOpen = currentFinder !== null;
       if (currentFinder) {
@@ -429,7 +432,7 @@
 
   <nav class="primary-nav" aria-label="Main navigation">
     <a href={itemListUrl(navigationBase).href} aria-current={!finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); showItemList(); }}>Items</a>
-    <a href={finderUrl(navigationBase, finderConstraints).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); if (!finderOpen) showFinder(); }}>Recipe finder</a>
+    <a href={finderUrl(navigationBase, finderConstraints, finderMode).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); if (!finderOpen) showFinder(); }}>Recipe finder</a>
   </nav>
 
   {#if datasetStatus !== 'ready'}
@@ -444,7 +447,7 @@
       {copyError}
     />
   {:else if finderOpen && repository}
-    <RecipeFinder {repository} constraints={finderConstraints} change={showFinder} navigate={(id, view) => select(id, true, view)} />
+    <RecipeFinder {repository} mode={finderMode} setMode={(next) => { finderMode = next; showFinder(); }} constraints={finderConstraints} change={showFinder} navigate={(id, view) => select(id, true, view)} />
   {:else if selected && repository}
   <main class:home-view={!detailsOpen} class:resizing={sidebarResizing} style:--sidebar-width={`${sidebarWidth}px`}>
     <CatalogPane

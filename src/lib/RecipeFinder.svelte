@@ -2,18 +2,21 @@
   import CatalogPane from './CatalogPane.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import RecipeCard from './RecipeCard.svelte';
+  import RecipeChain from './RecipeChain.svelte';
   import { RecipeFinderState } from './recipeFinderState.svelte';
   import type { DatasetRepository } from './dataset';
   import type { RecipeConstraints } from './recipeFinder';
   import type { RecipeView } from './types';
 
-  let { repository, constraints, change, navigate }: {
+  let { repository, constraints, change, navigate, mode = 'recipes', setMode }: {
+    mode?: 'recipes' | 'chain';
+    setMode: (mode: 'recipes' | 'chain') => void;
     repository: DatasetRepository;
     constraints: RecipeConstraints;
     change: (next: RecipeConstraints) => void;
     navigate: (id: string, view: RecipeView) => void;
   } = $props();
-  const finderState = new RecipeFinderState({ repository: () => repository, constraints: () => constraints });
+  const finderState = new RecipeFinderState({ repository: () => repository, constraints: () => constraints, enabled: () => mode === 'recipes' });
   const entries = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
   const machines = $derived.by(() => {
     const types = new Map<string, { name: string; count: number; iconId?: string }>();
@@ -67,9 +70,10 @@
 <main class="finder-page" aria-labelledby="finder-title">
   <div class="finder-content">
     <div class="finder-heading">
-      <div><h1 id="finder-title">Recipe finder</h1><p>Know part of a recipe? Add its inputs or outputs to find it across all machines.</p></div>
+      <div><h1 id="finder-title">{mode === 'chain' ? 'Recipe chain' : 'Recipe finder'}</h1><p>{mode === 'chain' ? 'Trace a route from available inputs to the outputs you want.' : 'Know part of a recipe? Add its inputs or outputs to find it across all machines.'}</p></div>
       {#if hasConstraints}<button class="finder-button" onclick={() => change({ inputs: [], outputs: [] })}>Clear all</button>{/if}
     </div>
+    <nav class="finder-modes" aria-label="Finder mode"><button aria-pressed={mode === 'recipes'} onclick={() => setMode('recipes')}>Single recipe</button><button aria-pressed={mode === 'chain'} onclick={() => setMode('chain')}>Recipe chain</button></nav>
     <div class="finder-constraints">
       {#each ['inputs', 'outputs'] as side (side)}
         {@const direction = side as 'inputs' | 'outputs'}
@@ -86,8 +90,13 @@
         </section>
       {/each}
     </div>
-    <p class="finder-hint">Matches include every selected input and output. Extra ingredients are allowed; amounts are ignored. Interchangeable ingredients are supported.</p>
+    <p class="finder-hint">{mode === 'chain' ? 'Add starting ingredients and target outputs to trace the recipe steps between them.' : 'Matches include every selected input and output. Extra ingredients are allowed; amounts are ignored. Interchangeable ingredients are supported.'}</p>
     {#if missing}<p class="finder-warning" role="alert">A selected ingredient is unavailable in this version. Remove it or switch versions to continue.</p>{/if}
+    {#if mode === 'chain'}
+      {#if constraints.inputs.length && constraints.outputs.length}
+        <RecipeChain {repository} {constraints} {navigate} />
+      {:else}<div class="finder-message"><b>Choose a starting point and a destination</b><p>Add at least one input and one output above to search for a recipe chain.</p></div>{/if}
+    {:else}
     <div class="finder-results-bar">
       <h2 aria-live="polite">{hasConstraints ? `${filtered.length.toLocaleString()} matching recipes${finderState.loading ? ' so far' : ''}` : 'Start with one ingredient'}</h2>
     </div>
@@ -118,6 +127,7 @@
     {#if filtered.length > 20}
       <nav class="finder-pagination" aria-label="Finder result pages"><button class="finder-button" disabled={finderState.page === 0} onclick={() => finderState.page -= 1}>Previous</button><span>Page {finderState.page + 1} of {pageCount}</span><button class="finder-button" disabled={finderState.page + 1 >= pageCount} onclick={() => finderState.page += 1}>Next</button></nav>
     {/if}
+    {/if}
   </div>
 </main>
 
@@ -139,6 +149,7 @@
   .finder-heading,.side-heading,.finder-results-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; }
   h1 { font-size:26px; margin:0 0 8px; } h2 { font-size:16px; margin:0; }
   p { color:#969da5; line-height:1.5; } .finder-heading p { margin:0; }
+  .finder-modes { display:flex; gap:4px; margin-top:20px; width:max-content; padding:4px; border:1px solid #414d5c; border-radius:8px; background:#191f27; }.finder-modes button { padding:9px 14px; min-height:40px; border:0; border-radius:5px; background:transparent; color:#a3b0c0; cursor:pointer; }.finder-modes button[aria-pressed="true"] { background:#35465c; color:#ecf3fd; }
   .finder-constraints { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:24px; }
   .constraint-side { min-width:0; padding:16px; border:1px solid #41464c; border-radius:10px; background:#1c1f23; }
   .finder-button { min-height:40px; border:1px solid #50575f; border-radius:7px; padding:8px 12px; background:#292e34; cursor:pointer; white-space:nowrap; }
