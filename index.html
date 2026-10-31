@@ -4,13 +4,33 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#17181b" />
-    <meta name="description" content="Search items, recipes, and usages across GTNH versions." />
+    <meta name="description" content="Search GregTech: New Horizons recipes, items, fluids, and machine usages. Find recipes by ingredients and explore production chains for GTNH 2.9.0 and earlier versions." />
+    <link rel="canonical" href="https://dacurse.github.io/gtnh-recipe-browser/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="GTNH Recipe Browser" />
+    <meta property="og:title" content="GTNH Recipe Browser — GregTech: New Horizons Recipes &amp; Chains" />
+    <meta property="og:description" content="Search GTNH recipes and machine usages, find recipes by ingredients, and explore production chains across versions." />
+    <meta property="og:url" content="https://dacurse.github.io/gtnh-recipe-browser/" />
+    <meta property="og:image" content="https://dacurse.github.io/gtnh-recipe-browser/assets/gtnh-logo.png" />
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content="GTNH Recipe Browser" />
+    <meta name="twitter:description" content="GregTech: New Horizons recipes, ingredient search, and production chains." />
+    <meta name="twitter:image" content="https://dacurse.github.io/gtnh-recipe-browser/assets/gtnh-logo.png" />
+    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"GTNH Recipe Browser","url":"https://dacurse.github.io/gtnh-recipe-browser/","description":"Search GregTech: New Horizons recipes, machine usages, ingredients, and production chains.","applicationCategory":"GameApplication","operatingSystem":"Any","isAccessibleForFree":true}</script>
     <link rel="icon" href="./favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="./assets/gtnh-logo-192.png" />
-    <title>GTNH Recipe Browser</title>
+    <title>GTNH Recipe Browser — GregTech: New Horizons Recipes &amp; Chains</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <main>
+        <h1>GTNH Recipe Browser</h1>
+        <p>Search GregTech: New Horizons recipes, items, fluids, and machine usages for GTNH 2.9.0 and earlier versions.</p>
+        <p>Find recipes from a subset of inputs and outputs, or explore recipe chains between ingredients and products. Save a dataset for offline browsing and export recipe data as JSON.</p>
+        <nav aria-label="Recipe tools"><a href="./">Browse items</a> · <a href="./?page=finder">Recipe finder</a> · <a href="./?page=finder&amp;finder-mode=chain">Recipe chains</a></nav>
+        <p>Loading the interactive browser. JavaScript is required to search the recipe datasets.</p>
+      </main>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

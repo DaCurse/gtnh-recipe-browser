@@ -3,5 +3,8 @@ import App from './App.svelte';
 import './app.css';
 import { initializeAnalytics } from './lib/analytics';
 
-mount(App, { target: document.getElementById('app')! });
+const target = document.getElementById('app')!;
+// Replace the crawlable loading introduction once the interactive shell is available.
+target.replaceChildren();
+mount(App, { target });
 initializeAnalytics();

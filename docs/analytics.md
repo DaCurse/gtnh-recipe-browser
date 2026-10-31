@@ -1,6 +1,6 @@
 # PostHog analytics
 
-The production site uses PostHog US Cloud with the public browser project token configured in
+The production site at [GTNH Recipe Browser](https://dacurse.github.io/gtnh-recipe-browser/) uses PostHog US Cloud with the public browser project token configured in
 `src/lib/analytics.ts`. No personal/admin API key is used. Local development and deploy previews do
 not send events. The slim SDK loads asynchronously during idle time and never gates dataset startup.
 Blocked SDK or ingestion requests cannot prevent browsing or exports.

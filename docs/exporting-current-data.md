@@ -98,7 +98,7 @@ Deploy the staged tree, verify the deployed origin before changing the index, an
 
 ```sh
 npm run smoke:deploy -- \
-  https://<site>.netlify.app/ \
+  https://dacurse.github.io/gtnh-recipe-browser/ \
   --manifest data/<dataset-id>/pack-manifest.json \
   --all-assets \
   --require-special

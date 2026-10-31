@@ -1,5 +1,7 @@
 # GTNH Recipe Browser
 
+[Open GTNH Recipe Browser](https://dacurse.github.io/gtnh-recipe-browser/)
+
 A touch-friendly, offline-capable Svelte browser for GregTech: New Horizons items, recipes, and usages.
 
 Use **Recipe finder** in the main navigation to find recipes across machines from a subset of known
@@ -45,15 +47,16 @@ the production service worker. See [`docs/cached-startup-performance.md`](docs/c
 
 ## Deployment
 
-Netlify deployment settings are committed in `netlify.toml`: the production branch is `master`, the repository root
-is the base directory, `npm run build` is the build command, and `dist` is the publish directory. Node.js 22 is
-pinned in the configuration and the application requires no secrets or runtime environment variables.
+GitHub Pages publishes automatically from `master` at
+https://dacurse.github.io/gtnh-recipe-browser/ using the committed
+[Pages workflow](.github/workflows/pages.yml). Node.js 22 builds `dist`, and the
+workflow deploys it using the built-in Actions token. See [hosting and SEO](docs/github-pages.md).
 
 After a production deploy, verify the live version index and representative catalog, recipe, and icon assets by byte
 size and SHA-256:
 
 ```sh
-npm run smoke:deploy -- https://<site>.netlify.app/
+npm run smoke:deploy -- https://dacurse.github.io/gtnh-recipe-browser/
 ```
 
 The default-origin smoke requires the active special-data release; pass an explicit historical manifest when checking

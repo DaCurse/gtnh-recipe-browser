@@ -71,6 +71,6 @@ All three staged packs passed HTTP smoke verification of every referenced physic
 default version index passed the same check for all 711 beta-3 assets. `npm run quality` passed all gates (35 test files,
 215 tests), including the production build and precache verification.
 
-The immutable asset stage was deployed to `https://gtnh-recipes.netlify.app/` in commit `65ee9b3` on 2026-10-03.
+The immutable asset stage was first deployed in commit `65ee9b3` on 2026-10-03. The current production address is [GTNH Recipe Browser](https://dacurse.github.io/gtnh-recipe-browser/).
 Before activating the v7 index and shell, production-origin smoke checks verified every physical asset in all three
 packs (339 / 424 / 711 references). The live v6 index and all three bridge manifests matched their frozen local bytes.

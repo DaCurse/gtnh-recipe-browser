@@ -19,7 +19,8 @@ export function analyticsSearch(value: string): string {
 }
 
 function enabled(): boolean {
-  return import.meta.env.PROD && typeof location !== 'undefined' && location.hostname === 'gtnh-recipes.netlify.app'
+  return import.meta.env.PROD && typeof location !== 'undefined' && location.hostname === 'dacurse.github.io'
+    && location.pathname.startsWith('/gtnh-recipe-browser/')
     && typeof navigator !== 'undefined' && navigator.doNotTrack !== '1'
     && !(navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl;
 }

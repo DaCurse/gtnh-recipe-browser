@@ -6,7 +6,7 @@ vi.mock('posthog-js/dist/module.slim', () => ({ default: sdk }));
 beforeEach(() => {
   vi.resetModules(); vi.clearAllMocks(); vi.useFakeTimers();
   vi.stubEnv('PROD', true);
-  vi.stubGlobal('location', new URL('https://gtnh-recipes.netlify.app/?page=finder&finder-mode=chain&input=private&search=secret#raw'));
+  vi.stubGlobal('location', new URL('https://dacurse.github.io/gtnh-recipe-browser/?page=finder&finder-mode=chain&input=private&search=secret#raw'));
   vi.stubGlobal('navigator', { doNotTrack: null });
   vi.stubGlobal('requestIdleCallback', undefined);
   sdk.init.mockImplementation((_key, config) => config.loaded(sdk));
@@ -16,11 +16,22 @@ afterEach(() => { vi.useRealTimers(); vi.unstubAllGlobals(); vi.unstubAllEnvs();
 describe('focused analytics', () => {
   it('removes free text, exact selections, and fragments while keeping the navigation category', async () => {
     const { analyticsUrl, analyticsSearch } = await import('../src/lib/analytics');
-    expect(analyticsUrl(location.href)).toBe('https://gtnh-recipes.netlify.app/?page=finder&finder-mode=chain');
+    expect(analyticsUrl(location.href)).toBe('https://dacurse.github.io/gtnh-recipe-browser/?page=finder&finder-mode=chain');
     expect(analyticsUrl('https://site.test/?item=nbt&view=usages&recipe-filter=secret')).toBe('https://site.test/?view=usages');
     expect(analyticsUrl('bad-url')).toBe('');
     expect(analyticsSearch('  IRON   Dust  ')).toBe('iron dust');
     expect(analyticsSearch('x'.repeat(200))).toHaveLength(120);
+  });
+  it('captures on the Pages project but excludes other projects on the same origin', async () => {
+    const { trackEvent } = await import('../src/lib/analytics');
+    vi.stubGlobal('location', new URL('https://dacurse.github.io/other/'));
+    trackEvent('$pageview');
+    await vi.runAllTimersAsync();
+    expect(sdk.init).not.toHaveBeenCalled();
+    vi.stubGlobal('location', new URL('https://dacurse.github.io/gtnh-recipe-browser/?item=private'));
+    trackEvent('$pageview');
+    await vi.runAllTimersAsync(); await vi.dynamicImportSettled();
+    expect(sdk.capture).toHaveBeenCalledWith('$pageview', { $current_url: 'https://dacurse.github.io/gtnh-recipe-browser/' });
   });
   it('queues early completed events and loads the SDK without blocking callers', async () => {
     const { trackEvent } = await import('../src/lib/analytics');
@@ -29,7 +40,7 @@ describe('focused analytics', () => {
     await vi.runAllTimersAsync(); await vi.dynamicImportSettled();
     expect(sdk.init).toHaveBeenCalledOnce();
     expect(sdk.capture).toHaveBeenCalledWith('chain_search_completed', {
-      duration_ms: 123, route_count: 8, $current_url: 'https://gtnh-recipes.netlify.app/?page=finder&finder-mode=chain'
+      duration_ms: 123, route_count: 8, $current_url: 'https://dacurse.github.io/gtnh-recipe-browser/?page=finder&finder-mode=chain'
     });
     const config = sdk.init.mock.calls[0]![1];
     expect(config).toMatchObject({ api_host: 'https://us.i.posthog.com', autocapture: false,
@@ -38,17 +49,17 @@ describe('focused analytics', () => {
     const event = { event: '$pageview', properties: { $current_url: location.href, $session_entry_url: location.href,
       $referrer: 'https://example.test/private?secret=1', $set_once: { raw: 'secret' } } };
     expect(config.before_send(event).properties).toEqual({
-      $current_url: 'https://gtnh-recipes.netlify.app/?page=finder&finder-mode=chain',
-      $session_entry_url: 'https://gtnh-recipes.netlify.app/?page=finder&finder-mode=chain', $referrer: 'https://example.test'
+      $current_url: 'https://dacurse.github.io/gtnh-recipe-browser/?page=finder&finder-mode=chain',
+      $session_entry_url: 'https://dacurse.github.io/gtnh-recipe-browser/?page=finder&finder-mode=chain', $referrer: 'https://example.test'
     });
     expect(config.before_send({ event: '$autocapture', properties: {} })).toBeNull();
   });
   it('does not initialize or capture on previews, local development, DNT, or GPC', async () => {
     for (const [url, production, navigator] of [
       ['https://preview.netlify.app/', true, {}], ['http://localhost:5173/', true, {}],
-      ['https://gtnh-recipes.netlify.app/', false, {}],
-      ['https://gtnh-recipes.netlify.app/', true, { doNotTrack: '1' }],
-      ['https://gtnh-recipes.netlify.app/', true, { globalPrivacyControl: true }]
+      ['https://dacurse.github.io/gtnh-recipe-browser/', false, {}],
+      ['https://dacurse.github.io/gtnh-recipe-browser/', true, { doNotTrack: '1' }],
+      ['https://dacurse.github.io/gtnh-recipe-browser/', true, { globalPrivacyControl: true }]
     ] as const) {
       vi.stubGlobal('location', new URL(url)); vi.stubGlobal('navigator', navigator); vi.stubEnv('PROD', production);
       const { initializeAnalytics, trackEvent } = await import('../src/lib/analytics');

@@ -442,7 +442,7 @@
   });
 </script>
 
-<svelte:head><title>{finderOpen ? 'Recipe finder - GTNH Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser'}</title></svelte:head>
+<svelte:head><title>{finderOpen ? 'Recipe finder - GTNH Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser — GregTech: New Horizons Recipes & Chains'}</title></svelte:head>
 
 <div class="app-shell">
   <AppHeader
@@ -458,6 +458,15 @@
     <a href={itemListUrl(navigationBase).href} aria-current={!finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); showItemList(); }}>Items</a>
     <a href={finderUrl(navigationBase, finderConstraints, finderMode).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); if (!finderOpen) showFinder(); }}>Recipe finder</a>
   </nav>
+
+  {#if !finderOpen && !detailsOpen}
+    <section class="site-introduction" aria-label="About GTNH Recipe Browser">
+      <h1>GTNH Recipe Browser</h1>
+      <p>Search GregTech: New Horizons recipes, items, fluids, and machine usages for GTNH 2.9.0 and earlier versions.
+        <a href="./?page=finder">Find recipes by ingredients</a>, explore <a href="./?page=finder&amp;finder-mode=chain">recipe chains</a>,
+        save datasets for offline browsing, and export recipe data as JSON.</p>
+    </section>
+  {/if}
 
   {#if datasetStatus !== 'ready'}
     <ApplicationState

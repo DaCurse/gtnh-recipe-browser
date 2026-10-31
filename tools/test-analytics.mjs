@@ -6,12 +6,12 @@ const [appUrl, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-analytics.mjs <app-url> <playwright-module>');
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch({ headless: true });
-const production = 'https://gtnh-recipes.netlify.app';
+const production = 'https://dacurse.github.io/gtnh-recipe-browser';
 
 async function serve(context) {
   await context.route(`${production}/**`, async (route) => {
     const requested = new URL(route.request().url());
-    const response = await route.fetch({ url: new URL(requested.pathname + requested.search, appUrl).href });
+    const response = await route.fetch({ url: new URL(requested.href.slice(`${production}/`.length), appUrl.endsWith('/') ? appUrl : `${appUrl}/`).href });
     if (requested.pathname.includes('/assets/index-') && requested.pathname.endsWith('.js')) {
       // PostHog intentionally filters automated browsers. Enable test capture
       // only in this intercepted local response; production bot filtering stays on.
