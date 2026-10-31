@@ -88,6 +88,18 @@ try {
   await finish();
   assert.equal(await page.locator('.chain-steps > li').count(), 0);
   assert.match(await page.locator('.chain-empty').innerText(), /exploration limit|No route found/);
+  // Oil must follow a real refining procedure, not a recovered container filled with borrowed diesel.
+  await page.getByRole('combobox', { name: 'Maximum chain depth' }).selectOption('12'); await finish();
+  await page.evaluate(() => {
+    const url = new URL(location.href); url.searchParams.set('input', 'f:BuildCraft|Energy:oil');
+    url.searchParams.set('output', 'f:gregtech:nitrofuel');
+    history.pushState({}, '', url); dispatchEvent(new PopStateEvent('popstate'));
+  });
+  await finish();
+  assert((await page.locator('.chain-steps > li').count()) >= 3);
+  assert.match(await page.locator('.chain-step-heading').first().innerText(), /Distillation/);
+  assert.doesNotMatch(await page.locator('.chain-extras').allTextContents().then((items) => items.join(' ')), /Diesel/);
+  assert.doesNotMatch(await page.locator('.chain-step-heading').allTextContents().then((items) => items.join(' ')), /Canner/);
   // Changing modes and clearing must suppress stale worker and detail responses.
   await page.getByRole('button', { name: 'Single recipe', exact: true }).click();
   assert.equal(await page.locator('.chain-view').count(), 0);
@@ -98,6 +110,6 @@ try {
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ realItemFluidConversion: true, steps: 2, missingToolVisible: true, strictWithTool: true,
     strictWithoutToolRejected: true, workerGraphReuse: true, cachedGraphRefresh: true, shareableMode: true,
-    mobileLayout: true, horizontalDesktopScroller: true, selectableAlternatives: true, borrowedTungstenRejected: true, staleClear: true, normalBrowseGraphReads: 0, errors }));
+    mobileLayout: true, horizontalDesktopScroller: true, selectableAlternatives: true, borrowedTungstenRejected: true, realOilRefinery: true, borrowedDieselContainerDetourRejected: true, staleClear: true, normalBrowseGraphReads: 0, errors }));
   await context.close();
 } finally { await browser.close(); }

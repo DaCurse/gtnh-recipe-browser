@@ -21,14 +21,19 @@ Proofs larger than 128 recipes get an explicit display-limit message.
 
 Extra-ingredient searches retain separate histories for each intermediate, including which consumed
 co-inputs were borrowed. A borrowed material cannot be recovered and credited as a conversion product
-of the starting material. Candidate targets are also checked against a counterfactual closure: if the
-borrowed consumed inputs alone can make the target, without the supplied source, that candidate is
-rejected. This includes form conversions of borrowed materials. Non-consumed tools do not count as
+of the starting material. Candidate targets are also checked against a counterfactual closure of the displayed procedure plus
+single-consumed-input processing/form changes: if the borrowed consumed inputs alone can make the
+target through those steps, without the supplied source, that candidate is rejected. Unrelated
+multi-reactant synthesis elsewhere in the pack does not disqualify a genuinely source-dependent
+procedure. Non-consumed tools do not count as
 borrowed source material. This is a conservative causal check, not atomic or stoichiometric tracing.
 
 An optimistic reverse graph prunes directions that cannot reach a target within the depth bound.
-Extra-ingredient searches are bounded to 20,000 labels, eight retained histories per intermediate,
-three equivalent histories per state, and three million exploration checks. Results say **more may
+Best-first exploration favors shorter proofs with fewer borrowed materials. Sibling fractions can
+be processed to supply a co-input of the current frontier before they are recombined.
+Extra-ingredient searches are bounded to 20,000 processed labels, eight retained histories per intermediate,
+three equivalent histories per state, and three million exploration checks. The frontier is trimmed
+from 8,000 to its best 4,000 pending histories when needed. Results say **more may
 exist** when route/history caps apply. If the budget is reached without a verified route, the page says
 so explicitly; it does not claim there is no possible conversion.
 
@@ -86,3 +91,8 @@ identity, alternatives, cycles, branching proofs, depth limits, cancellation, an
 | 2.9.0-beta-3 | 286,455 | 135,596 | 4,701,142 |
 | 2.9.0-beta-2 | 285,691 | 135,206 | 4,688,189 |
 | 2.8.0 | 190,080 | 43,265 | 2,123,555 |
+
+Regression examples include the invalid Pu241 → borrowed/recovered tungsten → Pu239 path and the
+invalid oil → lubricant → recovered cell → externally supplied diesel path. The actual 2.9.0 oil
+search now finds source-dependent distillation/fuel-processing/mixing procedures; their co-inputs
+remain explicit. This is still a conservative procedural dependency test, not molecular tracing.

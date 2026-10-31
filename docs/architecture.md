@@ -270,7 +270,8 @@ search reconstructs all ingredient dependencies; extra-ingredient search lists u
 Read [recipe-chain.md](recipe-chain.md) for semantics, limits, generation, and release coverage.
 
 Extra-ingredient chain traversal lives in `recipeChainExtras.ts`: bounded multi-history search,
-borrowed-input provenance, counterfactual source-independence checks, and optimistic reverse pruning.
+borrowed-input provenance, procedure-scoped counterfactual checks, optimistic reverse pruning,
+and best-first sibling-branch planning.
 The strict solver remains an all-input dependency traversal and enumerates alternative proofs by
 excluding prior steps. Both return a bounded set of alternatives; feature state lazily resolves a
 selected alternative and guards it against stale requests. Wide-screen routes own horizontal overflow.

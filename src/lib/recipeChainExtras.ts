@@ -27,9 +27,9 @@ export async function searchWithExtras(graph: ChainGraph,
     }
     return result;
   };
-  let work = 0, limited = false;
+  let work = 0, generated = 0, limited = false;
   const active = () => { if (signal?.aborted) throw new DOMException('Search cancelled', 'AbortError'); };
-  const pause = async () => { active(); onProgress?.({ visited: labels.length, recipes: work }); await new Promise((resolve) => setTimeout(resolve, 0)); active(); };
+  const pause = async () => { active(); onProgress?.({ visited: generated, recipes: work }); await new Promise((resolve) => setTimeout(resolve, 0)); active(); };
   const seeds = new Set(inputs.flatMap((id) => { const node = lookup.get(id); return node === undefined ? [] : expand(node); }));
   const labels: Label[] = [];
   const atNode = new Map<number, Label[]>();
@@ -37,7 +37,7 @@ export async function searchWithExtras(graph: ChainGraph,
   const targets = outputs.map((id) => lookup.get(id));
   for (const node of seeds) {
     const label: Label = { node, path: [], known: seeds, borrowed: new Set(), active: true };
-    labels.push(label); atNode.set(node, [label]);
+    labels.push(label); generated++; atNode.set(node, [label]);
     if (targets.includes(node)) found.set(node, [label]);
   }
   const producers = new Map<number, number[]>();
@@ -63,12 +63,40 @@ export async function searchWithExtras(graph: ChainGraph,
     for (const recipe of recipes) for (const input of graph.recipes[recipe]![2]) reverseMark(input, distance[current]! + 1);
     if (head % 2048 === 0) await pause();
   }
+  // Best-first exploration prefers shorter, less externally supplied proofs.
+  const frontier: Array<{ label: Label; score: number }> = [];
+  const push = (label: Label) => {
+    const item = { label, score: label.path.length + distance[label.node]! + 2 * Math.sqrt(label.borrowed.size) };
+    let child = frontier.length; frontier.push(item);
+    while (child > 0) {
+      const parent = (child - 1) >> 1;
+      if (frontier[parent]!.score <= item.score) break;
+      frontier[child] = frontier[parent]!; child = parent;
+    }
+    frontier[child] = item;
+  };
+  const pop = () => {
+    const first = frontier[0]!.label, last = frontier.pop()!;
+    if (frontier.length) {
+      let parent = 0;
+      while (parent * 2 + 1 < frontier.length) {
+        let child = parent * 2 + 1;
+        if (child + 1 < frontier.length && frontier[child + 1]!.score < frontier[child]!.score) child++;
+        if (frontier[child]!.score >= last.score) break;
+        frontier[parent] = frontier[child]!; parent = child;
+      }
+      frontier[parent] = last;
+    }
+    return first;
+  };
+  for (const label of labels) if (distance[label.node]! >= 0) push(label);
   const closures = new Map<string, Uint8Array>();
   // Counterfactual check: if the extras alone can make the target, this route
   // has not demonstrated a conversion from the supplied source. Tools need not
   // be balanced here; they must not make a borrowed material look source-derived.
-  const extraClosure = async (borrowed: Set<number>): Promise<Uint8Array | null> => {
-    const key = [...borrowed].sort((a, b) => a - b).join(',');
+  const extraClosure = async (borrowed: Set<number>, proof: number[]): Promise<Uint8Array | null> => {
+    const allowed = new Set(proof);
+    const key = [...borrowed].sort((a, b) => a - b).join(',') + ':' + proof.join(',');
     const cached = closures.get(key); if (cached) return cached;
     const available = new Uint8Array(graph.ids.length);
     const fired = new Uint8Array(graph.recipes.length);
@@ -84,7 +112,10 @@ export async function searchWithExtras(graph: ChainGraph,
         if (work % 4096 === 0) await pause();
         if (fired[recipeIndex]) continue;
         const recipe = graph.recipes[recipeIndex]!;
-        if (!recipe[2].length || !recipe[2].every((node) => available[node])) continue;
+        // Test this proof's reactions plus unary processing/form changes.
+        // An unrelated multi-reactant synthesis elsewhere in the entire pack
+        // must not invalidate a real source-dependent refining procedure.
+        if (!recipe[2].length || (recipe[2].length > 1 && !allowed.has(recipeIndex)) || !recipe[2].every((node) => available[node])) continue;
         fired[recipeIndex] = 1;
         for (const output of recipe[3]) for (const node of expand(output)) mark(node);
       }
@@ -92,14 +123,28 @@ export async function searchWithExtras(graph: ChainGraph,
     if (closures.size >= 16) closures.delete(closures.keys().next().value!);
     closures.set(key, available); return available;
   };
-  search: for (let head = 0; head < labels.length; head++) {
+  let processed = 0;
+  search: while (frontier.length) {
     active();
     if (targets.every((node) => node !== undefined && ((found.get(node)?.length ?? 0) >= 5 || seeds.has(node)))) break;
-    const label = labels[head]!;
+    const label = pop(); processed++;
     if (!label.active || label.path.length >= maxDepth || distance[label.node]! < 0
       || label.path.length + distance[label.node]! > maxDepth) continue;
-    for (const recipeIndex of consumers(label.node)) {
-      if (++work > 3_000_000 || labels.length >= 20_000) { limited = true; break search; }
+    // A proof can process a sibling byproduct before joining both branches.
+    const direct = consumers(label.node);
+    const nextRecipes = new Set(direct);
+    // Only open a sibling branch when it supplies a co-input of the current
+    // frontier. Reprocessing every known upstream material creates factorial
+    // permutations of unrelated steps before useful refinery joins are reached.
+    const needed = new Set(direct.flatMap((recipe) => graph.recipes[recipe]![2]).filter((slot) => !accepts(slot, label.known)));
+    for (const slot of needed) for (const member of expand(slot)) {
+      for (const candidate of producers.get(member) ?? []) {
+        const recipe = graph.recipes[candidate]!;
+        if (recipe[2].some((input) => accepts(input, label.known))) nextRecipes.add(candidate);
+      }
+    }
+    for (const recipeIndex of nextRecipes) {
+      if (++work > 3_000_000 || processed >= 20_000) { limited = true; break search; }
       if (work % 1024 === 0) await pause();
       if (label.path.includes(recipeIndex)) continue;
       const recipe = graph.recipes[recipeIndex]!;
@@ -116,7 +161,7 @@ export async function searchWithExtras(graph: ChainGraph,
         const next: Label = { node, known, borrowed, path: [...label.path, recipeIndex], active: true };
         const alternatives = atNode.get(node) ?? [];
         if (targets.includes(node) && (found.get(node)?.length ?? 0) < 5) {
-          const independent = await extraClosure(borrowed);
+          const independent = await extraClosure(borrowed, next.path);
           if (!independent) break search;
           if (independent[node]) continue;
           const routes = found.get(node) ?? [];
@@ -126,14 +171,25 @@ export async function searchWithExtras(graph: ChainGraph,
         // Retain several equivalent histories so alternatives can survive a
         // common intermediate, rather than silently collapsing to one route.
         const retained = alternatives.filter((old) => old.active);
-        if (retained.filter((old) => old.path.length <= next.path.length && subset(old.borrowed, borrowed) && subset(known, old.known)).length >= 3
-          || retained.length >= 8) { limited = true; continue; }
-        retained.push(next); atNode.set(node, retained); labels.push(next);
+        if (retained.filter((old) => old.path.length <= next.path.length && subset(old.borrowed, borrowed) && subset(known, old.known)).length >= 3) { limited = true; continue; }
+        if (retained.length >= 8) {
+          limited = true;
+          retained.sort((a, b) => a.path.length + 2 * Math.sqrt(a.borrowed.size) - b.path.length - 2 * Math.sqrt(b.borrowed.size));
+          const worst = retained[retained.length - 1]!;
+          if (worst.path.length + 2 * Math.sqrt(worst.borrowed.size) <= next.path.length + 2 * Math.sqrt(next.borrowed.size)) continue;
+          worst.active = false; retained.pop();
+        }
+        retained.push(next); atNode.set(node, retained); generated++; push(next);
+        if (frontier.length > 8000) {
+          limited = true;
+          frontier.sort((a, b) => a.score - b.score);
+          for (const discarded of frontier.splice(4000)) discarded.label.active = false;
+        }
       }
     }
-    if (head % 512 === 0) await pause();
+    if (processed % 512 === 0) await pause();
   }
-  active(); onProgress?.({ visited: labels.length, recipes: work });
+  active(); onProgress?.({ visited: generated, recipes: work });
   return outputs.map((targetId, position) => {
     const node = targets[position], routes = node === undefined ? undefined : found.get(node);
     if (!routes?.length) return { targetId, status: limited ? 'search-limit' : 'not-found', steps: [] };

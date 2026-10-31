@@ -68,6 +68,27 @@ describe('recipe chain reachability', () => {
     ]);
     expect(records(await graph.search(['molten'], ['dust'], options))).toEqual([0, 1]);
   });
+  it('rejects the oil -> recovered cell -> externally supplied diesel detour', async () => {
+    const graph = fixture(['oil', 'lubricant', 'waterCell', 'stone', 'drillingFluid', 'emptyCell', 'diesel', 'dieselCell', 'additive', 'boosted'], [
+      [[0], [1]], [[1, 2, 3], [4, 5]], [[5, 6], [7]], [[7, 8], [9]], [[2], [5]]
+    ]);
+    expect((await graph.search(['oil'], ['boosted'], options))[0]!.status).toBe('not-found');
+  });
+  it('can process sibling fractions before combining them in a source-dependent refinery route', async () => {
+    const graph = fixture(['oil', 'sulfurHeavy', 'sulfurLight', 'hydrogen', 'heavy', 'light', 'diesel', 'additive', 'boosted'], [
+      [[0], [1, 2]], [[1, 3], [4]], [[2, 3], [5]], [[4, 5], [6]], [[6, 7], [8]]
+    ]);
+    const [path] = await graph.search(['oil'], ['boosted'], options);
+    expect(path!.status).toBe('found');
+    const routes = [path!.steps, ...(path!.alternatives ?? [])].map((route) => route.map((step) => step.record));
+    expect(routes.some((route) => route.includes(1) && route.includes(2))).toBe(true);
+  });
+  it('does not disqualify a shown conversion because an unrelated multi-reactant synthesis also exists', async () => {
+    const graph = fixture(['source', 'reagent', 'coInput', 'target'], [
+      [[0, 1, 2], [3]], [[1, 2], [3]]
+    ]);
+    expect(records(await graph.search(['source'], ['target'], options))).toEqual([0]);
+  });
   it('reports distinct alternatives in both extra-ingredient and strict modes', async () => {
     const graph = fixture(['a', 'b', 'c'], [[[0], [1]], [[0], [1]], [[0], [2]], [[2], [1]]]);
     for (const allowExtras of [true, false]) {
