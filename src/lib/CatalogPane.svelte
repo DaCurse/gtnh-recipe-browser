@@ -57,6 +57,11 @@
     .map((id) => entryById.get(id))
     .filter((entry): entry is CatalogBrowseEntry => entry !== undefined));
 
+  $effect(() => {
+    void query;
+    tooltipEntry = undefined;
+  });
+
   const searchRequested = $derived(query.trim().length > 0);
   let initializedCatalog: CatalogBrowseEntry[] | undefined;
 

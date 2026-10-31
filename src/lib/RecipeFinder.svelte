@@ -1,0 +1,136 @@
+<script lang="ts">
+  import CatalogPane from './CatalogPane.svelte';
+  import ItemIcon from './ItemIcon.svelte';
+  import RecipeCard from './RecipeCard.svelte';
+  import { RecipeFinderState } from './recipeFinderState.svelte';
+  import type { DatasetRepository } from './dataset';
+  import type { RecipeConstraints } from './recipeFinder';
+  import type { RecipeView } from './types';
+
+  let { repository, constraints, change, navigate }: {
+    repository: DatasetRepository;
+    constraints: RecipeConstraints;
+    change: (next: RecipeConstraints) => void;
+    navigate: (id: string, view: RecipeView) => void;
+  } = $props();
+  const finderState = new RecipeFinderState({ repository: () => repository, constraints: () => constraints });
+  const entries = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
+  const machines = $derived([...new Set(finderState.recipes.map((recipe) => recipe.type))].sort());
+  const filtered = $derived(finderState.machine ? finderState.recipes.filter((recipe) => recipe.type === finderState.machine) : finderState.recipes);
+  const pageCount = $derived(Math.max(1, Math.ceil(filtered.length / 20)));
+  const visible = $derived(filtered.slice(finderState.page * 20, (finderState.page + 1) * 20));
+  const hasConstraints = $derived(constraints.inputs.length + constraints.outputs.length > 0);
+  const missing = $derived([...constraints.inputs, ...constraints.outputs].some((id) => !entries.has(id)));
+  let picker = $state<'inputs' | 'outputs' | null>(null);
+  let pickerQuery = $state('');
+  let pickerInput = $state<HTMLInputElement>();
+  let pickerWidth = $state(410);
+  let resizing = $state(false);
+  let dialog = $state<HTMLDialogElement>();
+  let opener: HTMLButtonElement | undefined;
+
+  $effect(() => {
+    if (picker && dialog && !dialog.open) {
+      dialog.showModal();
+      pickerInput?.focus();
+    }
+  });
+  function openPicker(side: 'inputs' | 'outputs', event: MouseEvent) {
+    opener = event.currentTarget as HTMLButtonElement;
+    pickerQuery = '';
+    picker = side;
+  }
+  function closePicker() {
+    dialog?.close();
+    picker = null;
+    opener?.focus();
+  }
+  function add(id: string) {
+    if (!picker) return;
+    change({ ...constraints, [picker]: [...new Set([...constraints[picker], id])] });
+    closePicker();
+  }
+  function remove(side: 'inputs' | 'outputs', id: string) {
+    change({ ...constraints, [side]: constraints[side].filter((selected) => selected !== id) });
+  }
+</script>
+
+<main class="finder-page" aria-labelledby="finder-title">
+  <div class="finder-content">
+    <div class="finder-heading">
+      <div><h1 id="finder-title">Recipe finder</h1><p>Know part of a recipe? Add its inputs or outputs to find it across all machines.</p></div>
+      {#if hasConstraints}<button class="finder-button" onclick={() => change({ inputs: [], outputs: [] })}>Clear all</button>{/if}
+    </div>
+    <div class="finder-constraints">
+      {#each ['inputs', 'outputs'] as side (side)}
+        {@const direction = side as 'inputs' | 'outputs'}
+        <section class="constraint-side" aria-label={side === 'inputs' ? 'Required inputs' : 'Required outputs'}>
+          <div class="side-heading"><h2>{side === 'inputs' ? 'Inputs' : 'Outputs'}</h2><button class="finder-button" onclick={(event) => openPicker(direction, event)}>+ Add {side === 'inputs' ? 'input' : 'output'}</button></div>
+          <div class="ingredient-chips">
+            {#each constraints[direction] as id (id)}
+              {@const entry = entries.get(id)}
+              <button class="ingredient-chip" aria-label={`Remove ${entry?.name ?? id} from ${side}`} onclick={() => remove(direction, id)}>
+                {#if entry}<ItemIcon {entry} size={32} />{/if}<span>{entry?.name ?? id}<small>{entry?.mod ?? 'Unavailable in this version'}</small></span><b aria-hidden="true">×</b>
+              </button>
+            {:else}<p class="side-hint">{side === 'inputs' ? 'What goes in?' : 'What comes out?'} Items and fluids both work.</p>{/each}
+          </div>
+        </section>
+      {/each}
+    </div>
+    <p class="finder-hint">Matches include every selected input and output. Extra ingredients are allowed; amounts are ignored. Interchangeable ingredients are supported.</p>
+    {#if missing}<p class="finder-warning" role="alert">A selected ingredient is unavailable in this version. Remove it or switch versions to continue.</p>{/if}
+    <div class="finder-results-bar">
+      <h2 aria-live="polite">{hasConstraints ? `${filtered.length.toLocaleString()} matching recipes${finderState.loading ? ' so far' : ''}` : 'Start with one ingredient'}</h2>
+      {#if finderState.recipes.length}<label>Machine <select aria-label="Filter by machine" bind:value={finderState.machine} onchange={() => finderState.page = 0}><option value="">All machines</option>{#each machines as machine (machine)}<option value={machine}>{machine}</option>{/each}</select></label>{/if}
+    </div>
+    {#if finderState.error}
+      <div class="finder-message" role="alert"><b>Could not finish loading recipes</b><p>{finderState.error}</p><button class="finder-button" onclick={() => finderState.retry()}>Try again</button></div>
+    {:else if !hasConstraints}
+      <div class="finder-message"><span class="finder-symbol" aria-hidden="true">⌕</span><b>A few clues are enough</b><p>Add any known input or output above. Combine both sides to narrow the results.</p></div>
+    {:else if !finderState.loading && !filtered.length}
+      <div class="finder-message"><b>No matching recipes</b><p>Try removing an ingredient or checking which side it belongs on.</p></div>
+    {/if}
+    {#if finderState.loading}<div class="finder-progress" role="status"><span class="mini-spinner" aria-hidden="true"></span> Finding recipes… {#if finderState.total}<small>{finderState.loaded} of {finderState.total} chunks</small>{/if}</div>{/if}
+    <div class="recipe-list finder-recipes">{#each visible as recipe (recipe.id)}<RecipeCard {recipe} {navigate} resolve={(id) => entries.get(id)} />{/each}</div>
+    {#if filtered.length > 20}
+      <nav class="finder-pagination" aria-label="Finder result pages"><button class="finder-button" disabled={finderState.page === 0} onclick={() => finderState.page -= 1}>Previous</button><span>Page {finderState.page + 1} of {pageCount}</span><button class="finder-button" disabled={finderState.page + 1 >= pageCount} onclick={() => finderState.page += 1}>Next</button></nav>
+    {/if}
+  </div>
+</main>
+
+{#if picker}
+  <dialog bind:this={dialog} class="finder-picker" aria-labelledby="picker-title" onkeydown={(event) => {
+    // Let the nested variant picker handle Escape without closing both layers.
+    if (event.key === 'Escape' && dialog?.querySelector('.variant-picker')) event.preventDefault();
+  }} oncancel={(event) => { event.preventDefault(); closePicker(); }}>
+    <div class="picker-heading"><h2 id="picker-title">Add {picker === 'inputs' ? 'input' : 'output'}</h2><button class="finder-button" onclick={closePicker}>Close</button></div>
+    <div class="picker-catalog">
+      <CatalogPane selected={repository.entries[0]!} detailsOpen={false} bind:query={pickerQuery} bind:searchInput={pickerInput} catalog={repository.browseEntries} exactCatalog={repository.entries} loadSearchDocuments={() => repository.loadSearchDocuments()} bind:sidebarWidth={pickerWidth} bind:sidebarResizing={resizing} select={add} />
+    </div>
+  </dialog>
+{/if}
+
+<style>
+  .finder-page { display:block; flex:1; min-height:0; overflow:auto; padding:28px 24px 60px; }
+  .finder-content { max-width:1120px; margin:auto; }
+  .finder-heading,.side-heading,.finder-results-bar { display:flex; align-items:center; justify-content:space-between; gap:16px; }
+  h1 { font-size:26px; margin:0 0 8px; } h2 { font-size:16px; margin:0; }
+  p { color:#969da5; line-height:1.5; } .finder-heading p { margin:0; }
+  .finder-constraints { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:24px; }
+  .constraint-side { min-width:0; padding:16px; border:1px solid #41464c; border-radius:10px; background:#1c1f23; }
+  .finder-button { min-height:40px; border:1px solid #50575f; border-radius:7px; padding:8px 12px; background:#292e34; cursor:pointer; white-space:nowrap; }
+  .finder-button:hover { background:#343b43; } .finder-button:disabled { opacity:.4; cursor:default; }
+  .ingredient-chips { display:flex; flex-wrap:wrap; gap:8px; margin-top:14px; }
+  .ingredient-chip { display:flex; align-items:center; gap:8px; max-width:100%; padding:6px 8px; border:1px solid #5b6570; border-radius:7px; background:#2c333a; text-align:left; cursor:pointer; }
+  .ingredient-chip span { min-width:0; overflow-wrap:anywhere; font-size:13px; }.ingredient-chip small { display:block; color:#a1aab4; margin-top:3px; }.ingredient-chip b { padding:0 4px; font-size:20px; color:#aeb6bf; }
+  .side-hint { font-size:13px; margin:4px 0 8px; }.finder-hint { font-size:12px; margin:12px 0 26px; }
+  .finder-results-bar { margin-bottom:18px; flex-wrap:wrap; }.finder-results-bar label { font-size:12px; color:#a9b0b8; display:flex; align-items:center; gap:8px; }
+  select { min-height:40px; max-width:240px; padding:8px; background:#20252b; border:1px solid #50575f; border-radius:6px; color:#e7e9eb; }
+  .finder-message { padding:50px 16px; border:1px dashed #3a424b; border-radius:10px; text-align:center; }.finder-message b { display:block; }.finder-message p { margin:10px auto; max-width:450px; font-size:14px; }.finder-symbol { display:block; font-size:40px; color:#c8d5e4; margin-bottom:12px; }
+  .finder-progress { display:flex; gap:10px; align-items:center; padding:12px 0 18px; color:#bac2cb; font-size:13px; }.finder-progress small { color:#919ba7; }
+  .finder-warning { color:#e4ca8b; }.finder-recipes { max-width:none; }.finder-pagination { display:flex; gap:16px; align-items:center; justify-content:center; margin-top:24px; font-size:13px; }
+  .finder-picker { padding:0; width:min(760px,calc(100% - 24px)); height:min(760px,88dvh); max-height:88dvh; border:1px solid #59626e; border-radius:12px; color:#e7e9eb; background:#1a1b1e; overflow:hidden; }
+  .finder-picker::backdrop { background:#000b; }.picker-heading { display:flex; justify-content:space-between; align-items:center; padding:12px 16px; border-bottom:1px solid #41464c; height:66px; }.picker-catalog { height:calc(100% - 66px); display:grid; }
+  .picker-catalog :global(aside) { height:100%; min-height:0; border:0; }.picker-catalog :global(.item-grid) { grid-template-columns:repeat(auto-fill,minmax(100px,1fr)); }.picker-catalog :global(.sidebar-resizer) { display:none; }
+  @media(max-width:700px) { .finder-page { padding:20px 14px 40px; }.finder-constraints { grid-template-columns:1fr; gap:12px; margin-top:18px; } h1 { font-size:23px; }.finder-heading { align-items:flex-start; }.finder-heading p { font-size:13px; }.constraint-side { padding:12px; }.finder-hint { margin-bottom:20px; }.finder-message { padding:28px 14px; } }
+</style>

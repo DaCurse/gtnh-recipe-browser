@@ -2,6 +2,10 @@
 
 A touch-friendly, offline-capable Svelte browser for GregTech: New Horizons items, recipes, and usages.
 
+Use **Recipe finder** in the main navigation to find recipes across machines from a subset of known
+inputs and outputs. Items, fluids, and interchangeable ingredients are supported; searches are shareable.
+See [the finder guide](docs/recipe-finder.md).
+
 ## Development
 
 ```sh
@@ -31,6 +35,7 @@ Optional browser checks use an externally installed Playwright module:
 npm run profile:incremental -- http://localhost:4173 <pack-dir> <playwright-module> 4
 npm run test:cached-startup -- http://localhost:4173 <playwright-module>
 npm run test:item-loading -- http://localhost:4173 <playwright-module> [screenshot-directory]
+npm run test:recipe-finder -- http://localhost:4173 <playwright-module> [screenshot-directory]
 ```
 
 The profile compares cold and warm mobile browsing under an optional CPU throttle. The cache check covers

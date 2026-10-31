@@ -1,3 +1,4 @@
+import { matchesRecipeConstraints, type RecipeConstraints } from './recipeFinder';
 import { decode } from '@msgpack/msgpack';
 import { materializeCatalog } from './catalogMaterialization';
 import { cachePreparedCatalog, cachePreparedSearch, getPreparedCatalog, getPreparedSearch, preparedCatalogKey, type PreparedCatalog } from './preparedCatalogCache';
@@ -1395,6 +1396,38 @@ export class DatasetRepository {
     signal?: AbortSignal
   ): Promise<SpecialRecord[]> {
     return this.specialForAll(view, viewType, onProgress, signal);
+  }
+
+  /** Use the narrowest indexed ingredient, then verify the complete subset on both sides. */
+  async findRecipes(
+    constraints: RecipeConstraints,
+    onProgress?: (progress: RecipeLoadProgress) => void,
+    signal?: AbortSignal
+  ): Promise<Recipe[]> {
+    const candidates = [
+      ...constraints.inputs.map((id) => ({ id, view: 'usages' as const })),
+      ...constraints.outputs.map((id) => ({ id, view: 'recipes' as const }))
+    ];
+    if (!candidates.length) return [];
+    const hydrated = await Promise.all(candidates.map(async (candidate) => {
+      const entry = await this.entryFor(candidate.id, signal);
+      const fallback = candidate.view === 'recipes' && entry?.productionOreDictionaryId
+        ? await this.entryFor(entry.productionOreDictionaryId, signal) : undefined;
+      const source = fallback ?? entry;
+      const shards = candidate.view === 'recipes' ? source?.productionShards : source?.usageShards;
+      return { ...candidate, entry, shardCount: shards?.length ?? 0 };
+    }));
+    if (hydrated.some((candidate) => !candidate.entry || candidate.shardCount === 0)) {
+      onProgress?.({ loadedShards: 0, totalShards: 0, batch: [] });
+      return [];
+    }
+    hydrated.sort((a, b) => a.shardCount - b.shardCount);
+    const anchor = hydrated[0]!;
+    const matches = (recipe: Recipe) => matchesRecipeConstraints(recipe, constraints);
+    const recipes = await this.recipesFor(anchor.id, anchor.view, (progress) => {
+      onProgress?.({ ...progress, batch: progress.batch.filter(matches) });
+    }, signal);
+    return recipes.filter(matches);
   }
 
   async recipesFor(

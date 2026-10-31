@@ -1,3 +1,4 @@
+import type { RecipeConstraints } from './recipeFinder';
 import type { RecipeView, SpecialScope } from './types';
 
 export interface SpecialNavigation {
@@ -47,6 +48,9 @@ export function recipeFilterUrl(
 
 export function itemListUrl(currentUrl: string | URL): URL {
   const url = new URL(currentUrl);
+  url.searchParams.delete('page');
+  url.searchParams.delete('input');
+  url.searchParams.delete('output');
   url.searchParams.delete('item');
   url.searchParams.delete('view');
   url.searchParams.delete('special');
@@ -110,5 +114,22 @@ export function specialNavigationUrl(
   const scope = specialScopeUrlValue(specialScope);
   if (scope) url.searchParams.set('special-scope', scope);
   else url.searchParams.delete('special-scope');
+  return url;
+}
+
+export function finderFromUrl(currentUrl: string | URL | URLSearchParams): RecipeConstraints | null {
+  const params = currentUrl instanceof URLSearchParams ? currentUrl : new URL(currentUrl).searchParams;
+  if (params.get('page') !== 'finder') return null;
+  return {
+    inputs: [...new Set(params.getAll('input').filter(Boolean))],
+    outputs: [...new Set(params.getAll('output').filter(Boolean))]
+  };
+}
+
+export function finderUrl(currentUrl: string | URL, constraints: RecipeConstraints): URL {
+  const url = itemListUrl(currentUrl);
+  url.searchParams.set('page', 'finder');
+  for (const id of new Set(constraints.inputs)) url.searchParams.append('input', id);
+  for (const id of new Set(constraints.outputs)) url.searchParams.append('output', id);
   return url;
 }

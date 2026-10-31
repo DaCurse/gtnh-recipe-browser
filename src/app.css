@@ -187,3 +187,8 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .recipe-progress .spinner { width:16px; height:16px; }
 .recipe-loading.recipe-progress b { margin:0; }
 .recipe-progress small { flex-basis:100%; }
+
+.primary-nav { display:flex; flex:none; gap:6px; padding:0 24px; background:#191c20; border-bottom:1px solid #343a42; }
+.primary-nav a { min-height:42px; display:flex; align-items:center; padding:0 14px; color:#a0a9b4; font-size:13px; text-decoration:none; border-bottom:2px solid transparent; }
+.primary-nav a:hover { color:#eef3f9; background:#ffffff08; }.primary-nav a[aria-current="page"] { color:#e6effb; border-bottom-color:#a8bfdc; }
+@media(max-width:800px) { .primary-nav { padding:0 8px; } }

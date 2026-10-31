@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { initializeShellUpdate } from './lib/shellUpdate';
   import AppHeader from './lib/AppHeader.svelte';
   import ApplicationState from './lib/ApplicationState.svelte';
@@ -8,10 +8,14 @@
   import { DatasetManagerState } from './lib/datasetManagerState.svelte';
   import ItemOverview from './lib/ItemOverview.svelte';
   import RecipeBrowser from './lib/RecipeBrowser.svelte';
+  import RecipeFinder from './lib/RecipeFinder.svelte';
+  import type { RecipeConstraints } from './lib/recipeFinder';
   import { DatasetRepository } from './lib/dataset';
   import { clearIconSheetCache } from './lib/iconCache';
   import { createSpecialContextEntry } from './lib/specialContext';
   import {
+    finderFromUrl,
+    finderUrl,
     catalogSearchFromUrl,
     catalogSearchUrl,
     itemListUrl,
@@ -36,6 +40,8 @@
   let loadTargetDatasetId = $state<string>();
   let loadTargetVersion = $state<string>();
   let loadPreserveSelection = $state(false);
+  let finderOpen = $state(false);
+  let finderConstraints = $state<RecipeConstraints>({ inputs: [], outputs: [] });
   let query = $state('');
   let recipeQuery = $state('');
   let navigationUrlReady = $state(false);
@@ -52,6 +58,11 @@
   let itemDataLoading = $state(false);
   let itemDataError = $state('');
 
+  const navigationBase = $derived.by(() => {
+    const url = catalogSearchUrl(location.href, query);
+    if (repository) url.searchParams.set('version', repository.datasetId);
+    return url;
+  });
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
   const selected = $derived(hydratedSelection?.id === selectedId
     ? hydratedSelection : entryById.get(selectedId));
@@ -125,6 +136,7 @@
     )
   });
   function select(id: string, push = true, nextMode: RecipeView = 'recipes') {
+    finderOpen = false;
     mode = nextMode;
     selectedId = id;
     specialType = '';
@@ -132,7 +144,7 @@
     if (push) recipeQuery = '';
     detailsOpen = true;
     if (push) {
-      const url = new URL(location.href);
+      const url = itemListUrl(location.href);
       url.searchParams.set('item', id);
       url.searchParams.set('view', recipeViewUrlValue(mode));
       url.searchParams.delete('special');
@@ -169,12 +181,23 @@
   }
 
   function showItemList(clearSearch = false) {
+    const wasFinder = finderOpen;
+    finderOpen = false;
     detailsOpen = false;
     const nextQuery = clearSearch ? '' : query;
     if (clearSearch) query = nextQuery;
     recipeQuery = '';
     const url = catalogSearchUrl(itemListUrl(location.href), nextQuery);
-    history.replaceState({ route: 'items' }, '', url);
+    if (wasFinder) history.pushState({ route: 'items' }, '', url);
+    else history.replaceState({ route: 'items' }, '', url);
+  }
+
+  function showFinder(next = finderConstraints) {
+    finderOpen = true;
+    detailsOpen = false;
+    recipeQuery = '';
+    finderConstraints = next;
+    history.pushState({ route: 'finder' }, '', finderUrl(location.href, next));
   }
 
   function diagnostic(error: unknown): string {
@@ -299,6 +322,9 @@
 
   onMount(() => {
     const params = new URLSearchParams(location.search);
+    const linkedFinder = finderFromUrl(params);
+    finderOpen = linkedFinder !== null;
+    if (linkedFinder) finderConstraints = linkedFinder;
     query = catalogSearchFromUrl(params);
     recipeQuery = recipeFilterFromUrl(params);
     navigationUrlReady = true;
@@ -308,6 +334,14 @@
     specialScope = linkedSpecial.specialScope;
     const handlePopState = () => {
       const currentParams = new URLSearchParams(location.search);
+      const currentFinder = finderFromUrl(currentParams);
+      finderOpen = currentFinder !== null;
+      if (currentFinder) {
+        finderConstraints = currentFinder;
+        detailsOpen = false;
+        recipeQuery = '';
+        return;
+      }
       const id = currentParams.get('item');
       query = catalogSearchFromUrl(currentParams);
       recipeQuery = recipeFilterFromUrl(currentParams);
@@ -327,6 +361,13 @@
     const handleShortcut = (event: KeyboardEvent) => {
       if (event.ctrlKey && event.key.toLowerCase() === 'k') {
         event.preventDefault();
+        const modalInput = document.querySelector<HTMLInputElement>('dialog[open] input');
+        if (modalInput) { modalInput.focus(); return; }
+        if (finderOpen) {
+          showItemList();
+          void tick().then(() => searchInput?.focus());
+          return;
+        }
         detailsOpen = false;
         searchInput?.focus();
       }
@@ -374,7 +415,7 @@
   });
 </script>
 
-<svelte:head><title>{itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser'}</title></svelte:head>
+<svelte:head><title>{finderOpen ? 'Recipe finder - GTNH Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser'}</title></svelte:head>
 
 <div class="app-shell">
   <AppHeader
@@ -385,6 +426,11 @@
     showHome={() => showItemList(true)}
     openDatasetManager={() => datasetManager.show()}
   />
+
+  <nav class="primary-nav" aria-label="Main navigation">
+    <a href={itemListUrl(navigationBase).href} aria-current={!finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); showItemList(); }}>Items</a>
+    <a href={finderUrl(navigationBase, finderConstraints).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); if (!finderOpen) showFinder(); }}>Recipe finder</a>
+  </nav>
 
   {#if datasetStatus !== 'ready'}
     <ApplicationState
@@ -397,6 +443,8 @@
       retry={() => loadDataset(loadTargetDatasetId, loadPreserveSelection, loadTargetVersion)}
       {copyError}
     />
+  {:else if finderOpen && repository}
+    <RecipeFinder {repository} constraints={finderConstraints} change={showFinder} navigate={(id, view) => select(id, true, view)} />
   {:else if selected && repository}
   <main class:home-view={!detailsOpen} class:resizing={sidebarResizing} style:--sidebar-width={`${sidebarWidth}px`}>
     <CatalogPane

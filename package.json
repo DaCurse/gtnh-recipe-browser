@@ -29,6 +29,7 @@
     "test:cached-startup": "node tools/test-cached-startup.mjs",
     "test:item-loading": "node tools/test-item-loading.mjs",
     "test:deferred-rollout": "node tools/test-deferred-rollout.mjs",
+    "test:recipe-finder": "node tools/test-recipe-finder.mjs",
     "test:recipe-streaming": "node tools/test-recipe-streaming.mjs"
   },
   "dependencies": {

@@ -10,11 +10,13 @@ Feature views live in `src/lib/*.svelte`:
 
 - `CatalogPane.svelte` owns catalog search, incremental result paging, tooltips, and sidebar resizing.
 - `RecipeBrowser.svelte` renders tabs, filters, loading progress, bounded recipe pages, and recipe cards.
+- `RecipeFinder.svelte` owns the input/output picker and cross-machine subset-search page.
 - `DatasetManager.svelte` renders local dataset installation and switching.
 
 Stateful feature workflows use Svelte 5 rune modules:
 
 - `recipeBrowserState.svelte.ts` owns progressive shard requests, stale-request cancellation, and the recipe-search worker.
+- `recipeFinderState.svelte.ts` owns cancellable subset searches, progressive results, and reuse of complete candidate results when adding constraints.
 - `datasetManagerState.svelte.ts` owns installation, quota checks, switching, deletion, and storage reporting.
 
 ## Dataset boundary
@@ -230,3 +232,24 @@ Cache ownership is recorded atomically in batches without rereading already-owne
 The recipe worker receives only referenced catalog metadata and lazily builds search documents
 for nonempty queries; blank browsing pages the ordered raw records. See
 [recipe loading measurements](recipe-loading-performance.md) for methodology and regression checks.
+
+## Cross-machine recipe finder
+
+The `page=finder` route stores exact ingredient IDs in repeated `input` and `output` parameters.
+Navigation preserves the active release and supports refresh, browser history, and shared searches.
+The picker reuses `CatalogPane` and its exact variant selector; items and fluids have the same selection flow.
+
+`DatasetRepository.findRecipes` hydrates selected details, chooses the candidate with the fewest
+indexed recipe shards, and delegates loading/group hydration to `recipesFor`. The pure
+`matchesRecipeConstraints` checks every selected identity on its respective side, including accepted
+ingredient alternatives. Extra slots and quantities do not constrain matching. No constraints means
+no recipe downloads; unavailable or recipe-less constraints return no matches. The finder covers
+ordinary recipe records across all recipe types; NEI special views keep their existing separate workflows.
+Results stream into bounded pages of 20 cards, with an optional machine filter.
+
+The feature state cancels superseded queries and suppresses stale progress. A completed candidate set
+can answer stricter constraints synchronously in memory; removing a constraint reloads through the
+normal shared/cache-aware facade when the previous candidate set cannot prove completeness.
+No additional global index or dataset format change is required. `test-recipe-finder.mjs` compares
+real-data subsets against the existing item browser export and checks navigation, variants, mobile
+keyboard handling, cached refinement, and clearing a held network request.
