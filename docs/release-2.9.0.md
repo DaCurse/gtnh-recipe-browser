@@ -94,6 +94,9 @@ Production preview was used because watching the accumulated export workspaces e
 
 ## Release status
 
-Dataset generation and integrity/storage validation have passed. Browser verification, staged deployment,
-deployed-origin asset verification and activation are tracked separately; the source archive review alone
-does not establish a completed deployment.
+Staged commit `89b3735` was deployed by Netlify deployment `6ae619d673fe3d939d25e081`.
+The deployed-origin smoke test fetched and verified all 1,282 final-dataset assets successfully before activation.
+The version index now configures rollout epoch 3 targeting `2.9.0-v7-rbd0b48ae8ad7`. RC1, both betas and
+2.8.0 remain selectable; no datasets or shared objects were removed. The rollout applies once and preserves
+subsequent deliberate version choices. Final activation deployment and live browser checks must also pass
+before reporting the release as live.

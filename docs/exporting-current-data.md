@@ -19,15 +19,19 @@ player installation.
 
 ## Run
 
+For 2.9.0 final, first read the [reviewed client source and release notes](release-2.9.0.md).
+The GitHub modpack ZIP contains configuration only. This profile pins a locally assembled client from
+GTNH's official final manifest; retain that exact reviewed archive locally or supply it with `--archive`.
+
 ```sh
 npm run export:direct -- \
-  --version 2.9.0-RC-1 \
+  --version 2.9.0 \
   --shared-layout tools/pack-builder/layouts/2.9.0.json \
-  --reuse-packs public/data/2.9.0-beta-3-v7-r131dafd54f93 \
+  --reuse-packs public/data/2.9.0-RC-1-v7-rbf5fd70ecad0 \
   --java /usr/lib/jvm/java-21-openjdk/bin/java
 ```
 
-The profile pins the official archive URL, byte size, and SHA-256. A local archive can be supplied with
+The profile pins the reviewed archive location, byte size, and SHA-256. A local archive can be supplied with
 `--archive <file>`; it is still verified before use. The orchestrator resolves the archive's component metadata,
 libraries, natives, assets, and launch arguments, starts the client under Xvfb, creates the deterministic creative
 world, waits for NEI, grants static Thaumcraft state, runs the exporter, and waits for the controller's explicit
@@ -109,7 +113,7 @@ npm run export:publish -- \
   --rollout-epoch <new-positive-epoch>
 ```
 
-Use a rollout epoch greater than the current `versions-v7.json` epoch (RC1 uses 2). It targets the
+Use a rollout epoch greater than the current `versions-v7.json` epoch (RC1 uses 2; 2.9.0 final uses 3). It targets the
 activated dataset once for returning users; subsequent deliberate version choices persist.
 Run `npm run quality` before committing the index change. The 2.9.0 beta
 releases and RC1 use the persistent shared layout; the 2.8.0 pack remains as a small
