@@ -26,18 +26,19 @@ type WorkerRequest =
 let generation = 0;
 let catalog = new Map<string, RecipeSearchCatalogEntry>();
 let documentsById = new Map<string, RecipeSearchDocument>();
-let documents: RecipeSearchDocument[] = [];
-let documentsDirty = false;
+let recordsById = new Map<string, RecipeSearchRecord>();
+let records: RecipeSearchRecord[] = [];
+let recordsDirty = false;
 let searchToken = 0;
 
-function sortedDocuments(): RecipeSearchDocument[] {
-  if (documentsDirty) {
-    documents = [...documentsById.values()].sort(
+function sortedRecords(): RecipeSearchRecord[] {
+  if (recordsDirty) {
+    records = [...recordsById.values()].sort(
       (left, right) => left.order - right.order || left.id.localeCompare(right.id)
     );
-    documentsDirty = false;
+    recordsDirty = false;
   }
-  return documents;
+  return records;
 }
 
 function yieldToNewerRequests(): Promise<void> {
@@ -48,7 +49,7 @@ async function search(
   request: Extract<WorkerRequest, { type: 'search' }>,
   token: number
 ): Promise<void> {
-  const source = sortedDocuments();
+  const source = sortedRecords();
   const terms = recipeSearchTerms(request.query);
   const offset = Math.max(0, request.offset);
   const limit = Math.max(0, request.limit);
@@ -58,9 +59,17 @@ async function search(
   for (let start = 0; start < source.length; start += 2_000) {
     const end = Math.min(start + 2_000, source.length);
     for (let index = start; index < end; index += 1) {
-      const document = source[index]!;
-      if (!matchesRecipeSearch(document, request.recipeType, terms)) continue;
-      if (total >= offset && ids.length < limit) ids.push(document.id);
+      const record = source[index]!;
+      if (record.type !== request.recipeType) continue;
+      if (terms.length) {
+        let document = documentsById.get(record.id);
+        if (!document) {
+          document = buildRecipeSearchDocument(record, catalog);
+          documentsById.set(record.id, document);
+        }
+        if (!matchesRecipeSearch(document, request.recipeType, terms)) continue;
+      }
+      if (total >= offset && ids.length < limit) ids.push(record.id);
       total += 1;
     }
     if (end < source.length) {
@@ -86,8 +95,9 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     generation = request.generation;
     catalog = new Map();
     documentsById = new Map();
-    documents = [];
-    documentsDirty = false;
+    recordsById = new Map();
+    records = [];
+    recordsDirty = false;
     searchToken += 1;
     return;
   }
@@ -95,8 +105,9 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
     if (request.generation < generation) return;
     generation = request.generation;
     documentsById = new Map();
-    documents = [];
-    documentsDirty = false;
+    recordsById = new Map();
+    records = [];
+    recordsDirty = false;
     searchToken += 1;
     return;
   }
@@ -111,9 +122,10 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   }
   if (request.type === 'append') {
     for (const recipe of request.recipes) {
-      documentsById.set(recipe.id, buildRecipeSearchDocument(recipe, catalog));
+      recordsById.set(recipe.id, recipe);
+      documentsById.delete(recipe.id);
     }
-    documentsDirty = true;
+    recordsDirty = true;
     searchToken += 1;
     return;
   }

@@ -16,6 +16,7 @@ import type { CatalogEntry, Recipe, RecipeView, SpecialScope } from './types';
 interface RecipeBrowserContext {
   repository: () => DatasetRepository;
   selected: () => CatalogEntry;
+  catalogEntry: (id: string) => CatalogEntry | undefined;
   mode: () => RecipeView;
   active: () => boolean;
   detailReady?: () => boolean;
@@ -25,21 +26,19 @@ interface RecipeBrowserContext {
 }
 
 export class RecipeBrowserState {
-  allRecipes = $state<Recipe[]>([]);
+  allRecipes = $state.raw<Recipe[]>([]);
   recipeLoading = $state(false);
   itemDataLoading = $state(false);
   recipeError = $state('');
   recipeLoadedShards = $state(0);
   recipeTotalShards = $state(0);
-  recipeCatalogIndexed = $state(0);
-  recipeCatalogTotal = $state(0);
   recipePage = $state(0);
   recipeQuery = $state('');
   recipeFilter = $state('');
   type = $state('');
   specialType = $state('');
   specialScope = $state<SpecialScope>('item');
-  specialRecords = $state<SpecialRecord[]>([]);
+  specialRecords = $state.raw<SpecialRecord[]>([]);
   specialLoading = $state(false);
   specialError = $state('');
   specialLoadedShards = $state(0);
@@ -62,6 +61,7 @@ export class RecipeBrowserState {
   private recipeWorkerMounted = $state(false);
   private recipeSearchWorker: Worker | null = null;
   private recipeCatalogDatasetId = '';
+  private recipeCatalogSent = new Set<string>();
   private recipeAbortController: AbortController | null = null;
   private recipeRequest = 0;
   private recipeSearchRequest = 0;
@@ -161,7 +161,7 @@ export class RecipeBrowserState {
       if (this.recipeSearchReady && this.recipeCatalogDatasetId === repository.datasetId) return;
       untrack(() => {
         this.loadedRecipeCounts = {};
-        void this.initializeRecipeSearch(repository.entries);
+        this.initializeRecipeSearch();
       });
     });
 
@@ -589,7 +589,7 @@ export class RecipeBrowserState {
     };
   }
 
-  private async initializeRecipeSearch(catalog: CatalogEntry[]) {
+  private initializeRecipeSearch() {
     const generation = ++this.recipeSearchGeneration;
     this.recipeIndexRevision += 1;
     this.recipeSearchIds = [];
@@ -597,30 +597,11 @@ export class RecipeBrowserState {
     this.recipeWorkerPending = false;
     this.recipeSearchReady = false;
     this.recipeCatalogDatasetId = this.context.repository().datasetId;
-    this.recipeCatalogIndexed = 0;
-    this.recipeCatalogTotal = catalog.length;
-    this.recipeSearchWorker?.postMessage({
-      type: 'init',
-      generation
-    });
-    for (let start = 0; start < catalog.length; start += 2_000) {
-      if (
-        generation !== this.recipeSearchGeneration
-        || !this.recipeSearchWorker
-        || !this.context.active()
-      ) return;
-      const end = Math.min(start + 2_000, catalog.length);
-      this.recipeSearchWorker.postMessage({
-        type: 'appendCatalog',
-        generation,
-        catalog: catalog.slice(start, end).map(toRecipeSearchCatalogEntry)
-      });
-      this.recipeCatalogIndexed = end;
-      await new Promise((resolve) => window.setTimeout(resolve, 0));
-    }
-    if (generation === this.recipeSearchGeneration) {
-      this.recipeSearchWorker?.postMessage({ type: 'finishCatalog', generation });
-    }
+    this.recipeCatalogSent.clear();
+    this.recipeSearchWorker?.postMessage({ type: 'init', generation });
+    // Ingredient metadata is sent with the recipes that reference it. Indexing
+    // the entire catalog must not delay the first recipe chunk.
+    this.recipeSearchWorker?.postMessage({ type: 'finishCatalog', generation });
   }
 
   private resetRecipeSearch() {
@@ -637,10 +618,19 @@ export class RecipeBrowserState {
 
   private appendRecipeSearch(batch: Recipe[]) {
     if (batch.length === 0) return;
+    const recipes = batch.map(toRecipeSearchRecord);
+    const catalog = [];
+    for (const recipe of recipes) for (const id of recipe.ingredientIds) {
+      if (this.recipeCatalogSent.has(id)) continue;
+      const entry = this.context.catalogEntry(id);
+      if (entry) catalog.push(toRecipeSearchCatalogEntry(entry));
+      this.recipeCatalogSent.add(id);
+    }
+    if (catalog.length) this.recipeSearchWorker?.postMessage({
+      type: 'appendCatalog', generation: this.recipeSearchGeneration, catalog
+    });
     this.recipeSearchWorker?.postMessage({
-      type: 'append',
-      generation: this.recipeSearchGeneration,
-      recipes: batch.map(toRecipeSearchRecord)
+      type: 'append', generation: this.recipeSearchGeneration, recipes
     });
     this.recipeIndexRevision += 1;
   }

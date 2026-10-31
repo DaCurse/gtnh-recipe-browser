@@ -48,6 +48,7 @@
   const browserState = new RecipeBrowserState({
     repository: () => repository,
     selected: () => selected,
+    catalogEntry: (id) => entryById.get(id),
     mode: () => mode,
     active: () => active,
     detailReady: () => !itemDataLoading && !itemDataError,
@@ -485,18 +486,9 @@
   {:else if browserState.recipePreparing}
     <div class="recipe-loading" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
-      <b>Preparing recipe search…</b>
-      <p>
-        {browserState.recipeCatalogIndexed.toLocaleString()} of
-        {browserState.recipeCatalogTotal.toLocaleString()} catalog entries
-      </p>
-      {#if browserState.recipeCatalogTotal > 0}
-        <div class="load-progress compact">
-          <span style:width={`${browserState.recipeCatalogIndexed / browserState.recipeCatalogTotal * 100}%`}></span>
-        </div>
-      {/if}
+      <b>Preparing recipes…</b>
     </div>
-  {:else if browserState.recipeLoading}
+  {:else if browserState.recipeLoading && visibleRecipes.length === 0}
     <div class:partial={related.length > 0} class="recipe-loading" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
       <b>Loading {modeLabel}…</b>
@@ -530,6 +522,13 @@
         : `This item has no known ${modeLabel} in the active dataset.`}</p>
     </div>
   {:else}
+    {#if browserState.recipeLoading}
+      <div class="recipe-loading partial recipe-progress" role="status">
+        <span class="spinner" aria-hidden="true"></span>
+        <b>Loading more {modeLabel}…</b>
+        <small>{browserState.recipeLoadedShards} of {browserState.recipeTotalShards} recipe chunks</small>
+      </div>
+    {/if}
     {#each visibleRecipes as recipe (recipe.id)}
       <RecipeCard {recipe} {navigate} resolve={(id) => entryById.get(id)} />
     {/each}

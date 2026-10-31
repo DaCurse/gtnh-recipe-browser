@@ -301,41 +301,49 @@ export async function migrateObsoleteDatasetStates(
   await removeUnreferencedAssets(obsoleteStates.flatMap((state) => state.assetHashes ?? []));
 }
 
-/** Record an on-demand asset in the owning dataset for accounting and cleanup. */
-export async function recordDatasetAsset(
+/** Record verified cached pages together, without cloning already-owned blobs. */
+export async function recordDatasetAssets(
   datasetId: string,
-  sha256: string,
-  byteLength: number
+  assets: readonly { sha256: string; bytes: number }[]
 ): Promise<void> {
-  if (!('indexedDB' in globalThis)
-    || !Number.isSafeInteger(byteLength)
-    || byteLength < 0) return;
+  if (!('indexedDB' in globalThis)) return;
+  const pending = new Map(assets.filter((asset) => Number.isSafeInteger(asset.bytes) && asset.bytes >= 0)
+    .map((asset) => [asset.sha256, asset.bytes]));
+  if (pending.size === 0) return;
   const db = await database();
   const transaction = db.transaction([DATASET_STORE, ASSET_STORE, ASSET_INDEX_STORE], 'readwrite');
-  const asset = await transaction.objectStore(ASSET_STORE).get(sha256) as CachedAsset | undefined;
-  const dataset = await transaction.objectStore(DATASET_STORE).get(datasetId) as DatasetState | undefined;
-  const actualByteLength = assetByteLength(asset);
-  if (!asset || actualByteLength !== byteLength || asset.sha256 !== sha256 || !dataset) {
-    await transaction.done;
-    return;
+  const datasets = transaction.objectStore(DATASET_STORE);
+  const dataset = await datasets.get(datasetId) as DatasetState | undefined;
+  if (!dataset) { await transaction.done; return; }
+  const hashes = new Set(dataset.assetHashes ?? []);
+  let addedBytes = 0;
+  let added = false;
+  for (const [sha256, byteLength] of pending) {
+    // Ownership has already been recorded atomically. Content verification is
+    // still performed by the asset loader before any bytes are used.
+    if (hashes.has(sha256)) continue;
+    const asset = await transaction.objectStore(ASSET_STORE).get(sha256) as CachedAsset | undefined;
+    const actualByteLength = assetByteLength(asset);
+    if (!asset || actualByteLength !== byteLength || asset.sha256 !== sha256) continue;
+    await transaction.objectStore(ASSET_INDEX_STORE).put({ sha256, byteLength: actualByteLength } satisfies CachedAssetIndexEntry);
+    hashes.add(sha256);
+    addedBytes += actualByteLength;
+    added = true;
   }
-
-  await transaction.objectStore(ASSET_INDEX_STORE).put({
-    sha256,
-    byteLength: actualByteLength
-  } satisfies CachedAssetIndexEntry);
-  const assetHashes = dataset.assetHashes ?? [];
-  if (!assetHashes.includes(sha256)) {
-    await transaction.objectStore(DATASET_STORE).put({
-      ...dataset,
-      cacheVersion: CURRENT_DATASET_CACHE_VERSION,
-      status: dataset.status === 'catalog' ? 'partial' : dataset.status,
-      storedBytes: dataset.storedBytes + actualByteLength,
-      assetHashes: [...assetHashes, sha256],
-      updatedAt: Date.now()
-    });
-  }
+  if (added) await datasets.put({
+    ...dataset,
+    cacheVersion: CURRENT_DATASET_CACHE_VERSION,
+    status: dataset.status === 'catalog' ? 'partial' : dataset.status,
+    storedBytes: dataset.storedBytes + addedBytes,
+    assetHashes: [...hashes],
+    updatedAt: Date.now()
+  });
   await transaction.done;
+}
+
+/** Record an on-demand asset in the owning dataset for accounting and cleanup. */
+export async function recordDatasetAsset(datasetId: string, sha256: string, byteLength: number): Promise<void> {
+  await recordDatasetAssets(datasetId, [{ sha256, bytes: byteLength }]);
 }
 
 export async function estimateStorage() {

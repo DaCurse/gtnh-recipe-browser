@@ -56,7 +56,7 @@ import {
   getDataset,
   listDatasets,
   migrateObsoleteDatasetStates,
-  recordDatasetAsset,
+  recordDatasetAssets,
   saveDataset
 } from './storage';
 import type {
@@ -935,6 +935,8 @@ export class DatasetRepository {
         const descriptor = descriptorForStableId(this.manifest.goodsDetailShards ?? [], 'goods', id);
         if (!descriptor) throw new Error(`No goods-detail partition contains ${id}`);
         const details = await withAbort(this.detailShard(descriptor), signal);
+        // A concurrent lookup may already have applied this entire partition.
+        if (this.goodsDetails.has(id)) return this.entriesById.get(id);
         for (const detail of details) {
           this.goodsDetails.set(detail.id, detail);
           const target = this.entriesById.get(detail.id);
@@ -974,12 +976,14 @@ export class DatasetRepository {
       const descriptor = descriptorForStableId(this.manifest.ingredientGroupShards ?? [], 'oreDictionaries', id);
       if (!descriptor) throw new Error(`No ingredient-group partition contains ${id}`);
       const groups = await withAbort(this.groupShard(descriptor), signal);
+      if (this.hydratedGroups.has(id)) return this.entriesById.get(id);
       for (const group of groups) {
         this.ingredientGroups.set(group.id, group);
         this.hydratedGroups.add(group.id);
         const target = this.entriesById.get(group.id);
         if (!target) throw new Error(`${descriptor.id}: group references unknown entry ${group.id}`);
-        const representative = group.itemIds.map((member) => this.entriesById.get(member)).find(Boolean);
+        const representativeId = group.itemIds.find((member) => this.entriesById.has(member));
+        const representative = representativeId === undefined ? undefined : this.entriesById.get(representativeId);
         this.entriesById.set(group.id, { ...target,
           members: group.itemIds,
           tooltip: [`${group.itemIds.length.toLocaleString('en-US')} interchangeable item${group.itemIds.length === 1 ? '' : 's'}`,
@@ -1059,9 +1063,7 @@ export class DatasetRepository {
   }
 
   private async recordAsset(asset: DatasetAsset): Promise<void> {
-    for (const physical of physicalDescriptorsFor(asset, this.manifest.recordPages)) {
-      await recordDatasetAsset(this.datasetId, physical.sha256, physical.bytes);
-    }
+    await recordDatasetAssets(this.datasetId, physicalDescriptorsFor(asset, this.manifest.recordPages));
   }
 
   private validateRecipeRecords(

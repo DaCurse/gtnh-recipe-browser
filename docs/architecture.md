@@ -220,3 +220,13 @@ policy and are not overridden repeatedly.
 same-visit automatic switch and later choice persistence. `test-deferred-rollout.mjs` covers target
 failure and manual choice during the held request. These synthetic index-routing checks block service
 workers; `test-cached-startup.mjs` separately exercises the production service worker and offline cache.
+
+## Recipe chunk loading
+
+Recipe cards render progressively from immutable raw state arrays; exports wait for every chunk.
+Concurrent lookups apply each hydrated partition once. Physical assets retain size and SHA-256
+verification, using asynchronous native Web Crypto where available and a synchronous fallback.
+Cache ownership is recorded atomically in batches without rereading already-owned blobs.
+The recipe worker receives only referenced catalog metadata and lazily builds search documents
+for nonempty queries; blank browsing pages the ordered raw records. See
+[recipe loading measurements](recipe-loading-performance.md) for methodology and regression checks.

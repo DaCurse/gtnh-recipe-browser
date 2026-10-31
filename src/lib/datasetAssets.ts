@@ -4,7 +4,7 @@ import {
   RECORD_PAGE_TARGET_BYTES,
   recordPageSelections
 } from './recordPages';
-import { verifyAssetBytes } from './integrity';
+import { verifyAssetBytesAsync } from './integrity';
 import {
   cacheAsset,
   cacheMetadata,
@@ -131,12 +131,15 @@ async function fetchPhysicalVerified(
   const cached = await getCachedAsset(asset.sha256);
   if (cached) {
     onProgress?.({ loaded: cached.byteLength, total: asset.bytes, cached: true });
+    let valid = false;
     try {
-      verifyAssetBytes(asset, cached);
-      return cached;
+      await verifyAssetBytesAsync(asset, cached);
+      valid = true;
     } catch {
       // Remove a stale or corrupt record before attempting a clean download.
     }
+    abortIfNeeded(signal);
+    if (valid) return cached;
     await removeCachedAsset(asset.sha256);
   }
 
@@ -145,7 +148,7 @@ async function fetchPhysicalVerified(
   const response = await fetch(new URL(asset.url, manifestUrl), { signal });
   if (!response.ok) throw new Error(`Unable to download ${asset.id}: HTTP ${response.status}`);
   const bytes = await readResponseBytes(response, asset, onProgress, signal);
-  verifyAssetBytes(asset, bytes);
+  await verifyAssetBytesAsync(asset, bytes);
   abortIfNeeded(signal);
   await cacheAsset(asset.sha256, bytes);
   return bytes;
@@ -293,7 +296,7 @@ async function fetchLogicalVerified(
     }
   }
   const assembled = assembleRecordPages(asset, pages);
-  verifyAssetBytes(asset, assembled);
+  await verifyAssetBytesAsync(asset, assembled);
   abortIfNeeded(signal);
   return assembled;
 }

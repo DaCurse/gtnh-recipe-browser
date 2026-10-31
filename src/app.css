@@ -182,3 +182,8 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
   .mobile-sidebar-links { display:flex; justify-content:space-between; }
 }
 @media (prefers-reduced-motion:reduce) { .spinner,.mini-spinner { animation-duration:1.8s; } }
+
+.recipe-loading.recipe-progress { display:flex; flex-wrap:wrap; justify-content:center; align-items:center; gap:6px 10px; padding:12px; }
+.recipe-progress .spinner { width:16px; height:16px; }
+.recipe-loading.recipe-progress b { margin:0; }
+.recipe-progress small { flex-basis:100%; }

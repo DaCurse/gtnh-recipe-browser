@@ -14,6 +14,7 @@ import {
   migrateObsoleteDatasetStates,
   removeDataset,
   recordDatasetAsset,
+  recordDatasetAssets,
   removeCachedAsset,
   saveDataset,
 } from '../src/lib/storage';
@@ -205,6 +206,30 @@ describe('IndexedDB dataset lifecycle', () => {
 
     await removeCachedAsset(firstHash);
     expect((await cachedAssetSizes()).has(firstHash)).toBe(false);
+  });
+
+  it('batches ownership without rereading shared blobs or double-counting concurrent batches', async () => {
+    const id = 'batched-assets';
+    await saveDataset(dataset(id, false, []));
+    await cacheAsset('batch-a', new Uint8Array([1, 2, 3]));
+    await cacheAsset('batch-b', new Uint8Array([4, 5]));
+    let blobReads = 0;
+    const original = IDBObjectStore.prototype.get;
+    const spy = vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
+      if (this.name === 'assets') blobReads++;
+      return original.call(this, key);
+    });
+    try {
+      const assets = [{ sha256: 'batch-a', bytes: 3 }, { sha256: 'batch-b', bytes: 2 },
+        { sha256: 'batch-a', bytes: 3 }];
+      await Promise.all([recordDatasetAssets(id, assets), recordDatasetAssets(id, assets)]);
+      expect(blobReads).toBe(2);
+      await recordDatasetAssets(id, assets);
+      expect(blobReads).toBe(2);
+      expect(await getDataset(id)).toMatchObject({ assetHashes: ['batch-a', 'batch-b'], storedBytes: 5 });
+      await recordDatasetAssets(id, [{ sha256: 'absent', bytes: 99 }, { sha256: 'batch-wrong', bytes: -1 }]);
+      expect(await getDataset(id)).toMatchObject({ assetHashes: ['batch-a', 'batch-b'], storedBytes: 5 });
+    } finally { spy.mockRestore(); }
   });
 
   it('prunes obsolete rows after replacement while retaining current shared blobs', async () => {
