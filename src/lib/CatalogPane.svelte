@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
+  import { analyticsSearch, trackEvent } from './analytics';
   import CatalogVariantIcon from './CatalogVariantIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import MinecraftText from './MinecraftText.svelte';
@@ -22,6 +23,7 @@
     sidebarWidth = $bindable(),
     sidebarResizing = $bindable(),
     select,
+    searchContext = 'catalog',
   }: {
     selected: CatalogEntry;
     detailsOpen: boolean;
@@ -33,6 +35,7 @@
     sidebarWidth: number;
     sidebarResizing: boolean;
     select: (id: string) => void;
+    searchContext?: 'catalog' | 'finder_input' | 'finder_output';
   } = $props();
 
   let searchIds = $state<string[]>([]);
@@ -64,6 +67,21 @@
 
   const searchRequested = $derived(query.trim().length > 0);
   let initializedCatalog: CatalogBrowseEntry[] | undefined;
+  let reportedSearch = '';
+  $effect(() => {
+    const term = analyticsSearch(query);
+    const context = searchContext;
+    const count = searchTotal;
+    if (!term) { reportedSearch = ''; return; }
+    if (searchPending || searchLoadingMore) return;
+    const timer = window.setTimeout(() => {
+      const key = `${context}:${term}`;
+      if (reportedSearch === key) return;
+      reportedSearch = key;
+      trackEvent('catalog_search', { query: term, search_context: context, result_count: count });
+    }, 1200);
+    return () => window.clearTimeout(timer);
+  });
 
   // Browsing the sorted catalog needs neither a search index nor a worker scan.
   $effect(() => {

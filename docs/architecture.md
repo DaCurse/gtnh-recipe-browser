@@ -281,3 +281,11 @@ with the request; equivalent intermediate histories can reach the requested rout
 proof enumeration explores combinations of exclusions. Feature state merges route references and
 loaded cards during expansion, preserves selection, and supports cancel without losing results.
 All expanded searches reuse the worker graph and continue to apply the same provenance filters.
+
+## Product analytics
+
+`analytics.ts` owns the deferred PostHog slim client, production-host gating, bounded early-event queue,
+URL-property sanitization, and optional-failure containment. Feature owners emit completed-action
+events; App owns deduplicated navigation pageviews and item views. CatalogPane debounces settled
+search terms; RecipeBrowser records export click/generated/failure events. No worker/recipe-chunk
+progress or automatic DOM/replay capture is recorded. See [analytics.md](analytics.md) for report fields.

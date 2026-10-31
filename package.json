@@ -30,6 +30,7 @@
     "test:cached-startup": "node tools/test-cached-startup.mjs",
     "test:item-loading": "node tools/test-item-loading.mjs",
     "test:deferred-rollout": "node tools/test-deferred-rollout.mjs",
+    "test:analytics": "node tools/test-analytics.mjs",
     "test:recipe-chain": "node tools/test-recipe-chain.mjs",
     "test:recipe-finder": "node tools/test-recipe-finder.mjs",
     "test:recipe-streaming": "node tools/test-recipe-streaming.mjs"
@@ -38,6 +39,7 @@
     "@msgpack/msgpack": "^3.1.3",
     "@noble/hashes": "^2.2.0",
     "idb": "^8.0.3",
+    "posthog-js": "^1.444.0",
     "sharp": "^0.35.3",
     "svelte": "^5.35.5",
     "workbox-window": "^7.3.0"

@@ -123,3 +123,9 @@ and migrate same-version cache rows after v7 bootstrap loads successfully.
 
 However, the project contains some assets from Minecraft (Mojang trademark and copyright), the GTNH development
 team, and respective mod authors. These assets are used under fair use.
+
+## Analytics
+
+Production uses PostHog US for traffic, popular searches/items, feature usage, and export actions.
+See [analytics events and report setup](docs/analytics.md) for event properties, collection controls,
+and verification. Development and preview hosts do not send telemetry.

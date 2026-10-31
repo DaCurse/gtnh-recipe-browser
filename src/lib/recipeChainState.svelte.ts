@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { trackEvent } from './analytics';
 import type { DatasetRepository } from './dataset';
 import type { RecipeConstraints } from './recipeFinder';
 import type { ChainPath } from './recipeChain';
@@ -20,12 +21,13 @@ export class RecipeChainState {
   private searchRevision = $state(0);
   private searchKey = '';
   private requestedMore = false;
+  private searchStarted = 0;
   private worker?: Worker;
   private request = 0;
   private resolveController?: AbortController;
   private revision = $state(0);
 
-  constructor(context: { repository: () => DatasetRepository; constraints: () => RecipeConstraints }) {
+  constructor(context: { repository: () => DatasetRepository; constraints: () => RecipeConstraints; ingredientName?: (id: string) => string }) {
     $effect(() => {
       const repository = context.repository(); void this.revision;
       const controller = new AbortController();
@@ -59,6 +61,15 @@ export class RecipeChainState {
             recipes, routes: [recipes, ...unique.slice(1).map((route) => cache.get(JSON.stringify(route)) ?? null)] };
         })).then((paths) => {
           if (controller.signal.aborted || resolveController.signal.aborted || id !== this.request) return;
+          trackEvent('chain_search_completed', {
+            dataset_version: repository.gtnhVersion, target_count: paths.length,
+            input_names: context.constraints().inputs.map((id) => context.ingredientName?.(id) ?? 'Unknown ingredient').join(' + ').slice(0, 500),
+            output_names: context.constraints().outputs.map((id) => context.ingredientName?.(id) ?? 'Unknown ingredient').join(' + ').slice(0, 500),
+            route_count: paths.reduce((count, path) => count + (path.status === 'found' ? path.routes.length : 0), 0),
+            limited: paths.some((path) => path.limited || path.status === 'search-limit' || path.status === 'proof-limit'),
+            max_depth: this.maxDepth, allow_extras: this.allowExtras, expanded: this.expanding,
+            duration_ms: Math.round(performance.now() - this.searchStarted)
+          });
           this.paths = paths; this.completedLimit = this.routeLimit; this.loading = false; this.expanding = false;
         }).catch((error: unknown) => {
           if (controller.signal.aborted || resolveController.signal.aborted || id !== this.request) return;
@@ -87,6 +98,7 @@ export class RecipeChainState {
         this.searchKey = key; this.requestedMore = false;
         this.expanding = keepResults;
         this.resolveController?.abort(); this.request++;
+        this.searchStarted = performance.now();
         if (!keepResults) this.paths = []; this.error = ''; this.loading = true; this.routeLoading = false; this.visited = 0; this.stage = keepResults ? 'Searching more routes…' : 'Searching recipe chains…';
         try {
           this.worker?.postMessage({ type: 'search', id: this.request, inputs: [...constraints.inputs], outputs: [...constraints.outputs], maxDepth, allowExtras, routeLimit: this.routeLimit });
@@ -101,10 +113,12 @@ export class RecipeChainState {
   searchMore() {
     if (this.loading || this.completedLimit >= 50) return;
     this.routeLimit = this.completedLimit < 25 ? 25 : 50;
+    trackEvent('chain_more_requested', { requested_routes: this.routeLimit });
     this.requestedMore = true; this.searchRevision += 1;
   }
   cancelMore() {
     if (!this.expanding) return;
+    trackEvent('chain_more_stopped', { duration_ms: Math.round(performance.now() - this.searchStarted) });
     this.request++; this.worker?.postMessage({ type: 'cancel' }); this.resolveController?.abort();
     this.resolveController = new AbortController();
     this.loading = false; this.expanding = false; this.routeLoading = false; this.routeLimit = this.completedLimit;
@@ -112,7 +126,7 @@ export class RecipeChainState {
   async loadRoute(repository: DatasetRepository, targetId: string, index: number): Promise<boolean> {
     const path = this.paths.find((path) => path.targetId === targetId);
     if (!path) return false;
-    if (path.routes[index]) return true;
+    if (path.routes[index]) { trackEvent('chain_route_viewed', { route_number: index + 1, cached: true }); return true; }
     const references = [path.steps, ...(path.alternatives ?? [])][index];
     if (!references) return false;
     const request = this.request, controller = this.resolveController;
@@ -123,6 +137,7 @@ export class RecipeChainState {
       this.paths = this.paths.map((current) => current !== path ? current : {
         ...current, routes: current.routes.map((route, routeIndex) => routeIndex === index ? recipes : route)
       });
+      trackEvent('chain_route_viewed', { route_number: index + 1, cached: false });
       return true;
     } catch (error) {
       if (request === this.request && !controller?.signal.aborted) this.error = error instanceof Error ? error.message : String(error);

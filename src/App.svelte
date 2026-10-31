@@ -1,5 +1,6 @@
 <script lang="ts">
   import { onMount, tick } from 'svelte';
+  import { trackEvent } from './lib/analytics';
   import { initializeShellUpdate } from './lib/shellUpdate';
   import AppHeader from './lib/AppHeader.svelte';
   import ApplicationState from './lib/ApplicationState.svelte';
@@ -125,6 +126,26 @@
     const url = recipeFilterUrl(location.href, recipeQuery);
     if (url.search === location.search) return;
     history.replaceState({ id: selectedId }, '', url);
+  });
+
+  let analyticsPage = '';
+  let analyticsItem = '';
+  $effect(() => {
+    if (!navigationUrlReady) return;
+    const linkedItem = new URLSearchParams(location.search).get('item');
+    const itemPage = detailsOpen || (!repository && Boolean(linkedItem));
+    const screen = finderOpen ? finderMode === 'chain' ? 'chain' : 'finder' : itemPage ? 'item' : 'catalog';
+    const key = [screen, screen === 'item' ? selectedId || linkedItem : '', screen === 'item' ? mode : ''].join('|');
+    if (key !== analyticsPage) {
+      analyticsPage = key;
+      trackEvent('$pageview', repository ? { screen, dataset_version: repository.gtnhVersion } : { screen });
+    }
+    if (screen === 'item' && detailsOpen && selected && repository) {
+      const itemKey = [repository.datasetId, selected.id, mode].join('|');
+      if (itemKey === analyticsItem) return;
+      analyticsItem = itemKey;
+      trackEvent('item_viewed', { item_id: selected.id, item_name: selected.name, view: mode, dataset_version: repository.gtnhVersion });
+    } else analyticsItem = '';
   });
 
   const datasetManager = new DatasetManagerState({
@@ -274,6 +295,7 @@
     preserveSelection = false,
     expectedVersion?: string
   ): Promise<boolean> {
+    const analyticsStarted = performance.now();
     datasetLoadSequence++;
     const linkedDatasetId = targetDatasetId
       ?? new URLSearchParams(location.search).get('version')
@@ -311,9 +333,11 @@
           .filter((sha256): sha256 is string => sha256 !== undefined)
       ));
       datasetStatus = 'ready';
+      trackEvent('dataset_loaded', { dataset_version: loaded.gtnhVersion, duration_ms: Math.round(performance.now() - analyticsStarted) });
       await datasetManager.refreshAvailability();
       return true;
     } catch (error) {
+      trackEvent('dataset_load_failed', { duration_ms: Math.round(performance.now() - analyticsStarted) });
       console.error('Unable to load the GTNH dataset', error);
       datasetError = diagnostic(error);
       datasetStatus = 'error';

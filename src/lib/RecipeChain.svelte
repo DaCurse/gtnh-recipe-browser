@@ -9,7 +9,7 @@
     repository: DatasetRepository; constraints: RecipeConstraints; navigate: (id: string, view: RecipeView) => void;
   } = $props();
   let selectedRoutes = $state<Record<string, number>>({});
-  const chain = new RecipeChainState({ repository: () => repository, constraints: () => constraints });
+  const chain = new RecipeChainState({ repository: () => repository, constraints: () => constraints, ingredientName: (id) => entries.get(id)?.name ?? 'Unknown ingredient' });
   $effect(() => { if (chain.loading && !chain.expanding) selectedRoutes = {}; });
   const entries = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
   function summarize(recipes: Recipe[]) {

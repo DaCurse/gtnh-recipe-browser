@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { trackEvent } from './analytics';
   import {
     browserExportFilename,
     createRecipeExport,
@@ -102,6 +103,7 @@
   }
 
   function requestExport(target: ExportTarget) {
+    trackEvent('data_export_clicked', { target, view: mode, kind: browserState.showingSpecial ? 'special' : 'recipes', dataset_version: repository.gtnhVersion });
     exportError = '';
     if (target === 'category') {
       void performExport(target, 'all');
@@ -124,6 +126,11 @@
     if (exportWorking) return;
     exportWorking = true;
     exportError = '';
+    const started = performance.now();
+    const reportExport = (recordCount: number) => trackEvent('data_export_completed', {
+      target, choice, view: mode, recipe_type: browserState.type || 'all', record_count: recordCount, kind: browserState.showingSpecial ? 'special' : 'recipes',
+      dataset_version: repository.gtnhVersion, duration_ms: Math.round(performance.now() - started)
+    });
     const query = exportQuery(target);
     const applyFilter = choice === 'filtered' && query.trim().length > 0;
     try {
@@ -145,6 +152,7 @@
             records
           });
           downloadBrowserExport(value, browserExportFilename(value));
+          reportExport(value.records.length);
           return;
         }
 
@@ -164,6 +172,7 @@
           records
         });
         downloadBrowserExport(value, browserExportFilename(value));
+        reportExport(value.records.length);
         return;
       }
 
@@ -188,6 +197,7 @@
           records
         });
         downloadBrowserExport(value, browserExportFilename(value));
+        reportExport(value.records.length);
         return;
       }
 
@@ -206,6 +216,7 @@
           records
         });
         downloadBrowserExport(value, browserExportFilename(value));
+        reportExport(value.records.length);
         return;
       }
 
@@ -230,7 +241,9 @@
         records
       });
       downloadBrowserExport(value, browserExportFilename(value));
+      reportExport(value.records.length);
     } catch (error) {
+      trackEvent('data_export_failed', { target, choice, dataset_version: repository.gtnhVersion });
       exportError = error instanceof Error ? error.message : String(error);
     } finally {
       exportWorking = false;
