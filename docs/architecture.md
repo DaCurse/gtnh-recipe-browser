@@ -11,13 +11,19 @@ Feature views live in `src/lib/*.svelte`:
 - `CatalogPane.svelte` owns catalog search, incremental result paging, tooltips, and sidebar resizing.
 - `RecipeBrowser.svelte` renders tabs, filters, loading progress, bounded recipe pages, and recipe cards.
 - `RecipeFinder.svelte` owns the input/output picker and cross-machine subset-search page.
+- `RecipeChain.svelte` renders conversion routes, alternatives, search controls, and external ingredients inside the finder.
 - `DatasetManager.svelte` renders local dataset installation and switching.
 
 Stateful feature workflows use Svelte 5 rune modules:
 
 - `recipeBrowserState.svelte.ts` owns progressive shard requests, stale-request cancellation, and the recipe-search worker.
 - `recipeFinderState.svelte.ts` owns cancellable subset searches, progressive results, and reuse of complete candidate results when adding constraints.
+- `recipeChainState.svelte.ts` owns the lazy chain worker, bounded route searches, cancellation, and hydration of selected routes through `DatasetRepository`.
 - `datasetManagerState.svelte.ts` owns installation, quota checks, switching, deletion, and storage reporting.
+
+`recipeChain.ts` validates the dataset-bound graph and performs strict reachability searches;
+`recipeChainExtras.ts` searches alternative paths with externally supplied ingredients.
+Both run in `recipeChain.worker.ts` so graph exploration does not block the UI.
 
 ## Dataset boundary
 

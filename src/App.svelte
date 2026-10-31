@@ -548,3 +548,10 @@
     deleteDataset={(state) => datasetManager.deleteDataset(state)}
   />
 {/if}
+
+<style>
+  .site-introduction { padding: 12px 24px; max-width: 1100px; font-family: system-ui, sans-serif; }
+  .site-introduction h1 { font-size: 1.2rem; margin: 0 0 6px; }
+  .site-introduction p { color: #bfc1c7; font-size: .9rem; line-height: 1.5; margin: 0; }
+  .site-introduction a { color: #e0bc75; }
+</style>

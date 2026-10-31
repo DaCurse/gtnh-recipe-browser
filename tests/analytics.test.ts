@@ -67,11 +67,46 @@ describe('focused analytics', () => {
     }
     expect(sdk.init).not.toHaveBeenCalled(); expect(sdk.capture).not.toHaveBeenCalled();
   });
-  it('contains SDK initialization and capture failures so browsing stays usable', async () => {
+  it('contains SDK initialization failures so browsing stays usable', async () => {
     sdk.init.mockImplementationOnce(() => { throw new Error('blocked'); });
     const { initializeAnalytics, trackEvent } = await import('../src/lib/analytics');
     initializeAnalytics(); await vi.runAllTimersAsync(); await vi.dynamicImportSettled();
     expect(() => trackEvent('dataset_loaded', { duration_ms: 1 })).not.toThrow();
     expect(sdk.init).toHaveBeenCalledOnce();
+  });
+
+  it('discards queued events when privacy preferences change before idle startup', async () => {
+    const { trackEvent } = await import('../src/lib/analytics');
+    trackEvent('$pageview');
+    vi.stubGlobal('navigator', { globalPrivacyControl: true });
+    await vi.runAllTimersAsync(); await vi.dynamicImportSettled();
+    expect(sdk.init).not.toHaveBeenCalled();
+    vi.stubGlobal('navigator', { globalPrivacyControl: false });
+    trackEvent('dataset_loaded');
+    await vi.runAllTimersAsync(); await vi.dynamicImportSettled();
+    expect(sdk.capture.mock.calls.map(([event]) => event)).toEqual(['dataset_loaded']);
+  });
+
+  it('does not flush queued events or send buffered events after a privacy opt-out', async () => {
+    sdk.init.mockImplementationOnce(() => {});
+    const { trackEvent } = await import('../src/lib/analytics');
+    trackEvent('$pageview');
+    await vi.runAllTimersAsync(); await vi.dynamicImportSettled();
+    const config = sdk.init.mock.calls[0]![1];
+    vi.stubGlobal('navigator', { doNotTrack: '1' });
+    config.loaded(sdk);
+    expect(sdk.capture).not.toHaveBeenCalled();
+    expect(config.before_send({ event: '$pageview', properties: {} })).toBeNull();
+    vi.stubGlobal('navigator', { doNotTrack: null });
+    trackEvent('dataset_loaded');
+    expect(sdk.capture.mock.calls.map(([event]) => event)).toEqual(['dataset_loaded']);
+  });
+
+  it('contains capture failures after successful SDK initialization', async () => {
+    const { initializeAnalytics, trackEvent } = await import('../src/lib/analytics');
+    initializeAnalytics();
+    await vi.runAllTimersAsync(); await vi.dynamicImportSettled();
+    sdk.capture.mockImplementationOnce(() => { throw new Error('Capture blocked'); });
+    expect(() => trackEvent('dataset_loaded')).not.toThrow();
   });
 });
