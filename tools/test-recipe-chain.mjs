@@ -33,12 +33,13 @@ try {
   console.log(JSON.stringify({ phase: 'route-ready' }));
   const link = page.url();
   const alternatives = page.getByRole('navigation', { name: 'Alternative routes to Iron Dust', exact: true });
-  assert.match(await alternatives.innerText(), /[2-5] verified routes found/);
+  assert.match(await alternatives.innerText(), /[2-9][0-9]* verified routes found|10 verified routes found/);
+  const firstRouteCount = Number((await alternatives.innerText()).match(/(\d+) verified routes/)?.[1]);
   await alternatives.getByRole('button', { name: 'Next route', exact: true }).click();
-  await alternatives.getByText('Route 2 of 5', { exact: true }).waitFor({ timeout: 120000 });
+  await alternatives.getByText(`Route 2 of ${firstRouteCount}`, { exact: true }).waitFor({ timeout: 120000 });
   assert.equal(await page.locator('.chain-steps > li').count(), 2);
   await alternatives.getByRole('button', { name: 'Previous route', exact: true }).click();
-  await alternatives.getByText('Route 1 of 5', { exact: true }).waitFor();
+  await alternatives.getByText(`Route 1 of ${firstRouteCount}`, { exact: true }).waitFor();
   assert.equal(graphReads.length, 1);
   await page.setViewportSize({ width: 1100, height: 900 });
   const scroller = page.locator('.chain-scroll');
@@ -100,6 +101,24 @@ try {
   assert.match(await page.locator('.chain-step-heading').first().innerText(), /Distillation/);
   assert.doesNotMatch(await page.locator('.chain-extras').allTextContents().then((items) => items.join(' ')), /Diesel/);
   assert.doesNotMatch(await page.locator('.chain-step-heading').allTextContents().then((items) => items.join(' ')), /Canner/);
+  const oilChoices = page.getByRole('navigation', { name: 'Alternative routes to Cetane-Boosted Diesel', exact: true });
+  const routeCount = async () => Number((await oilChoices.innerText()).match(/(\d+) verified routes/)?.[1]);
+  const beforeMore = await routeCount(); const beforeSteps = await page.locator('.chain-steps > li').count();
+  await oilChoices.getByRole('button', { name: 'Search more routes', exact: true }).click();
+  await page.getByRole('button', { name: 'Stop searching', exact: true }).waitFor();
+  assert.equal(await page.locator('.chain-steps > li').count(), beforeSteps, 'More search must keep existing results visible');
+  await page.getByRole('button', { name: 'Stop searching', exact: true }).click();
+  await finish(); assert.equal(await routeCount(), beforeMore);
+  await oilChoices.getByRole('button', { name: 'Next route', exact: true }).click();
+  await oilChoices.getByText(`Route 2 of ${beforeMore}`, { exact: true }).waitFor({ timeout: 120000 });
+  await oilChoices.getByRole('button', { name: 'Search more routes', exact: true }).click();
+  await finish();
+  const afterMore = await routeCount();
+  assert(afterMore > beforeMore, 'Broader oil search must reveal additional routes');
+  await oilChoices.getByText(`Route 2 of ${afterMore}`, { exact: true }).waitFor();
+  assert.equal(graphReads.length, 1, 'Expanded search must reuse the loaded graph');
+  assert.match(await page.locator('.search-coverage').innerText(), /not a total count/);
+  if (screenshotDirectory) await page.screenshot({ path: `${screenshotDirectory}/expanded-oil-routes-mobile.png` });
   // Changing modes and clearing must suppress stale worker and detail responses.
   await page.getByRole('button', { name: 'Single recipe', exact: true }).click();
   assert.equal(await page.locator('.chain-view').count(), 0);
@@ -110,6 +129,6 @@ try {
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ realItemFluidConversion: true, steps: 2, missingToolVisible: true, strictWithTool: true,
     strictWithoutToolRejected: true, workerGraphReuse: true, cachedGraphRefresh: true, shareableMode: true,
-    mobileLayout: true, horizontalDesktopScroller: true, selectableAlternatives: true, borrowedTungstenRejected: true, realOilRefinery: true, borrowedDieselContainerDetourRejected: true, staleClear: true, normalBrowseGraphReads: 0, errors }));
+    mobileLayout: true, horizontalDesktopScroller: true, selectableAlternatives: true, borrowedTungstenRejected: true, realOilRefinery: true, initialOilRoutes: beforeMore, expandedOilRoutes: afterMore, cancellableExpansion: true, retainedSelectedRoute: true, borrowedDieselContainerDetourRejected: true, staleClear: true, normalBrowseGraphReads: 0, errors }));
   await context.close();
 } finally { await browser.close(); }

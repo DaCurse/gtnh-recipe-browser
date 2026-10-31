@@ -11,8 +11,14 @@ interface Label {
 /** Keep alternative histories: the same intermediate can have different borrowed ingredients. */
 export async function searchWithExtras(graph: ChainGraph,
   index: { members: Map<number, number[]>; memberOf: Map<number, number[]>; consumers: Map<number, number[]> },
-  inputs: string[], outputs: string[], maxDepth: number, signal?: AbortSignal,
+  inputs: string[], outputs: string[], maxDepth: number, routeLimit: number, signal?: AbortSignal,
   onProgress?: (progress: ChainProgress) => void): Promise<ChainPath[]> {
+  const breadth = Math.max(1, routeLimit / 10);
+  const workLimit = Math.floor(3_000_000 * breadth);
+  const processedLimit = Math.floor(20_000 * breadth);
+  const historyLimit = Math.min(100, routeLimit * 2);
+  const equivalentLimit = routeLimit;
+  const frontierLimit = Math.min(24_000, Math.floor(12_000 * breadth));
   const lookup = new Map(graph.ids.map((id, node) => [id, node]));
   const expand = (node: number) => index.members.get(node) ?? [node];
   const accepts = (slot: number, available: Set<number>) => expand(slot).some((node) => available.has(node));
@@ -108,7 +114,7 @@ export async function searchWithExtras(graph: ChainGraph,
     for (const node of borrowed) mark(node);
     for (let head = 0; head < queue.length; head++) {
       for (const recipeIndex of consumers(queue[head]!)) {
-        if (++work > 3_000_000) { limited = true; return null; }
+        if (++work > workLimit) { limited = true; return null; }
         if (work % 4096 === 0) await pause();
         if (fired[recipeIndex]) continue;
         const recipe = graph.recipes[recipeIndex]!;
@@ -126,7 +132,7 @@ export async function searchWithExtras(graph: ChainGraph,
   let processed = 0;
   search: while (frontier.length) {
     active();
-    if (targets.every((node) => node !== undefined && ((found.get(node)?.length ?? 0) >= 5 || seeds.has(node)))) break;
+    if (targets.every((node) => node !== undefined && ((found.get(node)?.length ?? 0) >= routeLimit || seeds.has(node)))) break;
     const label = pop(); processed++;
     if (!label.active || label.path.length >= maxDepth || distance[label.node]! < 0
       || label.path.length + distance[label.node]! > maxDepth) continue;
@@ -144,7 +150,7 @@ export async function searchWithExtras(graph: ChainGraph,
       }
     }
     for (const recipeIndex of nextRecipes) {
-      if (++work > 3_000_000 || processed >= 20_000) { limited = true; break search; }
+      if (++work > workLimit || processed >= processedLimit) { limited = true; break search; }
       if (work % 1024 === 0) await pause();
       if (label.path.includes(recipeIndex)) continue;
       const recipe = graph.recipes[recipeIndex]!;
@@ -160,7 +166,7 @@ export async function searchWithExtras(graph: ChainGraph,
           || label.path.length + 1 + distance[node]! > maxDepth) continue;
         const next: Label = { node, known, borrowed, path: [...label.path, recipeIndex], active: true };
         const alternatives = atNode.get(node) ?? [];
-        if (targets.includes(node) && (found.get(node)?.length ?? 0) < 5) {
+        if (targets.includes(node) && (found.get(node)?.length ?? 0) < routeLimit) {
           const independent = await extraClosure(borrowed, next.path);
           if (!independent) break search;
           if (independent[node]) continue;
@@ -171,8 +177,8 @@ export async function searchWithExtras(graph: ChainGraph,
         // Retain several equivalent histories so alternatives can survive a
         // common intermediate, rather than silently collapsing to one route.
         const retained = alternatives.filter((old) => old.active);
-        if (retained.filter((old) => old.path.length <= next.path.length && subset(old.borrowed, borrowed) && subset(known, old.known)).length >= 3) { limited = true; continue; }
-        if (retained.length >= 8) {
+        if (retained.filter((old) => old.path.length <= next.path.length && subset(old.borrowed, borrowed) && subset(known, old.known)).length >= equivalentLimit) { limited = true; continue; }
+        if (retained.length >= historyLimit) {
           limited = true;
           retained.sort((a, b) => a.path.length + 2 * Math.sqrt(a.borrowed.size) - b.path.length - 2 * Math.sqrt(b.borrowed.size));
           const worst = retained[retained.length - 1]!;
@@ -180,10 +186,10 @@ export async function searchWithExtras(graph: ChainGraph,
           worst.active = false; retained.pop();
         }
         retained.push(next); atNode.set(node, retained); generated++; push(next);
-        if (frontier.length > 8000) {
+        if (frontier.length > frontierLimit) {
           limited = true;
           frontier.sort((a, b) => a.score - b.score);
-          for (const discarded of frontier.splice(4000)) discarded.label.active = false;
+          for (const discarded of frontier.splice(Math.floor(frontierLimit / 2))) discarded.label.active = false;
         }
       }
     }
@@ -197,6 +203,6 @@ export async function searchWithExtras(graph: ChainGraph,
     const references = routes.map((label) => label.path.map((id) => {
       const recipe = graph.recipes[id]!; return { shardId: graph.shards[recipe[0]]!, record: recipe[1] };
     }));
-    return { targetId, status: 'found', steps: references[0]!, alternatives: references.slice(1), limited: limited || routes.length >= 5 };
+    return { targetId, status: 'found', steps: references[0]!, alternatives: references.slice(1), limited: limited || routes.length >= routeLimit };
   });
 }

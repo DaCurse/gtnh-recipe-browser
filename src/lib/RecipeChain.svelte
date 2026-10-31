@@ -10,7 +10,7 @@
   } = $props();
   let selectedRoutes = $state<Record<string, number>>({});
   const chain = new RecipeChainState({ repository: () => repository, constraints: () => constraints });
-  $effect(() => { if (chain.loading) selectedRoutes = {}; });
+  $effect(() => { if (chain.loading && !chain.expanding) selectedRoutes = {}; });
   const entries = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
   function summarize(recipes: Recipe[]) {
     const available = new Set(constraints.inputs);
@@ -33,7 +33,7 @@
     <label>Search depth <select aria-label="Maximum chain depth" bind:value={chain.maxDepth}>{#each [6, 12, 24, 32] as depth (depth)}<option value={depth}>{depth} steps</option>{/each}</select></label>
   </div>
   <details class="chain-help"><summary>Real recipes only · quantities and machine tiers are not balanced</summary><p class="chain-explanation">Item and fluid forms are connected through actual recipes, including melting, solidifying, and dust processing. Energy is not balanced and chance outputs remain probabilistic. {chain.allowExtras ? 'Additional ingredients and tools are shown at each step.' : 'Every ingredient kind and tool must come from supplied inputs or earlier steps.'} Each target has an independent route; not every supplied input must be used.</p></details>
-  {#if chain.loading}<div class="chain-status" role="status"><span class="mini-spinner" aria-hidden="true"></span>{chain.stage}{#if chain.visited}<small>{chain.visited.toLocaleString()} item/form nodes explored</small>{/if}</div>{/if}
+  {#if chain.loading}<div class="chain-status" role="status"><span class="mini-spinner" aria-hidden="true"></span>{chain.stage}{#if chain.visited}<small>{chain.visited.toLocaleString()} search states explored</small>{/if}{#if chain.expanding}<button class="more-routes" onclick={() => chain.cancelMore()}>Stop searching</button>{/if}</div>{/if}
   {#if chain.error}<div class="chain-error" role="alert"><p>{chain.error}</p><button onclick={() => chain.retry()}>Try again</button></div>{/if}
   {#each chain.paths as path (path.targetId)}
     {@const routeIndex = Math.min(selectedRoutes[path.targetId] ?? 0, Math.max(0, path.routes.length - 1))}
@@ -43,12 +43,14 @@
       {#if path.status === 'found' && route.length}
         <nav class="route-choices" aria-label={`Alternative routes to ${label(path.targetId)}`}>
           <span>{path.routes.length} verified {path.routes.length === 1 ? 'route' : 'routes'} found{path.limited ? ' · more may exist' : ''}</span>
-          {#if path.routes.length > 1}<button disabled={routeIndex === 0 || chain.routeLoading} onclick={async () => { if (await chain.loadRoute(repository, path.targetId, routeIndex - 1)) selectedRoutes[path.targetId] = routeIndex - 1; }}>Previous route</button><b>Route {routeIndex + 1} of {path.routes.length}</b><button disabled={routeIndex + 1 === path.routes.length || chain.routeLoading} onclick={async () => { if (await chain.loadRoute(repository, path.targetId, routeIndex + 1)) selectedRoutes[path.targetId] = routeIndex + 1; }}>Next route</button>{/if}
+          {#if path.routes.length > 1}<button disabled={routeIndex === 0 || chain.routeLoading || (chain.expanding && !path.routes[routeIndex - 1])} onclick={async () => { if (await chain.loadRoute(repository, path.targetId, routeIndex - 1)) selectedRoutes[path.targetId] = routeIndex - 1; }}>Previous route</button><b>Route {routeIndex + 1} of {path.routes.length}</b><button disabled={routeIndex + 1 === path.routes.length || chain.routeLoading || (chain.expanding && !path.routes[routeIndex + 1])} onclick={async () => { if (await chain.loadRoute(repository, path.targetId, routeIndex + 1)) selectedRoutes[path.targetId] = routeIndex + 1; }}>Next route</button>{/if}
           {#if chain.routeLoading}<small role="status">Loading route…</small>{/if}
+          {#if path.limited && chain.routeLimit < 50}<button class="more-routes" disabled={chain.loading} onclick={() => chain.searchMore()}>Search more routes</button>{/if}
         </nav>
+        {#if path.limited}<p class="search-coverage">Showing discovered routes from a bounded search, not a total count of possible solutions. {chain.routeLimit < 50 ? 'Search more widens the search and keeps the routes already found.' : 'The broadest search can still miss routes; try different inputs or a greater depth.'}</p>{/if}
       {/if}
       {#if path.status === 'not-found'}<p class="chain-empty">No route found within {chain.maxDepth} steps{chain.allowExtras ? '' : ' using only supplied ingredients'}. Try a greater depth, another starting form, or allow additional ingredients.</p>
-      {:else if path.status === 'search-limit'}<p class="chain-empty">The provenance search reached its exploration limit without a verified route. Supply more starting ingredients or try an intermediate target.</p>
+      {:else if path.status === 'search-limit'}<p class="chain-empty">The provenance search reached its exploration limit without a verified route. {#if chain.routeLimit < 50}<button class="more-routes" disabled={chain.loading} onclick={() => chain.searchMore()}>Search more routes</button>{/if} Supply more starting ingredients or try an intermediate target.</p>
       {:else if path.status === 'proof-limit'}<p class="chain-empty">The dependency route is too large to display (more than 128 recipes). Try allowing additional ingredients or supplying an intermediate.</p>
       {:else if !route.length}<p class="chain-empty">This output is already among the supplied inputs.</p>
       {:else}
@@ -66,6 +68,7 @@
 </section>
 
 <style>
+  .more-routes { padding:7px 10px; border:1px solid #6486ad; border-radius:5px; background:#2b405a; color:#e7f1ff; cursor:pointer; }.more-routes:disabled { opacity:.5; cursor:default; }.search-coverage { color:#8eabc9; font-size:12px; line-height:1.5; margin:8px 0 14px; }
   .route-choices { display:flex; flex-wrap:wrap; align-items:center; gap:10px; margin:14px 0; font-size:12px; color:#a7bad1; }.route-choices button { padding:7px 10px; border:1px solid #536780; border-radius:5px; background:#243246; color:#e2ecfa; cursor:pointer; }.route-choices button:disabled { opacity:.4; cursor:default; }
   .chain-options { display:flex; flex-wrap:wrap; gap:16px 24px; align-items:center; margin:18px 0 10px; }.chain-options label { display:flex; align-items:center; gap:9px; font-size:13px; }.chain-options input { width:18px; height:18px; accent-color:#abc9ed; }
   select,.chain-error button { padding:8px; border:1px solid #536172; border-radius:6px; background:#242c36; color:#e8eef6; }

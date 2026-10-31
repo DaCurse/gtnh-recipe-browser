@@ -12,10 +12,10 @@ This stricter search includes branching dependencies and displays them in depend
 
 This is a reachability tool, not a factory balance calculator. It ignores quantities, energy, voltage
 tiers, machine ownership, and throughput. A chance output is a possible result, not guaranteed production.
-The tool shows up to five distinct verified routes per target, with Previous/Next route controls.
+The tool shows up to ten distinct verified routes per target on the initial search, with Previous/Next route controls.
 Extra-ingredient mode prefers shorter discovered routes; strict mode also looks for alternative proofs
 by excluding steps from its first proof. Neither mode claims to enumerate every solution or minimize
-total machines, resources, or energy. Additional route recipes load only when selected. Search depth is adjustable from 6 to 32;
+total machines, resources, or energy. Additional route recipes load only when selected. **Search more routes** raises the requested count to 25, then 50, and widens retained histories and exploration budgets. Existing results and the selected route remain visible; **Stop searching** cancels expansion without discarding them. Displayed counts describe discovered routes, never the total number of possible solutions. Search depth is adjustable from 6 to 32;
 the default is 12. A failed bounded search reports the bound rather than claiming no chain exists.
 Proofs larger than 128 recipes get an explicit display-limit message.
 
@@ -31,9 +31,13 @@ borrowed source material. This is a conservative causal check, not atomic or sto
 An optimistic reverse graph prunes directions that cannot reach a target within the depth bound.
 Best-first exploration favors shorter proofs with fewer borrowed materials. Sibling fractions can
 be processed to supply a co-input of the current frontier before they are recombined.
-Extra-ingredient searches are bounded to 20,000 processed labels, eight retained histories per intermediate,
-three equivalent histories per state, and three million exploration checks. The frontier is trimmed
-from 8,000 to its best 4,000 pending histories when needed. Results say **more may
+Initial extra-ingredient searches are bounded to 20,000 processed labels and three million exploration
+checks. Histories per intermediate are twice the requested route count (up to 100); equivalent
+histories can reach the requested count rather than being silently cut off at three. The initial
+12,000-state frontier is trimmed to its best half when necessary. Broader requests scale work and
+processed-state budgets, with at most a 24,000-state pending frontier. Strict search explores
+combinations of excluded proof steps, rather than only one-step exclusions from its first proof.
+Results say **more may
 exist** when route/history caps apply. If the budget is reached without a verified route, the page says
 so explicitly; it does not claim there is no possible conversion.
 
@@ -96,3 +100,9 @@ Regression examples include the invalid Pu241 → borrowed/recovered tungsten �
 invalid oil → lubricant → recovered cell → externally supplied diesel path. The actual 2.9.0 oil
 search now finds source-dependent distillation/fuel-processing/mixing procedures; their co-inputs
 remain explicit. This is still a conservative procedural dependency test, not molecular tracing.
+
+The broader-search regression compares a synthetic 18-route graph with a shared intermediate, verifies
+all 18 are recoverable with a 25-route request, and covers strict enumeration beyond five alternatives.
+On actual 2.9.0 oil → cetane-boosted diesel data, the previous deployment found 2 routes; the broader
+initial search found 8, the 25-route request found 20, and the 50-route request found 23 in controlled
+repository tests. These remain bounded procedural results, not an exhaustive census.

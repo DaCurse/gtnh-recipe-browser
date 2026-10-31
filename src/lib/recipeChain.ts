@@ -12,6 +12,7 @@ export interface ChainGraph {
 }
 export interface ChainReference { shardId: string; record: number }
 export interface ChainPath { targetId: string; status: 'found' | 'not-found' | 'proof-limit' | 'search-limit'; steps: ChainReference[]; alternatives?: ChainReference[][]; limited?: boolean }
+export interface ChainSearchOptions { maxDepth: number; allowExtras: boolean; routeLimit?: number }
 export interface ChainProgress { visited: number; recipes: number }
 
 export function validateChainGraph(value: unknown, datasetId: string, manifestSha256: string): ChainGraph {
@@ -56,10 +57,11 @@ export class RecipeChainGraph {
     });
   }
 
-  async search(inputs: string[], outputs: string[], options: { maxDepth: number; allowExtras: boolean },
+  async search(inputs: string[], outputs: string[], options: ChainSearchOptions,
     signal?: AbortSignal, onProgress?: (progress: ChainProgress) => void, excluded = new Set<number>(), enumerate = true): Promise<ChainPath[]> {
     const maxDepth = Math.max(1, Math.min(32, Math.floor(options.maxDepth) || 12));
-    if (options.allowExtras) return searchWithExtras(this.graph, { members: this.members, memberOf: this.memberOf, consumers: this.consumers }, inputs, outputs, maxDepth, signal, onProgress);
+    const routeLimit = Math.max(1, Math.min(50, Math.floor(options.routeLimit ?? 10)));
+    if (options.allowExtras) return searchWithExtras(this.graph, { members: this.members, memberOf: this.memberOf, consumers: this.consumers }, inputs, outputs, maxDepth, routeLimit, signal, onProgress);
     const depth = new Int16Array(this.graph.ids.length).fill(-1);
     const via = new Int32Array(this.graph.ids.length).fill(-1);
     const representative = new Int32Array(this.graph.ids.length).fill(-1);
@@ -129,14 +131,38 @@ export class RecipeChainGraph {
         return { shardId: this.graph.shards[recipe[0]]!, record: recipe[1] };
       }) };
     });
+    const recordIndices = new Map<string, Map<number, number>>();
+    const recordIndex = (step: ChainReference) => {
+      let records = recordIndices.get(step.shardId);
+      if (!records) {
+        records = new Map();
+        this.graph.recipes.forEach((recipe, index) => {
+          if (this.graph.shards[recipe[0]] === step.shardId) records!.set(recipe[1], index);
+        });
+        recordIndices.set(step.shardId, records);
+      }
+      return records.get(step.record)!;
+    };
     if (enumerate) for (const path of paths) {
       if (path.status !== 'found' || !path.steps.length) continue;
       const routes = [path.steps];
-      for (const banned of (proofs.get(path.targetId) ?? []).slice(0, 12)) {
-        if (routes.length >= 5) break;
-        active();
-        const [alternative] = await this.search(inputs, [path.targetId], options, signal, onProgress, new Set([...excluded, banned]), false);
-        if (alternative?.status === 'found' && !routes.some((route) => JSON.stringify(route) === JSON.stringify(alternative.steps))) routes.push(alternative.steps);
+      const queue = [{ banned: excluded, proof: proofs.get(path.targetId) ?? [] }];
+      const seen = new Set<string>();
+      let attempts = 0;
+      for (let cursor = 0; cursor < queue.length && routes.length < routeLimit && attempts < routeLimit * 12; cursor++) {
+        const candidate = queue[cursor]!;
+        for (const banned of candidate.proof) {
+          if (routes.length >= routeLimit || attempts >= routeLimit * 12) break;
+          const exclusions = new Set([...candidate.banned, banned]);
+          const key = [...exclusions].sort((a, b) => a - b).join(',');
+          if (seen.has(key)) continue;
+          seen.add(key); attempts++; active();
+          const [alternative] = await this.search(inputs, [path.targetId], options, signal, onProgress, exclusions, false);
+          if (alternative?.status !== 'found') continue;
+          if (!routes.some((route) => JSON.stringify(route) === JSON.stringify(alternative.steps))) routes.push(alternative.steps);
+          const indices = alternative.steps.map(recordIndex);
+          queue.push({ banned: exclusions, proof: indices });
+        }
       }
       path.alternatives = routes.slice(1); path.limited = true;
     }

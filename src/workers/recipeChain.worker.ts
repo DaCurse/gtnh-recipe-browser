@@ -7,7 +7,7 @@ let generation = 0;
 let pending: AbortController | undefined;
 self.onmessage = (event: MessageEvent<
   | { type: 'init'; datasetId: string; manifestSha256: string; bytes: ArrayBuffer }
-  | { type: 'search'; id: number; inputs: string[]; outputs: string[]; maxDepth: number; allowExtras: boolean }
+  | { type: 'search'; id: number; inputs: string[]; outputs: string[]; maxDepth: number; allowExtras: boolean; routeLimit?: number }
   | { type: 'cancel' }
 >) => {
   const request = event.data;

@@ -275,3 +275,9 @@ and best-first sibling-branch planning.
 The strict solver remains an all-input dependency traversal and enumerates alternative proofs by
 excluding prior steps. Both return a bounded set of alternatives; feature state lazily resolves a
 selected alternative and guards it against stale requests. Wide-screen routes own horizontal overflow.
+
+Chain enumeration requests carry `routeLimit` (initial 10, then 25/50). History and work budgets widen
+with the request; equivalent intermediate histories can reach the requested route count. Strict
+proof enumeration explores combinations of exclusions. Feature state merges route references and
+loaded cards during expansion, preserves selection, and supports cancel without losing results.
+All expanded searches reuse the worker graph and continue to apply the same provenance filters.

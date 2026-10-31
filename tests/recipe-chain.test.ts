@@ -97,9 +97,26 @@ describe('recipe chain reachability', () => {
       const routes = [path!.steps, ...(path!.alternatives ?? [])];
       expect(routes.length).toBeGreaterThan(1);
       expect(new Set(routes.map((route) => JSON.stringify(route))).size).toBe(routes.length);
-      expect(routes.length).toBeLessThanOrEqual(5);
+      expect(routes.length).toBeLessThanOrEqual(10);
       expect(path!.steps).toHaveLength(1);
     }
+  });
+  it('finds more than five reconverging routes and widens the requested result count', async () => {
+    const recipes: Array<[number[], number[]]> = Array.from({ length: 18 }, () => [[0], [1]]);
+    recipes.push([[1], [2]]);
+    const graph = fixture(['source', 'shared', 'target'], recipes);
+    const first = (await graph.search(['source'], ['target'], { ...options, routeLimit: 10 }))[0]!;
+    const wider = (await graph.search(['source'], ['target'], { ...options, routeLimit: 25 }))[0]!;
+    const count = (path: typeof first) => path.status === 'found' ? 1 + (path.alternatives?.length ?? 0) : 0;
+    expect(count(first)).toBeGreaterThan(5);
+    expect(count(wider)).toBeGreaterThan(count(first));
+    expect(count(wider)).toBe(18);
+    expect(new Set([wider.steps, ...(wider.alternatives ?? [])].map((route) => JSON.stringify(route))).size).toBe(18);
+  });
+  it('enumerates strict alternatives beyond replacing a single step of the first proof', async () => {
+    const graph = fixture(['source', 'target'], Array.from({ length: 15 }, () => [[0], [1]]));
+    const [path] = await graph.search(['source'], ['target'], { ...options, allowExtras: false, routeLimit: 25 });
+    expect(1 + path!.alternatives!.length).toBe(15);
   });
   it('handles cycles, supplied outputs, depth bounds, unknown identities, and multiple targets', async () => {
     const graph = fixture(['a', 'b', 'c'], [[[0], [1]], [[1], [0]], [[1], [2]]]);
