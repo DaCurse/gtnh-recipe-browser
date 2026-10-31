@@ -5,6 +5,20 @@
 [build.environment]
   NODE_VERSION = "22"
 
+# Shared links encode their state in the query string, which Netlify forwards.
+# Keep old immutable assets available for already-installed offline clients.
+[[redirects]]
+  from = "/"
+  to = "https://dacurse.github.io/gtnh-recipe-browser/"
+  status = 301
+  force = true
+
+[[redirects]]
+  from = "/index.html"
+  to = "https://dacurse.github.io/gtnh-recipe-browser/"
+  status = 301
+  force = true
+
 [[headers]]
   for = "/index.html"
   [headers.values]

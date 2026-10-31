@@ -120,7 +120,7 @@ try {
     await isolated.route('https://us.i.posthog.com/**', (route) => { requests++; return route.abort(); });
     const tab = await isolated.newPage(); const pageErrors = [];
     tab.on('pageerror', (error) => pageErrors.push(error.message));
-    await tab.goto(production, { waitUntil: 'domcontentloaded' });
+    await tab.goto(`${production}/`, { waitUntil: 'domcontentloaded' });
     await tab.locator('.item-tile').first().waitFor({ timeout: 120000 });
     await tab.waitForTimeout(3500);
     if (preference === 'dnt') assert.equal(requests, 0); else assert(requests > 0);
