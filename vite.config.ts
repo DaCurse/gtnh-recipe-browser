@@ -11,6 +11,7 @@ function shellSources(directory: string): string {
       : readFileSync(`${directory}/${entry.name}`, 'utf8')).join('');
 }
 const shellRevision = createHash('sha256').update(shellSources('src'))
+  .update(readFileSync('vite.config.ts'))
   .update(readFileSync('public/sw-takeover.js')).digest('hex').slice(0, 16);
 
 export default defineConfig({
@@ -53,6 +54,8 @@ export default defineConfig({
         skipWaiting: true,
         globPatterns: ['**/*.{js,css,html,otf}'],
         navigateFallback: 'index.html',
+        // App routes use root query parameters. Static documents must reach the server.
+        navigateFallbackAllowlist: [/\/(?:index\.html)?(?:\?.*)?$/],
         importScripts: [`sw-takeover.js?revision=${shellRevision}`]
       }
     })
