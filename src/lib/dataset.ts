@@ -576,6 +576,17 @@ export class DatasetRepository {
     }
   }
 
+  /** Capture startup intent before activation, then wait for the background index. */
+  static async startupRollout(requested?: string): Promise<(DatasetVersion & { rolloutEpoch: number }) | undefined> {
+    const installed = await listDatasets();
+    const { value: index } = await loadVersionsIndex();
+    const applied = await getCachedMetadata<number>('dataset-rollout-epoch');
+    const selection = startupDatasetSelection(index, installed, requested, applied?.value);
+    if (selection.rolloutEpoch === undefined) return undefined;
+    const version = index.versions.find((candidate) => candidate.datasetId === selection.datasetId);
+    return version && { ...version, rolloutEpoch: selection.rolloutEpoch };
+  }
+
   static async availableVersions(): Promise<DatasetVersion[]> {
     return (await loadVersionsIndex(150)).value.versions;
   }
@@ -600,7 +611,7 @@ export class DatasetRepository {
       if (!active || !selection?.rolloutEpoch || selection.datasetId === active.datasetId
         || selection.datasetId !== index?.value.rollout?.targetDatasetId) throw error;
       // Keep the usable v7 cache when a rollout bootstrap is unavailable. Retry the epoch next startup.
-      return DatasetRepository.loadSelected(active.datasetId, onProgress, reuseFrom);
+      return DatasetRepository.loadSelected(active.datasetId, onProgress, reuseFrom, false, false);
     }
   }
 
@@ -608,7 +619,8 @@ export class DatasetRepository {
     datasetId?: string,
     onProgress?: (progress: DatasetLoadProgress) => void,
     reuseFrom?: DatasetRepository,
-    startup = false
+    startup = false,
+    acknowledgeChoice = true
   ): Promise<DatasetRepository> {
     const progressContext: { gtnhVersion?: string } = {};
     let lastPercent = 0;
@@ -627,7 +639,10 @@ export class DatasetRepository {
     const applied = startup ? await getCachedMetadata<number>('dataset-rollout-epoch') : null;
     const selection = startup
       ? startupDatasetSelection(versions, installed, datasetId, applied?.value)
-      : { datasetId: preferredDatasetId(versions.versions, installed, datasetId), rolloutEpoch: undefined };
+      : { datasetId: preferredDatasetId(versions.versions, installed, datasetId),
+        // An explicit manager choice takes precedence over a pending automatic switch.
+        rolloutEpoch: acknowledgeChoice
+          ? startupDatasetSelection(versions, installed, datasetId, applied?.value).rolloutEpoch : undefined };
     const selectedId = selection.datasetId;
     const published = versions.versions.find((version) => version.datasetId === selectedId);
     const installedSelection = installed.find((dataset) => dataset.datasetId === selectedId
@@ -813,8 +828,16 @@ export class DatasetRepository {
   async activate(): Promise<void> {
     await activateDataset(this.datasetId);
     if (this.pendingRolloutEpoch !== undefined) {
-      await cacheMetadata('dataset-rollout-epoch', this.manifestUrl, this.pendingRolloutEpoch);
+      await this.acknowledgeRollout(this.pendingRolloutEpoch);
       this.pendingRolloutEpoch = undefined;
+    }
+  }
+
+  /** Acknowledge only after this verified repository is successfully active. */
+  async acknowledgeRollout(epoch: number): Promise<void> {
+    const applied = await getCachedMetadata<number>('dataset-rollout-epoch');
+    if ((applied?.value ?? 0) < epoch) {
+      await cacheMetadata('dataset-rollout-epoch', this.manifestUrl, epoch);
     }
   }
 

@@ -199,3 +199,24 @@ Other explicit supported links and manager selections remain deliberate choices.
 its epoch in IndexedDB metadata; a failed target load leaves it pending. If a usable active v7 dataset exists,
 startup falls back to it while the rollout target is unavailable. Legacy cache rows and frozen bridge links are
 resolved to published semantic-version replacements before any manifest fetch. No v6 manifest is selectable.
+
+
+## One-time release switching
+
+`versions-v7.json` publishes a monotonically increasing rollout epoch and target dataset.
+Startup still uses a short cached-index budget, so an unavailable server cannot delay cached browsing.
+`DatasetRepository.startupRollout` captures the saved selection and URL intent before activation, then
+waits for a fresh index in the background. `App.svelte` applies a newly received pending rollout in the
+same visit, preserving the selected item and URL state. A load sequence guard lets a successful manual
+switch made during the network request win instead. Explicit different-version links remain deliberate choices.
+
+The epoch is acknowledged only after a verified catalog is active, or when an already active verified
+choice is deliberately preserved. Acknowledgement never lowers a newer recorded epoch. If the target
+bootstrap is unavailable, startup falls back to the usable active cache without acknowledging the new
+rollout, so it can retry on a later visit. Subsequent deliberate version choices acknowledge the current
+policy and are not overridden repeatedly.
+
+`test-startup-rollout.mjs` holds the network index until the old cached page is ready, then verifies the
+same-visit automatic switch and later choice persistence. `test-deferred-rollout.mjs` covers target
+failure and manual choice during the held request. These synthetic index-routing checks block service
+workers; `test-cached-startup.mjs` separately exercises the production service worker and offline cache.

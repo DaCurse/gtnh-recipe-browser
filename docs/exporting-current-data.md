@@ -113,7 +113,7 @@ npm run export:publish -- \
   --rollout-epoch <new-positive-epoch>
 ```
 
-Use a rollout epoch greater than the current `versions-v7.json` epoch (RC1 uses 2; 2.9.0 final uses 3). It targets the
+Use a rollout epoch greater than the current `versions-v7.json` epoch (RC1 uses 2; 2.9.0 final currently uses 4). It targets the
 activated dataset once for returning users; subsequent deliberate version choices persist.
 Run `npm run quality` before committing the index change. The 2.9.0 beta
 releases and RC1 use the persistent shared layout; the 2.8.0 pack remains as a small

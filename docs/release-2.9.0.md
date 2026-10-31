@@ -83,7 +83,7 @@ Adding the final dataset alongside RC1 needs 27,955,273 additional stored bytes 
 Identical-file sharing between RC1 and final saves 69,104,973 bytes. The persistent layout is extended
 append-only; frozen v6 bridge files remain unchanged.
 
-The full quality suite passes: 38 test files, 229 tests, no Svelte/TypeScript errors or warnings.
+The full quality suite passes: 39 test files, 233 tests, no Svelte/TypeScript errors or warnings.
 Run logs and complete source/build provenance are retained under `.export-work/release-2.9.0-source/`
 and `.export-work/2.9.0-direct/`.
 
@@ -96,7 +96,7 @@ Production preview was used because watching the accumulated export workspaces e
 
 Staged commit `89b3735` was deployed by Netlify deployment `6ae619d673fe3d939d25e081`.
 The deployed-origin smoke test fetched and verified all 1,282 final-dataset assets successfully before activation.
-The version index now configures rollout epoch 3 targeting `2.9.0-v7-rbd0b48ae8ad7`. RC1, both betas and
+The version index now configures rollout epoch 4 targeting `2.9.0-v7-rbd0b48ae8ad7`. RC1, both betas and
 2.8.0 remain selectable; no datasets or shared objects were removed. The rollout applies once and preserves
 subsequent deliberate version choices.
 
@@ -106,8 +106,13 @@ dataset-manager choices across refresh, real service-worker warm/offline/stalled
 hydration with zero compressed-page reads, and desktop/mobile loading states with deliberately delayed details.
 No browser errors were reported.
 
-The rollout test models receipt of the actual live policy in the returning client's metadata cache. This avoids
-racing its own synthetic old index against the app's 150 ms cached-startup budget. A client still holding an old
-index may finish that startup on its saved version while the background index request completes; a subsequent
-startup applies the newly received rollout policy. Service workers are blocked only in this synthetic routing
-test; `test-cached-startup.mjs` separately exercises the real deployed service worker and offline cache.
+The one-time automatic switch uses rollout epoch 4. Cached clients keep their fast startup while the
+network index is pending, then automatically switch to final in the same visit when the new policy arrives.
+The selected item is preserved. A successful manual choice during that wait cancels the automatic switch,
+and subsequent manual choices persist. An unavailable final bootstrap falls back to the usable old cache
+without acknowledging the new epoch; acknowledgement never lowers an already recorded epoch.
+
+The rollout browser check deliberately holds the network index until RC1 is visibly usable, then releases
+it and verifies the automatic switch without another refresh. Failure and manual-choice-during-wait cases
+are covered by `test-deferred-rollout.mjs`. Service workers are blocked only in synthetic index-routing
+tests; `test-cached-startup.mjs` separately exercises the real deployed service worker and offline cache.

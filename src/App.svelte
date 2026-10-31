@@ -24,6 +24,7 @@
   } from './lib/navigation';
   import type { CatalogEntry, RecipeView, SpecialScope } from './lib/types';
 
+  let datasetLoadSequence = 0;
   let catalog = $state.raw<CatalogEntry[]>([]);
   let repository = $state<DatasetRepository | null>(null);
   let datasetVersion = $state('…');
@@ -249,6 +250,7 @@
     preserveSelection = false,
     expectedVersion?: string
   ): Promise<boolean> {
+    datasetLoadSequence++;
     const linkedDatasetId = targetDatasetId
       ?? new URLSearchParams(location.search).get('version')
       ?? undefined;
@@ -339,8 +341,31 @@
       () => void datasetManager.refreshAvailability(),
       15 * 60 * 1_000
     );
-    void initializeShellUpdate().then(() => loadDataset());
+    let disposed = false;
+    void initializeShellUpdate().then(async () => {
+      const startupSequence = datasetLoadSequence + 1;
+      // Do not delay cached browsing while the current network policy arrives.
+      const rollout = DatasetRepository.startupRollout(params.get('version') ?? undefined)
+        .catch(() => undefined);
+      if (!await loadDataset()) return;
+      const initialRepository = repository;
+      const decision = await rollout;
+      if (disposed || !decision || !repository || datasetStatus !== 'ready') return;
+      if (datasetLoadSequence !== startupSequence || repository !== initialRepository) {
+        // A successful manual switch while the request was pending wins this epoch.
+        await repository.acknowledgeRollout(decision.rolloutEpoch);
+        return;
+      }
+      if (decision.datasetId === repository.datasetId) {
+        await repository.acknowledgeRollout(decision.rolloutEpoch);
+        return;
+      }
+      // Startup loading preserves the item and falls back to the usable active
+      // cache without acknowledging the epoch if the new bootstrap is unavailable.
+      await loadDataset(undefined, true, decision.gtnhVersion);
+    }).catch((error: unknown) => console.warn('Background dataset rollout unavailable', error));
     return () => {
+      disposed = true;
       removeEventListener('popstate', handlePopState);
       removeEventListener('keydown', handleShortcut);
       document.removeEventListener('visibilitychange', handleVisibilityChange);

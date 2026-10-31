@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-/* global indexedDB, document */
+/* global indexedDB */
 
 const [appUrl, previousId, targetId, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-startup-rollout.mjs <app-url> <previous-id> <target-id> <playwright-module>');
@@ -37,27 +37,17 @@ try {
   const itemId = new URL(page.url()).searchParams.get('item');
   assert(itemId);
   await context.unroute('**/versions-v7.json');
-  // Model the moment the returning client has received the new live policy.
-  // Otherwise the 150 ms startup budget can legitimately use the mocked old
-  // cached index while its network-first update completes in the background.
-  const activeId = await page.evaluate((policy) => new Promise((resolve, reject) => {
-    const opening = indexedDB.open('gtnh-recipe-browser');
-    opening.onerror = () => reject(opening.error);
-    opening.onsuccess = () => {
-      const db = opening.result;
-      const transaction = db.transaction(['metadata', 'datasets'], 'readwrite');
-      const url = new URL('./versions-v7.json', document.baseURI).href;
-      transaction.objectStore('metadata').put({ key: `versions:${url}`, url, value: policy, cachedAt: Date.now() });
-      const datasets = transaction.objectStore('datasets').getAll();
-      let active;
-      datasets.onsuccess = () => { active = datasets.result.find((dataset) => dataset.active)?.datasetId; };
-      transaction.oncomplete = () => { db.close(); resolve(active); };
-      transaction.onerror = () => { db.close(); reject(transaction.error); };
-    };
-  }), index);
-  assert.equal(activeId, previousId, 'Returning-user fixture must have a persisted active dataset');
-  console.log(JSON.stringify({ phase: 'policy-received', activeId, targetId }));
+  let releaseIndex;
+  const indexGate = new Promise((resolve) => { releaseIndex = resolve; });
+  await context.route('**/versions-v7.json', async (route) => {
+    await indexGate;
+    await route.continue();
+  });
   await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('.item-head').waitFor({ timeout: 60_000 });
+  assert.equal(new URL(page.url()).searchParams.get('version'), previousId, 'Cached browsing must not wait for the network index');
+  console.log(JSON.stringify({ phase: 'cached-startup-ready', previousId, targetId }));
+  releaseIndex();
   await page.waitForURL((url) => url.searchParams.get('version') === targetId, { timeout: 120_000, waitUntil: 'domcontentloaded' });
   assert.equal(new URL(page.url()).searchParams.get('item'), itemId, 'Matching item must survive rollout');
   await page.locator('.item-head').waitFor({ timeout: 60_000 });
@@ -92,6 +82,8 @@ try {
   await managerSwitch(previousId);
   await page.reload({ waitUntil: 'domcontentloaded' });
   await page.locator('.item-tile').first().waitFor({ timeout: 120_000 });
+  assert.equal(new URL(page.url()).searchParams.get('version'), previousId);
+  await page.waitForTimeout(1500);
   assert.equal(new URL(page.url()).searchParams.get('version'), previousId);
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ appUrl, previousId, targetId, appliedEpoch: metadata.value,
