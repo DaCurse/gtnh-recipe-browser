@@ -363,7 +363,7 @@
         loaded.entries
           .map((entry) => entry.icon?.sha256)
           .filter((sha256): sha256 is string => sha256 !== undefined)
-      ));
+      ), loaded.datasetId);
       datasetStatus = 'ready';
       trackEvent('dataset_loaded', { dataset_version: loaded.gtnhVersion, duration_ms: Math.round(performance.now() - analyticsStarted) });
       await datasetManager.refreshAvailability();

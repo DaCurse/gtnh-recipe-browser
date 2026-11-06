@@ -1,17 +1,26 @@
 <script lang="ts">
-  import { resolveIconSheetUrl } from './iconCache';
-  import type { CatalogEntry } from './types';
+  import { resolveRenderedIcon, supportsHighResolutionIcon } from './highResolutionIcons';
+  import { resolveCachedIconSheetUrl } from './iconCache';
+  import type { RenderedIcon } from './highResolutionIcons';
+  import type { CatalogBrowseEntry, CatalogEntry } from './types';
   let { entry, size = 48, selected = false, bare = false, frame = true }: { entry: CatalogEntry; size?: number; selected?: boolean; bare?: boolean; frame?: boolean } = $props();
-  let iconUrl = $state('');
+  let rendered = $state<RenderedIcon>();
   const spriteSize = $derived(Math.max(1, size - 2 * Math.round(size * (bare ? 0.075 : 1 / 18))));
 
   $effect(() => {
     const icon = entry.icon;
-    iconUrl = '';
+    const owner = /^[if]:/.test(entry.id) ? entry.id : (entry as Partial<CatalogBrowseEntry>).variantIds?.[0] ?? entry.id;
+    const displayedPixels = spriteSize;
+    rendered = undefined;
     if (!icon) return;
     let active = true;
-    void resolveIconSheetUrl(icon).then((url) => {
-      if (active) iconUrl = url;
+    if (supportsHighResolutionIcon(icon,displayedPixels)) {
+      void resolveCachedIconSheetUrl(icon).then(url=>{
+        if (active && url && !rendered) rendered={url,index:icon.index,columns:icon.columns,resolution:32};
+      });
+    }
+    void resolveRenderedIcon(icon,owner,displayedPixels).then((value) => {
+      if (active) rendered = value;
     });
     return () => {
       active = false;
@@ -20,13 +29,14 @@
 </script>
 
 <div class:selected class:bare class:frameless={!frame} class:fluid-slot={entry.kind === 'fluid'} class="slot" style:width={`${size}px`} style:height={`${size}px`} aria-hidden="true">
-  {#if entry.icon && iconUrl}
+  {#if entry.icon && rendered}
     <div
       class="atlas-sprite"
+      data-sprite-resolution={rendered.resolution}
       style:width={`${spriteSize}px`} style:height={`${spriteSize}px`}
-      style:background-image={`url("${iconUrl}")`}
-      style:background-size={`${entry.icon.columns * 100}% ${entry.icon.columns * 100}%`}
-      style:background-position={`${(entry.icon.index % entry.icon.columns) * 100 / (entry.icon.columns - 1)}% ${Math.floor(entry.icon.index / entry.icon.columns) * 100 / (entry.icon.columns - 1)}%`}
+      style:background-image={`url("${rendered.url}")`}
+      style:background-size={`${rendered.columns * 100}% ${rendered.columns * 100}%`}
+      style:background-position={`${(rendered.index % rendered.columns) * 100 / (rendered.columns - 1)}% ${Math.floor(rendered.index / rendered.columns) * 100 / (rendered.columns - 1)}%`}
     ></div>
   {:else}
     <div class:fluid={entry.kind === 'fluid'} class="sprite" style:width={`${spriteSize}px`} style:height={`${spriteSize}px`} style:--item-color={entry.color}>

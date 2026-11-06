@@ -11,6 +11,7 @@ Feature views live in `src/lib/*.svelte`:
 - `CatalogPane.svelte` owns catalog search, incremental result paging, tooltips, and sidebar resizing.
 - `RecipeBrowser.svelte` renders tabs, filters, loading progress, bounded recipe pages, and recipe cards.
 - `MachineRecipeStage.svelte` renders verified native frontend geometry; `RecipeGrid.svelte` owns ingredient interactions over shared slot surfaces. See [`machine-recipe-ui.md`](machine-recipe-ui.md).
+- `ItemIcon.svelte` selects verified original-resolution companion sprites for larger icons through `highResolutionIcons.ts`, retaining the existing 32px/offline fallback. See [`icon-resolution.md`](icon-resolution.md).
 - `RecipeFinder.svelte` owns the input/output picker and cross-machine subset-search page.
 - `RecipeChain.svelte` renders conversion routes, alternatives, search controls, and external ingredients inside the finder.
 - `DatasetManager.svelte` renders local dataset installation and switching.
