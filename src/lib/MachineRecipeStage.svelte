@@ -21,7 +21,7 @@
 <div class="machine-stage-wrap" data-machine-map={profile.id}>
   <div class="machine-canvas" style:width={`${bounds.width * RECIPE_UI_SCALE}px`} style:height={`${bounds.height * RECIPE_UI_SCALE}px`} aria-label={`${recipe.type} recipe layout`}>
     {#each profile.widgets as widget, index (index)}
-      <div class="widget" style:left={`${(widget.pos[0]-bounds.x)*RECIPE_UI_SCALE}px`} style:top={`${(widget.pos[1]-bounds.y)*RECIPE_UI_SCALE}px`} style:width={`${widget.size[0]*RECIPE_UI_SCALE}px`} style:height={`${widget.size[1]*RECIPE_UI_SCALE}px`}>
+      <div class="widget" data-ui-kind={widget.kind} style:left={`${(widget.pos[0]-bounds.x)*RECIPE_UI_SCALE}px`} style:top={`${(widget.pos[1]-bounds.y)*RECIPE_UI_SCALE}px`} style:width={`${widget.size[0]*RECIPE_UI_SCALE}px`} style:height={`${widget.size[1]*RECIPE_UI_SCALE}px`}>
         <UiTexture texture={widget.texture} />
       </div>
     {/each}

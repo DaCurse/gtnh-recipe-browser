@@ -3,6 +3,7 @@ import { decode, encode } from '@msgpack/msgpack';
 import {
   boundedPage,
   ingredientsByGridSlot,
+  ingredientTooltipNotes,
   machineCanProcessVoltage,
   propagateOreMachineCapabilities,
   recipeCrafterId,
@@ -19,6 +20,12 @@ const type = {
 };
 
 describe('recipe presentation parity', () => {
+  it('exposes exact quantities and chances in recipe tooltips', () => {
+    expect(ingredientTooltipNotes({ id: 'dust', amount: 1_150_554_420 }, false, true)).toEqual(['Count: 1,150,554,420']);
+    expect(ingredientTooltipNotes({ id: 'fluid', amount: 32_000_000, chance: 0.125 }, true, true))
+      .toEqual(['Amount: 32,000,000 L', 'Chance: 12.5%']);
+    expect(ingredientTooltipNotes({ id: 'tool', amount: 0 }, false, false)).toEqual(['Not consumed']);
+  });
   it('uses tiered singleblocks for cards and the default crafter for tabs', () => {
     expect(recipeCrafterId(type, 2)).toBe('machine:hv');
     expect(recipeCrafterId(type, 8)).toBe('machine:lv');

@@ -42,6 +42,7 @@ import { recordPageSelections } from './recordPages';
 import { restoreMinecraftFormatting } from './minecraftText';
 import { installOfflineAssets } from './offline';
 import { materializeRecipe } from './recipeMaterialization';
+import { applyFrontendPresentation } from './recipeFrontendPresentation';
 import { machineCanProcessVoltage } from './recipePresentation';
 import { mapProgressively } from './progressive';
 import {
@@ -1443,7 +1444,7 @@ export class DatasetRepository {
       const groups = new Set([...recipe.inputs, ...recipe.outputs]
         .filter((io) => io.kind === 'oreDict' || io.kind === 'itemGroup').map((io) => io.goodsId));
       await Promise.all([...groups].map((id) => this.entryFor(id, signal)));
-      return materializeRecipe(recipe, index, this.types, this.ingredientGroups, this.gtnhVersion);
+      return applyFrontendPresentation(materializeRecipe(recipe, index, this.types, this.ingredientGroups, this.gtnhVersion));
     }, undefined, signal);
   }
 
@@ -1539,9 +1540,9 @@ export class DatasetRepository {
         const displayedGroups = new Set(matched.flatMap((recipe) => [...recipe.inputs, ...recipe.outputs])
           .filter((io) => io.kind === 'oreDict' || io.kind === 'itemGroup').map((io) => io.goodsId));
         await Promise.all([...displayedGroups].map((groupId) => this.entryFor(groupId, signal)));
-        const batch = matched.map((recipe, recipeIndex) => materializeRecipe(
+        const batch = await Promise.all(matched.map((recipe, recipeIndex) => applyFrontendPresentation(materializeRecipe(
           recipe, shardIndex * 1_000_000 + recipeIndex, this.types, this.ingredientGroups, this.gtnhVersion
-        ));
+        ))));
         await yieldToBrowser();
         return batch;
       },

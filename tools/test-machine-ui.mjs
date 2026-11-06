@@ -61,6 +61,28 @@ try {
   await page.goto(tower.href);
   await page.locator('[data-machine-map="gt.recipe.distillationtower"]').first().waitFor({ timeout: 120000 });
   assert.match(await page.locator('.view-tabs').innerText(), /Machine Usages\s+[1-9]/);
+  assert(await page.locator('.recipe-list article').first().evaluate(element => element.getBoundingClientRect().width <= 550), 'Small recipes stay in a bounded card');
+  const harmony = new URL(base); harmony.searchParams.set('item', 'i:gregtech:gt.blockmachines:15410'); harmony.searchParams.set('view', 'machine-usages');
+  await page.goto(harmony.href);
+  const harmonyCard = page.locator('.recipe-list article').first();
+  await harmonyCard.waitFor({ timeout: 120000 });
+  assert(await harmonyCard.evaluate(element => element.getBoundingClientRect().width > 550), 'Large recipes can use the wider row');
+  await page.locator('.recipe-list').evaluate(element => { element.style.width = '560px'; });
+  assert(await harmonyCard.locator('.recipe-stage').evaluate(element => element.scrollWidth <= element.clientWidth + 1), 'Almost-fitting grids must not create a tiny horizontal scroll');
+  const harmonyOutput = harmonyCard.locator('.recipe-flow > .io-side').last().locator('.ingredient').first();
+  await harmonyOutput.hover();
+  await page.getByText('Count: 1,150,554,420', { exact: true }).waitFor();
+  await page.getByText('Solid mass: 300%', { exact: true }).waitFor();
+  await page.mouse.move(0, 0);
+  const reactor = new URL(base); reactor.searchParams.set('item', 'i:gregtech:gt.blockmachines:12791'); reactor.searchParams.set('view', 'machine-usages');
+  await page.goto(reactor.href);
+  const reactorCanvas = page.locator('[data-machine-map="kubatech.htgrrecipes"] .machine-canvas').first();
+  await reactorCanvas.waitFor({ timeout: 120000 });
+  assert(await reactorCanvas.evaluate(element => {
+    const logo = element.querySelector('[data-ui-kind="Logo"]');
+    return logo.getBoundingClientRect().bottom <= element.getBoundingClientRect().bottom + 1;
+  }), 'KubaTech tea logo stays inside its diagram');
+  if (screenshots) await reactorCanvas.locator('xpath=ancestor::article').screenshot({ path: `${screenshots}/kubatech-logo-contained.png` });
   const url = new URL(base); url.searchParams.set('item', 'i:minecraft:iron_ingot:0'); url.searchParams.set('view', 'recipes');
   await page.goto(url.href); await page.getByRole('button', { name: 'Crafting (Shapeless)', exact: true }).waitFor({ timeout: 120000 });
   await page.getByRole('button', { name: 'Crafting (Shapeless)', exact: true }).click();
@@ -85,7 +107,14 @@ try {
   await native.waitFor({ timeout: 120000 });
   const atlasUrl = new URL(await native.locator('.widget image').first().getAttribute('href'), base).href;
   assert(await page.evaluate(async url => { const image = new Image(); image.src = url; await image.decode(); return image.naturalWidth > 0; }, atlasUrl), 'UI atlas must decode successfully offline');
+  await page.goto(harmony.href);
+  const offlineOutput = page.locator('.recipe-list article').first().locator('.recipe-flow > .io-side').last().locator('.ingredient').first();
+  await offlineOutput.waitFor({ timeout: 120000 });
+  await offlineOutput.hover();
+  await page.getByText('Count: 1,150,554,420', { exact: true }).waitFor();
   assert.deepEqual(errors, []);
   console.log(JSON.stringify({ nativeTower: true, nativeAssemblyLine: true, nativeChemicalPlant: true,
-    tiledCraftingFallback: true, rightClickNavigation: true, responsive: true, offlineNativeUi: true, uiImages: uiImages.size, errors }));
+    tiledCraftingFallback: true, rightClickNavigation: true, responsive: true, offlineNativeUi: true,
+    fullCustomCounts: true, offlineCustomCounts: true, teaLogoContained: true, smallCardsBounded: true,
+    noTinyScroll: true, uiImages: uiImages.size, errors }));
 } finally { await browser.close(); }

@@ -46,13 +46,41 @@ top-left, with up to two decimal places. NC/chance use NEI's default `#FDD835`,
 verified in `Badge` and `ColorUtils` from NotEnoughItems 2.8.155-GTNH. Alternative
 counts are a compact top-right hint with complete accessible labels/tooltips.
 
-Voltage badges follow `GTValues.TIER_COLORS`, including underline/bold modifiers:
-MV is gold (`fmt-6`), UV is underlined dark green (`fmt-2 fmt-n`). Dark colours get
+Voltage badges use the colours from `GTValues.TIER_COLORS` without text decorations:
+MV is gold (`fmt-6`), UV is dark green (`fmt-2`). Dark colours get
 a lighter badge surface for legibility. Power calculations are unchanged.
 Duration uses a clock badge in the same stats row. Badge hover text explains
 tier names, processing time, current, total energy, per-tick power and known
 machine-specific requirements. Unrestricted machine voltage ceilings accept
 both missing values and MessagePack's `null`, preserving multiblock machine usages.
+
+Small recipes stay in cards up to 550px wide. Larger layouts can span the recipe
+row. Fallback grids use a compact arrow column, avoiding a few pixels of needless
+horizontal overflow when a large recipe fits a chain card. Decorative source
+logos are identified by the template's actual `ui.logo` object and contained
+within its background; functional slot/widget coordinates are unchanged.
+
+## Custom quantities
+
+Eye of Harmony stores its real long item counts in `mSpecialItems`, while the
+normal GT recipe contains stacks of one. Its frontend reads
+`getItemStackToTrueStackSizeMap` for overlays and tooltips. The opt-in adapter also
+captures all 43 `EyeOfHarmonyRecipe` records, including true output counts,
+solid-mass percentages, fluid quantities, gas requirements and base duration.
+Processing rejects duplicate triggers, unexpected NBT and quantities outside
+JavaScript's exact integer range.
+
+`recipeFrontendPresentation.ts` lazily loads this release-specific supplement
+only when materializing Eye of Harmony recipes, including chain steps. Every
+output identity and the complete output sets must agree before it is applied.
+It creates new domain recipes without modifying immutable packed assets.
+Raw star matter is labelled as an optional boost rather than a zero-amount NC
+ingredient. The supplement is shell-cached for offline use. All recipe ingredient
+tooltips show exact counts/litres and output chances; custom notes add solid mass
+and total-item information where NEI supplies it.
+
+Source: [EyeOfHarmonyFrontend](https://github.com/GTNewHorizons/GT5-Unofficial/blob/5.09.54.265/src/main/java/tectech/recipe/EyeOfHarmonyFrontend.java),
+[EyeOfHarmonyRecipeStorage](https://github.com/GTNewHorizons/GT5-Unofficial/blob/5.09.54.265/src/main/java/tectech/recipe/EyeOfHarmonyRecipeStorage.java).
 
 ## Reproduce
 

@@ -89,6 +89,8 @@ export interface Ingredient {
   /** Catalog-resolved name included in browser exports for human readability. */
   name?: string;
   amount?: number;
+  /** Recipe-specific information supplied by a verified custom machine frontend. */
+  notes?: string[];
   chance?: number;
   /** Zero-based position in the matching NEI item/fluid grid. */
   slot?: number;

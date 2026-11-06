@@ -74,11 +74,49 @@ public final class BrowserLayoutExporter {
             else if (type.equals("DrawableWidget")) texture = widget.getClass().getMethod("getDrawable").invoke(widget);
             else continue;
             JsonObject item = new JsonObject(); item.addProperty("type", type);
+            if (texture == field(ui, "logo")) item.addProperty("role", "logo");
             item.add("texture", drawable(texture));
             item.add("pos", pair(widget.getClass().getMethod("getPos").invoke(widget), "x", "y"));
             item.add("size", pair(widget.getClass().getMethod("getSize").invoke(widget), "width", "height"));
             out.add(item);
         }
+        return out;
+    }
+    private static String itemId(net.minecraft.item.ItemStack stack) {
+        if (stack.hasTagCompound()) throw new IllegalStateException("Unexpected NBT in EOH presentation identity");
+        return "i:" + net.minecraft.item.Item.itemRegistry.getNameForObject(stack.getItem()) + ":" + stack.getItemDamage();
+    }
+    private static JsonArray recipePresentation(Map<String, ?> registry) throws Exception {
+        JsonArray out = new JsonArray();
+        for (Object map : registry.values()) {
+            for (Object recipe : (Collection<?>)map.getClass().getMethod("getAllRecipes").invoke(map)) {
+                Object special = field(recipe, "mSpecialItems");
+                if (special == null || !special.getClass().getName().equals("tectech.recipe.EyeOfHarmonyRecipe")) continue;
+                JsonObject data = new JsonObject();
+                data.addProperty("trigger", itemId((net.minecraft.item.ItemStack)special.getClass().getMethod("getRecipeTriggerItem").invoke(special)));
+                JsonArray items = new JsonArray(); data.add("items", items);
+                Object masses = special.getClass().getMethod("getItemStackToProbabilityMap").invoke(special);
+                for (Object value : (List<?>)special.getClass().getMethod("getOutputItems").invoke(special)) {
+                    net.minecraft.item.ItemStack stack = (net.minecraft.item.ItemStack)field(value, "itemStack");
+                    JsonObject item = new JsonObject(); item.addProperty("id", itemId(stack));
+                    item.addProperty("amount", String.valueOf(field(value, "stackSize")));
+                    Object mass = masses.getClass().getMethod("get", Object.class).invoke(masses, stack);
+                    if (mass instanceof Number) item.addProperty("solidMass", (Number)mass);
+                    items.add(item);
+                }
+                JsonArray fluids = new JsonArray(); data.add("fluids", fluids);
+                for (Object value : (List<?>)special.getClass().getMethod("getOutputFluids").invoke(special)) {
+                    net.minecraftforge.fluids.FluidStack stack = (net.minecraftforge.fluids.FluidStack)field(value, "fluidStack");
+                    if (stack.tag != null) throw new IllegalStateException("Unexpected fluid NBT in EOH presentation");
+                    JsonObject fluid = new JsonObject(); fluid.addProperty("name", stack.getFluid().getName());
+                    fluid.addProperty("amount", String.valueOf(field(value, "amount"))); fluids.add(fluid);
+                }
+                for (String getter : new String[]{"getHydrogenRequirement", "getHeliumRequirement", "getSumOfItems", "getRecipeTimeInTicks"})
+                    data.addProperty(getter.substring(3), String.valueOf(special.getClass().getMethod(getter).invoke(special)));
+                out.add(data);
+            }
+        }
+        if (out.size() != 43) throw new IllegalStateException("Unexpected Eye of Harmony recipe count: " + out.size());
         return out;
     }
     @SubscribeEvent
@@ -113,6 +151,7 @@ public final class BrowserLayoutExporter {
                 if (texture != null) item.add("progressTexture", drawable(texture.getClass().getMethod("get").invoke(texture)));
             }
             if (maps.size() < 100) throw new IllegalStateException("Recipe registry incomplete: " + maps.size());
+            root.add("recipePresentation", recipePresentation(registry));
         } catch (Throwable e) { root.addProperty("error", e.toString()); e.printStackTrace(); }
         try { Files.write(Paths.get(System.getProperty("browser.ui.output")), new GsonBuilder().setPrettyPrinting().create().toJson(root).getBytes(StandardCharsets.UTF_8)); }
         catch (Throwable e) { e.printStackTrace(); }

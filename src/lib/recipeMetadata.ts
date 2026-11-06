@@ -18,15 +18,15 @@ export interface GtMetadataContext {
   voltageTier: number;
 }
 
-// GTValues.TIER_COLORS, GT5-Unofficial 5.09.54.265. Formatting distinguishes
-// tiers sharing a colour (LV/UV), so preserve underline and bold as well.
+// GTValues.TIER_COLORS, GT5-Unofficial 5.09.54.265. The browser uses the colours
+// without the in-game underline/bold decorations.
 const tierFormats: Readonly<Record<string, readonly string[]>> = {
   ULV: ['c'], LV: ['2'], MV: ['6'], HV: ['e'], EV: ['8'], IV: ['9'], LuV: ['d'], ZPM: ['b'],
   UV: ['2', 'n'], UHV: ['4', 'n'], UEV: ['5', 'n'], UIV: ['1', 'l', 'n'],
   UMV: ['c', 'l', 'n'], UXV: ['4', 'l', 'n'], MAX: ['f', 'l', 'n'], 'MAX+': ['f', 'l', 'n', 'o']
 };
 export function voltageTierFormats(tier: string): readonly string[] {
-  return tierFormats[tier] ?? [];
+  return tierFormats[tier]?.filter(format => /^[0-9a-f]$/.test(format)) ?? [];
 }
 
 // GTValues.VOLTAGE_NAMES, keyed by abbreviation rather than the packed tier index.

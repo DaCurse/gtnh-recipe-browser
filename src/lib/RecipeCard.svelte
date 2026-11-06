@@ -4,12 +4,15 @@
   import ItemIcon from './ItemIcon.svelte';
   import RecipeGrid from './RecipeGrid.svelte';
   import MachineRecipeStage from './MachineRecipeStage.svelte';
-  import { machineUiFor } from './machineUi';
+  import { machineUiBounds, machineUiFor, RECIPE_UI_SCALE } from './machineUi';
   import { recipeMetadataDescription, voltageTierDescription, voltageTierFormats } from './recipeMetadata';
   import { recipeItemInputLabel } from './recipePresentation';
   let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string, view: RecipeView) => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
   const tierFormats = $derived(voltageTierFormats(recipe.voltage ?? ''));
   const machineUi = $derived(machineUiFor(recipe));
+  const layoutWidth = $derived(machineUi ? machineUiBounds(machineUi).width * RECIPE_UI_SCALE + 28
+    : (Math.max(recipe.layout.itemInputs.columns, recipe.layout.fluidInputs.columns)
+      + Math.max(recipe.layout.itemOutputs.columns, recipe.layout.fluidOutputs.columns)) * 18 * RECIPE_UI_SCALE + 74);
   const crafter = $derived(recipe.crafterId ? resolve(recipe.crafterId) : undefined);
   let tooltipVisible = $state(false);
   let tooltipX = $state(0);
@@ -77,7 +80,7 @@
   }
 </script>
 
-<article class="card">
+<article class="card" class:wide={layoutWidth > 550}>
   <div class="card-head">
     <div>
       {#if crafter}
@@ -178,14 +181,15 @@
 {/if}
 
 <style>
-  .card { background: linear-gradient(145deg,#292b2f,#202225); border:1px solid #414449; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px #0003; }
+  .card { width:100%; min-width:0; max-width:550px; justify-self:start; background: linear-gradient(145deg,#292b2f,#202225); border:1px solid #414449; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px #0003; }
+  .card.wide { grid-column:1/-1; max-width:none; }
   .card-head { min-height:48px; padding:0 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #3a3d41; color:#e2e4e6; }
   .machine-mark { display:inline-grid; place-items:center; width:42px; height:42px; margin-right:8px; color:#b4b8bc; vertical-align:middle; }
   .machine-mark.interactive { padding:0; border:0; background:none; cursor:pointer; }
   .machine-mark.interactive:hover { filter:brightness(1.14); }
   .recipe-stage { min-height:132px; overflow-x:auto; scrollbar-width:thin; scrollbar-color:#4b4f54 transparent; }
-  .recipe-flow { min-width:max-content; min-height:132px; display:grid; grid-template-columns:max-content 66px max-content; justify-content:center; align-items:center; gap:8px; padding:14px; }
-  .io-side { min-width:56px; display:flex; flex-direction:column; justify-content:center; gap:8px; }
+  .recipe-flow { min-width:max-content; min-height:132px; display:grid; grid-template-columns:max-content 38px max-content; justify-content:center; align-items:center; gap:6px; padding:12px; }
+  .io-side { min-width:48px; display:flex; flex-direction:column; justify-content:center; gap:8px; }
   .arrow { color:#c5c9cd; text-align:center; }
   .arrow span { display:block; font:36px system-ui; line-height:1; }
   .meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px 14px; min-height:31px; border-top:1px solid #3a3d41; color:#b0b4b8; font-size:12px; }

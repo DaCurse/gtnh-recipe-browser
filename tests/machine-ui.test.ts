@@ -16,13 +16,22 @@ function recipeFor(name: string): Recipe {
       fluidInputs: dimensions('fluidInputs'), fluidOutputs: dimensions('fluidOutputs') } };
 }
 describe('runtime-derived machine layouts', () => {
-  it('preserves GTNH voltage colours and high-tier formatting', () => {
+  it('preserves GTNH voltage colours without text decorations', () => {
     expect(voltageTierFormats('MV')).toEqual(['6']);
-    expect(voltageTierFormats('UV')).toEqual(['2', 'n']);
-    expect(voltageTierFormats('UIV')).toEqual(['1', 'l', 'n']);
+    expect(voltageTierFormats('UV')).toEqual(['2']);
+    expect(voltageTierFormats('UIV')).toEqual(['1']);
     expect(voltageTierFormats('unrecognized')).toEqual([]);
     expect(voltageTierDescription('LV')).toBe('Tier: Low Voltage');
     expect(voltageTierDescription('UV')).toBe('Tier: Ultimate Voltage');
+  });
+  it('contains decorative logos within the diagram without shifting functional widgets', () => {
+    const profile = profiles.find(profile => profile.id === 'kubatech.htgrrecipes')!;
+    expect(profile.widgets.find(widget => widget.kind === 'Logo')!.pos).toEqual([145,230]);
+    expect(profile.widgets.find(widget => widget.kind === 'ProgressBar')!.pos).toEqual([3,3]);
+    for (const profile of profiles) for (const widget of profile.widgets.filter(widget => widget.kind === 'Logo')) {
+      expect(widget.pos[0] + widget.size[0]).toBeLessThanOrEqual(profile.size[0]);
+      expect(widget.pos[1] + widget.size[1]).toBeLessThanOrEqual(profile.size[1]);
+    }
   });
   it('retains the distillation tower output order instead of flattening it row-major', () => {
     const profile = machineUiFor(recipeFor('Distillation Tower'))!;

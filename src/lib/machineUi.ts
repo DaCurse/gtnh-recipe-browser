@@ -25,7 +25,12 @@ export const machineUiProfiles: MachineUiProfile[] = snapshot.maps.map(profile =
   itemOutputs: profile.itemOutputs.map(expandSlot),
   fluidInputs: profile.fluidInputs.map(expandSlot),
   fluidOutputs: profile.fluidOutputs.map(expandSlot),
-  widgets: profile.widgets.map(widget => ({ ...widget, pos: widget.pos as UiPoint, size: widget.size as UiPoint, texture: textures[widget.texture]! })),
+  widgets: profile.widgets.map(widget => ({ ...widget,
+    // Decorative source logos can extend below the NEI background. Keep them
+    // inside the browser diagram without moving its functional widgets.
+    pos: (widget.kind === 'Logo' ? widget.pos.map((coordinate, axis) =>
+      Math.max(0, Math.min(coordinate, profile.size[axis]! - widget.size[axis]!))) : widget.pos) as UiPoint,
+    size: widget.size as UiPoint, texture: textures[widget.texture]! })),
   specialPos: profile.specialPos as UiPoint | undefined
 }));
 const byName = new Map<string, MachineUiProfile[]>();

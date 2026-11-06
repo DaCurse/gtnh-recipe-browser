@@ -1,4 +1,17 @@
-import type { GridDimensions, MachineRecipeCapability } from './types';
+import type { GridDimensions, Ingredient, MachineRecipeCapability } from './types';
+
+export function ingredientTooltipNotes(ingredient: Ingredient | undefined, fluid: boolean, output: boolean): string[] {
+  if (!ingredient) return [];
+  const notes: string[] = [];
+  if (ingredient.amount !== undefined) {
+    notes.push(ingredient.amount === 0 && !output ? 'Not consumed'
+      : `${fluid ? 'Amount' : 'Count'}: ${ingredient.amount.toLocaleString('en-US', { maximumFractionDigits: 10 })}${fluid ? ' L' : ''}`);
+  }
+  if (output && ingredient.chance !== undefined && ingredient.chance < 1) {
+    notes.push(`Chance: ${(ingredient.chance * 100).toLocaleString('en-US', { maximumFractionDigits: 10 })}%`);
+  }
+  return [...notes, ...(ingredient.notes ?? [])];
+}
 
 interface CrafterReference {
   id: string;

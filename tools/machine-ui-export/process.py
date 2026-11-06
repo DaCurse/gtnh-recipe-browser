@@ -60,7 +60,8 @@ for raw in snapshot['maps']:
         for widget in raw['widgets']:
             image = texture(widget.get('texture'))
             if image and min(widget['size']) > 0:
-                profile['widgets'].append({'pos':widget['pos'], 'size':widget['size'], 'texture':image, 'kind':widget['type']})
+                profile['widgets'].append({'pos':widget['pos'], 'size':widget['size'], 'texture':image,
+                                          'kind': 'Logo' if widget.get('role') == 'logo' else widget['type']})
     elif raw.get('useProgressBar'):
         image = texture(raw.get('progressTexture'), progress=True)
         if image:
@@ -77,6 +78,26 @@ output = {'schemaVersion':1, 'gtnhVersion':'2.9.0', 'gregtechVersion':'5.09.54.2
 target = args.root / 'src/lib/generated/machine-ui.json'
 target.parent.mkdir(parents=True, exist_ok=True)
 target.write_text(json.dumps(output,separators=(',',':'))+'\n')
+presentations = snapshot.get('recipePresentation', [])
+if len(presentations) != 43 or len({entry['trigger'] for entry in presentations}) != 43:
+    raise ValueError('Missing or duplicate custom recipe presentation records')
+def amount(value):
+    number = int(value)
+    if number < 0 or number > 9_007_199_254_740_991:
+        raise ValueError(f'Quantity outside JavaScript exact integer range: {value}')
+    return number
+recipes = []
+for entry in sorted(presentations, key=lambda entry: entry['trigger']):
+    recipes.append({
+        'trigger':entry['trigger'], 'totalItems':amount(entry['SumOfItems']),
+        'hydrogen':amount(entry['HydrogenRequirement']), 'helium':amount(entry['HeliumRequirement']),
+        'durationTicks':amount(entry['RecipeTimeInTicks']),
+        'items': [[item['id'],amount(item['amount']),item.get('solidMass')] for item in entry['items']],
+        'fluids': [[f'f:gregtech:{fluid["name"]}',amount(fluid['amount'])] for fluid in entry['fluids']]
+    })
+(target.parent/'recipe-presentation.json').write_text(json.dumps({
+    'gtnhVersion':'2.9.0', 'gregtechVersion':'5.09.54.265', 'recipes':recipes
+},separators=(',',':'))+'\n')
 provenance = args.root / 'assets/source/machine-ui'
 provenance.mkdir(parents=True,exist_ok=True)
 (provenance/'textures.json').write_text(json.dumps(sources,indent=2,sort_keys=True)+'\n')

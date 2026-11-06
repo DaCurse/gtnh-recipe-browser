@@ -4,7 +4,7 @@
   import SlotSurface from './SlotSurface.svelte';
   import { RECIPE_UI_SCALE, type UiSlot } from './machineUi';
   import { oreCycle } from './oreCycle';
-  import { ingredientsByGridSlot } from './recipePresentation';
+  import { ingredientTooltipNotes, ingredientsByGridSlot } from './recipePresentation';
   import type { CatalogEntry, GridDimensions, Ingredient } from './types';
 
   let {
@@ -168,7 +168,7 @@
 {#if !chooserOpen && tooltipEntry}
   <FloatingCatalogTooltip
     entry={tooltipEntry}
-    notes={!showChances && tooltipIngredient?.amount === 0 ? ['Does not get consumed in the process'] : undefined}
+    notes={ingredientTooltipNotes(tooltipIngredient, tooltipEntry.kind === 'fluid', showChances)}
     x={tooltipX}
     y={tooltipY}
     action={tooltipGroupId
