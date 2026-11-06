@@ -48,7 +48,7 @@
 
 <main class="landing">
   <section class="hero" aria-labelledby="landing-title">
-    <p class="eyebrow">GTNH RECIPE BROWSER</p>
+    <p class="eyebrow">GT: New Horizons Recipe Browser</p>
     <h1 id="landing-title">Your Pocket NEI</h1>
     <p class="intro">A quick, out-of-game recipe browser for GregTech: New Horizons. Browse items and machine recipes, find recipes by their ingredients, or follow a production chain.</p>
     <div class="actions">
@@ -79,7 +79,7 @@
       </div>
     {/each}
   </section>
-  <footer><span>GTNH Recipe Browser</span><ProjectLinks /></footer>
+  <footer><span>GT: New Horizons Recipe Browser</span><ProjectLinks /></footer>
 </main>
 {#if hovered}<FloatingCatalogTooltip entry={hovered} {x} {y} />{/if}
 

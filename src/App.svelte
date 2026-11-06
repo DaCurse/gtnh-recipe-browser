@@ -477,7 +477,7 @@
   });
 </script>
 
-<svelte:head><title>{finderOpen ? 'Recipe finder - GTNH Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser — Your Pocket NEI'}</title></svelte:head>
+<svelte:head><title>{finderOpen ? 'Recipe finder - GT: New Horizons Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GT: New Horizons Recipe Browser` : 'GT: New Horizons Recipe Browser — Your Pocket NEI'}</title></svelte:head>
 
 <div class="app-shell">
   <AppHeader
