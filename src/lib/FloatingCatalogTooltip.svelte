@@ -20,7 +20,9 @@
     hydrate?: (id: string, signal: AbortSignal) => Promise<CatalogEntry | undefined>;
   } = $props();
 
-  let element: HTMLDivElement;
+  let element = $state<HTMLDivElement>();
+  let viewportWidth = $state(0);
+  let viewportHeight = $state(0);
   let width = $state(0);
   let height = $state(0);
   let hydrated = $state<CatalogEntry>();
@@ -50,17 +52,23 @@
     const edge = 12;
     let left = x + gap;
     let top = y + gap;
-    if (left + width > window.innerWidth - edge) {
+    if (left + width > viewportWidth - edge) {
       left = Math.max(edge, x - gap - width);
     }
-    if (top + height > window.innerHeight - edge) {
+    if (top + height > viewportHeight - edge) {
       top = Math.max(edge, y - gap - height);
     }
+    left = Math.min(Math.max(edge, left), Math.max(edge, viewportWidth - edge - width));
+    top = Math.min(Math.max(edge, top), Math.max(edge, viewportHeight - edge - height));
     return `left:${left}px;top:${top}px`;
   });
 
   $effect(() => {
-    if (!element || typeof ResizeObserver === 'undefined') return;
+    if (!element) return;
+    const rect = element.getBoundingClientRect();
+    width = rect.width;
+    height = rect.height;
+    if (typeof ResizeObserver === 'undefined') return;
     const observer = new ResizeObserver(([observed]) => {
       width = observed.borderBoxSize[0]?.inlineSize ?? observed.contentRect.width;
       height = observed.borderBoxSize[0]?.blockSize ?? observed.contentRect.height;
@@ -70,8 +78,10 @@
   });
 </script>
 
+<svelte:window bind:innerWidth={viewportWidth} bind:innerHeight={viewportHeight} />
+
 {#if displayEntry}
-<div class="floating-tooltip" style={position} bind:this={element}>
+<div class="floating-tooltip" style={position} style:visibility={width > 0 ? 'visible' : 'hidden'} bind:this={element}>
   <CatalogTooltip entry={displayEntry} {action} {notes} />
 </div>
 {/if}

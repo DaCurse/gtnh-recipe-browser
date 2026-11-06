@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+/* global document, innerWidth, innerHeight */
 const [base, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-tooltip-hydration.mjs <app-url> <playwright-module>');
 const { chromium } = await import(playwrightModule);
@@ -33,5 +34,18 @@ try {
     await tile.dispatchEvent('pointermove', { pointerType: 'mouse', clientX: 200 + step, clientY: 500 });
     assert.equal(await page.locator('.floating-tooltip').count(), 1, 'Pointer movement must not restart tooltip hydration');
   }
-  console.log('Tooltip waits for details; cancelled hover stays hidden; cached details reopen successfully');
+  for (const viewport of [{ width: 1280, height: 720 }, { width: 390, height: 844 }]) {
+    await page.setViewportSize(viewport);
+    for (const point of [{ x: viewport.width - 2, y: viewport.height - 2 }, { x: 2, y: 2 }]) {
+      await tile.dispatchEvent('pointermove', { pointerType: 'mouse', clientX: point.x, clientY: point.y });
+      await page.waitForFunction(() => {
+        const rect = document.querySelector('.floating-tooltip')?.getBoundingClientRect();
+        return rect && rect.left >= 0 && rect.top >= 0 && rect.right <= innerWidth && rect.bottom <= innerHeight;
+      }, undefined, { timeout: 5000 });
+      const rect = await page.locator('.floating-tooltip').boundingBox();
+      if (point.x > viewport.width / 2) assert(rect.x + rect.width < point.x, 'Right-edge tooltip should flip left');
+      if (point.y > viewport.height / 2) assert(rect.y + rect.height < point.y, 'Bottom-edge tooltip should flip up');
+    }
+  }
+  console.log('Tooltip waits for details; cancelled hover stays hidden; cached details reopen; desktop/mobile edge positioning stays in bounds');
 } finally { await browser.close(); }
