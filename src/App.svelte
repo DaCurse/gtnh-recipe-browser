@@ -500,6 +500,7 @@
 
   {#if landingOpen}
     <LandingPage {catalog} itemsUrl={catalogUrl(navigationBase).href} finderHref={finderUrl(navigationBase, { inputs: [], outputs: [] }).href}
+      loadEntry={(id, signal) => repository?.entryFor(id, signal) ?? Promise.resolve(undefined)}
       openItems={() => showItemList(true)} openFinder={() => showFinder({ inputs: [], outputs: [] })} navigate={(id) => select(id)} />
   {:else if datasetStatus !== 'ready'}
     <ApplicationState

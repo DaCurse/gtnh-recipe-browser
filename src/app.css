@@ -49,7 +49,6 @@ kbd { color:#777c81; border:1px solid #3d4044; border-radius:4px; padding:3px 6p
 .item-summary strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:#d9dcdf; font-weight:500; }
 .item-summary small { width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#81868b; font-size:10px; text-transform:capitalize; }
 .tooltip-preview,.row-arrow { display:none; }
-.empty { grid-column:1/-1; padding:60px 20px; text-align:center; color:#858a8f; }.empty b,.empty span { display:block; margin:8px; }
 .search-loading .spinner { width:30px; height:30px; margin:0 auto 14px; }
 .item-more { grid-column:1/-1; width:min(420px,calc(100% - 20px)); min-height:46px; margin:14px auto 20px; border:1px solid #50555a; border-radius:8px; background:#292c30; color:#c9cdd1; cursor:pointer; }
 aside footer { margin-top:auto; min-height:42px; padding:0 14px; border-top:1px solid #34373a; display:flex; align-items:center; color:#8b9095; font-size:11px; }

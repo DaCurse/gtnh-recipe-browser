@@ -3,9 +3,10 @@
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ProjectLinks from './ProjectLinks.svelte';
   import type { CatalogEntry } from './types';
-  let { catalog, itemsUrl, finderHref, openItems, openFinder, navigate }: {
+  let { catalog, itemsUrl, finderHref, openItems, openFinder, navigate, loadEntry }: {
     catalog: CatalogEntry[]; itemsUrl: string; finderHref: string;
     openItems: () => void; openFinder: () => void; navigate: (id: string) => void;
+    loadEntry: (id: string, signal: AbortSignal) => Promise<CatalogEntry | undefined>;
   } = $props();
   const rows = $derived.by(() => {
     const sheets = new Set<string>();
@@ -81,7 +82,7 @@
   </section>
   <footer><span>GT: New Horizons Recipe Browser</span><ProjectLinks /></footer>
 </main>
-{#if hovered}<FloatingCatalogTooltip entry={hovered} {x} {y} />{/if}
+{#if hovered}<FloatingCatalogTooltip entry={hovered} {x} {y} hydrate={loadEntry} />{/if}
 
 <style>
   .landing { display:flex; flex:1; flex-direction:column; overflow:auto; font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif; background:radial-gradient(ellipse at 50% 30%,#ad8e3020,transparent 65%); }

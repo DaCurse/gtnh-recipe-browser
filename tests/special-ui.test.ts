@@ -229,7 +229,7 @@ describe('NEI special browser presentation', () => {
     const floatingSource = await readFile('src/lib/FloatingCatalogTooltip.svelte', 'utf8');
     const tooltipSource = await readFile('src/lib/CatalogTooltip.svelte', 'utf8');
     expect(goodsSource).toContain('notes={tooltipNotes}');
-    expect(floatingSource).toContain('<CatalogTooltip {entry} {action} {notes} />');
+    expect(floatingSource).toContain('<CatalogTooltip entry={displayEntry} {action} {notes} />');
     expect(tooltipSource).toContain('notes?: readonly string[];');
     expect(tooltipSource).toContain('class="tooltip-notes"');
   });

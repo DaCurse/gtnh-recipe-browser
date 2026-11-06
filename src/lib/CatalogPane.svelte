@@ -430,7 +430,7 @@
   {/if}
   <div class="item-grid">
     {#if searchPending && visibleEntries.length === 0}
-      <div class="empty search-loading">
+      <div class="catalog-empty search-loading">
         <span class="spinner" aria-hidden="true"></span>
         <b>Preparing item list…</b>
       </div>
@@ -474,7 +474,7 @@
           <span class="row-arrow">›</span>
         </button>
       {:else}
-        <div class="empty"><b>No matches</b><span>Try fewer terms or another @mod filter.</span></div>
+        <div class="catalog-empty"><b>No matches</b><span>Try fewer terms or another @mod filter.</span></div>
       {/each}
       {#if visibleEntries.length < searchTotal}
         <button class="item-more" use:loadMoreItems onclick={requestMoreItems}>
@@ -526,3 +526,8 @@
     }}
   />
 {/if}
+
+<style>
+  .catalog-empty { grid-column:1/-1; padding:60px 20px; text-align:center; color:#858a8f; }
+  .catalog-empty b, .catalog-empty span { display:block; margin:8px; }
+</style>

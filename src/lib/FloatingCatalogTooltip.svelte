@@ -7,7 +7,8 @@
     x,
     y,
     action,
-    notes
+    notes,
+    hydrate
   }: {
     entry: CatalogEntry;
     x: number;
@@ -15,11 +16,28 @@
     action?: string;
     /** Additional plain-text lines supplied by a specialized goods view. */
     notes?: readonly string[];
+    hydrate?: (id: string, signal: AbortSignal) => Promise<CatalogEntry | undefined>;
   } = $props();
 
   let element: HTMLDivElement;
   let width = $state(0);
   let height = $state(0);
+  let hydrated = $state<CatalogEntry>();
+  const displayEntry = $derived(hydrated?.id === entry.id ? hydrated : entry);
+  $effect(() => {
+    const current = entry;
+    const load = hydrate;
+    hydrated = undefined;
+    if (!load) return;
+    const controller = new AbortController();
+    // Avoid downloading detail partitions when the pointer only crosses an icon.
+    const timer = setTimeout(() => {
+      void load(current.id, controller.signal).then((detail) => {
+        if (!controller.signal.aborted) hydrated = detail;
+      }).catch(() => { /* Keep the lightweight tooltip usable when offline. */ });
+    }, 100);
+    return () => { clearTimeout(timer); controller.abort(); };
+  });
   const position = $derived.by(() => {
     if (typeof window === 'undefined') return '';
     const gap = 14;
@@ -47,7 +65,7 @@
 </script>
 
 <div class="floating-tooltip" style={position} bind:this={element}>
-  <CatalogTooltip {entry} {action} {notes} />
+  <CatalogTooltip entry={displayEntry} {action} {notes} />
 </div>
 
 <style>
