@@ -91,7 +91,7 @@
       aria-label={showingGlobal ? 'Back to this item' : `All ${iconLabel}`}
     >
       {#if iconEntry}
-        <ItemIcon entry={iconEntry} size={46} crisp={false} />
+        <ItemIcon entry={iconEntry} size={46} />
       {:else}
         <span class="special-fallback">{viewType?.glyph ?? '✦'}</span>
       {/if}

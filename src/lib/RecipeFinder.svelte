@@ -114,7 +114,7 @@
         {#each machines as machine (machine.name)}
           {@const icon = machine.iconId ? entries.get(machine.iconId) : undefined}
           <button class="machine-choice" class:active={finderState.machine === machine.name} aria-pressed={finderState.machine === machine.name} aria-label={machine.name} title={`${machine.name} · ${machine.count.toLocaleString()} recipes`} onclick={() => { finderState.machine = machine.name; finderState.page = 0; }}>
-            {#if icon}<ItemIcon entry={icon} size={54} selected={finderState.machine === machine.name} crisp={false} />{:else}<span class="all-machines-icon" aria-hidden="true">⚙</span>{/if}
+            {#if icon}<ItemIcon entry={icon} size={54} selected={finderState.machine === machine.name} />{:else}<span class="all-machines-icon" aria-hidden="true">⚙</span>{/if}
             <span class="machine-name">{machine.name}</span><small>{machine.count.toLocaleString()}</small>
           </button>
         {/each}

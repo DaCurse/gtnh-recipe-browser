@@ -289,7 +289,7 @@
               }}
               aria-label={`${node.label}: left-click Recipes, right-click Usages`}
             >
-              <ItemIcon entry={entry} size={42} crisp={false} />
+              <ItemIcon entry={entry} size={42} />
               <span>{node.label}</span>
             </button>
           {:else}

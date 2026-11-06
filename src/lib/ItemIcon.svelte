@@ -1,8 +1,9 @@
 <script lang="ts">
   import { resolveIconSheetUrl } from './iconCache';
   import type { CatalogEntry } from './types';
-  let { entry, size = 48, selected = false, crisp = true, bare = false, frame = true }: { entry: CatalogEntry; size?: number; selected?: boolean; crisp?: boolean; bare?: boolean; frame?: boolean } = $props();
+  let { entry, size = 48, selected = false, bare = false, frame = true }: { entry: CatalogEntry; size?: number; selected?: boolean; bare?: boolean; frame?: boolean } = $props();
   let iconUrl = $state('');
+  const spriteSize = $derived(Math.max(1, size - 2 * Math.round(size * (bare ? 0.075 : 1 / 18))));
 
   $effect(() => {
     const icon = entry.icon;
@@ -21,14 +22,14 @@
 <div class:selected class:bare class:frameless={!frame} class:fluid-slot={entry.kind === 'fluid'} class="slot" style:width={`${size}px`} style:height={`${size}px`} aria-hidden="true">
   {#if entry.icon && iconUrl}
     <div
-      class:smooth={!crisp}
       class="atlas-sprite"
+      style:width={`${spriteSize}px`} style:height={`${spriteSize}px`}
       style:background-image={`url("${iconUrl}")`}
       style:background-size={`${entry.icon.columns * 100}% ${entry.icon.columns * 100}%`}
       style:background-position={`${(entry.icon.index % entry.icon.columns) * 100 / (entry.icon.columns - 1)}% ${Math.floor(entry.icon.index / entry.icon.columns) * 100 / (entry.icon.columns - 1)}%`}
     ></div>
   {:else}
-    <div class:fluid={entry.kind === 'fluid'} class="sprite" style:--item-color={entry.color}>
+    <div class:fluid={entry.kind === 'fluid'} class="sprite" style:width={`${spriteSize}px`} style:height={`${spriteSize}px`} style:--item-color={entry.color}>
       <span>{entry.glyph}</span>
     </div>
   {/if}
@@ -48,13 +49,10 @@
   .slot.fluid-slot { background-image: url('/assets/machine-ui/slot-fluid.png'); }
   .slot.bare, .slot.frameless { background: none; }
   .bare .atlas-sprite, .bare .sprite {
-    width: 85%; height: 85%;
     filter: drop-shadow(0 0 1px #e1e7ed80) drop-shadow(0 3px 3px #000b);
   }
   .selected { filter: drop-shadow(0 0 4px #c6ccd2); transform: translateY(-1px); }
   .sprite {
-    width: 88.8889%;
-    height: 88.8889%;
     display: grid;
     place-items: center;
     color: var(--item-color);
@@ -65,7 +63,6 @@
     text-shadow: -1px -1px #fff5, 1px 1px #000c;
     filter: drop-shadow(1px 2px 0 #0008);
   }
-  .atlas-sprite { width:88.8889%; height:88.8889%; background-repeat:no-repeat; image-rendering:pixelated; filter:drop-shadow(1px 2px 0 #0008); }
-  .atlas-sprite.smooth { image-rendering:auto; }
+  .atlas-sprite { background-repeat:no-repeat; image-rendering:pixelated; }
   .fluid { border-radius: 6px 6px 12px 12px; background: color-mix(in srgb, var(--item-color) 65%, #34383d); color: #f0f2f4; }
 </style>

@@ -302,7 +302,7 @@
       aria-label={tab}
     >
       {#if tabCrafter}
-        <ItemIcon entry={tabCrafter} size={60} selected={browserState.type === tab} crisp={false} />
+        <ItemIcon entry={tabCrafter} size={60} selected={browserState.type === tab} />
       {:else}
         <span class="machine-fallback">⚙</span>
       {/if}
@@ -319,7 +319,7 @@
       aria-label={tab.label}
     >
       {#if tabIcon}
-        <ItemIcon entry={tabIcon} size={60} selected={browserState.specialType === tab.id} crisp={false} />
+        <ItemIcon entry={tabIcon} size={60} selected={browserState.specialType === tab.id} />
       {:else}
         <span class="special-fallback">{tab.glyph ?? '✦'}</span>
       {/if}

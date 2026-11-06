@@ -153,7 +153,7 @@
       <div class="crafter-list">
         {#each crafterOptions as option (option.id)}
           <section class:current={option.id === recipe.crafterId} class="crafter-option">
-            <ItemIcon entry={option.entry} size={56} crisp={false} />
+            <ItemIcon entry={option.entry} size={56} />
             <div>
               <b>{option.entry.name}</b>
               <small>{crafterRole(option.role)}{option.id === recipe.crafterId ? ' · shown on this recipe' : ''}</small>
