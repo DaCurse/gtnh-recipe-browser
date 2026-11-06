@@ -7,6 +7,7 @@
     activeDataset,
     datasetUpdateAvailable,
     updateReady,
+    showProjectLinks = true,
     showHome,
     openDatasetManager
   }: {
@@ -14,6 +15,7 @@
     activeDataset?: DatasetState;
     datasetUpdateAvailable: boolean;
     updateReady: boolean;
+    showProjectLinks?: boolean;
     showHome: () => void;
     openDatasetManager: () => void;
   } = $props();
@@ -55,7 +57,9 @@
       <path d="m7 9 5 5 5-5"></path>
     </svg>
   </button>
-  <ProjectLinks variant="header-links" />
+  {#if showProjectLinks}
+    <ProjectLinks variant="header-links" />
+  {/if}
 </header>
 
 {#if updateReady}

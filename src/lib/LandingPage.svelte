@@ -9,12 +9,25 @@
   } = $props();
   const rows = $derived.by(() => {
     const sheets = new Set<string>();
+    // Pick sheets first so a fresh showcase never downloads dozens of atlases.
+    for (let attempt = 0; attempt < 120 && sheets.size < 6; attempt++) {
+      const entry = catalog[Math.floor(Math.random() * catalog.length)];
+      if (entry?.icon && entry.searchable !== false) sheets.add(entry.icon.url);
+    }
     const entries: CatalogEntry[] = [];
+    let seen = 0;
     for (const entry of catalog) {
-      if (!entry.icon || entry.searchable === false) continue;
-      if (!sheets.has(entry.icon.url) && sheets.size >= 6) continue;
-      sheets.add(entry.icon.url); entries.push(entry);
-      if (entries.length === 60) break;
+      if (!entry.icon || entry.searchable === false || !sheets.has(entry.icon.url)) continue;
+      seen++;
+      if (entries.length < 60) entries.push(entry);
+      else {
+        const index = Math.floor(Math.random() * seen);
+        if (index < 60) entries[index] = entry;
+      }
+    }
+    for (let index = entries.length - 1; index > 0; index--) {
+      const other = Math.floor(Math.random() * (index + 1));
+      [entries[index], entries[other]] = [entries[other]!, entries[index]!];
     }
     return [entries.slice(0, 20), entries.slice(20, 40), entries.slice(40, 60)];
   });

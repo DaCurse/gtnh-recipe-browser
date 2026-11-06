@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-/* global getComputedStyle, document, innerWidth, navigator */
+/* global getComputedStyle, document, innerWidth */
 const [base, playwrightModule, screenshots] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-landing.mjs <app-url> <playwright-module> [screenshots]');
 const { chromium } = await import(playwrightModule);
@@ -11,6 +11,13 @@ const context=await browser.newContext({viewport:{width:1440,height:1000}});
 const page=await context.newPage();const errors=[];page.on('pageerror',e=>errors.push(e.message));
 await page.goto(base);
 await page.locator('.sequence a').first().waitFor({timeout:120000});
+const firstItems = await page.locator('.sequence').first().locator('a').evaluateAll(links => links.map(link => link.getAttribute('href')));
+await page.reload();
+await page.locator('.sequence a').first().waitFor({timeout:120000});
+const refreshedItems = await page.locator('.sequence').first().locator('a').evaluateAll(links => links.map(link => link.getAttribute('href')));
+assert.notDeepEqual(refreshedItems, firstItems, 'Refresh should choose a new showcase');
+assert.equal(await page.locator('header .project-links').count(),0);
+assert.equal(await page.locator('.landing footer .project-links a').count(),2);
 assert.equal(await page.locator('.row').count(),3);
 assert.equal(await page.locator('.primary-nav').count(),0);
 const tile=page.locator('.sequence a').nth(2);const box=await tile.boundingBox();await page.mouse.move(box.x+30,box.y+30);
@@ -18,6 +25,7 @@ await page.locator('.floating-tooltip').waitFor();
 assert.equal(await page.locator('.track').first().evaluate(e=>getComputedStyle(e).animationPlayState),'paused');
 await page.getByRole('link',{name:/Open item catalogue/}).click();
 await page.locator('.item-tile').first().waitFor();
+assert.equal(await page.locator('header .project-links a').count(),2);
 assert.equal(new URL(page.url()).searchParams.get('page'),'items');
 assert.equal(await page.locator('.hero').count(),0);assert.equal(await page.locator('.finder-blip').count(),1);
 await page.getByRole('link',{name:/Recipe Finder/}).click();
@@ -32,6 +40,12 @@ await page.goto(base+'?page=items');await page.locator('.item-tile').first().wai
 await page.getByRole('link',{name:'GTNH Recipe Browser home'}).click();
 await page.setViewportSize({width:390,height:844});await page.locator('.hero').waitFor();
 assert(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth));
+await page.getByRole('link',{name:'Recipe Finder',exact:true}).click();
+await page.getByRole('heading',{name:'Recipe finder',exact:true}).waitFor();
+await page.locator('.finder-mobile-footer').waitFor({state:'visible'});
+assert.equal(await page.locator('.finder-mobile-footer a').count(),2);
+await page.getByRole('link',{name:'GTNH Recipe Browser home'}).click();
+await page.locator('.hero').waitFor();
 if (screenshots) await page.screenshot({path:`${screenshots}/landing-mobile.png`,fullPage:true});
 await page.setViewportSize({width:1440,height:1000});if (screenshots) await page.screenshot({path:`${screenshots}/landing-desktop.png`,fullPage:true});
 await page.emulateMedia({reducedMotion:'reduce'});

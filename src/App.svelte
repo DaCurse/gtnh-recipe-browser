@@ -9,6 +9,7 @@
   import { DatasetManagerState } from './lib/datasetManagerState.svelte';
   import ItemOverview from './lib/ItemOverview.svelte';
   import RecipeBrowser from './lib/RecipeBrowser.svelte';
+  import ProjectLinks from './lib/ProjectLinks.svelte';
   import LandingPage from './lib/LandingPage.svelte';
   import RecipeFinder from './lib/RecipeFinder.svelte';
   import type { RecipeConstraints } from './lib/recipeFinder';
@@ -485,6 +486,7 @@
     datasetUpdateAvailable={datasetManager.hasRevisionUpdate(repository?.datasetId)}
     {updateReady}
     showHome={showLanding}
+    showProjectLinks={!landingOpen}
     openDatasetManager={() => datasetManager.show()}
   />
 
@@ -555,6 +557,9 @@
     </section>
   </main>
   {/if}
+  {#if finderOpen && !landingOpen}
+    <footer class="finder-mobile-footer"><ProjectLinks /></footer>
+  {/if}
 </div>
 
 {#if datasetManager.open}
@@ -581,6 +586,10 @@
 {/if}
 
 <style>
+  .finder-mobile-footer { display:none; }
+  @media(max-width:800px) {
+    .finder-mobile-footer { display:flex; flex:none; justify-content:center; padding:4px 12px; border-top:1px solid #343a42; }
+  }
   .primary-nav { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; font-weight: 600; }
   .finder-blip { width: 6px; height: 6px; margin-left: 8px; border-radius: 50%; background: #b7a672; opacity: .55; box-shadow: 0 0 7px #b7a64266; }
 </style>

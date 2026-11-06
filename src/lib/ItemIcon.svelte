@@ -46,7 +46,10 @@
     transition: filter .15s, transform .15s;
   }
   .slot.bare { background: none; }
-  .bare .atlas-sprite, .bare .sprite { width: 85%; height: 85%; }
+  .bare .atlas-sprite, .bare .sprite {
+    width: 85%; height: 85%;
+    filter: drop-shadow(0 0 1px #e1e7ed80) drop-shadow(0 3px 3px #000b);
+  }
   .selected { filter: drop-shadow(0 0 4px #c6ccd2); transform: translateY(-1px); }
   .sprite {
     width: 61%;
