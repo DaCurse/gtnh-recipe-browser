@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolveIconSheetUrl } from './iconCache';
   import type { CatalogEntry } from './types';
-  let { entry, size = 48, selected = false, crisp = true }: { entry: CatalogEntry; size?: number; selected?: boolean; crisp?: boolean } = $props();
+  let { entry, size = 48, selected = false, crisp = true, bare = false }: { entry: CatalogEntry; size?: number; selected?: boolean; crisp?: boolean; bare?: boolean } = $props();
   let iconUrl = $state('');
 
   $effect(() => {
@@ -18,7 +18,7 @@
   });
 </script>
 
-<div class:selected class="slot" style:width={`${size}px`} style:height={`${size}px`} aria-hidden="true">
+<div class:selected class:bare class="slot" style:width={`${size}px`} style:height={`${size}px`} aria-hidden="true">
   {#if entry.icon && iconUrl}
     <div
       class:smooth={!crisp}
@@ -45,6 +45,8 @@
     border-radius: 3px;
     transition: filter .15s, transform .15s;
   }
+  .slot.bare { background: none; }
+  .bare .atlas-sprite, .bare .sprite { width: 85%; height: 85%; }
   .selected { filter: drop-shadow(0 0 4px #c6ccd2); transform: translateY(-1px); }
   .sprite {
     width: 61%;

@@ -30,3 +30,11 @@ No unrelated user-site repository or root robots file is modified.
 Verification: `npm run quality`, deployment smoke tests against the subpath,
 and browser checks for fonts, icons, worker requests, query links, service
 worker scope, offline refresh, and analytics host/path filtering.
+
+The root URL is the landing page, with crawlable links to `?page=items` and
+`?page=finder`. Item/search bookmarks still open the catalogue directly. The
+landing hero is present in initial HTML; client navigation preserves the project
+base path and selected dataset. The canonical entry point remains the root,
+avoiding indexing the many transient tool/filter combinations. The service
+worker's root-query navigation fallback supports these views offline while
+leaving sitemap, robots, and verification document requests to the network.

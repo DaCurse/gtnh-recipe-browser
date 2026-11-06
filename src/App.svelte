@@ -9,6 +9,7 @@
   import { DatasetManagerState } from './lib/datasetManagerState.svelte';
   import ItemOverview from './lib/ItemOverview.svelte';
   import RecipeBrowser from './lib/RecipeBrowser.svelte';
+  import LandingPage from './lib/LandingPage.svelte';
   import RecipeFinder from './lib/RecipeFinder.svelte';
   import type { RecipeConstraints } from './lib/recipeFinder';
   import { DatasetRepository } from './lib/dataset';
@@ -41,6 +42,32 @@
   let loadTargetDatasetId = $state<string>();
   let loadTargetVersion = $state<string>();
   let loadPreserveSelection = $state(false);
+  function isLanding(params: URLSearchParams) {
+    return !params.has('page') && !params.has('item') && !params.has('search');
+  }
+  let landingOpen = $state(isLanding(new URLSearchParams(location.search)));
+  let finderDiscovered = $state(false);
+  function acknowledgeFinder() {
+    finderDiscovered = true;
+    try { localStorage.setItem('gtnh-finder-discovered', '1'); } catch { /* Storage is optional. */ }
+  }
+  function showLanding() {
+    landingOpen = true;
+    finderOpen = false;
+    detailsOpen = false;
+    query = '';
+    recipeQuery = '';
+    const url = new URL(location.href);
+    const version = url.searchParams.get('version');
+    url.search = '';
+    if (version) url.searchParams.set('version', version);
+    history.pushState({ route: 'home' }, '', url);
+  }
+  function catalogUrl(base: string | URL): URL {
+    const url = itemListUrl(base);
+    url.searchParams.set('page', 'items');
+    return url;
+  }
   let finderOpen = $state(false);
   let finderMode = $state<'recipes' | 'chain'>('recipes');
   let finderConstraints = $state<RecipeConstraints>({ inputs: [], outputs: [] });
@@ -134,7 +161,7 @@
     if (!navigationUrlReady) return;
     const linkedItem = new URLSearchParams(location.search).get('item');
     const itemPage = detailsOpen || (!repository && Boolean(linkedItem));
-    const screen = finderOpen ? finderMode === 'chain' ? 'chain' : 'finder' : itemPage ? 'item' : 'catalog';
+    const screen = landingOpen ? 'landing' : finderOpen ? finderMode === 'chain' ? 'chain' : 'finder' : itemPage ? 'item' : 'catalog';
     const key = [screen, screen === 'item' ? selectedId || linkedItem : '', screen === 'item' ? mode : ''].join('|');
     if (key !== analyticsPage) {
       analyticsPage = key;
@@ -158,6 +185,7 @@
     )
   });
   function select(id: string, push = true, nextMode: RecipeView = 'recipes') {
+    landingOpen = false;
     finderOpen = false;
     mode = nextMode;
     selectedId = id;
@@ -203,18 +231,21 @@
   }
 
   function showItemList(clearSearch = false) {
-    const wasFinder = finderOpen;
+    const wasFinder = finderOpen || landingOpen;
+    landingOpen = false;
     finderOpen = false;
     detailsOpen = false;
     const nextQuery = clearSearch ? '' : query;
     if (clearSearch) query = nextQuery;
     recipeQuery = '';
-    const url = catalogSearchUrl(itemListUrl(location.href), nextQuery);
+    const url = catalogSearchUrl(catalogUrl(location.href), nextQuery);
     if (wasFinder) history.pushState({ route: 'items' }, '', url);
     else history.replaceState({ route: 'items' }, '', url);
   }
 
   function showFinder(next = finderConstraints) {
+    landingOpen = false;
+    acknowledgeFinder();
     finderOpen = true;
     detailsOpen = false;
     recipeQuery = '';
@@ -347,6 +378,8 @@
 
   onMount(() => {
     const params = new URLSearchParams(location.search);
+    try { finderDiscovered = localStorage.getItem('gtnh-finder-discovered') === '1'; } catch { /* Storage is optional. */ }
+    landingOpen = isLanding(params);
     finderMode = params.get('finder-mode') === 'chain' ? 'chain' : 'recipes';
     const linkedFinder = finderFromUrl(params);
     finderOpen = linkedFinder !== null;
@@ -360,6 +393,7 @@
     specialScope = linkedSpecial.specialScope;
     const handlePopState = () => {
       const currentParams = new URLSearchParams(location.search);
+      landingOpen = isLanding(currentParams);
       finderMode = currentParams.get('finder-mode') === 'chain' ? 'chain' : 'recipes';
       const currentFinder = finderFromUrl(currentParams);
       finderOpen = currentFinder !== null;
@@ -390,7 +424,7 @@
         event.preventDefault();
         const modalInput = document.querySelector<HTMLInputElement>('dialog[open] input');
         if (modalInput) { modalInput.focus(); return; }
-        if (finderOpen) {
+        if (finderOpen || landingOpen) {
           showItemList();
           void tick().then(() => searchInput?.focus());
           return;
@@ -442,7 +476,7 @@
   });
 </script>
 
-<svelte:head><title>{finderOpen ? 'Recipe finder - GTNH Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser — GregTech: New Horizons Recipes & Chains'}</title></svelte:head>
+<svelte:head><title>{finderOpen ? 'Recipe finder - GTNH Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GTNH Recipe Browser` : 'GTNH Recipe Browser — Your Pocket NEI'}</title></svelte:head>
 
 <div class="app-shell">
   <AppHeader
@@ -450,25 +484,22 @@
     activeDataset={datasetManager.activeDataset}
     datasetUpdateAvailable={datasetManager.hasRevisionUpdate(repository?.datasetId)}
     {updateReady}
-    showHome={() => showItemList(true)}
+    showHome={showLanding}
     openDatasetManager={() => datasetManager.show()}
   />
 
+  {#if !landingOpen}
   <nav class="primary-nav" aria-label="Main navigation">
-    <a href={itemListUrl(navigationBase).href} aria-current={!finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); showItemList(); }}>Items</a>
-    <a href={finderUrl(navigationBase, finderConstraints, finderMode).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); if (!finderOpen) showFinder(); }}>Recipe finder</a>
+    <a href={catalogUrl(navigationBase).href} aria-current={!finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); showItemList(); }}>Items</a>
+    <a href={finderUrl(navigationBase, finderConstraints, finderMode).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); acknowledgeFinder(); if (!finderOpen) showFinder(); }}>Recipe Finder{#if !finderDiscovered}<span class="finder-blip" aria-label="Discover recipe finder"></span>{/if}</a>
   </nav>
 
-  {#if !finderOpen && !detailsOpen}
-    <section class="site-introduction" aria-label="About GTNH Recipe Browser">
-      <h1>GTNH Recipe Browser</h1>
-      <p>Search GregTech: New Horizons recipes, items, fluids, and machine usages for GTNH 2.9.0 and earlier versions.
-        <a href="./?page=finder">Find recipes by ingredients</a>, explore <a href="./?page=finder&amp;finder-mode=chain">recipe chains</a>,
-        save datasets for offline browsing, and export recipe data as JSON.</p>
-    </section>
   {/if}
 
-  {#if datasetStatus !== 'ready'}
+  {#if landingOpen}
+    <LandingPage {catalog} itemsUrl={catalogUrl(navigationBase).href} finderHref={finderUrl(navigationBase, { inputs: [], outputs: [] }).href}
+      openItems={() => showItemList(true)} openFinder={() => showFinder({ inputs: [], outputs: [] })} navigate={(id) => select(id)} />
+  {:else if datasetStatus !== 'ready'}
     <ApplicationState
       status={datasetStatus}
       stage={datasetStage}
@@ -550,8 +581,6 @@
 {/if}
 
 <style>
-  .site-introduction { padding: 12px 24px; max-width: 1100px; font-family: system-ui, sans-serif; }
-  .site-introduction h1 { font-size: 1.2rem; margin: 0 0 6px; }
-  .site-introduction p { color: #bfc1c7; font-size: .9rem; line-height: 1.5; margin: 0; }
-  .site-introduction a { color: #e0bc75; }
+  .primary-nav { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; font-weight: 600; }
+  .finder-blip { width: 6px; height: 6px; margin-left: 8px; border-radius: 50%; background: #b7a672; opacity: .55; box-shadow: 0 0 7px #b7a64266; }
 </style>
