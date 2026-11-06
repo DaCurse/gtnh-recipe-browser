@@ -43,7 +43,7 @@ try {
     await page.locator('dialog.finder-picker').waitFor({ state: 'detached' });
     await finish();
   }
-  await page.getByRole('link', { name: 'Recipe finder', exact: true }).click();
+  await page.getByRole('link', { name: 'Recipe Finder', exact: true }).click();
   assert.equal(await page.locator('.finder-recipes article').count(), 0);
   await pick('output', iron);
   console.log(JSON.stringify({ phase: 'output-ready' }));

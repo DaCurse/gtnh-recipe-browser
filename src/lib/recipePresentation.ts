@@ -66,10 +66,12 @@ export function recipeTypeMachineCapabilities(
 }
 
 export function machineCanProcessVoltage(
-  capability: Pick<MachineCapability, 'maxVoltageTier'>,
+  capability: Pick<MachineRecipeCapability, 'maxVoltageTier'>,
   recipeVoltageTier?: number
 ): boolean {
-  return capability.maxVoltageTier === undefined
+  // MessagePack encodes an explicit undefined property as null. Both mean
+  // unrestricted voltage for multiblocks, rather than a zero-voltage ceiling.
+  return capability.maxVoltageTier == null
     || recipeVoltageTier === undefined
     || recipeVoltageTier <= capability.maxVoltageTier;
 }
@@ -93,9 +95,9 @@ export function propagateOreMachineCapabilities(
         current.push({ ...capability, recipeShards: [...capability.recipeShards] });
         changed = true;
       } else if (
-        existing.maxVoltageTier !== undefined
+        existing.maxVoltageTier != null
         && (
-          capability.maxVoltageTier === undefined
+          capability.maxVoltageTier == null
           || capability.maxVoltageTier > existing.maxVoltageTier
         )
       ) {

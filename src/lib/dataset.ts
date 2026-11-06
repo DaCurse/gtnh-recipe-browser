@@ -1443,7 +1443,7 @@ export class DatasetRepository {
       const groups = new Set([...recipe.inputs, ...recipe.outputs]
         .filter((io) => io.kind === 'oreDict' || io.kind === 'itemGroup').map((io) => io.goodsId));
       await Promise.all([...groups].map((id) => this.entryFor(id, signal)));
-      return materializeRecipe(recipe, index, this.types, this.ingredientGroups);
+      return materializeRecipe(recipe, index, this.types, this.ingredientGroups, this.gtnhVersion);
     }, undefined, signal);
   }
 
@@ -1540,7 +1540,7 @@ export class DatasetRepository {
           .filter((io) => io.kind === 'oreDict' || io.kind === 'itemGroup').map((io) => io.goodsId));
         await Promise.all([...displayedGroups].map((groupId) => this.entryFor(groupId, signal)));
         const batch = matched.map((recipe, recipeIndex) => materializeRecipe(
-          recipe, shardIndex * 1_000_000 + recipeIndex, this.types, this.ingredientGroups
+          recipe, shardIndex * 1_000_000 + recipeIndex, this.types, this.ingredientGroups, this.gtnhVersion
         ));
         await yieldToBrowser();
         return batch;

@@ -18,6 +18,51 @@ export interface GtMetadataContext {
   voltageTier: number;
 }
 
+// GTValues.TIER_COLORS, GT5-Unofficial 5.09.54.265. Formatting distinguishes
+// tiers sharing a colour (LV/UV), so preserve underline and bold as well.
+const tierFormats: Readonly<Record<string, readonly string[]>> = {
+  ULV: ['c'], LV: ['2'], MV: ['6'], HV: ['e'], EV: ['8'], IV: ['9'], LuV: ['d'], ZPM: ['b'],
+  UV: ['2', 'n'], UHV: ['4', 'n'], UEV: ['5', 'n'], UIV: ['1', 'l', 'n'],
+  UMV: ['c', 'l', 'n'], UXV: ['4', 'l', 'n'], MAX: ['f', 'l', 'n'], 'MAX+': ['f', 'l', 'n', 'o']
+};
+export function voltageTierFormats(tier: string): readonly string[] {
+  return tierFormats[tier] ?? [];
+}
+
+// GTValues.VOLTAGE_NAMES, keyed by abbreviation rather than the packed tier index.
+const tierDescriptions: Readonly<Record<string, string>> = {
+  ULV: 'Ultra Low Voltage', LV: 'Low Voltage', MV: 'Medium Voltage', HV: 'High Voltage',
+  EV: 'Extreme Voltage', IV: 'Insane Voltage', LuV: 'Ludicrous Voltage', ZPM: 'ZPM Voltage',
+  UV: 'Ultimate Voltage', UHV: 'Ultimate High Voltage', UEV: 'Ultimate Extreme Voltage',
+  UIV: 'Ultimate Insane Voltage', UMV: 'Ultimate Mega Voltage', UXV: 'Ultimate Extended Mega Voltage',
+  MAX: 'Maximum Voltage', 'MAX+': 'Above Maximum Voltage'
+};
+
+export function voltageTierDescription(tier: string): string {
+  return `Tier: ${tierDescriptions[tier] ?? tier}`;
+}
+
+export function recipeMetadataDescription(line: string): string {
+  const descriptions: ReadonlyArray<readonly [string, string]> = [
+    ['Heat:', 'Required operating temperature and suitable heating coils.'],
+    ['Requires low gravity', 'This recipe needs a machine in a low-gravity dimension.'],
+    ['Requires cleanroom', 'This recipe needs a machine inside a working cleanroom.'],
+    ['Fuel type:', 'The generator fuel category assigned to this recipe.'],
+    ['Fuel value:', 'Energy available from each litre of this fuel.'],
+    ['To start:', 'Energy the fusion reactor must store before starting this recipe.'],
+    ['Multi-step plasma', 'This plasma recipe requires multi-step processing.'],
+    ['Single-step plasma', 'This plasma recipe uses single-step processing.'],
+    ['Plasma tier:', 'Required plasma-processing tier.'],
+    ['Requires tier', 'Minimum machine upgrade tier required for this recipe.'],
+    ['QFT focus tier:', 'Required Quantum Force Transformer focusing tier.'],
+    ['Glass tier:', 'Minimum voltage tier of the machine structure’s glass.'],
+    ['Recycle recipe', 'This recipe recovers materials through recycling.'],
+    ['Kinetic energy:', 'Allowed particle energy range for this accelerator recipe.'],
+  ];
+  return descriptions.find(([prefix]) => line.startsWith(prefix))?.[1]
+    ?? 'Additional machine-specific information for this recipe.';
+}
+
 export function voltageTierName(tier: number): string {
   return voltageTiers[tier] ?? `T${tier}`;
 }

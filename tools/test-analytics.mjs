@@ -78,7 +78,7 @@ try {
   await page.getByRole('button', { name: 'Export all recipes', exact: true }).click();
   await waitEvent('data_export_failed', (properties) => properties.target === 'category');
   await page.evaluate(() => { URL.createObjectURL = window.originalExportUrl; });
-  await page.getByRole('link', { name: 'Recipe finder', exact: true }).click();
+  await page.getByRole('link', { name: 'Recipe Finder', exact: true }).click();
   await page.getByRole('button', { name: '+ Add output', exact: true }).click();
   const picker = page.locator('dialog.finder-picker');
   await picker.getByRole('textbox', { name: 'Search catalog', exact: true }).fill('i:minecraft:iron_ingot:0');

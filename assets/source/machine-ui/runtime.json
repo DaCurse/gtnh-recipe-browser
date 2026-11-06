@@ -1,0 +1,13 @@
+{
+  "gtnhVersion": "2.9.0",
+  "gregtechVersion": "5.09.54.265",
+  "gregtechCommit": "bb00f3f1",
+  "maps": 172,
+  "frontendClasses": 55,
+  "snapshotSha256": "ee4795ec7f00ef7fd956986ba349fd14816cfe03c3227b86d12c1bd23d7ddebc",
+  "jarSha256": {
+    "cropsnh-2.0.140.jar": "f3cfd564b438b9669be927f27bae93a8fbe77797bfd89886d6d9683c451d2e9e",
+    "gregtech-5.09.54.265.jar": "b969e11625a0298416a75b6e39703da795233edb71cb66f25fb9bbf654d75528",
+    "modularui-1.3.4.jar": "9221b07c9b09725fc4e935cf63e8116751667fe9c0e7a98bd523a6411141b33f"
+  }
+}

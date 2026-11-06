@@ -15,7 +15,7 @@ try {
   await page.goto(appUrl, { waitUntil: 'domcontentloaded' });
   await page.locator('.item-tile').first().waitFor({ timeout: 120000 });
   assert.equal(graphReads.length, 0, 'Normal browsing must not load the global graph');
-  await page.getByRole('link', { name: 'Recipe finder', exact: true }).click();
+  await page.getByRole('link', { name: 'Recipe Finder', exact: true }).click();
   await page.getByRole('button', { name: 'Recipe chain', exact: true }).click();
   assert.equal(new URL(page.url()).searchParams.get('finder-mode'), 'chain');
   assert.equal(graphReads.length, 0, 'An empty chain must not load the graph');

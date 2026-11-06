@@ -34,7 +34,8 @@ export function materializeRecipe(
   recipe: PackedRecipe,
   order: number,
   recipeTypes: ReadonlyMap<string, PackedRecipeType>,
-  ingredientGroups: ReadonlyMap<string, PackedOreDictionary | PackedIngredientGroup>
+  ingredientGroups: ReadonlyMap<string, PackedOreDictionary | PackedIngredientGroup>,
+  gtnhVersion?: string
 ): Recipe {
   const type = recipeTypes.get(recipe.recipeTypeId);
   if (!type) throw new Error(`Unknown recipe type ${recipe.recipeTypeId}`);
@@ -49,6 +50,8 @@ export function materializeRecipe(
   return {
     id: recipe.id,
     type: type.name,
+    typeId: type.id,
+    gtnhVersion,
     inputs: recipe.inputs.map(convert),
     outputs: recipe.outputs.map(convert),
     layout: { ...type.dimensions, shapeless: type.shapeless },

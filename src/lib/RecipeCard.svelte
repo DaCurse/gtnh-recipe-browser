@@ -3,8 +3,13 @@
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import RecipeGrid from './RecipeGrid.svelte';
+  import MachineRecipeStage from './MachineRecipeStage.svelte';
+  import { machineUiFor } from './machineUi';
+  import { recipeMetadataDescription, voltageTierDescription, voltageTierFormats } from './recipeMetadata';
   import { recipeItemInputLabel } from './recipePresentation';
   let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string, view: RecipeView) => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
+  const tierFormats = $derived(voltageTierFormats(recipe.voltage ?? ''));
+  const machineUi = $derived(machineUiFor(recipe));
   const crafter = $derived(recipe.crafterId ? resolve(recipe.crafterId) : undefined);
   let tooltipVisible = $state(false);
   let tooltipX = $state(0);
@@ -99,24 +104,32 @@
     </div>
   </div>
   <div class="recipe-stage">
+    {#if machineUi}
+      <MachineRecipeStage {recipe} profile={machineUi} {navigate} {resolve} />
+    {:else}
     <div class="recipe-flow">
       <div class="io-side">
         <RecipeGrid dimensions={recipe.layout.itemInputs} ingredients={itemInputs} {navigate} {resolve} label={itemInputLabel} />
-        <RecipeGrid dimensions={recipe.layout.fluidInputs} ingredients={fluidInputs} {navigate} {resolve} label="Fluids" />
+        <RecipeGrid dimensions={recipe.layout.fluidInputs} ingredients={fluidInputs} {navigate} {resolve} label="Fluids" fluid />
       </div>
-      <div class="arrow"><span>→</span><small>{recipe.duration}</small></div>
+      <div class="arrow"><span>→</span></div>
       <div class="io-side">
         <RecipeGrid dimensions={recipe.layout.itemOutputs} ingredients={itemOutputs} {navigate} {resolve} label="Output" showChances />
-        <RecipeGrid dimensions={recipe.layout.fluidOutputs} ingredients={fluidOutputs} {navigate} {resolve} label="Fluid output" showChances />
+        <RecipeGrid dimensions={recipe.layout.fluidOutputs} ingredients={fluidOutputs} {navigate} {resolve} label="Fluid output" fluid showChances />
       </div>
     </div>
+    {/if}
   </div>
   <div class="meta">
-    {#if recipe.voltage}<span title={recipe.voltageExact}><b>⚡</b> {recipe.voltage}</span>{/if}
-    {#if recipe.amperage}<span>{recipe.amperage}</span>{/if}
-    {#if recipe.eu}<span title={recipe.euExact}>{recipe.eu}</span>{/if}
-    {#if recipe.euPerTick}<span title={recipe.euPerTickExact}>{recipe.euPerTick}</span>{/if}
-    {#each recipe.metadata ?? [] as line, index (`${index}:${line}`)}<span>{line}</span>{/each}
+    {#if recipe.duration}<span class="duration-badge" title="Duration: processing time for one recipe at its base power">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+      {recipe.duration}
+    </span>{/if}
+    {#if recipe.voltage}<span class={`voltage-badge ${tierFormats.map(format => `fmt-${format}`).join(' ')}`} class:light-tier={tierFormats.some(format => ['1','4','5','8'].includes(format))} title={voltageTierDescription(recipe.voltage)}><b aria-hidden="true">⚡</b> {recipe.voltage}</span>{/if}
+    {#if recipe.amperage}<span title="Amperage: current drawn while this recipe runs">{recipe.amperage}</span>{/if}
+    {#if recipe.eu}<span title={`Total energy for one recipe${recipe.euExact ? `: ${recipe.euExact}` : ''}`}>{recipe.eu}</span>{/if}
+    {#if recipe.euPerTick}<span title={`Power usage per tick (20 ticks per second)${recipe.euPerTickExact ? `: ${recipe.euPerTickExact}` : ''}`}>{recipe.euPerTick}</span>{/if}
+    {#each recipe.metadata ?? [] as line, index (`${index}:${line}`)}<span title={recipeMetadataDescription(line)}>{line}</span>{/each}
   </div>
 </article>
 
@@ -175,11 +188,14 @@
   .io-side { min-width:56px; display:flex; flex-direction:column; justify-content:center; gap:8px; }
   .arrow { color:#c5c9cd; text-align:center; }
   .arrow span { display:block; font:36px system-ui; line-height:1; }
-  .arrow small { color:#969ba0; white-space:nowrap; }
   .meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px 14px; min-height:31px; border-top:1px solid #3a3d41; color:#b0b4b8; font-size:12px; }
   .meta span { padding:5px 8px; border-radius:5px; background:#34373b; }
-  .meta span { font:13px/1.2 Minecraft,monospace; text-shadow:2px 2px #342C34; }
+  .meta span { font:13px/1.2 ui-sans-serif,system-ui,sans-serif; }
+  .meta .duration-badge { display:inline-flex; align-items:center; gap:6px; font-variant-numeric:tabular-nums; }
+  .duration-badge svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
   .meta b { color:#d6d8da; }
+  .meta .voltage-badge.light-tier { background:#d0d3d6; text-shadow:1px 1px #ffffff40; }
+  .meta .light-tier b { color:#42474d; }
   .crafter-scrim { position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }
   .crafter-modal { position:relative; width:min(620px,100%); max-height:min(82vh,720px); overflow:auto; padding:28px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; text-align:left; }
   .crafter-modal>p { margin:0 46px 7px 0; color:#a5aaaf; font:12px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342c34; }

@@ -493,7 +493,7 @@
   {#if !landingOpen}
   <nav class="primary-nav" aria-label="Main navigation">
     <a href={catalogUrl(navigationBase).href} aria-current={!finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); showItemList(); }}>Items</a>
-    <a href={finderUrl(navigationBase, finderConstraints, finderMode).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); acknowledgeFinder(); if (!finderOpen) showFinder(); }}>Recipe Finder{#if !finderDiscovered}<span class="finder-blip" aria-label="Discover recipe finder"></span>{/if}</a>
+    <a href={finderUrl(navigationBase, finderConstraints, finderMode).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); acknowledgeFinder(); if (!finderOpen) showFinder(); }}>Recipe Finder{#if !finderDiscovered}<span class="finder-blip" aria-hidden="true"></span>{/if}</a>
   </nav>
 
   {/if}

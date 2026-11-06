@@ -6,6 +6,8 @@
   "scripts": {
     "dev": "vite",
     "dev:lan": "vite --host 0.0.0.0",
+    "ui:extract": "tsx tools/machine-ui-export/launch.ts",
+    "ui:atlas": "node tools/machine-ui-export/atlas.mjs",
     "build:chain-index": "tsx tools/build-chain-index.ts",
     "build": "vite build && node tools/verify-precache.mjs",
     "check": "svelte-check --tsconfig ./tsconfig.json",
@@ -32,6 +34,7 @@
     "test:deferred-rollout": "node tools/test-deferred-rollout.mjs",
     "test:tooltip-hydration": "node tools/test-tooltip-hydration.mjs",
     "test:tooltip-spacing": "node tools/test-tooltip-spacing.mjs",
+    "test:machine-ui": "node tools/test-machine-ui.mjs",
     "test:landing": "node tools/test-landing.mjs",
     "test:analytics": "node tools/test-analytics.mjs",
     "test:recipe-chain": "node tools/test-recipe-chain.mjs",

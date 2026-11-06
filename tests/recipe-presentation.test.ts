@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { decode, encode } from '@msgpack/msgpack';
 import {
   boundedPage,
   ingredientsByGridSlot,
@@ -65,6 +66,19 @@ describe('recipe presentation parity', () => {
     expect(capabilities.get('machine:alternate')?.[0].recipeTypeId).toBe('crafting');
     expect(capabilities.get('machine:third')?.[0].recipeTypeId).toBe('crafting');
     expect(capabilities.get('o:craftingTable')?.[0].recipeShards).toEqual(['crafting-0']);
+  });
+
+  it('preserves unrestricted multiblock voltage after MessagePack serialization', () => {
+    const capability = decode(encode({ maxVoltageTier: undefined })) as { maxVoltageTier: null };
+    expect(capability.maxVoltageTier).toBeNull();
+    expect(machineCanProcessVoltage(capability, 0)).toBe(true);
+    expect(machineCanProcessVoltage(capability, 12)).toBe(true);
+    expect(machineCanProcessVoltage({ maxVoltageTier: 0 }, 1)).toBe(false);
+    const propagated = propagateOreMachineCapabilities(new Map([
+      ['machine:limited', [{ recipeTypeId: 'tower', recipeTypeName: 'Tower', recipeShards: ['tower'], maxVoltageTier: 0 }]],
+      ['machine:unlimited', [{ recipeTypeId: 'tower', recipeTypeName: 'Tower', recipeShards: ['tower'], maxVoltageTier: null }]]
+    ]), [{ id: 'o:tower', itemIds: ['machine:limited', 'machine:unlimited'] }]);
+    expect(machineCanProcessVoltage(propagated.get('machine:limited')![0]!, 12)).toBe(true);
   });
 
   it('only labels actual crafting types as shaped or shapeless', () => {

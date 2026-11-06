@@ -1,6 +1,8 @@
 <script lang="ts">
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
+  import SlotSurface from './SlotSurface.svelte';
+  import { RECIPE_UI_SCALE, type UiSlot } from './machineUi';
   import { oreCycle } from './oreCycle';
   import { ingredientsByGridSlot } from './recipePresentation';
   import type { CatalogEntry, GridDimensions, Ingredient } from './types';
@@ -11,7 +13,10 @@
     navigate,
     resolve,
     label,
-    showChances = false
+    showChances = false,
+    positions,
+    fluid = false,
+    showLabel = true
   }: {
     dimensions: GridDimensions;
     ingredients: Ingredient[];
@@ -19,9 +24,14 @@
     resolve: (id: string) => CatalogEntry | undefined;
     label?: string;
     showChances?: boolean;
+    positions?: UiSlot[];
+    fluid?: boolean;
+    showLabel?: boolean;
   } = $props();
 
-  const cellCount = $derived(dimensions.columns * dimensions.rows);
+  const cellCount = $derived(positions?.length ?? dimensions.columns * dimensions.rows);
+  const gridWidth = $derived(positions ? Math.max(0, ...positions.map(slot => slot.pos[0] + 18)) : dimensions.columns * 18);
+  const gridHeight = $derived(positions ? Math.max(0, ...positions.map(slot => slot.pos[1] + 18)) : dimensions.rows * 18);
   const slots = $derived(Array.from({ length: cellCount }, (_, slot) => slot));
   const slotIngredients = $derived(ingredientsByGridSlot(ingredients, dimensions));
   let chooserOpen = $state(false);
@@ -87,12 +97,15 @@
 
 {#if cellCount > 0}
   <div class="grid-wrap">
-    {#if label}<span class="grid-label">{label}</span>{/if}
+    {#if label && showLabel}<span class="grid-label">{label}</span>{/if}
     <div
       class="slot-grid"
-      style:grid-template-columns={`repeat(${dimensions.columns}, 56px)`}
+      class:positioned={positions !== undefined}
+      style:width={`${gridWidth * RECIPE_UI_SCALE}px`} style:height={`${gridHeight * RECIPE_UI_SCALE}px`}
+      style:grid-template-columns={`repeat(${dimensions.columns}, 54px)`}
       aria-label={label}
     >
+      <SlotSurface width={gridWidth} height={gridHeight} slots={positions} {fluid} />
       {#each slots as slot (slot)}
         {@const ingredient = slotIngredients.get(slot)}
         {@const alternatives = ingredient?.alternatives ?? []}
@@ -102,6 +115,8 @@
         {#if ingredient && entry}
           <button
             class="ingredient"
+            style:left={positions ? `${positions[slot]!.pos[0] * RECIPE_UI_SCALE}px` : undefined}
+            style:top={positions ? `${positions[slot]!.pos[1] * RECIPE_UI_SCALE}px` : undefined}
             aria-label={ingredient.ingredientGroupId
               ? `${ingredient.ingredientGroupId}, showing ${entry.name}, alternative ${alternativeIndex + 1} of ${alternatives.length}`
               : entry.name}
@@ -121,23 +136,28 @@
               else navigate(ingredient.id, 'usages');
             }}
           >
-            <ItemIcon {entry} size={56} />
+            <ItemIcon {entry} size={18 * RECIPE_UI_SCALE} frame={false} />
+            {#if !showChances && ingredient.amount === 0}
+              <span class="chance non-consumable" aria-label="Not consumed">NC</span>
+            {/if}
             {#if ingredient.ingredientGroupId}
               <span class="ore-count">
-                {ingredient.ingredientGroupKind === 'oreDict' ? 'ORE' : 'ALT'} +{alternatives.length}
+                +{alternatives.length}
               </span>
             {/if}
-            {#if ingredient.amount !== undefined && (ingredient.amount !== 1 || entry.kind === 'fluid')}
-              <span class="amount">
+            {#if ingredient.amount !== undefined && (showChances || ingredient.amount !== 0) && (ingredient.amount !== 1 || entry.kind === 'fluid')}
+              <span class="amount" class:fluid-amount={entry.kind === 'fluid'}>
                 {displayAmount(ingredient.amount, entry.kind === 'fluid')}
               </span>
             {/if}
             {#if showChances && ingredient.chance !== undefined && ingredient.chance < 1}
-              <span class="chance">{Math.round(ingredient.chance * 100)}%</span>
+              <span class="chance">{Number((ingredient.chance * 100).toFixed(2))}%</span>
             {/if}
           </button>
         {:else}
-          <span class="empty-slot" aria-hidden="true"></span>
+          <span class="empty-slot" aria-hidden="true"
+            style:left={positions ? `${positions[slot]!.pos[0] * RECIPE_UI_SCALE}px` : undefined}
+            style:top={positions ? `${positions[slot]!.pos[1] * RECIPE_UI_SCALE}px` : undefined}></span>
         {/if}
       {/each}
     </div>
@@ -147,6 +167,7 @@
 {#if !chooserOpen && tooltipEntry}
   <FloatingCatalogTooltip
     entry={tooltipEntry}
+    notes={!showChances && tooltipIngredient?.amount === 0 ? ['Does not get consumed in the process'] : undefined}
     x={tooltipX}
     y={tooltipY}
     action={tooltipGroupId
@@ -196,13 +217,16 @@
 <style>
   .grid-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
   .grid-label { color:#8d9297; font-size:10px; letter-spacing:.65px; text-transform:uppercase; }
-  .slot-grid { display:grid; grid-auto-rows:56px; }
-  .ingredient { position:relative; width:56px; height:56px; padding:0; border:0; background:none; cursor:pointer; }
+  .slot-grid { position:relative; display:grid; grid-auto-rows:54px; }
+  .slot-grid.positioned { display:block; }
+  .positioned .ingredient, .positioned .empty-slot { position:absolute; }
+  .ingredient { position:relative; width:54px; height:54px; padding:0; border:0; background:none; cursor:pointer; }
   .ingredient:hover { filter:brightness(1.14); z-index:1; }
-  .empty-slot { width:56px; height:56px; background:url('/assets/inventory-slot.webp') center/cover no-repeat; image-rendering:pixelated; opacity:.46; }
-  .amount { position:absolute; right:8px; bottom:8px; z-index:2; max-width:42px; overflow:hidden; padding:2px 3px 1px; border-radius:3px; background:#111d; color:#fff; font:750 13px/1 ui-sans-serif,system-ui,sans-serif; letter-spacing:-.04em; text-overflow:clip; white-space:nowrap; box-shadow:0 0 0 1px #ffffff18; text-shadow:1px 1px #000; }
-  .chance { position:absolute; left:3px; top:3px; z-index:2; padding:2px 3px; border-radius:2px; background:#17181bd9; color:#eef0f2; font:11px Minecraft,monospace; text-shadow:2px 2px #342C34; }
-  .ore-count { position:absolute; left:3px; top:3px; z-index:2; max-width:50px; overflow:hidden; padding:2px 3px; border-radius:2px; background:#17181be8; color:#dfe2e5; font:700 8px/1 ui-sans-serif,system-ui,sans-serif; letter-spacing:-.02em; white-space:nowrap; text-shadow:1px 1px #000; }
+  .empty-slot { position:relative; width:54px; height:54px; }
+  .amount { position:absolute; right:1px; bottom:1px; z-index:2; max-width:53px; overflow:hidden; color:#fff; font:400 14px/1 Minecraft,monospace; letter-spacing:-.03em; white-space:nowrap; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000,1px 1px #000; }
+  .amount.fluid-amount { left:1px; right:auto; font-size:12px; text-align:left; }
+  .chance { position:absolute; left:1px; top:1px; z-index:3; color:#fdd835; font:400 11px/1 Minecraft,monospace; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000; }
+  .ore-count { position:absolute; right:1px; top:1px; z-index:2; max-width:18px; overflow:hidden; color:#dfe2e5; font:400 8px/1 Minecraft,monospace; white-space:nowrap; text-overflow:ellipsis; text-shadow:1px 1px #000; }
   .ore-choice-scrim { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }
   .ore-choice { position:relative; width:min(560px,100%); padding:28px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; text-align:left; }
   .choice-eyebrow { margin:0 42px 7px 0; color:#a5aaaf; font:12px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342c34; }

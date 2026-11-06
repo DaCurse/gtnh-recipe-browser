@@ -1,7 +1,7 @@
 <script lang="ts">
   import { resolveIconSheetUrl } from './iconCache';
   import type { CatalogEntry } from './types';
-  let { entry, size = 48, selected = false, crisp = true, bare = false }: { entry: CatalogEntry; size?: number; selected?: boolean; crisp?: boolean; bare?: boolean } = $props();
+  let { entry, size = 48, selected = false, crisp = true, bare = false, frame = true }: { entry: CatalogEntry; size?: number; selected?: boolean; crisp?: boolean; bare?: boolean; frame?: boolean } = $props();
   let iconUrl = $state('');
 
   $effect(() => {
@@ -18,7 +18,7 @@
   });
 </script>
 
-<div class:selected class:bare class="slot" style:width={`${size}px`} style:height={`${size}px`} aria-hidden="true">
+<div class:selected class:bare class:frameless={!frame} class:fluid-slot={entry.kind === 'fluid'} class="slot" style:width={`${size}px`} style:height={`${size}px`} aria-hidden="true">
   {#if entry.icon && iconUrl}
     <div
       class:smooth={!crisp}
@@ -40,20 +40,21 @@
     display: grid;
     place-items: center;
     box-sizing: border-box;
-    background: url('/assets/inventory-slot.webp') center/cover no-repeat;
+    background: url('/assets/machine-ui/slot-item.png') center/cover no-repeat;
     image-rendering: pixelated;
-    border-radius: 3px;
+    border-radius: 0;
     transition: filter .15s, transform .15s;
   }
-  .slot.bare { background: none; }
+  .slot.fluid-slot { background-image: url('/assets/machine-ui/slot-fluid.png'); }
+  .slot.bare, .slot.frameless { background: none; }
   .bare .atlas-sprite, .bare .sprite {
     width: 85%; height: 85%;
     filter: drop-shadow(0 0 1px #e1e7ed80) drop-shadow(0 3px 3px #000b);
   }
   .selected { filter: drop-shadow(0 0 4px #c6ccd2); transform: translateY(-1px); }
   .sprite {
-    width: 61%;
-    height: 61%;
+    width: 88.8889%;
+    height: 88.8889%;
     display: grid;
     place-items: center;
     color: var(--item-color);
@@ -64,7 +65,7 @@
     text-shadow: -1px -1px #fff5, 1px 1px #000c;
     filter: drop-shadow(1px 2px 0 #0008);
   }
-  .atlas-sprite { width:61%; height:61%; background-repeat:no-repeat; image-rendering:pixelated; filter:drop-shadow(1px 2px 0 #0008); }
+  .atlas-sprite { width:88.8889%; height:88.8889%; background-repeat:no-repeat; image-rendering:pixelated; filter:drop-shadow(1px 2px 0 #0008); }
   .atlas-sprite.smooth { image-rendering:auto; }
   .fluid { border-radius: 6px 6px 12px 12px; background: color-mix(in srgb, var(--item-color) 65%, #34383d); color: #f0f2f4; }
 </style>

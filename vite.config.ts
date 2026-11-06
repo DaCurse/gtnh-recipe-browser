@@ -24,7 +24,7 @@ export default defineConfig({
       injectRegister: null,
       includeAssets: [
         'favicon.ico',
-        'assets/inventory-slot.webp',
+        'assets/machine-ui/*.png',
         'assets/gtnh-logo.png',
         'assets/gtnh-logo-192.png'
       ],

@@ -8,7 +8,7 @@ export interface MachineRecipeCapability {
   recipeTypeId: string;
   recipeTypeName: string;
   recipeShards: string[];
-  maxVoltageTier?: number;
+  maxVoltageTier?: number | null;
 }
 
 export interface CatalogEntry {
@@ -122,6 +122,9 @@ export interface RecipeLayout {
 }
 
 export interface Recipe {
+  /** Stable source category, used to select verified machine UI geometry. */
+  typeId?: string;
+  gtnhVersion?: string;
   id: string;
   type: string;
   inputs: Ingredient[];
