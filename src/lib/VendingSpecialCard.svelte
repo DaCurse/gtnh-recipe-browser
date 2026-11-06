@@ -136,8 +136,8 @@
   .vending-card { display:flex; flex-direction:column; gap:13px; min-width:0; }
   .trade-layout { display:grid; grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); align-items:start; gap:10px; min-width:0; }
   .trade-side { min-width:0; padding:9px; border:1px solid #45494e; border-radius:7px; background:#24272b; }
-  .trade-side h3,.vending-requirements h3 { margin:0 0 7px; color:#d9dcdf; font:12px Minecraft,ui-sans-serif,system-ui,sans-serif; text-transform:uppercase; }
-  .trade-arrow { align-self:center; color:#e1e4e7; font:26px/1 Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
+  .trade-side h3,.vending-requirements h3 { margin:0 0 7px; color:#d9dcdf; font:9px/13px Minecraft,ui-sans-serif,system-ui,sans-serif; text-transform:uppercase; }
+  .trade-arrow { align-self:center; color:#e1e4e7; font:27px/35px Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
   .vending-requirements { padding:9px; border:1px solid #45494e; border-radius:7px; background:#24272b; }
   .vending-requirements ul { display:flex; flex-wrap:wrap; gap:5px 14px; margin:0; padding-left:17px; color:#c2c6ca; font-size:11px; }
   .vending-requirements small { display:block; margin-top:7px; color:#888e94; font-size:10px; }

@@ -1,5 +1,6 @@
 import snapshot from './generated/machine-ui.json';
 import type { Ingredient, Recipe } from './types';
+export const machineUiTheme = snapshot.theme;
 
 export const RECIPE_UI_SCALE = 48 / 18;
 
@@ -7,7 +8,11 @@ type UiPoint = [number, number];
 export type UiGroup = 'itemInputs' | 'itemOutputs' | 'fluidInputs' | 'fluidOutputs';
 export interface UiTexture { file: string; size: UiPoint; uv: [number, number, number, number] }
 export interface UiSlot { pos: UiPoint; overlay?: UiTexture }
-interface UiWidget { pos: UiPoint; size: UiPoint; texture: UiTexture; kind: string }
+export type ProgressDirection = 'RIGHT' | 'LEFT' | 'UP' | 'DOWN' | 'CIRCULAR_CW';
+export interface UiWidget {
+  pos: UiPoint; size: UiPoint; texture: UiTexture; kind: string;
+  filled?: UiTexture; direction?: ProgressDirection; progress?: Array<[number, number]>; imageSize?: number;
+}
 export interface MachineUiProfile {
   id: string; name: string; frontend: string; size: UiPoint;
   itemInputs: UiSlot[]; itemOutputs: UiSlot[]; fluidInputs: UiSlot[]; fluidOutputs: UiSlot[];
@@ -30,9 +35,14 @@ export const machineUiProfiles: MachineUiProfile[] = snapshot.maps.map(profile =
     // inside the browser diagram without moving its functional widgets.
     pos: (widget.kind === 'Logo' ? widget.pos.map((coordinate, axis) =>
       Math.max(0, Math.min(coordinate, profile.size[axis]! - widget.size[axis]!))) : widget.pos) as UiPoint,
-    size: widget.size as UiPoint, texture: textures[widget.texture]! })),
+    size: widget.size as UiPoint, texture: textures[widget.texture]!,
+    filled: widget.filled === undefined ? undefined : textures[widget.filled],
+    direction: widget.direction as ProgressDirection | undefined,
+    progress: widget.progress as Array<[number, number]> | undefined })),
   specialPos: profile.specialPos as UiPoint | undefined
 }));
+export const defaultProgressWidget = machineUiProfiles.find(profile => profile.id === 'gt.recipe.furnace')!
+  .widgets.find(widget => widget.kind === 'ProgressBar')!;
 const byName = new Map<string, MachineUiProfile[]>();
 const signatures = new Map<string, Set<string>>();
 for (const profile of machineUiProfiles) {

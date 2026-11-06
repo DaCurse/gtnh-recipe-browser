@@ -133,6 +133,8 @@ export interface Recipe {
   outputs: Ingredient[];
   layout: RecipeLayout;
   duration?: string;
+  /** Custom NEI frontends may draw output quantities at half size. */
+  compactOutputAmounts?: boolean;
   voltage?: string;
   voltageExact?: string;
   amperage?: string;

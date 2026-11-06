@@ -4,10 +4,15 @@
   "gregtechCommit": "bb00f3f1",
   "maps": 172,
   "frontendClasses": 55,
-  "snapshotSha256": "75d4bacdea6258752c929d4ff1eadc84ac9482f6e832174d1343dd4b229d0ef3",
+  "snapshotSha256": "fb4597d01b553e9694a758f0d5a6b8a236db5c30ffa08efe9da77f961bde0ccb",
   "jarSha256": {
     "cropsnh-2.0.140.jar": "f3cfd564b438b9669be927f27bae93a8fbe77797bfd89886d6d9683c451d2e9e",
     "gregtech-5.09.54.265.jar": "b969e11625a0298416a75b6e39703da795233edb71cb66f25fb9bbf654d75528",
     "modularui-1.3.4.jar": "9221b07c9b09725fc4e935cf63e8116751667fe9c0e7a98bd523a6411141b33f"
+  },
+  "resourcePack": {
+    "file": "Shadow.UI.v5.47.zip",
+    "version": "5.47",
+    "sha256": "dbff3a014e64703df3cd82c0ae46ca8762d7da851bafe2e18752dc46c6eff273"
   }
 }

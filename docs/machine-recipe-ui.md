@@ -30,9 +30,10 @@ Harmony also has exported fluid requirements outside its native input slots.
 These cases, other releases and non-GT categories retain their exported grid.
 No recipe is squeezed into an incompatible native layout.
 
-The snapshot captures static textured widgets. Arbitrary OpenGL callbacks and
-recipe-dependent overlays are not translated. Existing recipe metadata remains
-in text badges; progress paths are static, not a simulation of machine state.
+The snapshot captures textured widgets and their progress suppliers. Arbitrary
+OpenGL callbacks and recipe-dependent overlays are not translated. Existing
+recipe metadata appears as labelled NEI-style text. Progress is a decorative
+recipe preview rather than live machine state.
 Ingredients, amounts, chances, groups and exports are unchanged. Both renderers
 share `RecipeGrid` for cycling, chooser dialogs, tooltips and navigation. Native
 layouts use a shared 48px slot scale and scroll inside the card on narrow screens.
@@ -46,10 +47,10 @@ top-left, with up to two decimal places. NC/chance use NEI's default `#FDD835`,
 verified in `Badge` and `ColorUtils` from NotEnoughItems 2.8.155-GTNH. Alternative
 counts are a compact top-right hint with complete accessible labels/tooltips.
 
-Voltage badges use the colours from `GTValues.TIER_COLORS` without text decorations:
-MV is gold (`fmt-6`), UV is dark green (`fmt-2`). Dark colours get
-a lighter badge surface for legibility. Power calculations are unchanged.
-Duration uses a clock badge in the same stats row. Badge hover text explains
+Voltage labels use the colours from `GTValues.TIER_COLORS` without text decorations:
+MV is gold (`fmt-6`), UV is dark green (`fmt-2`). Power calculations are unchanged.
+Recipe details use the theme's Minecraft text colour on its native background, following
+NEI's Total / Usage / Voltage / Amperage / Time labels. Hover text explains
 tier names, processing time, current, total energy, per-tick power and known
 machine-specific requirements. Unrestricted machine voltage ceilings accept
 both missing values and MessagePack's `null`, preserving multiblock machine usages.
@@ -99,7 +100,8 @@ npm run ui:extract -- \
   --java /usr/lib/jvm/java-21-openjdk/bin/java
 python tools/machine-ui-export/process.py \
   --snapshot .export-work/ui-snapshot-new/frontend-layouts.json \
-  --mods .export-work/ui-snapshot-new/client-instance/.minecraft/mods
+  --mods .export-work/ui-snapshot-new/client-instance/.minecraft/mods \
+  --resource-pack .export-work/shadow-ui-5.47/Shadow.UI.v5.47.zip
 npm run ui:atlas
 npm run quality
 ```
@@ -110,9 +112,54 @@ main menu, writes the snapshot, and exits without loading a world or running the
 NESQL recipe export. Runtime logs/snapshots stay private. Run processing before
 atlas packing: processing restores originals; packing interns shared UV crops.
 
-Only three public images are needed: the 35 KB atlas and two native slot PNGs.
+Four public images are needed: the 35 KB atlas, two native slot PNGs and the
+original 64x64 GregTech `nei_single_recipe` panel. The panel uses its native
+two-pixel nine-slice border. It replaces the dark rounded card surface.
 They are shell-cached for offline use. Original pixels, licences and provenance
 are preserved in `assets/source/machine-ui`. No immutable dataset is rebuilt.
+
+The recipe theme applies **Shadow UI v5.47**, the latest standard
+GTNH 2.9.X release checked on 2026-11-06. Its official release ZIP size and SHA-256
+were verified before extraction. `process.py --resource-pack <Shadow.UI.v5.47.zip>`
+applies resource-pack overrides to panels, slots, overlays, progress frames,
+logos and custom diagrams before atlas packing, preserving original pixels.
+118 of the 121 selected resources are overridden. Layouts and timings still
+come from the verified GTNH runtime. GUI text colour `#BFBFBF` and shadows come
+from the pack's `dark_mode_utils` metadata, matching its dark textures. Original
+mod textures provide the fallback for resources the pack does not replace.
+Release attribution, licence and hashes are preserved alongside the sources.
+
+## Progress previews
+
+The adapter reads the actual ProgressBar empty/full UVs, direction, image size,
+and samples its supplied progress over the shared cycle. Processing compresses
+linear sample runs. The browser uses the 200-tick / 10-second NEI cycle, discrete
+source-image steps and native fill directions. Assemblyline split paths retain
+their independent suppliers; circular bars follow ModularUI's four quadrant
+wipes rather than a pie-shaped mask. Offscreen and hidden-tab animations pause;
+reduced-motion preferences show a static halfway frame. No animation changes
+recipe timing or item quantities.
+
+Source: [ModularUI ProgressBar](https://github.com/GTNewHorizons/ModularUI/blob/1.3.4/src/main/java/com/gtnewhorizons/modularui/common/widget/ProgressBar.java).
+
+## Pixel typography
+
+The active fonts derive from Idrees Hassan's proportional Minecraft-Font under
+OFL-1.1. Sources and pinned hashes are in `assets/source/minecraft-pixel-font`.
+`tools/build-minecraft-font.py` builds renamed WOFF2 derivatives with whole-pixel
+bearings/advances at 9px and 18px, retaining the original glyph shapes. Half-cell
+source bearings and tracking are removed, and font/line sizes and letter spacing
+are aligned. The two web fonts total about 14 KB (including the complete embedded OFL licence). The old font used a ten-pixel
+design grid at fractional sizes such as 14px/16px.
+
+At device scale 1, a browser canvas sample produced 44 intermediate edge-alpha
+levels with the old font at 16px and zero with the replacement at 9px/18px.
+This checks aligned text rasterization; browser zoom, display scaling and
+fractional positioning can still affect screen rendering.
+
+Eye of Harmony's source draws output counts at half size. The presentation
+adapter preserves that hint; long quantities elsewhere also use compact text
+when a full-size label would exceed its cell. Exact values stay in tooltips.
 
 ## Verification
 

@@ -16,6 +16,7 @@
     showChances = false,
     positions,
     fluid = false,
+    compactAmounts = false,
     showLabel = true
   }: {
     dimensions: GridDimensions;
@@ -26,6 +27,7 @@
     showChances?: boolean;
     positions?: UiSlot[];
     fluid?: boolean;
+    compactAmounts?: boolean;
     showLabel?: boolean;
   } = $props();
 
@@ -93,6 +95,13 @@
     if (value >= 10_000) return `${Number((value / 1_000).toFixed(1))}k${suffix}`;
     return `${value}${suffix}`;
   }
+
+  function compactLabel(value: number, fluid: boolean): boolean {
+    const label = displayAmount(value, fluid);
+    // Pixel-font digits/suffixes advance 12px at 18px; the decimal advances 4px.
+    const width = [...label].reduce((sum, char) => sum + (char === '.' ? 4 : 12), 0);
+    return fluid || compactAmounts || width > 18 * RECIPE_UI_SCALE - 2;
+  }
 </script>
 
 {#if cellCount > 0}
@@ -147,7 +156,7 @@
               </span>
             {/if}
             {#if ingredient.amount !== undefined && (showChances || ingredient.amount !== 0) && (ingredient.amount !== 1 || entry.kind === 'fluid')}
-              <span class="amount" class:fluid-amount={entry.kind === 'fluid'}>
+              <span class="amount" class:fluid-amount={entry.kind === 'fluid'} class:compact-amount={compactLabel(ingredient.amount, entry.kind === 'fluid')}>
                 {displayAmount(ingredient.amount, entry.kind === 'fluid')}
               </span>
             {/if}
@@ -217,21 +226,22 @@
 
 <style>
   .grid-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
-  .grid-label { color:#8d9297; font-size:10px; letter-spacing:.65px; text-transform:uppercase; }
+  .grid-label { color:var(--recipe-text,#aaa); font-size:10px; letter-spacing:.65px; text-transform:uppercase; }
   .slot-grid { position:relative; display:grid; grid-auto-rows:var(--slot-size); }
   .slot-grid.positioned { display:block; }
   .positioned .ingredient, .positioned .empty-slot { position:absolute; }
   .ingredient { position:relative; width:var(--slot-size); height:var(--slot-size); padding:0; border:0; background:none; cursor:pointer; }
   .ingredient:hover { filter:brightness(1.14); z-index:1; }
   .empty-slot { position:relative; width:var(--slot-size); height:var(--slot-size); }
-  .amount { position:absolute; right:1px; bottom:1px; z-index:2; max-width:calc(var(--slot-size) - 2px); overflow:hidden; color:#fff; font:400 14px/1 Minecraft,monospace; letter-spacing:-.03em; white-space:nowrap; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000,1px 1px #000; }
-  .amount.fluid-amount { left:1px; right:auto; font-size:12px; text-align:left; }
-  .chance { position:absolute; left:1px; top:1px; z-index:3; color:#fdd835; font:400 11px/1 Minecraft,monospace; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000; }
-  .ore-count { position:absolute; right:1px; top:1px; z-index:2; max-width:18px; overflow:hidden; color:#dfe2e5; font:400 8px/1 Minecraft,monospace; white-space:nowrap; text-overflow:ellipsis; text-shadow:1px 1px #000; }
+  .amount { position:absolute; right:1px; bottom:1px; z-index:2; max-width:calc(var(--slot-size) - 2px); overflow:hidden; color:#fff; font:400 18px/18px Minecraft,monospace; letter-spacing:0; white-space:nowrap; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000,1px 1px #000; }
+  .amount.fluid-amount { left:1px; right:auto; font-size:9px; line-height:9px; text-align:left; }
+  .amount.compact-amount { font-size:9px; line-height:9px; }
+  .chance { position:absolute; left:1px; top:1px; z-index:3; color:#fdd835; font:400 9px/9px Minecraft,monospace; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000; }
+  .ore-count { position:absolute; right:1px; top:1px; z-index:2; max-width:18px; overflow:hidden; color:#dfe2e5; font:400 9px/9px Minecraft,monospace; white-space:nowrap; text-overflow:ellipsis; text-shadow:1px 1px #000; }
   .ore-choice-scrim { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }
   .ore-choice { position:relative; width:min(560px,100%); padding:28px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; text-align:left; }
-  .choice-eyebrow { margin:0 42px 7px 0; color:#a5aaaf; font:12px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342c34; }
-  .ore-choice h2 { margin:0 42px 20px 0; color:#f0f1f2; font:20px/1.25 Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
+  .choice-eyebrow { margin:0 42px 7px 0; color:#a5aaaf; font:9px/13px Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:0; text-shadow:2px 2px #342c34; }
+  .ore-choice h2 { margin:0 42px 20px 0; color:#f0f1f2; font:18px/24px Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
   .choice-close { position:absolute; right:10px; top:10px; width:44px; height:44px; display:grid; place-items:center; padding:0; border:0; background:none; color:#aeb3b8; cursor:pointer; }
   .choice-close svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; }
   .choice-option { display:grid; grid-template-columns:56px minmax(0,1fr) auto; align-items:center; gap:12px; padding:13px; border:1px solid #464a4f; border-radius:9px; background:#292c30; }

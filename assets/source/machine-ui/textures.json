@@ -16,587 +16,710 @@
   },
   "assets/cropsnh/textures/gui/overlay_slot/crop_stick.png": {
     "jar": "cropsnh-2.0.140.jar",
-    "output": "a20dc81b874f9ba0f746.png",
-    "sha256": "a20dc81b874f9ba0f7460266a445239b65d6e1a7df76da536d2c560b7aa002b0"
+    "output": "22841e2e19b3b2dbfa2c.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "22841e2e19b3b2dbfa2cd4119ea64b64e9219f0c19ca3cab98eaee5d9b8d3835"
   },
   "assets/cropsnh/textures/gui/overlay_slot/seed.png": {
     "jar": "cropsnh-2.0.140.jar",
-    "output": "79a26e0c060d0a4903e1.png",
-    "sha256": "79a26e0c060d0a4903e1f28687ac3e3b415470ed464d6d666664de9dd830928b"
+    "output": "0d12e9762bcdc7eb842c.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "0d12e9762bcdc7eb842cefe67cceedf4eedba2914a90714d9d24ab7c57c6b234"
   },
   "assets/cropsnh/textures/gui/progressbar/crop_breeder.png": {
     "jar": "cropsnh-2.0.140.jar",
-    "output": "12b88c154b83f5700f43.png",
-    "sha256": "12b88c154b83f5700f434db4c638ca4f5bf2360a3d9308a57e8e606375bb27f9"
+    "output": "94147c8530f3ec9f2697.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "94147c8530f3ec9f269790a43beaa83b49fed3677773cf4b2e71a87055ae1f53"
   },
   "assets/goodgenerator/textures/gui/picture/component_assline.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "55d408d4ab9fd2008037.png",
-    "sha256": "55d408d4ab9fd2008037eb5f23f997f730666040f856d283070a95e367d1205c"
+    "output": "36bff55bae833add59fa.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "36bff55bae833add59fac6c53e796477ea4e7c0499b60a083c4d752b2a590f53"
   },
   "assets/goodgenerator/textures/gui/picture/extreme_heat_exchanger.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "ca759c7ded15a5e4226e.png",
-    "sha256": "ca759c7ded15a5e4226ec57d45a81f1cb4b9fd008ecd860f1d1fbd9991926854"
+    "output": "2ccc4743081904c764df.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "2ccc4743081904c764dffa0149c205305e55d37f8daead935b2ce502941d15c0"
   },
   "assets/goodgenerator/textures/gui/picture/naquadah_reactor.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "995282fd601a318b7375.png",
-    "sha256": "995282fd601a318b7375bc3a2c5d8428a17566196d586c8eb0f2412b6e03999e"
+    "output": "d07022eb92c8e331db78.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "d07022eb92c8e331db78a1f430a8228a9cc494a057000c72860d7920a1894798"
   },
   "assets/goodgenerator/textures/gui/picture/neutron_activator.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "b8dd5c2d88e67d6d0760.png",
-    "sha256": "b8dd5c2d88e67d6d0760db6768127dca7c97a7becf5e707fe11b7f4b3b58c414"
+    "output": "a9cae8e2d263b215d673.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "a9cae8e2d263b215d673ab24564446d48ee61061df388d34daf033e8051c2360"
+  },
+  "assets/gregtech/textures/gui/background/nei_single_recipe.png": {
+    "jar": "gregtech-5.09.54.265.jar",
+    "output": "10505f7d0f45a66e21fe.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "10505f7d0f45a66e21fe9cdbcc121a9a8c2b92594d82fbce42201064659ceb0a"
   },
   "assets/gregtech/textures/gui/overlay_slot/beaker_1.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "af2bc68df8b33b2adbb4.png",
-    "sha256": "af2bc68df8b33b2adbb4bcadaf89b2bf3324ede4c5ae6b5dc0e3fa4da93ce980"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/beaker_2.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "1759f245b0cd99a11aba.png",
-    "sha256": "1759f245b0cd99a11aba5e59919b5259897955874757ee1115a561e5e04c2c81"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/bender.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "f494c12c06f2559145e7.png",
-    "sha256": "f494c12c06f2559145e7f7b35965f1a7a8c141d069bb27603ed3ddb6973149a1"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/box.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "498369c6f37d6348d658.png",
-    "sha256": "498369c6f37d6348d658de81cdc9692164d8a88c6706dff0b761285d99bca128"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/boxed.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "0a75f14f7d189bc6e760.png",
-    "sha256": "0a75f14f7d189bc6e76089bdd94250b50501e4389ac367cefc5949b0db070cc2"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/canister.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "607e265876a33c297f66.png",
-    "sha256": "607e265876a33c297f66f46640e324f5a7a41b3120f8e94066cc26f592cb652a"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/canner.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "65f247af926d32110ea7.png",
-    "sha256": "65f247af926d32110ea745f40180bf41ae9dca5a8bfe33006a44a8160df92182"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/cauldron.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "55c08ef04044df7908a9.png",
-    "sha256": "55c08ef04044df7908a96ce2d49c334e37ef4b84d8fdc1e266ddd2f898eb703b"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/centrifuge.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "8284a4eb7bcfc99685fe.png",
-    "sha256": "8284a4eb7bcfc99685fe638f6441142c8228ec7185229c5d67516df626c90ed4"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/centrifuge_fluid.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "f8ff937c2b8e66db48d8.png",
-    "sha256": "f8ff937c2b8e66db48d886a5b740e1696ee9b5dd48cf50dcd47e340eda8ab1f6"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/charger.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "dea6616bbc1a4ba48ca8.png",
-    "sha256": "dea6616bbc1a4ba48ca8acc75e1f301e55ce97722d7605429b5a03668e579c8d"
+    "output": "42d944c1c2b223c410d2.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "42d944c1c2b223c410d2df2e2d07b5d4a8f3f62770577df85584f00374d8eced"
   },
   "assets/gregtech/textures/gui/overlay_slot/charger_fluid.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "671811121d66ccfb610e.png",
-    "sha256": "671811121d66ccfb610e43bf93b2cfae2ea8222f3bfae63df31f0035e3930dcf"
+    "output": "42d944c1c2b223c410d2.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "42d944c1c2b223c410d2df2e2d07b5d4a8f3f62770577df85584f00374d8eced"
   },
   "assets/gregtech/textures/gui/overlay_slot/circuit.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "a29b29c0e90eb568b633.png",
-    "sha256": "a29b29c0e90eb568b633f1746110b555d6cc8f246b19bcca3f630c11eb443e5c"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/compressor.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "90dcc77da4d448bae082.png",
-    "sha256": "90dcc77da4d448bae082bfad4f14c6b40bb902e5b55d770ede2592be45662460"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/crushed_ore.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "2f1625b3288ae2911f32.png",
-    "sha256": "2f1625b3288ae2911f32b3637da1bf1ccbcdf9fc8032be761d091fdf4ffb3212"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/cutter_sliced.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "d30ec08c51227003adc3.png",
-    "sha256": "d30ec08c51227003adc31d7d2c17b43394f5687d5e762886b773d94c15e5aca4"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/data_orb.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "8ad950a0861dcf2ab593.png",
-    "sha256": "8ad950a0861dcf2ab593c0a49cdc77bef2189bd8ebc635f0d4f4c48c74a5f29c"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/dust.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "011d792b5e7b7c133e1f.png",
-    "sha256": "011d792b5e7b7c133e1f03b2904b7a34d272946075b47c323ac18a30aace60dd"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/explosive.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "8812d346b096f879bb3f.png",
-    "sha256": "8812d346b096f879bb3f1b9b61c5f916db4828ed9cd2b434c24a424cda631d6a"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/extruder_shape.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "894a240fc0efe57d3a2c.png",
-    "sha256": "894a240fc0efe57d3a2c18bdb4dd7c9b9476cc410fc33accd2e19fabebe93a39"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/furnace.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "a09f4129f7e3112cd955.png",
-    "sha256": "a09f4129f7e3112cd95530555d0051683a7469d0c2fd044df32e612a59182ae3"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/gem.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "cbff3f50ab7358a57a6c.png",
-    "sha256": "cbff3f50ab7358a57a6cbfb185ca3a0152706ca47536b7639a1236f6330e7e9d"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/hammer.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "bc87b9d370a591c1aefc.png",
-    "sha256": "bc87b9d370a591c1aefca97c2187a8d444757ad90d7665d23a5934be0e837259"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/heater_1.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "38bd283e9b6e41523235.png",
-    "sha256": "38bd283e9b6e415232356b2a544f85e358c345f1fb5366232c1778ad2274075d"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/heater_2.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "3d9d62f1d3831f7d6f25.png",
-    "sha256": "3d9d62f1d3831f7d6f255d99b6159700e4fb45048de5e651a27bde675c4d8881"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/implosion.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "06725ab1e4e38fd4e533.png",
-    "sha256": "06725ab1e4e38fd4e53398d287f6d927afeac7a481e6a1dc39c6eaeb8231d159"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/lens.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "c14478dfe6280b8f09ce.png",
-    "sha256": "c14478dfe6280b8f09ce9c930bbda0777181f42670f725f85929233eab126558"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/microscope.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "5e1bfd139ab91dd651f5.png",
-    "sha256": "5e1bfd139ab91dd651f54a3e3b96b43625b5e7265bbcac9fecc60641b724869d"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/mold.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "9ce21dd07af88e42f149.png",
-    "sha256": "9ce21dd07af88e42f149135f77145a3858c1e82bceb1b4c64ec1e566eefc3d94"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/molecular_1.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "fc156e0c35271fd34fcc.png",
-    "sha256": "fc156e0c35271fd34fcc2cd3d0be15ae01e4637e3623fe58dc318524df504387"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/molecular_2.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "87f0d4c4e2789a311063.png",
-    "sha256": "87f0d4c4e2789a31106343d5059a95fa82fac236442d4016c029574db9764874"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/molecular_3.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "03e7e0fd812031e8fbeb.png",
-    "sha256": "03e7e0fd812031e8fbebc3a6c80e585ae7eed621deda7bfae01655acd02ff4a5"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_0.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "3511c9521f444dc55b54.png",
-    "sha256": "3511c9521f444dc55b54b5c7e8a0e8315fc28e7afcf99ffa3c08c5c718a67ece"
+    "output": "284976b5511fe572a2c7.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "284976b5511fe572a2c75d3a6a31f1ef9cfe7c8d680c4347db210d4efc56c3e6"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_1.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "8550858cd88267116413.png",
-    "sha256": "8550858cd882671164136c4c99382dc984754bb1fef5f48a28a3e2c76d722fc4"
+    "output": "5ea8085d49315345d6b1.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "5ea8085d49315345d6b14be711b2e52d4bb30bb45f344b32b5ad98263fe2eb03"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_10.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "6ab3a3a51659a69f62f9.png",
-    "sha256": "6ab3a3a51659a69f62f974554d9319df405687276a4b7f0688eb360c5342b043"
+    "output": "d0377b5250f9f23535e6.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "d0377b5250f9f23535e62671edb6ec53d8fd4266b588c663cbdcadd325df7227"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_11.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "93e6d598701021d355e5.png",
-    "sha256": "93e6d598701021d355e55fe33e96d9278d2577220bede5404a08a9cc71f5c8cb"
+    "output": "225263a179e3031c88da.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "225263a179e3031c88da4af7f1ebc62d2c7e69835b7d69b8e8e2bbf300813f7c"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_2.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "800bfcd480eed392ea97.png",
-    "sha256": "800bfcd480eed392ea97d2b986411764136dbd13dd7ef470de57e1055a80ebf8"
+    "output": "75d0c7f0a5703905933b.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "75d0c7f0a5703905933bf34c2cd1963dcd1805c278abd896ce55471c654b8457"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_3.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "9ae96c075029fd993cdb.png",
-    "sha256": "9ae96c075029fd993cdb6ed4745d3cbd9acc860365f407fb3a74d072efc4c26d"
+    "output": "8478a243e667002bfab4.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "8478a243e667002bfab4deaba06f6199b563331d27e8eacb332e844ab58e70f2"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_4.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "fde4a48561db0d6031fb.png",
-    "sha256": "fde4a48561db0d6031fbd0f378e67f5f0c2c924e8810983b38328a8ad19d267f"
+    "output": "0f7384b7d5558a6168c2.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "0f7384b7d5558a6168c253a88a32f9ba28c4b7d11a096b3e83bfcef630803417"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_5.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "0694b9e65612e5fe8152.png",
-    "sha256": "0694b9e65612e5fe81524e852d2f9026a1a354c0dd6160393658b13349773c68"
+    "output": "1dc5dd08a15e2ba7a842.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "1dc5dd08a15e2ba7a842e091e79d6168ce94744a2956b9430b39ad669c470fc9"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_6.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "d8fd6b468de6640e15e1.png",
-    "sha256": "d8fd6b468de6640e15e1d9eb02b2d0a3be5164115582c5435c8b52580ea2d6c8"
+    "output": "ee7bf83ab2b8506522eb.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "ee7bf83ab2b8506522eb8585974d5384d05772c3c830a6df57f370816a6e5de8"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_7.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "fe53161d3f603571464d.png",
-    "sha256": "fe53161d3f603571464dc317533c2c624aed16e097aeb5b27031f4768099f3d1"
+    "output": "98f8f301920750f8f296.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "98f8f301920750f8f296529f10ff64fcf129c6222378f646ccb27dd24d26245f"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_8.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "4bd9094a3c5dd7cba945.png",
-    "sha256": "4bd9094a3c5dd7cba9452f81c350749f6868429bd64a9518df27d460fca4000d"
+    "output": "1901cc97177269d0316d.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "1901cc97177269d0316d02cecf944fe143b46fdb3ab8cca7380246a8e8569724"
   },
   "assets/gregtech/textures/gui/overlay_slot/number_9.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "bb9d4c0c8c3d9c310c8f.png",
-    "sha256": "bb9d4c0c8c3d9c310c8f541b4bdf0aaf85050922a7d0e4f07bb6d7704a07c300"
+    "output": "b5328135c1af8bb7d7c6.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "b5328135c1af8bb7d7c68e42ba288295c7f2be54dccbf43d58038cd4c55d1343"
   },
   "assets/gregtech/textures/gui/overlay_slot/page_blank.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "be2ef48b07dde225152b.png",
-    "sha256": "be2ef48b07dde225152b18fd274348063095dd65306bf118e32bb71cdba0234a"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/page_printed.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "227c2a08276f7e1a877b.png",
-    "sha256": "227c2a08276f7e1a877b5ddc7a0e69f30179d3ad80588d4a9eaf1b8a6109f80e"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/press_1.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "cc40e18eef771326b12c.png",
-    "sha256": "cc40e18eef771326b12cbaf3152143d6929abbb773e679af06452d56e6fea9fe"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/press_2.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "8e076ebf66e68d654fa9.png",
-    "sha256": "8e076ebf66e68d654fa9fb37211a5c725934b4865eb37de308001dfb4746c5ed"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/press_3.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "aa2a555177a345e143ec.png",
-    "sha256": "aa2a555177a345e143ec15b15235200baea4a04954035e06358e056e81444a28"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/recycle.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "1b6b479a47453cc3ea36.png",
-    "sha256": "1b6b479a47453cc3ea361b6b67d73d240a1b40e0c611b5d4ce8ee1ab93c47c59"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/rod_1.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "d8d156ef5bfcf3e3f04d.png",
-    "sha256": "d8d156ef5bfcf3e3f04d3ff823ead4e62f5a0781868cd057720ecb7873beb23e"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/rod_2.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "cc88b537527772869a27.png",
-    "sha256": "cc88b537527772869a27993f9deb7d24a6a9a830816db18a373df22552c6ddde"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/uua.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "0f9c962662b725bdf39d.png",
-    "sha256": "0f9c962662b725bdf39d2d9f000fd3fcfd14b211e1f554941b76e14fcb663896"
+    "output": "9caf0b42fc1b006ff47d.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "9caf0b42fc1b006ff47d6752837f7b49b8a2b982f58d6c3ac157ef7033e2eb47"
   },
   "assets/gregtech/textures/gui/overlay_slot/uum.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "2135ad6668948ebcab6a.png",
-    "sha256": "2135ad6668948ebcab6a13cdb4c7cba2ffb427f17235ae02ae4a0e55b81a80d7"
+    "output": "81c554421742b5a28294.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "81c554421742b5a2829491541c20225de06abc48f2bd5dfec089a5f9774b637b"
   },
   "assets/gregtech/textures/gui/overlay_slot/vial_1.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "4ace34468c0e2ad25ce9.png",
-    "sha256": "4ace34468c0e2ad25ce9893b4dee98fe81237db0bca3cfc61e314773ab9231c4"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/vial_2.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "08343b15dd4d4ea5d880.png",
-    "sha256": "08343b15dd4d4ea5d880995906e83c470c0bca395ced0a21e023f39eb96de084"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/overlay_slot/wiremill.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "d06693e03789b7a952cb.png",
-    "sha256": "d06693e03789b7a952cbf50522fbfd19008631651fff1effae0ce508d5a367ee"
+    "output": "da569130d555d3edf2de.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "da569130d555d3edf2de1d864a3f0af0b2ab124f81b0e293c369f445e4efd5a2"
   },
   "assets/gregtech/textures/gui/picture/arrow_gray.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "621e3b3872ba1b20172b.png",
-    "sha256": "621e3b3872ba1b20172b70cfbafe4ecb336fbc5724979f7901331deebb4bb24e"
+    "output": "e983e6f58dec67db8306.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "e983e6f58dec67db8306ff4ea247759bd9e5ef613d6bee1f84c050e6b1248636"
   },
   "assets/gregtech/textures/gui/picture/exofoundry_logo.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "3a890d84d7ea0b4eb8b5.png",
-    "sha256": "3a890d84d7ea0b4eb8b549c753c7ee1543183a6f5b711648c1f9cc020f5b6d02"
+    "output": "0831b4d2d13434f126d5.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "0831b4d2d13434f126d50a711c90d7f598074f414b0fe3e35190946aef173a67"
   },
   "assets/gregtech/textures/gui/picture/gt_logo_17x17_transparent.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "f7a3155d0abc52313d37.png",
-    "sha256": "f7a3155d0abc52313d37bbccfadfcc5db473d8b98168da7dd1b87bb297d67f5f"
+    "output": "eb7f777de5113c003185.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "eb7f777de5113c00318500ed89e2011bd6f42c628dabfd82f3a40522a3051810"
   },
   "assets/gregtech/textures/gui/picture/radiation_warning.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "cce577484d0aeca1b9c2.png",
-    "sha256": "cce577484d0aeca1b9c2aa5cc13f32c699884c413aefb2e1be9141bf721a62e8"
+    "output": "9678ce078da36662db06.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "9678ce078da36662db063ba0031b17459ef6c7e99ab6de2d20f5dbf42a47287c"
   },
   "assets/gregtech/textures/gui/progressbar/arrow.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "7bdae3a2d282f406edfd.png",
-    "sha256": "7bdae3a2d282f406edfd534f4f490d5969bd4b7e84fb540bb6769b6016304d62"
+    "output": "6a57eb0af1baa82e66f7.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "6a57eb0af1baa82e66f79e07eb9125d5c65a792ed9de9fef82c43675800a2771"
   },
   "assets/gregtech/textures/gui/progressbar/arrow_multiple.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "eb652daa3aa52e17721e.png",
-    "sha256": "eb652daa3aa52e17721e0ceee507297183aac368903641d1f3a88822675eaf3d"
+    "output": "bd45b6596e167c31bc64.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "bd45b6596e167c31bc64c0b74b2298b0c8c06caa634242aea3235119b007fc59"
   },
   "assets/gregtech/textures/gui/progressbar/assemble.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "daf96f04cd24991bebd8.png",
-    "sha256": "daf96f04cd24991bebd807b2a91fc7d5cf4f235e24b5b07b01674d7b44cec9c6"
+    "output": "df6eed589d0a936d65f9.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "df6eed589d0a936d65f99aa632f871139af7f474d52f4c55602fd9cd94f7e9b3"
   },
   "assets/gregtech/textures/gui/progressbar/assemblyline_1.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "e641ea995acb1611c5dc.png",
-    "sha256": "e641ea995acb1611c5dc38da1f551cf53f860051eabef5fd84198051f27c6686"
+    "output": "02f0827245306d5fc44e.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "02f0827245306d5fc44e9f0f2adf9451b61515b813de331cd0087c6e0e5524c5"
   },
   "assets/gregtech/textures/gui/progressbar/assemblyline_2.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "8ab2e91718b8b0331c1e.png",
-    "sha256": "8ab2e91718b8b0331c1e6a35a79f9e8af2aab2d9a35d2e91c676d782b51bc2c5"
+    "output": "9d21d71ace65a3da6de9.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "9d21d71ace65a3da6de99a35c4d3d14573dfdac9caaf945199859a994e04a34e"
   },
   "assets/gregtech/textures/gui/progressbar/assemblyline_3.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "05ace525de5eb0d9b742.png",
-    "sha256": "05ace525de5eb0d9b742bc08aff9ac4e818984e5a556fadc8536bcbfbbe1aeb0"
+    "output": "e600f62e5ca6bf712cbc.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "e600f62e5ca6bf712cbca0a2d3d0d0a395124810eb10883847ffc98f3d2a707b"
   },
   "assets/gregtech/textures/gui/progressbar/bath.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "d88d1bac7c7a013ca52a.png",
-    "sha256": "d88d1bac7c7a013ca52aec2cbc50b583f9ca8ad67e5c60b09b92ef4a03389210"
+    "output": "4889488ca64493158ef6.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "4889488ca64493158ef62851fb7938d097e46d2e97cbd8960568831e463b5dcd"
   },
   "assets/gregtech/textures/gui/progressbar/beamcrafter.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "a074121d5f9b9d45836c.png",
-    "sha256": "a074121d5f9b9d45836cdc142c29dc5a6173153b7b76267f5b24db6d46aa8f03"
+    "output": "aa8bd494254c293e4bc6.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "aa8bd494254c293e4bc673fccb350b4ef5d17f04a07b91670593e1bc7a091e72"
   },
   "assets/gregtech/textures/gui/progressbar/bending.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "1ddcde4f4167ba1cf7a2.png",
-    "sha256": "1ddcde4f4167ba1cf7a242761ec2d8963d3cc0624f0ca2e3b8e0550e7f9984fb"
+    "output": "0bc0c6c7203d9f7b0ebc.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "0bc0c6c7203d9f7b0ebc4bcf1e47359a4e19dd88efd99e0bbaeb3d8f92d048a1"
   },
   "assets/gregtech/textures/gui/progressbar/canner.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "6c666a97765823278e1d.png",
-    "sha256": "6c666a97765823278e1d504209d0a0c50fa9de6f4deaec281b03e80a6469edda"
+    "output": "966749eb1338904e9282.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "966749eb1338904e92824ebf140f01bc16ba69830dad05e3edc69abbff32481c"
   },
   "assets/gregtech/textures/gui/progressbar/circuit_assembler.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "26a0a89f7a8c1b2557a4.png",
-    "sha256": "26a0a89f7a8c1b2557a4e0f666afe316a6ebea819c7c8a64a627049dc960b07b"
+    "output": "9b94c2094182e4713b60.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "9b94c2094182e4713b607afdefe7e15d3229f78ec8416e1400ce84d1989e48a1"
   },
   "assets/gregtech/textures/gui/progressbar/clarifier.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "a1f5ad57e73a9a34ce84.png",
-    "sha256": "a1f5ad57e73a9a34ce843fab0041c895d4b38df888057f3e289be17b3cc3aa51"
+    "output": "d94ca81d28c79b482bc7.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "d94ca81d28c79b482bc7b294def87626ad4c32de454adb39574fe4c95b5d708a"
   },
   "assets/gregtech/textures/gui/progressbar/compress.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "c5bdc7df1395bdc0955c.png",
-    "sha256": "c5bdc7df1395bdc0955cb20a2d21c5cb47b09e1824ab03acd2092e8db6e44fdf"
+    "output": "5e3eeb6e6c1adf0f4170.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "5e3eeb6e6c1adf0f41701d9cddfe0819c2ef3e733b75072b17f46e01069b20bf"
   },
   "assets/gregtech/textures/gui/progressbar/cut.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "d9f6f5ce67f340fc132c.png",
-    "sha256": "d9f6f5ce67f340fc132c1b3515c45c2ab21febd065bc006a53585441a2349aa3"
+    "output": "1ebc34755a4ff8c3a520.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "1ebc34755a4ff8c3a5203251f522fe030ac30589e1b60ff3b690a751b269d3de"
   },
   "assets/gregtech/textures/gui/progressbar/extract.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "96c27686537939e0c770.png",
-    "sha256": "96c27686537939e0c770848226805d383876182568547b204b40fd274a62d8b0"
+    "output": "bb2bf28392bea122fb93.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "bb2bf28392bea122fb93b2cd3a56f6f6a3428e15936ae54c3cf3b31cb2c59a1b"
   },
   "assets/gregtech/textures/gui/progressbar/extrude.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "7cc6ff7a26146977b01f.png",
-    "sha256": "7cc6ff7a26146977b01fa1181b3411d10884b6da11cde1969025a5c69b64b7bc"
+    "output": "29f6f8c7694040caa11a.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "29f6f8c7694040caa11ac79586fe900e1c62e32578d97fbc68a2f541effeb055"
   },
   "assets/gregtech/textures/gui/progressbar/fishing.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "a8c4a2530e140eb0ecd6.png",
-    "sha256": "a8c4a2530e140eb0ecd686bbc6e18f20fc283d15f019e3ab61f07d79725651b4"
+    "output": "0ec0531ab4e1c28698cf.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "0ec0531ab4e1c28698cfa14f7973bd51b5e254eea73ba3744572334157c8bf0c"
   },
   "assets/gregtech/textures/gui/progressbar/flocculation.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "7970de5e81bf5c8065a3.png",
-    "sha256": "7970de5e81bf5c8065a364e1938484274607827cd5b3d9730922a7b990abffb8"
+    "output": "78b180f8c17fcf2d803c.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "78b180f8c17fcf2d803cec6e2f97c492f9a491fdd69a03bae69437c76471f341"
   },
   "assets/gregtech/textures/gui/progressbar/hammer.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "063c3dfb111f8aaf18d0.png",
-    "sha256": "063c3dfb111f8aaf18d092a1f9254aa608b04f16bc8b53eebe3ed6c9ae93edd4"
+    "output": "088907a2fb8cf64aca69.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "088907a2fb8cf64aca69625d3a44b94ec4e43c99410f4750af4688693fd4bd9a"
   },
   "assets/gregtech/textures/gui/progressbar/hammer_base.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "e34cc94da7915def5b47.png",
-    "sha256": "e34cc94da7915def5b47ec03b0143969c8a20d90369e94ba66153c8431895f66"
+    "output": "bc05d25df68861df8fd7.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "bc05d25df68861df8fd70cb1839275a696069f80dabd4a9ea7d8fec087900ade"
   },
   "assets/gregtech/textures/gui/progressbar/lathe.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "879ce774831f189be56b.png",
-    "sha256": "879ce774831f189be56b87d3688ca6c7cc4368da2eb2ca79a4113ed9260ceea4"
+    "output": "9da94eb32b44ac62e7a1.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "9da94eb32b44ac62e7a127c11af9d9b4b6f3e9f416cb96421d930d4297da0e67"
   },
   "assets/gregtech/textures/gui/progressbar/lathe_base.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "301b80ee728b608638d6.png",
-    "sha256": "301b80ee728b608638d6224c40b21f95d08b9d3dfe7d58516b76ec449a93a7cd"
+    "output": "7d60ddbe0687881c15b2.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "7d60ddbe0687881c15b2ec9e6e1973c864fc530418b62deb57dea06565ed6b03"
   },
   "assets/gregtech/textures/gui/progressbar/macerate.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "b730cfae60707b086b54.png",
-    "sha256": "b730cfae60707b086b540f1c61b6b64464feff5db8f3bd47150a7daff8bc2242"
+    "output": "22a4aef7a8d8e5c6a3ec.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "22a4aef7a8d8e5c6a3eca294ee5564f3ac036458e9fce7e61ab6e724ed87c0f8"
   },
   "assets/gregtech/textures/gui/progressbar/magnet.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "fb07a320492bb1a01aec.png",
-    "sha256": "fb07a320492bb1a01aec08fab0e8ff5a549c13d4f27933f67d09bf505424e450"
+    "output": "dbc161e9a36ff2c0f04f.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "dbc161e9a36ff2c0f04f2a00c0ddd8583171808b1a53d22bf23d06c509d27fec"
   },
   "assets/gregtech/textures/gui/progressbar/mixer.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "33d2e072db7591df30b3.png",
-    "sha256": "33d2e072db7591df30b3492b00167f7d71b0eb135aa2c09890b0512ae1df4cbd"
+    "output": "4889488ca64493158ef6.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "4889488ca64493158ef62851fb7938d097e46d2e97cbd8960568831e463b5dcd"
   },
   "assets/gregtech/textures/gui/progressbar/ozonation.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "909bbe9c8db760a2678f.png",
-    "sha256": "909bbe9c8db760a2678f3d8acfe7358757995d5e7f1a27492e0235f1baaa19f6"
+    "output": "c30436ce19fb922739f4.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "c30436ce19fb922739f48f5a8039896623def812c2d6aed3f5dec1ca3ea31c11"
   },
   "assets/gregtech/textures/gui/progressbar/phneutralization.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "25559e19f496cc83e43e.png",
-    "sha256": "25559e19f496cc83e43e618ff7ecf03a65efcd4aec82b7b33edebdb6381e6e1a"
+    "output": "9a40f03af0d4a7393522.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "9a40f03af0d4a7393522daa97a70d6bc4642d6dfdbe54bf6ffc0002dcb9362e5"
   },
   "assets/gregtech/textures/gui/progressbar/recycle.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "17fc40cac3895c1e807f.png",
-    "sha256": "17fc40cac3895c1e807f0e512cf5056f5286e780405db06616a077ceaec87a27"
+    "output": "a037a3beea30b72da95c.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "a037a3beea30b72da95c3107ec672203dfc0656e76dd110d92086b854eac152c"
   },
   "assets/gregtech/textures/gui/progressbar/sift.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "f59172320d1f6d81db77.png",
-    "sha256": "f59172320d1f6d81db77bf1f84b321f4f4018caed90a46f216f15ce16b1091d0"
+    "output": "ada6537d198b4b87d09c.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "ada6537d198b4b87d09c1b5dba23d5256073d963d57b7f9cae9cc558e10b0536"
   },
   "assets/gregtech/textures/gui/progressbar/uvtreatment.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "99a5602800724bf1b285.png",
-    "sha256": "99a5602800724bf1b2857d5df36d3748391051c59e67d6b10a93e2f2d1e7e936"
+    "output": "dbe06a86bab0adbd2c81.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "dbe06a86bab0adbd2c81b53634414bf1b305cbb77f39487337cc7dd7ce18cc3c"
   },
   "assets/gregtech/textures/gui/progressbar/water_plasma_heater.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "d7459d48e72ead49ebb2.png",
-    "sha256": "d7459d48e72ead49ebb2e0e4ff721c1057ec39f4e1b247cb159c4a9d101599e5"
+    "output": "b61883330f74c13f6ed7.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "b61883330f74c13f6ed7ded698f6b4f0f658428c94052327ebcf63ad2bdf2cbf"
   },
   "assets/gregtech/textures/gui/progressbar/wiremill.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "4eb80b82d985194b92d1.png",
-    "sha256": "4eb80b82d985194b92d134ba99ce65328627c44ab495c2832748f2064631817d"
+    "output": "4ad443265f60122897d4.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "4ad443265f60122897d4fd129d97508f9fe5377f3e25d5d38ac98787502c931e"
   },
   "assets/gtnhintergalactic/textures/gui/picture/space_elevator_logo.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "d1173ad000d5eb3c3adc.png",
-    "sha256": "d1173ad000d5eb3c3adc972d5122e60c330fccd80a8a045875e59e0e63215646"
+    "output": "82346c286061ad0ab7cd.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "82346c286061ad0ab7cd7546e2bbf00b647a13d7436073be3f91b7aeeafc0bec"
   },
   "assets/gtnhintergalactic/textures/gui/progressbar/space_mining_module_arrow.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "2910b1e81ee8b69a095d.png",
-    "sha256": "2910b1e81ee8b69a095d6551394f3aca8c2c4850fff147b552fe0386dbec9a93"
+    "output": "1074b9d35eba1dbcd14d.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "1074b9d35eba1dbcd14db507a32015017f616f7cdd7e948b3016c86285dd2c55"
   },
   "assets/kubatech/textures/gui/logo_13x15_dark.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "bd918b4640872441b219.png",
-    "sha256": "bd918b4640872441b2199dd8a108cabc47b40c4ccb9d3a7de338b66544ae68da"
+    "output": "f42e0f512db96ac4a8dd.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "f42e0f512db96ac4a8dd633a603423c48f29f30dbe3c67f6d21e321c1ae7cc9e"
   },
   "assets/kubatech/textures/gui/reactor_chart.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "5fee39a45245523c5387.png",
-    "sha256": "5fee39a45245523c5387d71bb5ef37a7ed9b69176501631d6e9905c5741d6792"
+    "output": "983465bca4422fe35a73.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "983465bca4422fe35a73d20eced32098e87e0f9aa416da0eaa9498309d93e474"
   },
   "assets/kubatech/textures/gui/slot/fusion_crafter.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "47d4c8baf406fec4fbd6.png",
-    "sha256": "47d4c8baf406fec4fbd64d7a95eab41cc83acc4fbcd3d08768fd5acb37c95f95"
+    "output": "0821830db5e90664ac42.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "0821830db5e90664ac42ade790607e0767aa41671d0d70a97744ffaaef83db25"
   },
   "assets/miscutils/textures/gui/progressbar/fluid_reactor.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "9b9225adedf36b6a4952.png",
-    "sha256": "9b9225adedf36b6a495206cfbc205a4f5befaf4fa3b70a9b2ad761b24773f76a"
+    "output": "4889488ca64493158ef6.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "4889488ca64493158ef62851fb7938d097e46d2e97cbd8960568831e463b5dcd"
   },
   "assets/modularui/textures/gui/slot/fluid.png": {
     "jar": "modularui-1.3.4.jar",
-    "output": "d46d262b31805ed9ab0c.png",
-    "sha256": "d46d262b31805ed9ab0c77f193a1d94384315c1eaa41baea6a96691007393902"
+    "output": "a1e31d799e25fe70192e.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "a1e31d799e25fe70192e6c83afa14409e33a678e0c7336a2cd2549583c3e5d82"
   },
   "assets/modularui/textures/gui/slot/item.png": {
     "jar": "modularui-1.3.4.jar",
-    "output": "d49478ea1a0188f624e0.png",
-    "sha256": "d49478ea1a0188f624e0516ce69d87da61298578e2510e67261acdf16c3a9409"
+    "output": "23320b53aba881a4e2d5.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "23320b53aba881a4e2d50bfa0d093dcc06a204e2e6d864e6db277238f3dde12a"
   },
   "assets/tectech/textures/gui/overlay_slot/mesh.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "419790e91b113bfec585.png",
-    "sha256": "419790e91b113bfec5852a82de46d74728d9ae561db453c1ae8af6ff07d2e9a7"
+    "output": "6ec1c120de9a351e293f.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "6ec1c120de9a351e293fb6e2508cd85b96201b2929ff807a24b51cd51404fd1f"
   },
   "assets/tectech/textures/gui/picture/gorge_logo.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "eaa854659bf6d1510dd7.png",
-    "sha256": "eaa854659bf6d1510dd75e82bf01bf71560ac3e05714728852758d6172497bdd"
+    "output": "ea39e3f5d151c86531b1.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "ea39e3f5d151c86531b1bed165545799ec6962cb9005c5af80f5b05cd4fa8e55"
   },
   "assets/tectech/textures/gui/picture/heat_sink.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "4dab38ea0ebcd09f9248.png",
-    "sha256": "4dab38ea0ebcd09f92484d64cf71357ce0789c5c05cb76e34beddc99af09bdff"
+    "output": "e6a0efbdfe192bb44abc.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "e6a0efbdfe192bb44abcfc1de6678aa2fde72861c0eb615755fc56855198b4dc"
   },
   "assets/tectech/textures/gui/picture/rack_large.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "7d7fa0448b47971f529e.png",
-    "sha256": "7d7fa0448b47971f529e8ec428cfa6989f2eddf25d01a958c07666a0249f935b"
+    "output": "ac5028f0b6818d655a2c.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "ac5028f0b6818d655a2c1e35a2f97efdaac87fd9265c3d32b7e14df6376a9f83"
   },
   "assets/tectech/textures/gui/picture/tectech_logo.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "161ffd8746ba016252f7.png",
-    "sha256": "161ffd8746ba016252f7e35187706bcec4630c20ca1e8a66636c8d020b0b3af9"
+    "output": "51fce5cefcbe96849c40.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "51fce5cefcbe96849c40c22d937a383c659bdc7d72c1b118b184b4a5a854a90e"
   },
   "assets/tectech/textures/gui/progressbar/godforge_plasma.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "f16795cca546272b935e.png",
-    "sha256": "f16795cca546272b935e7c7d77d2761b4f3386d16835d68964a5f4b7704583d1"
+    "output": "ec9d236c1e0af061a118.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "ec9d236c1e0af061a118e31e3d1918950d5eb0c3d375cdf2a8db91e79e3e730c"
   },
   "assets/tectech/textures/gui/progressbar/research_station_1.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "50cda388fb7a3ff71e48.png",
-    "sha256": "50cda388fb7a3ff71e48cf641e6f5337ff4fee499684748be84f6c65dad06617"
+    "output": "44ec8a62f4f1c712edf3.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "44ec8a62f4f1c712edf382b13edddbff09ca6579dc6dbbb641fdd2b5530965fd"
   },
   "assets/tectech/textures/gui/progressbar/research_station_2.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "b0afcfad4e178dcd8d13.png",
-    "sha256": "b0afcfad4e178dcd8d13eb57d6f221b316182e424376f61b4cd8957f3906a42a"
+    "output": "7671b80147ca43910fa0.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "7671b80147ca43910fa0347e8476369831732570f48021aae07415366db618be"
   },
   "assets/tectech/textures/gui/progressbar/research_station_3.png": {
     "jar": "gregtech-5.09.54.265.jar",
-    "output": "371d81b109cc34da0032.png",
-    "sha256": "371d81b109cc34da00326b2d9d9a8ecbe09093c904b523025dcb746a0a0a882f"
+    "output": "d32066782945e048b989.png",
+    "resourcePack": "Shadow.UI.v5.47.zip",
+    "sha256": "d32066782945e048b9893a0632620f4949de96e66b1d7cd1333741b75ec27817"
   }
 }

@@ -53,19 +53,24 @@ public final class BrowserLayoutExporter {
         }
         return out;
     }
-    private static JsonArray widgets(Object frontend, Object ui) throws Exception {
+    private static JsonArray widgets(Object frontend, Object ui, JsonObject profile) throws Exception {
         Class<?> handler = Class.forName("com.gtnewhorizons.modularui.api.forge.ItemStackHandler");
         Class<?> pos = Class.forName("com.gtnewhorizons.modularui.api.math.Pos2d");
         Class<?> context = Class.forName("gregtech.nei.GTNEIDefaultHandler$NEITemplateContext");
         Object[] args = new Object[8];
         String[] counts = {"maxItemInputs", "maxItemOutputs", null, "maxFluidInputs", "maxFluidOutputs"};
         for (int i = 0; i < 5; i++) args[i] = handler.getConstructor(int.class).newInstance(counts[i] == null ? 1 : ((Number)field(ui, counts[i])).intValue());
-        args[5] = (java.util.function.Supplier<Float>)() -> 0.0f;
+        final float[] progress = {0.0f};
+        args[5] = (java.util.function.Supplier<Float>)() -> progress[0];
         args[6] = (java.util.function.Supplier<Object>)() -> null;
         args[7] = pos.getConstructor(int.class, int.class).newInstance(0, 0);
         Object ctx = context.getConstructors()[0].newInstance(args);
         Object builder = frontend.getClass().getMethod("createNEITemplate", context).invoke(frontend, ctx);
         Object window = builder.getClass().getMethod("build").invoke(builder);
+        JsonArray backgrounds = new JsonArray();
+        for (Object background : (Object[])window.getClass().getMethod("getBackground").invoke(window))
+            backgrounds.add(drawable(background));
+        profile.add("backgrounds", backgrounds);
         JsonArray out = new JsonArray();
         for (Object widget : (List<?>)window.getClass().getMethod("getChildren").invoke(window)) {
             String type = widget.getClass().getSimpleName();
@@ -75,6 +80,18 @@ public final class BrowserLayoutExporter {
             else continue;
             JsonObject item = new JsonObject(); item.addProperty("type", type);
             if (texture == field(ui, "logo")) item.addProperty("role", "logo");
+            if (type.equals("ProgressBar")) {
+                item.add("filledTexture", drawable(((Object[])field(widget, "fullTexture"))[0]));
+                item.addProperty("direction", String.valueOf(field(widget, "direction")));
+                item.addProperty("imageSize", (Number)field(widget, "imageSize"));
+                JsonArray samples = new JsonArray();
+                java.util.function.Supplier<?> supplier = (java.util.function.Supplier<?>)field(widget, "progress");
+                for (int sample = 0; sample <= 100; sample++) {
+                    progress[0] = sample / 100.0f;
+                    samples.add(new JsonPrimitive((Number)supplier.get()));
+                }
+                item.add("progress", samples);
+            }
             item.add("texture", drawable(texture));
             item.add("pos", pair(widget.getClass().getMethod("getPos").invoke(widget), "x", "y"));
             item.add("size", pair(widget.getClass().getMethod("getSize").invoke(widget), "width", "height"));
@@ -139,7 +156,7 @@ public final class BrowserLayoutExporter {
                 for (String group : new String[]{"ItemInputs", "ItemOutputs", "FluidInputs", "FluidOutputs"}) {
                     item.add(Character.toLowerCase(group.charAt(0)) + group.substring(1), slots(ui, group, group.startsWith("Fluid"), group.endsWith("Outputs")));
                 }
-                try { item.add("widgets", widgets(frontend, ui)); }
+                try { item.add("widgets", widgets(frontend, ui, item)); }
                 catch (Throwable e) { item.addProperty("widgetError", e.toString()); }
                 item.addProperty("useSpecialSlot", (Boolean)field(ui, "useSpecialSlot"));
                 item.add("specialPos", pair(((java.util.function.Supplier<?>)field(ui, "specialItemPositionGetter")).get(), "x", "y"));

@@ -103,8 +103,8 @@
   .variant-backdrop { position:fixed; inset:0; z-index:2500; display:grid; place-items:center; padding:18px; background:#08090bce; }
   .variant-picker { position:relative; width:min(680px,100%); max-height:min(84vh,760px); display:flex; flex-direction:column; padding:26px; border:1px solid #50545a; border-radius:13px; background:#202226; box-shadow:0 30px 90px #000; }
   .variant-close { position:absolute; right:14px; top:12px; width:44px; height:44px; border:0; background:none; color:#aeb3b8; font-size:28px; cursor:pointer; }
-  .variant-picker>small { color:#9ca1a6; font:12px Minecraft,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342c34; }
-  h2 { margin:7px 48px 5px 0; color:#f0f1f2; font:22px/1.25 Minecraft,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
+  .variant-picker>small { color:#9ca1a6; font:9px/13px Minecraft,system-ui,sans-serif; letter-spacing:0; text-shadow:2px 2px #342c34; }
+  h2 { margin:7px 48px 5px 0; color:#f0f1f2; font:18px/24px Minecraft,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
   p { margin:0 40px 17px 0; color:#abb0b5; font-size:13px; line-height:1.5; }
   .variant-search { min-height:46px; display:flex; align-items:center; gap:9px; padding:0 10px; border:1px solid #4b5055; border-radius:8px; background:#121315; }
   .variant-search svg { width:19px; height:19px; fill:none; stroke:#90959a; stroke-width:1.8; stroke-linecap:round; }
@@ -116,9 +116,9 @@
   .variant-row:hover,.variant-row:focus-visible { background:#292c30; }
   .variant-row>span { min-width:0; overflow:hidden; }
   .variant-row strong,.variant-row small,.variant-row em { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .variant-row strong { color:#f0f1f2; font:16px Minecraft,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
-  .variant-row small { margin-top:2px; color:#5457fa; font:12px Minecraft,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
-  .variant-row em { max-height:4.2em; margin-top:4px; overflow:hidden; color:#aca1ab; font:400 13px/1.4 Minecraft,system-ui,sans-serif; font-style:normal; text-shadow:2px 2px #342c34; white-space:normal; }
+  .variant-row strong { color:#f0f1f2; font:18px/24px Minecraft,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
+  .variant-row small { margin-top:2px; color:#5457fa; font:9px/13px Minecraft,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
+  .variant-row em { max-height:4.2em; margin-top:4px; overflow:hidden; color:#aca1ab; font:400 9px/13px Minecraft,system-ui,sans-serif; font-style:normal; text-shadow:2px 2px #342c34; white-space:normal; }
   .variant-row em :global(.minecraft-line) { min-height:1.4em; white-space:nowrap; }
   .variant-row>b { color:#858a8f; font-size:24px; }
   .variant-more { width:100%; min-height:48px; border:0; background:#292c30; color:#d4d7da; cursor:pointer; }

@@ -1,0 +1,14 @@
+{
+  "author": "Ranzu (Ranzuu)",
+  "project": "GTNH Shadow UI",
+  "version": "5.47",
+  "edition": "Standard GTNH 2.9.X",
+  "release": "https://github.com/Ranzuu/Shadow-UI/releases/tag/v2.9.X/v5.47",
+  "asset": "https://github.com/Ranzuu/Shadow-UI/releases/download/v2.9.X/v5.47/Shadow.UI.v5.47.zip",
+  "bytes": 4685085,
+  "sha256": "dbff3a014e64703df3cd82c0ae46ca8762d7da851bafe2e18752dc46c6eff273",
+  "license": "CC-BY-NC-SA-4.0",
+  "licenseSource": "https://raw.githubusercontent.com/Ranzuu/Shadow-UI/v2.9.X/v5.47/LICENSE",
+  "licenseSha256": "1349a4b6148492b44f629e64eed676612e234fe9a839e4f3b277c1482c8849f1",
+  "processing": "Original PNG pixels are preserved; selected textures are losslessly packed into a shared browser atlas. No recolouring."
+}

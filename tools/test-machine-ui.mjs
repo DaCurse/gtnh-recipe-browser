@@ -34,16 +34,32 @@ try {
       const fluid = await stage.locator('.fluid-amount').first().evaluate(element => ({ left: getComputedStyle(element).left, right: getComputedStyle(element).right }));
       assert.equal(fluid.left, '1px');
       assert.equal(await stage.locator('.amount').filter({ hasText: /^0L?$/ }).count(), 0);
-      const voltage = page.locator('.voltage-badge.fmt-6').first();
+      const voltage = page.locator('.voltage-label.fmt-6').first();
       await voltage.waitFor();
       assert.equal(await voltage.evaluate(element => getComputedStyle(element).color), 'rgb(255, 170, 0)');
       assert.equal(await voltage.getAttribute('title'), 'Tier: Medium Voltage');
-      assert.equal(await voltage.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(52, 55, 59)');
       const card = stage.locator('xpath=ancestor::article');
-      assert.equal(await card.locator('.duration-badge svg').count(), 1);
-      assert.match(await card.locator('.duration-badge').getAttribute('title'), /^Processing time$/);
-      assert.match(await card.locator('.meta span').filter({ hasText: /EU\/t/ }).first().getAttribute('title'), /^Energy per tick/);
+      assert.match(await card.evaluate(element => getComputedStyle(element).borderImageSource), /nei-panel\.png/);
+      assert.match(await card.locator('.duration-line').getAttribute('title'), /^Processing time$/);
+      assert.match(await card.locator('.recipe-stats [title]').filter({ hasText: /EU\/t/ }).first().getAttribute('title'), /^Energy per tick/);
+      assert.equal(await card.locator('.recipe-stats').evaluate(element => getComputedStyle(element).color), 'rgb(191, 191, 191)');
       assert.equal(await stage.locator('.ingredient').first().evaluate(element => element.getBoundingClientRect().width), 48);
+      const progress = stage.locator('.recipe-progress').first();
+      await page.waitForFunction(element => element.dataset.animationState === 'running', await progress.elementHandle());
+      const fill = progress.locator('.filled');
+      await fill.evaluate(element => { element.getAnimations()[0].currentTime = 1000; });
+      const initial = await fill.evaluate(element => getComputedStyle(element).clipPath);
+      await page.waitForTimeout(650);
+      assert.notEqual(await fill.evaluate(element => getComputedStyle(element).clipPath), initial, 'Arrow must fill using native sprites');
+      await page.emulateMedia({ reducedMotion: 'reduce' });
+      await page.waitForFunction(element => element.dataset.animationState === 'reduced-motion', await progress.elementHandle());
+      assert.equal(await fill.evaluate(element => element.getAnimations()[0].playState), 'paused');
+      assert.equal(await fill.evaluate(element => element.getAnimations()[0].currentTime), 5000);
+      await page.emulateMedia({ reducedMotion: 'no-preference' });
+      await page.locator('[data-machine-map="gt.recipe.distillationtower"]').last().scrollIntoViewIfNeeded();
+      await page.waitForFunction(element => element.dataset.animationState === 'paused', await progress.elementHandle());
+      await stage.scrollIntoViewIfNeeded();
+      await page.waitForFunction(element => element.dataset.animationState === 'running', await progress.elementHandle());
     }
     if (example.type === 'Chemical Plant') {
       const amount = stage.locator('.amount:not(.fluid-amount)').first();
@@ -73,6 +89,7 @@ try {
   await harmonyOutput.hover();
   await page.getByText('Count: 1,150,554,420', { exact: true }).waitFor();
   await page.getByText('Solid mass: 300%', { exact: true }).waitFor();
+  assert(await harmonyCard.locator('.amount').evaluateAll(elements => elements.every(element => element.scrollWidth <= element.clientWidth)), 'Full quantity labels must fit inside slots');
   await page.mouse.move(0, 0);
   const reactor = new URL(base); reactor.searchParams.set('item', 'i:gregtech:gt.blockmachines:12791'); reactor.searchParams.set('view', 'machine-usages');
   await page.goto(reactor.href);
@@ -94,7 +111,7 @@ try {
   await output.click({ button: 'right' });
   assert.equal(new URL(page.url()).searchParams.get('view'), 'usages');
   assert.equal(new URL(page.url()).searchParams.get('item'), 'i:minecraft:iron_ingot:0');
-  assert(uiImages.size <= 3, 'All machine decorations must share one atlas plus two native slot sprites');
+  assert(uiImages.size <= 4, 'Machine UI shares one atlas, two slot sprites and one NEI panel');
   await page.evaluate(async () => { await navigator.serviceWorker.ready; });
   await page.reload();
   await page.waitForFunction(() => !!navigator.serviceWorker.controller);
@@ -116,5 +133,6 @@ try {
   console.log(JSON.stringify({ nativeTower: true, nativeAssemblyLine: true, nativeChemicalPlant: true,
     tiledCraftingFallback: true, rightClickNavigation: true, responsive: true, offlineNativeUi: true,
     fullCustomCounts: true, offlineCustomCounts: true, teaLogoContained: true, smallCardsBounded: true,
-    noTinyScroll: true, uiImages: uiImages.size, errors }));
+    noTinyScroll: true, nativeAnimations: true, reducedMotion: true, offscreenPause: true,
+    labelsFit: true, uiImages: uiImages.size, errors }));
 } finally { await browser.close(); }

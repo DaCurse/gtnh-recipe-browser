@@ -37,6 +37,7 @@ export async function applyFrontendPresentation(recipe: Recipe): Promise<Recipe>
     return input;
   });
   return { ...recipe, inputs,
+    compactOutputAmounts: true,
     duration: recipe.duration ?? `${Number((custom.durationTicks / 1200).toFixed(2))} m`,
     outputs: recipe.outputs.map(output => {
       const item = items.get(output.id);

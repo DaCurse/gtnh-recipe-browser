@@ -238,7 +238,7 @@
 <style>
   .scrim { position:fixed; inset:0; z-index:20; display:grid; place-items:center; padding:18px; background:#050806c7; backdrop-filter:blur(7px); }
   .manager { position:relative; width:min(620px,100%); max-height:min(88vh,760px); overflow:auto; padding:30px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }
-  .manager h2 { font:23px Minecraft; margin:0 0 8px; text-shadow:2px 2px #342c34; }
+  .manager h2 { font:27px/35px Minecraft; margin:0 0 8px; text-shadow:2px 2px #342c34; }
   .manager>p:not(.eyebrow) { color:#a6abb0; font-size:14px; line-height:1.5; }
   .close { position:absolute; right:12px; top:10px; width:44px; height:44px; border:0; background:none; color:#989da2; font-size:25px; cursor:pointer; }
   .dataset-list { display:flex; flex-direction:column; gap:10px; margin:20px 0; }

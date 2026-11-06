@@ -120,8 +120,13 @@ and migrate same-version cache rows after v7 bootstrap loads successfully.
 ## Assets and attribution
 
 - Upstream exporter/browser: ShadowTheAge, MIT; see `gtnh@ShadowTheAge/LICENSE`.
-- The bundled [Minecraft font](https://www.fontspace.com/minecraft-font-f28180) archive declares the font Public
-  Domain. The supplied inventory-slot artwork remains subject to its owner's terms and is not covered by this
+- NEI theme textures: [GTNH Shadow UI](https://github.com/Ranzuu/Shadow-UI) v5.47 by Ranzu,
+  CC-BY-NC-SA-4.0. Attribution, original sprites, release hashes and licence are preserved in
+  `assets/source/machine-ui`.
+- The pixel-aligned web font derives from [Idrees Hassan's Minecraft Font](https://github.com/IdreesInc/Minecraft-Font),
+  under SIL Open Font License 1.1. Original files, licence and pinned provenance are in
+  `assets/source/minecraft-pixel-font`; see `tools/build-minecraft-font.py`. The previous Public Domain font archive
+  remains in `assets/source/minecraft-font.zip`. The supplied inventory-slot artwork remains subject to its owner's terms and is not covered by this
   repository's source-code license.
 
 However, the project contains some assets from Minecraft (Mojang trademark and copyright), the GTNH development

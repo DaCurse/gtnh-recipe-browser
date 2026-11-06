@@ -53,14 +53,14 @@
   .tooltip-notes {
     margin-top: 4px;
     color: #ffff55;
-    font: 12px/1.45 Minecraft, monospace;
+    font:18px/24px Minecraft, monospace;
     text-shadow: 2px 2px #342c34;
     overflow-wrap: anywhere;
   }
   .tooltip-ore-dictionaries {
     margin-top: 4px;
     color: #aca1ab;
-    font: 12px/1.45 Minecraft, monospace;
+    font:18px/24px Minecraft, monospace;
     text-shadow: 2px 2px #342c34;
     overflow-wrap: anywhere;
   }

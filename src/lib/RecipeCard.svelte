@@ -4,15 +4,15 @@
   import ItemIcon from './ItemIcon.svelte';
   import RecipeGrid from './RecipeGrid.svelte';
   import MachineRecipeStage from './MachineRecipeStage.svelte';
-  import { machineUiBounds, machineUiFor, RECIPE_UI_SCALE } from './machineUi';
-  import { recipeMetadataDescription, voltageTierDescription, voltageTierFormats } from './recipeMetadata';
+  import RecipeStats from './RecipeStats.svelte';
+  import RecipeProgress from './RecipeProgress.svelte';
+  import { defaultProgressWidget, machineUiBounds, machineUiFor, machineUiTheme, RECIPE_UI_SCALE } from './machineUi';
   import { recipeItemInputLabel } from './recipePresentation';
   let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string, view: RecipeView) => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
-  const tierFormats = $derived(voltageTierFormats(recipe.voltage ?? ''));
   const machineUi = $derived(machineUiFor(recipe));
-  const layoutWidth = $derived(machineUi ? machineUiBounds(machineUi).width * RECIPE_UI_SCALE + 28
+  const layoutWidth = $derived(machineUi ? machineUiBounds(machineUi).width * RECIPE_UI_SCALE + 40
     : (Math.max(recipe.layout.itemInputs.columns, recipe.layout.fluidInputs.columns)
-      + Math.max(recipe.layout.itemOutputs.columns, recipe.layout.fluidOutputs.columns)) * 18 * RECIPE_UI_SCALE + 74);
+      + Math.max(recipe.layout.itemOutputs.columns, recipe.layout.fluidOutputs.columns)) * 18 * RECIPE_UI_SCALE + 78);
   const crafter = $derived(recipe.crafterId ? resolve(recipe.crafterId) : undefined);
   let tooltipVisible = $state(false);
   let tooltipX = $state(0);
@@ -80,7 +80,8 @@
   }
 </script>
 
-<article class="card" class:wide={layoutWidth > 550}>
+<article class="card" class:wide={layoutWidth > 550}
+  style:--recipe-text={machineUiTheme.textColor} style:--recipe-title={machineUiTheme.titleColor} style:--recipe-shadow={machineUiTheme.textShadow}>
   <div class="card-head">
     <div>
       {#if crafter}
@@ -98,7 +99,7 @@
             navigate(crafter.id, 'machineUsages');
           }}
         >
-          <ItemIcon entry={crafter} size={40} crisp={false} />
+          <ItemIcon entry={crafter} size={40} frame={false} />
         </button>
       {:else}
         <span class="machine-mark">⚙</span>
@@ -115,25 +116,15 @@
         <RecipeGrid dimensions={recipe.layout.itemInputs} ingredients={itemInputs} {navigate} {resolve} label={itemInputLabel} />
         <RecipeGrid dimensions={recipe.layout.fluidInputs} ingredients={fluidInputs} {navigate} {resolve} label="Fluids" fluid />
       </div>
-      <div class="arrow"><span>→</span></div>
+      <div class="arrow"><RecipeProgress widget={defaultProgressWidget} /></div>
       <div class="io-side">
-        <RecipeGrid dimensions={recipe.layout.itemOutputs} ingredients={itemOutputs} {navigate} {resolve} label="Output" showChances />
+        <RecipeGrid dimensions={recipe.layout.itemOutputs} ingredients={itemOutputs} {navigate} {resolve} label="Output" showChances compactAmounts={recipe.compactOutputAmounts} />
         <RecipeGrid dimensions={recipe.layout.fluidOutputs} ingredients={fluidOutputs} {navigate} {resolve} label="Fluid output" fluid showChances />
       </div>
     </div>
     {/if}
   </div>
-  <div class="meta">
-    {#if recipe.duration}<span class="duration-badge" title="Processing time">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
-      {recipe.duration}
-    </span>{/if}
-    {#if recipe.voltage}<span class={`voltage-badge ${tierFormats.map(format => `fmt-${format}`).join(' ')}`} class:light-tier={tierFormats.some(format => ['1','4','5','8'].includes(format))} title={voltageTierDescription(recipe.voltage)}><b aria-hidden="true">⚡</b> {recipe.voltage}</span>{/if}
-    {#if recipe.amperage}<span title="Current (amperage)">{recipe.amperage}</span>{/if}
-    {#if recipe.eu}<span title={`Total energy${recipe.euExact ? `: ${recipe.euExact}` : ''}`}>{recipe.eu}</span>{/if}
-    {#if recipe.euPerTick}<span title={`Energy per tick${recipe.euPerTickExact ? `: ${recipe.euPerTickExact}` : ''}`}>{recipe.euPerTick}</span>{/if}
-    {#each recipe.metadata ?? [] as line, index (`${index}:${line}`)}<span title={recipeMetadataDescription(line)}>{line}</span>{/each}
-  </div>
+  <RecipeStats {recipe} />
 </article>
 
 {#if crafter && tooltipVisible}
@@ -181,29 +172,21 @@
 {/if}
 
 <style>
-  .card { width:100%; min-width:0; max-width:550px; justify-self:start; background: linear-gradient(145deg,#292b2f,#202225); border:1px solid #414449; border-radius:12px; overflow:hidden; box-shadow:0 8px 24px #0003; }
+  .card { width:100%; min-width:0; max-width:550px; justify-self:start; border:6px solid transparent; border-image:url('/assets/machine-ui/nei-panel.png') 2 fill stretch; image-rendering:pixelated; overflow:hidden; }
   .card.wide { grid-column:1/-1; max-width:none; }
-  .card-head { min-height:48px; padding:0 14px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #3a3d41; color:#e2e4e6; }
+  .card-head { min-height:48px; padding:0 10px; display:flex; align-items:center; justify-content:space-between; color:var(--recipe-title); text-shadow:var(--recipe-shadow); font:400 18px/24px Minecraft,monospace; }
+  .card-head strong { font-weight:400; }
   .machine-mark { display:inline-grid; place-items:center; width:42px; height:42px; margin-right:8px; color:#b4b8bc; vertical-align:middle; }
   .machine-mark.interactive { padding:0; border:0; background:none; cursor:pointer; }
   .machine-mark.interactive:hover { filter:brightness(1.14); }
   .recipe-stage { min-height:132px; overflow-x:auto; scrollbar-width:thin; scrollbar-color:#4b4f54 transparent; }
-  .recipe-flow { min-width:max-content; min-height:132px; display:grid; grid-template-columns:max-content 38px max-content; justify-content:center; align-items:center; gap:6px; padding:12px; }
+  .recipe-flow { min-width:max-content; min-height:132px; display:grid; grid-template-columns:max-content 38px max-content; justify-content:center; align-items:center; gap:6px; padding:12px 8px; }
   .io-side { min-width:48px; display:flex; flex-direction:column; justify-content:center; gap:8px; }
-  .arrow { color:#c5c9cd; text-align:center; }
-  .arrow span { display:block; font:36px system-ui; line-height:1; }
-  .meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px 14px; min-height:31px; border-top:1px solid #3a3d41; color:#b0b4b8; font-size:12px; }
-  .meta span { padding:5px 8px; border-radius:5px; background:#34373b; }
-  .meta span { font:600 13px/1.2 ui-sans-serif,system-ui,sans-serif; }
-  .meta .duration-badge { display:inline-flex; align-items:center; gap:6px; font-variant-numeric:tabular-nums; }
-  .duration-badge svg { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
-  .meta b { color:#d6d8da; }
-  .meta .voltage-badge.light-tier { background:#d0d3d6; text-shadow:1px 1px #ffffff40; }
-  .meta .light-tier b { color:#42474d; }
+  .arrow { width:38px; height:34px; }
   .crafter-scrim { position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }
   .crafter-modal { position:relative; width:min(620px,100%); max-height:min(82vh,720px); overflow:auto; padding:28px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; text-align:left; }
-  .crafter-modal>p { margin:0 46px 7px 0; color:#a5aaaf; font:12px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342c34; }
-  .crafter-modal h2 { margin:0 46px 20px 0; color:#f0f1f2; font:21px/1.25 Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
+  .crafter-modal>p { margin:0 46px 7px 0; color:#a5aaaf; font:9px/13px Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:0; text-shadow:2px 2px #342c34; }
+  .crafter-modal h2 { margin:0 46px 20px 0; color:#f0f1f2; font:18px/24px Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
   .crafter-close { position:absolute; right:10px; top:10px; width:44px; height:44px; display:grid; place-items:center; padding:0; border:0; background:none; color:#aeb3b8; cursor:pointer; }
   .crafter-close svg { width:21px; height:21px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; }
   .crafter-list { display:flex; flex-direction:column; gap:8px; }
@@ -218,7 +201,6 @@
   .crafter-empty { padding:28px 12px; color:#92979c; text-align:center; }
   @media (max-width:520px) {
     .recipe-flow { grid-template-columns:max-content 46px max-content; padding:12px 8px; }
-    .arrow span { font-size:28px; }
     .crafter-scrim { align-items:center; padding:max(16px,env(safe-area-inset-top)) 16px max(16px,env(safe-area-inset-bottom)); }
     .crafter-modal { max-height:calc(100dvh - 32px); padding:24px 16px; }
     .crafter-option { grid-template-columns:56px minmax(0,1fr); }

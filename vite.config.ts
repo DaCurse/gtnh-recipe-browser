@@ -52,7 +52,7 @@ export default defineConfig({
       workbox: {
         clientsClaim: false,
         skipWaiting: true,
-        globPatterns: ['**/*.{js,css,html,otf}'],
+        globPatterns: ['**/*.{js,css,html,otf,woff2}'],
         navigateFallback: 'index.html',
         // App routes use root query parameters. Static documents must reach the server.
         navigateFallbackAllowlist: [/\/(?:index\.html)?(?:\?.*)?$/],

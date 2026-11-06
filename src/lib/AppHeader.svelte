@@ -74,8 +74,8 @@
   .brand-cube { display:grid; place-items:center; width:42px; height:42px; flex:0 0 42px; }
   .brand-cube img { display:block; width:100%; height:100%; object-fit:contain; filter:drop-shadow(0 2px 4px #0009); }
   .brand span:last-child { display:flex; flex-direction:column; line-height:1; }
-  .brand b { font:20px Minecraft; letter-spacing:2px; color:#eef0f2; text-shadow:2px 2px #342c34; }
-  .brand small { margin-top:5px; color:#81858a; font:11px Minecraft; letter-spacing:1.2px; text-shadow:2px 2px #342c34; }
+  .brand b { font:18px/24px Minecraft; letter-spacing:0; color:#eef0f2; text-shadow:2px 2px #342c34; }
+  .brand small { margin-top:5px; color:#81858a; font:9px/13px Minecraft; letter-spacing:0; text-shadow:2px 2px #342c34; }
   .version { grid-column:2; min-width:190px; min-height:48px; padding:6px 35px 6px 13px; position:relative; border:1px solid #3a3d42; border-radius:8px; background:#212327; text-align:left; cursor:pointer; }
   .version-title,.version small { display:block; }
   .version .version-title { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; }

@@ -1,8 +1,6 @@
-@font-face { font-family:Minecraft; src:url('/assets/MinecraftRegular-Bmg3.otf') format('opentype'); font-weight:400; font-style:normal; font-display:swap; }
-@font-face { font-family:Minecraft; src:url('/assets/MinecraftBold-nMK1.otf') format('opentype'); font-weight:700; font-style:normal; font-display:swap; }
-@font-face { font-family:Minecraft; src:url('/assets/MinecraftItalic-R8Mo.otf') format('opentype'); font-weight:400; font-style:italic; font-display:swap; }
-@font-face { font-family:Minecraft; src:url('/assets/MinecraftBoldItalic-1y1e.otf') format('opentype'); font-weight:700; font-style:italic; font-display:swap; }
-:root { font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; color:#e7e9eb; background:#111214; font-synthesis:none; }
+@font-face { font-family:Minecraft; src:url('/assets/minecraft-pixel.woff2') format('woff2'); font-weight:400; font-style:normal; font-display:swap; }
+@font-face { font-family:Minecraft; src:url('/assets/minecraft-pixel-bold.woff2') format('woff2'); font-weight:700; font-style:normal; font-display:swap; }
+:root { font-family:Inter,ui-sans-serif,system-ui,-apple-system,sans-serif; color:#e7e9eb; background:#111214; font-synthesis:style; }
 * { box-sizing:border-box; }
 body { margin:0; min-width:320px; min-height:100vh; background:radial-gradient(circle at 70% 5%,#26292d 0,transparent 34%),#111214; }
 button,input { font:inherit; }
@@ -70,17 +68,17 @@ aside footer { margin-top:auto; min-height:42px; padding:0 14px; border-top:1px 
 .item-head.compact .tooltip-text { margin-top:0; }
 .item-head.compact .tooltip-text .minecraft-line { min-height:1.15em; }
 .item-head.compact .tooltip-mod { margin-top:1px; line-height:1.1; }
-.eyebrow { margin:0 0 8px; color:#a5aaaf; font:14px/1.3 Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:.08em; text-shadow:2px 2px #342C34; }
-h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-spacing:.3px; text-shadow:2px 2px #342C34; }
-.minecraft-tooltip { width:100%; max-height:min(52vh,560px); overflow-y:auto; padding:6px 12px 8px; border:2px solid #100010; border-radius:2px; background:#100010; box-shadow:inset 0 0 0 2px #4300d650,0 7px 20px #0005; font:400 16px/1.42 Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342c34; scrollbar-color:#51455b #100010; }
-.tooltip-header { color:#fff; font-size:19px; }
+.eyebrow { margin:0 0 8px; color:#a5aaaf; font:18px/24px Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:0; text-shadow:2px 2px #342C34; }
+h1 { margin:0 0 9px; font:36px/46px Minecraft; color:#f0f1f2; letter-spacing:0; text-shadow:2px 2px #342C34; }
+.minecraft-tooltip { width:100%; max-height:min(52vh,560px); overflow-y:auto; padding:6px 12px 8px; border:2px solid #100010; border-radius:2px; background:#100010; box-shadow:inset 0 0 0 2px #4300d650,0 7px 20px #0005; font:400 18px/24px Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342c34; scrollbar-color:#51455b #100010; }
+.tooltip-header { color:#fff; font-size:18px; }
 .tooltip-debug { margin-top:1px; color:#ffffff80; font:11px/16px ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace; overflow-wrap:anywhere; word-spacing:1px; text-shadow:none; user-select:text; }
 .tooltip-text { margin-top:1px; color:#aca1ab; }
 .tooltip-formula { display:inline-block; margin-right:7px; color:#fff; }
 .tooltip-mod { margin-top:2px; color:#5457fa; line-height:1.2; }
 .tooltip-action { margin-top:8px; color:#ffff55; }
-.minecraft-text,.minecraft-line { display:block; }
-.minecraft-line { min-height:1.42em; white-space:pre-wrap; overflow-wrap:anywhere; }
+.minecraft-text,.minecraft-line { display:block; font-kerning:none; font-variant-ligatures:none; letter-spacing:0; }
+.minecraft-line { min-height:1lh; white-space:pre-wrap; overflow-wrap:anywhere; }
 .tooltip-preview .minecraft-line.empty { display:none; }
 .fmt-0 { color:#000; }.fmt-1 { color:#0000aa; }.fmt-2 { color:#00aa00; }.fmt-3 { color:#00aaaa; }
 .fmt-4 { color:#aa0000; }.fmt-5 { color:#aa00aa; }.fmt-6 { color:#ffaa00; }.fmt-7 { color:#aaa; }
@@ -144,7 +142,7 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
 .recipe-pagination span { color:#92979c; font-size:12px; text-align:center; white-space:nowrap; }
 .export-scrim { position:fixed; inset:0; z-index:70; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }
 .export-dialog { position:relative; width:min(460px,100%); padding:28px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }
-.export-dialog h2 { margin:0 46px 10px 0; color:#f0f1f2; font:21px/1.25 Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
+.export-dialog h2 { margin:0 46px 10px 0; color:#f0f1f2; font:18px/24px Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }
 .export-dialog>p:not(.eyebrow),.export-message { margin:0; color:#a5aaaf; font-size:13px; line-height:1.5; }
 .export-filter { display:inline; margin:0; padding:2px 5px; border:1px solid #3f4449; border-radius:4px; background:#151619; color:#e1e4e7; font:12px/1.4 ui-monospace,SFMono-Regular,Consolas,'Liberation Mono',monospace; white-space:pre-wrap; overflow-wrap:anywhere; vertical-align:baseline; }
 .export-close { position:absolute; right:10px; top:10px; width:44px; height:44px; border:0; background:none; color:#aeb3b8; font-size:25px; cursor:pointer; }
@@ -163,9 +161,9 @@ h1 { margin:0 0 9px; font:clamp(24px,3vw,35px) Minecraft; color:#f0f1f2; letter-
   .item-summary { gap:4px; }
   .item-summary strong { font-size:14px; font-weight:650; color:#eceef0; }
   .item-summary small { font-size:10px; color:#858a8f; letter-spacing:.2px; }
-  .tooltip-preview { display:block; max-height:2.8em; margin-top:2px; overflow:hidden; color:#aca1ab; font:400 15px/1.4 Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342C34; white-space:normal; }
+  .tooltip-preview { display:block; max-height:2.8em; margin-top:2px; overflow:hidden; color:#aca1ab; font:400 18px/24px Minecraft,ui-monospace,monospace; text-shadow:2px 2px #342C34; white-space:normal; }
   .tooltip-preview .minecraft-line { min-height:1.4em; }
-  .tooltip-preview b { margin-right:5px; color:#fff; font:400 15px Minecraft; text-shadow:2px 2px #342C34; }
+  .tooltip-preview b { margin-right:5px; color:#fff; font:400 18px/24px Minecraft; text-shadow:2px 2px #342C34; }
   .row-arrow { display:block; color:#777c81; font-size:25px; }
   .back { display:flex; }.item-head { gap:12px; }.item-overview { width:calc(100% - 100px); }.minecraft-tooltip { max-height:none; padding:6px 10px 8px; font-size:15px; }.tooltip-header { font-size:17px; }.tooltip-debug { font-size:10px; }
   .view-tabs { margin-top:20px;position:sticky;top:-12px;z-index:3;background:#191b1e; }.type-row { position:sticky;top:35px;z-index:3;background:#191b1e;padding:10px 0;margin:0 auto 8px; }

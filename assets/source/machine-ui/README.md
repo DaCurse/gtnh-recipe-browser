@@ -1,6 +1,19 @@
 # Native UI sprite provenance
 
-Original PNGs in `textures/` are extracted without pixel changes from the GTNH
+Recipe panels use **GTNH Shadow UI 5.47 (standard GTNH 2.9.X)** by
+Ranzu/Ranzuu. Release, verified ZIP digest and edition are pinned in
+`shadow-ui-provenance.json`. Original overridden PNGs are preserved in
+`textures/`; the `resourcePack` field in `textures.json` identifies them.
+They are under **CC-BY-NC-SA-4.0**, with the complete licence included in
+`Shadow-UI-CC-BY-NC-SA-4.0.txt`. The lossless browser atlas repacks these images
+without recolouring them. The pack's `pack.mcmeta` supplies the GUI text colours
+and shadow settings. This resource-pack licence is separate from the licences
+of the underlying mods and the browser's source code.
+
+[Author and source](https://github.com/Ranzuu/Shadow-UI) ·
+[Pinned release](https://github.com/Ranzuu/Shadow-UI/releases/tag/v2.9.X/v5.47)
+
+Original non-overridden PNGs in `textures/` are extracted without pixel changes from the GTNH
 2.9.0 mod jars listed in `textures.json`. Each entry records the original resource
 path, file SHA-256 and jar filename. `runtime.json` records jar digests and runtime
 snapshot provenance; `atlas.json` records the lossless sprite placement.
