@@ -23,7 +23,7 @@
   let width = $state(0);
   let height = $state(0);
   let hydrated = $state<CatalogEntry>();
-  const displayEntry = $derived(hydrated?.id === entry.id ? hydrated : entry);
+  const displayEntry = $derived(hydrate ? hydrated?.id === entry.id ? hydrated : undefined : entry);
   $effect(() => {
     const current = entry;
     const load = hydrate;
@@ -33,8 +33,11 @@
     // Avoid downloading detail partitions when the pointer only crosses an icon.
     const timer = setTimeout(() => {
       void load(current.id, controller.signal).then((detail) => {
-        if (!controller.signal.aborted) hydrated = detail;
-      }).catch(() => { /* Keep the lightweight tooltip usable when offline. */ });
+        if (!controller.signal.aborted) hydrated = detail ?? current;
+      }).catch(() => {
+        // A failed/offline load may show the fallback once, without later recolouring.
+        if (!controller.signal.aborted) hydrated = current;
+      });
     }, 100);
     return () => { clearTimeout(timer); controller.abort(); };
   });
@@ -64,9 +67,11 @@
   });
 </script>
 
+{#if displayEntry}
 <div class="floating-tooltip" style={position} bind:this={element}>
   <CatalogTooltip entry={displayEntry} {action} {notes} />
 </div>
+{/if}
 
 <style>
   .floating-tooltip { position:fixed; z-index:2000; width:min(460px,calc(100vw - 24px)); pointer-events:none; text-align:left; }
