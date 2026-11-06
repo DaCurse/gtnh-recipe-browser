@@ -1,7 +1,7 @@
 import snapshot from './generated/machine-ui.json';
 import type { Ingredient, Recipe } from './types';
 
-export const RECIPE_UI_SCALE = 3;
+export const RECIPE_UI_SCALE = 48 / 18;
 
 type UiPoint = [number, number];
 export type UiGroup = 'itemInputs' | 'itemOutputs' | 'fluidInputs' | 'fluidOutputs';

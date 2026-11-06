@@ -41,9 +41,9 @@ try {
       assert.equal(await voltage.evaluate(element => getComputedStyle(element).backgroundColor), 'rgb(52, 55, 59)');
       const card = stage.locator('xpath=ancestor::article');
       assert.equal(await card.locator('.duration-badge svg').count(), 1);
-      assert.match(await card.locator('.duration-badge').getAttribute('title'), /^Duration: processing time/);
-      assert.match(await card.locator('.meta span').filter({ hasText: /EU\/t/ }).first().getAttribute('title'), /^Power usage per tick/);
-      assert.equal(await stage.locator('.ingredient').first().evaluate(element => element.getBoundingClientRect().width), 54);
+      assert.match(await card.locator('.duration-badge').getAttribute('title'), /^Processing time$/);
+      assert.match(await card.locator('.meta span').filter({ hasText: /EU\/t/ }).first().getAttribute('title'), /^Energy per tick/);
+      assert.equal(await stage.locator('.ingredient').first().evaluate(element => element.getBoundingClientRect().width), 48);
     }
     if (example.type === 'Chemical Plant') {
       const amount = stage.locator('.amount:not(.fluid-amount)').first();
@@ -65,7 +65,7 @@ try {
   await page.goto(url.href); await page.getByRole('button', { name: 'Crafting (Shapeless)', exact: true }).waitFor({ timeout: 120000 });
   await page.getByRole('button', { name: 'Crafting (Shapeless)', exact: true }).click();
   await page.locator('.recipe-flow .slot-grid').first().waitFor();
-  assert.equal(await page.locator('.recipe-flow .slot-grid').first().evaluate(element => getComputedStyle(element).gridAutoRows), '54px');
+  assert.equal(await page.locator('.recipe-flow .slot-grid').first().evaluate(element => getComputedStyle(element).gridAutoRows), '48px');
   assert(await page.locator('.recipe-flow .slot-surface pattern').count() > 0, 'Fallback grids use shared tiling surfaces');
   await page.getByRole('button', { name: 'Furnace', exact: true }).click();
   const output = page.locator('[data-machine-map="gt.recipe.furnace"] .ingredient').last();

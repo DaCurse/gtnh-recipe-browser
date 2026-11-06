@@ -101,8 +101,9 @@
     <div
       class="slot-grid"
       class:positioned={positions !== undefined}
+      style:--slot-size={`${18 * RECIPE_UI_SCALE}px`}
       style:width={`${gridWidth * RECIPE_UI_SCALE}px`} style:height={`${gridHeight * RECIPE_UI_SCALE}px`}
-      style:grid-template-columns={`repeat(${dimensions.columns}, 54px)`}
+      style:grid-template-columns={`repeat(${dimensions.columns}, var(--slot-size))`}
       aria-label={label}
     >
       <SlotSurface width={gridWidth} height={gridHeight} slots={positions} {fluid} />
@@ -217,13 +218,13 @@
 <style>
   .grid-wrap { display:flex; flex-direction:column; align-items:center; gap:4px; }
   .grid-label { color:#8d9297; font-size:10px; letter-spacing:.65px; text-transform:uppercase; }
-  .slot-grid { position:relative; display:grid; grid-auto-rows:54px; }
+  .slot-grid { position:relative; display:grid; grid-auto-rows:var(--slot-size); }
   .slot-grid.positioned { display:block; }
   .positioned .ingredient, .positioned .empty-slot { position:absolute; }
-  .ingredient { position:relative; width:54px; height:54px; padding:0; border:0; background:none; cursor:pointer; }
+  .ingredient { position:relative; width:var(--slot-size); height:var(--slot-size); padding:0; border:0; background:none; cursor:pointer; }
   .ingredient:hover { filter:brightness(1.14); z-index:1; }
-  .empty-slot { position:relative; width:54px; height:54px; }
-  .amount { position:absolute; right:1px; bottom:1px; z-index:2; max-width:53px; overflow:hidden; color:#fff; font:400 14px/1 Minecraft,monospace; letter-spacing:-.03em; white-space:nowrap; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000,1px 1px #000; }
+  .empty-slot { position:relative; width:var(--slot-size); height:var(--slot-size); }
+  .amount { position:absolute; right:1px; bottom:1px; z-index:2; max-width:calc(var(--slot-size) - 2px); overflow:hidden; color:#fff; font:400 14px/1 Minecraft,monospace; letter-spacing:-.03em; white-space:nowrap; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000,1px 1px #000; }
   .amount.fluid-amount { left:1px; right:auto; font-size:12px; text-align:left; }
   .chance { position:absolute; left:1px; top:1px; z-index:3; color:#fdd835; font:400 11px/1 Minecraft,monospace; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000; }
   .ore-count { position:absolute; right:1px; top:1px; z-index:2; max-width:18px; overflow:hidden; color:#dfe2e5; font:400 8px/1 Minecraft,monospace; white-space:nowrap; text-overflow:ellipsis; text-shadow:1px 1px #000; }

@@ -35,7 +35,7 @@ recipe-dependent overlays are not translated. Existing recipe metadata remains
 in text badges; progress paths are static, not a simulation of machine state.
 Ingredients, amounts, chances, groups and exports are unchanged. Both renderers
 share `RecipeGrid` for cycling, chooser dialogs, tooltips and navigation. Native
-layouts use 3x logical scale (54px slots) and scroll inside the card on narrow screens.
+layouts use a shared 48px slot scale and scroll inside the card on narrow screens.
 
 ## Stack and tier labels
 

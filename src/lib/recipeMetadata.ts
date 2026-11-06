@@ -44,23 +44,23 @@ export function voltageTierDescription(tier: string): string {
 
 export function recipeMetadataDescription(line: string): string {
   const descriptions: ReadonlyArray<readonly [string, string]> = [
-    ['Heat:', 'Required operating temperature and suitable heating coils.'],
-    ['Requires low gravity', 'This recipe needs a machine in a low-gravity dimension.'],
-    ['Requires cleanroom', 'This recipe needs a machine inside a working cleanroom.'],
-    ['Fuel type:', 'The generator fuel category assigned to this recipe.'],
-    ['Fuel value:', 'Energy available from each litre of this fuel.'],
-    ['To start:', 'Energy the fusion reactor must store before starting this recipe.'],
-    ['Multi-step plasma', 'This plasma recipe requires multi-step processing.'],
-    ['Single-step plasma', 'This plasma recipe uses single-step processing.'],
-    ['Plasma tier:', 'Required plasma-processing tier.'],
-    ['Requires tier', 'Minimum machine upgrade tier required for this recipe.'],
-    ['QFT focus tier:', 'Required Quantum Force Transformer focusing tier.'],
-    ['Glass tier:', 'Minimum voltage tier of the machine structure’s glass.'],
-    ['Recycle recipe', 'This recipe recovers materials through recycling.'],
-    ['Kinetic energy:', 'Allowed particle energy range for this accelerator recipe.'],
+    ['Heat:', 'Required heat and coils'],
+    ['Requires low gravity', 'Needs low gravity'],
+    ['Requires cleanroom', 'Needs a working cleanroom'],
+    ['Fuel type:', 'Generator fuel category'],
+    ['Fuel value:', 'Energy per litre of fuel'],
+    ['To start:', 'Fusion startup energy'],
+    ['Multi-step plasma', 'Multi-step plasma processing'],
+    ['Single-step plasma', 'Single-step plasma processing'],
+    ['Plasma tier:', 'Plasma processing tier'],
+    ['Requires tier', 'Required machine upgrade tier'],
+    ['QFT focus tier:', 'Quantum Force Transformer focus tier'],
+    ['Glass tier:', 'Required glass tier'],
+    ['Recycle recipe', 'Recovers materials'],
+    ['Kinetic energy:', 'Allowed kinetic energy range'],
   ];
   return descriptions.find(([prefix]) => line.startsWith(prefix))?.[1]
-    ?? 'Additional machine-specific information for this recipe.';
+    ?? 'Machine-specific recipe information';
 }
 
 export function voltageTierName(tier: number): string {

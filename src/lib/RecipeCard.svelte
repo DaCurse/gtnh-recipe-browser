@@ -121,14 +121,14 @@
     {/if}
   </div>
   <div class="meta">
-    {#if recipe.duration}<span class="duration-badge" title="Duration: processing time for one recipe at its base power">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></svg>
+    {#if recipe.duration}<span class="duration-badge" title="Processing time">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" /><path d="M12 7.5V12l3 2" /></svg>
       {recipe.duration}
     </span>{/if}
     {#if recipe.voltage}<span class={`voltage-badge ${tierFormats.map(format => `fmt-${format}`).join(' ')}`} class:light-tier={tierFormats.some(format => ['1','4','5','8'].includes(format))} title={voltageTierDescription(recipe.voltage)}><b aria-hidden="true">⚡</b> {recipe.voltage}</span>{/if}
-    {#if recipe.amperage}<span title="Amperage: current drawn while this recipe runs">{recipe.amperage}</span>{/if}
-    {#if recipe.eu}<span title={`Total energy for one recipe${recipe.euExact ? `: ${recipe.euExact}` : ''}`}>{recipe.eu}</span>{/if}
-    {#if recipe.euPerTick}<span title={`Power usage per tick (20 ticks per second)${recipe.euPerTickExact ? `: ${recipe.euPerTickExact}` : ''}`}>{recipe.euPerTick}</span>{/if}
+    {#if recipe.amperage}<span title="Current (amperage)">{recipe.amperage}</span>{/if}
+    {#if recipe.eu}<span title={`Total energy${recipe.euExact ? `: ${recipe.euExact}` : ''}`}>{recipe.eu}</span>{/if}
+    {#if recipe.euPerTick}<span title={`Energy per tick${recipe.euPerTickExact ? `: ${recipe.euPerTickExact}` : ''}`}>{recipe.euPerTick}</span>{/if}
     {#each recipe.metadata ?? [] as line, index (`${index}:${line}`)}<span title={recipeMetadataDescription(line)}>{line}</span>{/each}
   </div>
 </article>
@@ -190,9 +190,9 @@
   .arrow span { display:block; font:36px system-ui; line-height:1; }
   .meta { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:10px 14px; min-height:31px; border-top:1px solid #3a3d41; color:#b0b4b8; font-size:12px; }
   .meta span { padding:5px 8px; border-radius:5px; background:#34373b; }
-  .meta span { font:13px/1.2 ui-sans-serif,system-ui,sans-serif; }
+  .meta span { font:600 13px/1.2 ui-sans-serif,system-ui,sans-serif; }
   .meta .duration-badge { display:inline-flex; align-items:center; gap:6px; font-variant-numeric:tabular-nums; }
-  .duration-badge svg { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:1.7; stroke-linecap:round; stroke-linejoin:round; }
+  .duration-badge svg { width:16px; height:16px; flex:none; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
   .meta b { color:#d6d8da; }
   .meta .voltage-badge.light-tier { background:#d0d3d6; text-shadow:1px 1px #ffffff40; }
   .meta .light-tier b { color:#42474d; }
