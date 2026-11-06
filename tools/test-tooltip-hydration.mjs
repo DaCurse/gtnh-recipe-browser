@@ -28,5 +28,10 @@ try {
   await tile.focus();
   await page.locator('.floating-tooltip').waitFor({ timeout: 120000 });
   assert((await page.locator('.floating-tooltip').innerText()).includes(await tile.getAttribute('aria-label')));
+  // Moving over the same icon must not tear down the already formatted tooltip.
+  for (let step = 0; step < 8; step++) {
+    await tile.dispatchEvent('pointermove', { pointerType: 'mouse', clientX: 200 + step, clientY: 500 });
+    assert.equal(await page.locator('.floating-tooltip').count(), 1, 'Pointer movement must not restart tooltip hydration');
+  }
   console.log('Tooltip waits for details; cancelled hover stays hidden; cached details reopen successfully');
 } finally { await browser.close(); }

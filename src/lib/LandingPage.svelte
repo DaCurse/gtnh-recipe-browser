@@ -43,7 +43,8 @@
   let x = $state(0), y = $state(0);
   function pointer(event: PointerEvent, entry: CatalogEntry) {
     if (event.pointerType === 'touch') return;
-    hovered = entry; x = event.clientX; y = event.clientY;
+    if (hovered?.id !== entry.id) hovered = entry;
+    x = event.clientX; y = event.clientY;
   }
 </script>
 

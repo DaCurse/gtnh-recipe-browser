@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import CatalogTooltip from './CatalogTooltip.svelte';
   import type { CatalogEntry } from './types';
 
@@ -23,16 +24,18 @@
   let width = $state(0);
   let height = $state(0);
   let hydrated = $state<CatalogEntry>();
+  const entryId = $derived(entry.id);
   const displayEntry = $derived(hydrate ? hydrated?.id === entry.id ? hydrated : undefined : entry);
   $effect(() => {
-    const current = entry;
+    const id = entryId;
+    const current = untrack(() => entry);
     const load = hydrate;
     hydrated = undefined;
     if (!load) return;
     const controller = new AbortController();
     // Avoid downloading detail partitions when the pointer only crosses an icon.
     const timer = setTimeout(() => {
-      void load(current.id, controller.signal).then((detail) => {
+      void load(id, controller.signal).then((detail) => {
         if (!controller.signal.aborted) hydrated = detail ?? current;
       }).catch(() => {
         // A failed/offline load may show the fallback once, without later recolouring.
