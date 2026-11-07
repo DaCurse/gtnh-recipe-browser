@@ -26,6 +26,7 @@ export default defineConfig({
         'favicon.ico',
         'assets/machine-ui/*.png',
         'assets/gtnh-logo.png',
+        'assets/gtnh-logo-header.webp',
         'assets/gtnh-logo-192.png'
       ],
       manifest: {

@@ -95,6 +95,10 @@
   const specialPageCount = $derived(browserState.specialPageCount);
   const specialSearchPending = $derived(browserState.specialSearchPending);
   const recipeCount = (view: RecipeView) => browserState.recipeCount(view);
+  function countFontSize(count: number): string {
+    const length = count.toLocaleString().length;
+    return `${length <= 3 ? 11 : length <= 5 ? 10 : length <= 7 ? 9 : 8}px`;
+  }
   let recipeListWidth = $state(0);
   const oreCardWidth = $derived(browserState.oreCardWidth);
   $effect(() => {
@@ -319,7 +323,7 @@
       {:else}
         <span class="machine-fallback">⚙</span>
       {/if}
-        <span class="machine-tab-count" aria-hidden="true">{(machineCounts.get(tab) ?? 0).toLocaleString()}</span>
+        <span class="machine-tab-count" style:font-size={countFontSize(machineCounts.get(tab) ?? 0)} aria-hidden="true">{(machineCounts.get(tab) ?? 0).toLocaleString()}</span>
       </span>
       <small>{tab}</small>
     </button>
@@ -340,7 +344,7 @@
         <span class="special-fallback">{tab.glyph ?? '✦'}</span>
       {/if}
         {#if browserState.specialCount(mode, tab.id) !== undefined}
-          <span class="machine-tab-count" aria-hidden="true">{browserState.specialCount(mode, tab.id)!.toLocaleString()}</span>
+          <span class="machine-tab-count" style:font-size={countFontSize(browserState.specialCount(mode, tab.id)!)} aria-hidden="true">{browserState.specialCount(mode, tab.id)!.toLocaleString()}</span>
         {/if}
       </span>
       <small>{tab.shortLabel ?? tab.label}</small>

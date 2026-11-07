@@ -106,7 +106,7 @@ h1 { margin:0 0 9px; font:36px/46px Minecraft; color:#f0f1f2; letter-spacing:0; 
 .type-row button.machine-tab { width:92px; height:78px; flex-basis:92px; gap:1px; font-size:19px; }
 .type-row button.active { color:#f0f1f2; }
 .machine-tab-icon { position:relative; display:grid; place-items:center; width:60px; height:60px; isolation:isolate; }
-.machine-tab-count { position:absolute; right:3px; bottom:2px; pointer-events:none; color:#e1e3e5; font:400 9px/12px Minecraft,monospace; text-shadow:1px 1px #000,-1px 0 #000,0 -1px #000; }
+.machine-tab-count { position:absolute; right:3px; bottom:2px; pointer-events:none; color:#e1e3e5; font:400 11px/14px Minecraft,monospace; text-shadow:1px 1px #000,-1px 0 #000,0 -1px #000; }
 .type-row button.machine-tab small { min-width:0; max-width:calc(100% - 4px); overflow:hidden; color:inherit; font:400 9px/13px Minecraft,monospace; text-shadow:1px 1px #000; letter-spacing:0; text-overflow:ellipsis; white-space:nowrap; }
 .type-row button.special-tab { position:relative; width:92px; height:78px; flex-basis:92px; gap:1px; border:1px solid transparent; border-radius:7px; color:#92979c; font-size:19px; }
 .type-row button.special-tab.active { color:#f0f1f2; }

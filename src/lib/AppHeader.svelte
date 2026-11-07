@@ -22,19 +22,17 @@
 </script>
 
 <header>
-  <a class="brand" href="./" aria-label="GTNH Recipe Browser home" onclick={(event) => {
+  <a class="brand" href="./" title="Home" onclick={(event) => {
     event.preventDefault();
     showHome();
   }}>
-    <span class="brand-cube"><img src="./assets/gtnh-logo.png" alt="" /></span>
-    <span><b>GTNH</b><small>RECIPE BROWSER</small></span>
+    <span class="brand-cube"><img src="./assets/gtnh-logo-header.webp" width="84" height="84" alt="" /></span>
+    <span><b>GTNH</b> <small>RECIPE BROWSER</small></span>
   </a>
   <button
     class:has-update={datasetUpdateAvailable}
     class="version"
-    aria-label={datasetUpdateAvailable
-      ? `${datasetVersion}, new dataset revision available`
-      : `${datasetVersion}, open dataset manager`}
+    title="Open dataset manager"
     onclick={openDatasetManager}
   >
     <span class="version-title">
@@ -79,7 +77,7 @@
   .version { grid-column:2; min-width:190px; min-height:48px; padding:6px 35px 6px 13px; position:relative; border:1px solid #3a3d42; border-radius:8px; background:#212327; text-align:left; cursor:pointer; }
   .version-title,.version small { display:block; }
   .version .version-title { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:700; }
-  .version small { color:#85898e; font-size:11px; margin:3px 0 0 14px; }
+  .version small { color:#969ba1; font-size:11px; margin:3px 0 0 14px; }
   .version i { display:inline-block; width:7px; height:7px; border-radius:50%; background:#63d17b; box-shadow:0 0 6px #39b85c; }
   .version.has-update { border-color:#746b3f; box-shadow:0 0 0 1px #d9c4591c; }
   .version.has-update small { color:#d8ca7c; }

@@ -139,10 +139,11 @@ export function materializeCatalog(
 
   const goodsEntriesById = new Map(goodsEntries.map((entry) => [entry.id, entry]));
   const groupEntries = [...catalog.oreDictionaries, ...anonymousGroups].map((group): CatalogEntry => {
-    const members = group.itemIds
-      .map((id) => goodsEntriesById.get(id))
-      .filter((entry) => entry !== undefined);
-    const representative = members[0];
+    let representative: CatalogEntry | undefined;
+    for (const id of group.itemIds) {
+      representative = goodsEntriesById.get(id);
+      if (representative) break;
+    }
     const productionShards = new Set<string>();
     const usageShards = new Set<string>();
     const specialProductionShards = new Set(group.specialProductionShards ?? []);
