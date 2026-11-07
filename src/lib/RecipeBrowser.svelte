@@ -312,7 +312,7 @@
   {#each specialTypes as tab (tab.id)}
     {@const tabIcon = tab.iconId ? entryById.get(tab.iconId) : undefined}
     <button
-      class:special-tab={true}
+      class="machine-tab special-tab"
       class:active={browserState.specialType === tab.id}
       onclick={() => browserState.selectSpecialType(tab.id)}
       title={tab.label}

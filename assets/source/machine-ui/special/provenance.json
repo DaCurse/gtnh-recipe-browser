@@ -1,0 +1,45 @@
+{
+  "resourcePack": "Shadow UI 5.47",
+  "resourcePackSha256": "dbff3a014e64703df3cd82c0ae46ca8762d7da851bafe2e18752dc46c6eff273",
+  "license": "CC-BY-NC-SA-4.0",
+  "cropsNhVersion": "2.0.140",
+  "cropsNhRef": "db0a9936bdcc00ac72c083790dbce8c76b73df41",
+  "images": [
+    {
+      "path": "assets/cropsnh/textures/gui/nei/breeding2.png",
+      "sourceSha256": "769cae55c5e60daea45ddd219ab7cdd3723296d62162199dcb4fa8a63706a5fd",
+      "output": "crops-breeding2.png",
+      "outputSha256": "a9cad74df7c7375d24e9af6dfbe593c23c6c18ec92623ee6598beae6d51a2182",
+      "crop": [
+        5,
+        11,
+        166,
+        87
+      ]
+    },
+    {
+      "path": "assets/cropsnh/textures/gui/nei/breeding4.png",
+      "sourceSha256": "474035f5cdaf2116947f968a2be5bbb1fc6252fbcdfd218a4aa1d66d1f2d7ba6",
+      "output": "crops-breeding4.png",
+      "outputSha256": "0c1b98edd1c2900949287673c602e4be8476ddb936429d31a451662c797d5564",
+      "crop": [
+        5,
+        11,
+        166,
+        87
+      ]
+    },
+    {
+      "path": "assets/cropsnh/textures/gui/nei/cropList.png",
+      "sourceSha256": "0de4110c6c94fa3e31d8920907a21945555eba302584555ea94db2e8907c7f98",
+      "output": "crops-cropList.png",
+      "outputSha256": "7c7cb8d0ac7fddba4bf4fbd608e9669cddf1b53f66e1204147214c0426f3925f",
+      "crop": [
+        5,
+        11,
+        166,
+        85
+      ]
+    }
+  ]
+}

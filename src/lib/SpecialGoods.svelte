@@ -2,6 +2,9 @@
   import CatalogVariantIcon from './CatalogVariantIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
+  import SlotSurface from './SlotSurface.svelte';
+  import { RECIPE_UI_SCALE, type UiSlot } from './machineUi';
+  import { oreCycle } from './oreCycle';
   import { boundedSpecialPage, displaySpecialAmount, type SpecialGoods, type SpecialResolver } from './specialData';
   import type { CatalogBrowseEntry, CatalogEntry, RecipeView } from './types';
 
@@ -16,7 +19,9 @@
     compact = false,
     wrapLabels = false,
     horizontal = false,
-    hideLabels = false
+    hideLabels = false,
+    positions,
+    nativeBackground = false
   }: {
     goods: readonly SpecialGoods[];
     resolve: SpecialResolver;
@@ -33,6 +38,8 @@
     horizontal?: boolean;
     /** Omit the caption under the slot when the parent supplies row text. */
     hideLabels?: boolean;
+    positions?: UiSlot[];
+    nativeBackground?: boolean;
   } = $props();
 
   let page = $state(0);
@@ -47,7 +54,7 @@
   const visible = $derived(boundedSpecialPage(goods, page, safePageSize));
   const tooltipGoods = $derived(goods.find((item) => item.goodsId === tooltipId));
   const tooltipEntry = $derived(tooltipGoods ? resolve(
-    tooltipGoods.oreDictionaryId ?? tooltipGoods.alternatives?.[0] ?? tooltipGoods.goodsId
+    tooltipGoods.oreDictionaryId ?? displayId(tooltipGoods)
   ) : undefined);
   const tooltipNotes = $derived(tooltipGoods?.tooltipNotes);
   const chosenItem = $derived(chosenItemId ? resolve(chosenItemId) : undefined);
@@ -78,20 +85,21 @@
   }
 
   function displayId(item: SpecialGoods): string {
-    return item.alternatives?.[0] ?? item.goodsId;
+    return item.alternatives?.length ? item.alternatives[$oreCycle % item.alternatives.length]! : item.goodsId;
   }
 
   function iconId(item: SpecialGoods): string {
     return item.oreDictionaryId ?? displayId(item);
   }
 
-  function oreDictionaryIcon(entry: CatalogEntry): {
+  function oreDictionaryIcon(entry: CatalogEntry, alternatives?: string[]): {
     browse: CatalogBrowseEntry;
     exactEntries: ReadonlyMap<string, CatalogEntry>;
   } | undefined {
-    if (entry.kind !== 'oreDict' || !entry.members || entry.members.length === 0) return undefined;
+    const members = entry.kind === 'oreDict' ? entry.members : alternatives;
+    if (!members || members.length === 0) return undefined;
     const exactEntries = new Map<string, CatalogEntry>();
-    for (const memberId of entry.members) {
+    for (const memberId of members) {
       const member = resolve(memberId);
       if (member) exactEntries.set(memberId, member);
     }
@@ -167,14 +175,18 @@
 {#if goods.length > 0}
   <section class:compact class:wrap-labels={wrapLabels} class:horizontal class:hide-labels={hideLabels} class="special-goods" aria-label={label ?? 'Goods'}>
     {#if label}<div class="special-goods-label">{label}</div>{/if}
-      <div class="special-goods-grid">
+      <div class="special-goods-grid" class:positioned={Boolean(positions)}
+        style:width={positions ? `${Math.max(...positions.map(slot => slot.pos[0] + 18)) * RECIPE_UI_SCALE}px` : undefined}
+        style:height={positions ? `${Math.max(...positions.map(slot => slot.pos[1] + 18)) * RECIPE_UI_SCALE}px` : undefined}>
       {#each visible as item, itemIndex (`${itemIndex}:${item.goodsId}:${item.role ?? ''}:${item.amount ?? ''}`)}
         {@const entry = resolve(displayId(item))}
         {@const iconEntry = resolve(iconId(item)) ?? entry}
-        {@const oreIcon = iconEntry ? oreDictionaryIcon(iconEntry) : undefined}
+        {@const oreIcon = iconEntry ? oreDictionaryIcon(iconEntry, item.alternatives) : undefined}
         {@const fortune = fortuneLabel(item)}
         {#if entry}
-          <div class="special-good-cell">
+          <div class="special-good-cell"
+            style:left={positions?.[itemIndex] ? `${positions[itemIndex]!.pos[0] * RECIPE_UI_SCALE}px` : undefined}
+            style:top={positions?.[itemIndex] ? `${positions[itemIndex]!.pos[1] * RECIPE_UI_SCALE}px` : undefined}>
             <button
               class:ore-dictionary={Boolean(item.oreDictionaryId)}
               class="special-good"
@@ -191,13 +203,14 @@
               }}
             >
               <div class="special-slot">
+                {#if !nativeBackground}<SlotSurface width={18} height={18} fluid={entry.kind === 'fluid'} />{/if}
                 {#if oreIcon}
-                  <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={56} />
+                  <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={48} frame={false} />
                 {:else}
-                  <ItemIcon entry={entry} size={56} />
+                  <ItemIcon entry={entry} size={48} frame={false} />
                 {/if}
                 {#if showAmounts && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
-                  <span class="special-amount">{item.minAmount !== undefined || item.maxAmount !== undefined
+                  <span class="special-amount" class:non-consumable={item.amount === 0 && entry.kind !== 'fluid'} class:fluid-amount={entry.kind === 'fluid'}>{item.amount === 0 && entry.kind !== 'fluid' ? 'NC' : item.minAmount !== undefined || item.maxAmount !== undefined
                     ? `${item.minAmount ?? item.maxAmount}–${item.maxAmount ?? item.minAmount}`
                     : displaySpecialAmount(item.amount, entry.kind === 'fluid')}</span>
                 {/if}
@@ -270,18 +283,22 @@
 
 <style>
   .special-goods { min-width:0; }
-  .special-goods-label { margin-bottom:6px; color:#8d9297; font-size:10px; font-weight:700; letter-spacing:.65px; text-transform:uppercase; }
+  .special-goods-label { margin-bottom:6px; color:var(--recipe-text); font-size:10px; font-weight:700; letter-spacing:.65px; text-transform:uppercase; }
+  .special-goods-grid.positioned { position:relative; display:block; }
+  .positioned .special-good-cell { position:absolute; min-width:0; width:48px; height:48px; }
   .special-goods-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:7px; min-width:0; }
   .special-good-cell { width:max-content; min-width:72px; max-width:100%; display:flex; flex-direction:column; align-items:center; justify-self:center; gap:2px; text-align:center; }
-  .special-good,.unresolved { position:relative; width:56px; height:56px; min-width:56px; min-height:56px; display:flex; align-items:center; justify-content:center; padding:0; border:1px solid transparent; border-radius:6px; background:transparent; color:#d9dcdf; cursor:pointer; }
-  .special-slot { position:relative; width:56px; height:56px; flex:0 0 56px; }
+  .special-good,.unresolved { position:relative; width:48px; height:48px; min-width:48px; min-height:48px; display:flex; align-items:center; justify-content:center; padding:0; border:1px solid transparent; border-radius:0; background:transparent; color:#d9dcdf; cursor:pointer; }
+  .special-slot { position:relative; width:48px; height:48px; flex:0 0 48px; }
   .special-good.ore-dictionary { border-color:#7565a2; box-shadow:0 0 0 1px #7565a255,0 0 8px #8b78ce66; animation:ore-dictionary-pulse 1.8s ease-in-out infinite; }
   .special-good:hover,.special-good:focus-visible { border-color:#5b6167; background:#303338; filter:brightness(1.08); outline:0; }
-  .special-good-label,.unresolved small { width:max-content; max-width:100%; overflow:hidden; color:#a6abb0; font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
+  .special-good-label,.unresolved small { width:max-content; max-width:100%; overflow:hidden; color:var(--recipe-text); font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
   .special-good-cell .special-fortune { width:max-content; max-width:100%; overflow:hidden; color:#d8ca75; font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
-  .special-amount,.special-chance,.special-weight { position:absolute; z-index:2; padding:2px 3px; border-radius:3px; background:#17181be8; color:#fff; font:700 11px/1 ui-sans-serif,system-ui,sans-serif; text-shadow:1px 1px #000; }
+  .special-amount,.special-chance,.special-weight { position:absolute; z-index:2; padding:0; color:#fff; font:18px/18px Minecraft,monospace; text-shadow:2px 2px #342c34; pointer-events:none; }
+  .special-amount.fluid-amount { left:1px; right:auto; }
   .special-amount { right:1px; bottom:1px; }
-  .special-chance { left:1px; top:1px; color:#ffff55; font-family:Minecraft,monospace; font-weight:400; text-shadow:2px 2px #342c34; }
+  .special-amount.non-consumable { left:1px; right:auto; top:1px; bottom:auto; color:#fdd835; font-size:9px; line-height:13px; }
+  .special-chance { left:1px; top:1px; font-size:9px; line-height:13px; color:#ffff55; font-family:Minecraft,monospace; font-weight:400; text-shadow:2px 2px #342c34; }
   .special-weight { left:1px; bottom:1px; color:#d0d4d8; font:9px/13px Minecraft,monospace; text-shadow:2px 2px #342c34; }
   .unresolved { flex-direction:column; justify-content:center; border-color:#4a4d51; color:#b7bbbf; cursor:default; }
   .unresolved>span { font-size:27px; }
@@ -306,11 +323,11 @@
     line-height:1.2;
   }
   .special-goods.horizontal .special-goods-grid { display:flex; flex-wrap:wrap; align-items:center; justify-content:flex-start; gap:0; }
-  .special-goods.horizontal .special-good-cell { width:auto; min-width:56px; max-width:none; flex-direction:row; justify-self:initial; }
-  .special-goods.horizontal .special-good { flex:0 0 56px; }
+  .special-goods.horizontal .special-good-cell { width:auto; min-width:48px; max-width:none; flex-direction:row; justify-self:initial; }
+  .special-goods.horizontal .special-good { flex:0 0 48px; }
   .special-goods.horizontal .special-good-label { display:none; }
   .special-goods.horizontal .special-fortune { display:none; }
-  .special-goods.horizontal.hide-labels .special-good-cell { min-width:56px; }
+  .special-goods.horizontal.hide-labels .special-good-cell { min-width:48px; }
   .special-choice-scrim { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }.special-choice { position:relative; width:min(560px,100%); padding:26px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }.special-choice>p { margin:0 40px 7px 0; color:#a5aaaf; font:9px/13px Minecraft,monospace; letter-spacing:0; }.special-choice h2 { margin:0 40px 18px 0; color:#f0f1f2; font:18px/24px Minecraft,monospace; }.special-choice-close { position:absolute; top:8px; right:8px; width:40px; height:40px; border:0; background:none; color:#b3b8bd; font-size:25px; cursor:pointer; }.special-choice-option { display:grid; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; gap:10px; padding:10px; border:1px solid #464a4f; border-radius:8px; background:#292c30; }.special-choice-option+.special-choice-option { margin-top:9px; }.special-choice-option b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.special-choice-option span { display:flex; gap:6px; }.special-choice-option button { min-height:40px; padding:0 9px; border:1px solid #5a5f65; border-radius:6px; background:#35393d; color:#e3e5e7; cursor:pointer; }.special-choice-option button:first-child { background:#d1d4d7; color:#17191b; }
   @keyframes ore-dictionary-pulse { 0%,100% { box-shadow:0 0 0 1px #7565a255,0 0 5px #8b78ce44; } 50% { box-shadow:0 0 0 1px #b49bf4aa,0 0 13px #a58ce999; } }
   @media (prefers-reduced-motion: reduce) { .special-good.ore-dictionary { animation:none; } }

@@ -10,6 +10,7 @@
   import WorldgenLootSpecialCard from './WorldgenLootSpecialCard.svelte';
   import { humanizeGtOreName, humanizeSpecialName, specialCategory, toSpecialGoods, type SpecialRecord, type SpecialResolver, type SpecialViewType } from './specialData';
   import type { RecipeView } from './types';
+  import { machineUiTheme } from './machineUi';
 
   let { record, viewType, resolve, navigate, showAll, showingGlobal = false }: {
     record: SpecialRecord;
@@ -81,7 +82,8 @@
   }
 </script>
 
-<article class="special-card">
+<article class="special-card nei-panel"
+  style:--recipe-text={machineUiTheme.textColor} style:--recipe-title={machineUiTheme.titleColor} style:--recipe-shadow={machineUiTheme.textShadow}>
   <header class="special-card-head">
     <button
       class="special-mark"
@@ -91,7 +93,7 @@
       aria-label={showingGlobal ? 'Back to this item' : `All ${iconLabel}`}
     >
       {#if iconEntry}
-        <ItemIcon entry={iconEntry} size={46} />
+        <ItemIcon entry={iconEntry} size={40} frame={false} />
       {:else}
         <span class="special-fallback">{viewType?.glyph ?? '✦'}</span>
       {/if}
@@ -127,6 +129,16 @@
 </article>
 
 <style>
-  .special-card { min-width:0; overflow:hidden; border:1px solid #41464b; border-radius:12px; background:linear-gradient(145deg,#292c30,#202225); box-shadow:0 8px 24px #0003; }.special-card-head { min-height:60px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:12px 14px; border-bottom:1px solid #3a3d41; }.special-card-head>div { min-width:0; flex:1; }.special-mark { width:50px; height:50px; flex:0 0 50px; display:grid; place-items:center; padding:2px; border:1px solid transparent; border-radius:6px; background:transparent; color:#92979c; cursor:pointer; }.special-mark:hover,.special-mark:focus-visible { border-color:#62676d; background:#34383d; color:#f0f1f2; outline:none; }.special-mark .special-fallback { font-size:27px; }.special-eyebrow { display:block; color:#9ca2a7; font:9px/13px Minecraft,ui-sans-serif,system-ui,sans-serif; letter-spacing:0; text-transform:uppercase; text-shadow:2px 2px #342c34; }.special-card h2 { margin:3px 0 0; overflow-wrap:anywhere; color:#e9ebed; font:18px/24px Minecraft,ui-sans-serif,system-ui,sans-serif; text-shadow:2px 2px #342c34; }.special-card-head p { margin:4px 0 0; color:#9da2a7; font-size:11px; }.special-id { max-width:42%; overflow:hidden; color:#7f858a; font:10px ui-monospace,monospace; text-overflow:ellipsis; white-space:nowrap; }.special-card-body { padding:13px; }.special-empty { margin:0; color:#92979c; font-size:12px; }
-  @media (max-width:520px) { .special-card-head { padding:10px; }.special-card-body { padding:10px; }.special-id { display:none; } }
+  .special-card { width:100%; max-width:550px; min-width:0; justify-self:start; }
+  .special-card-head { min-height:48px; display:flex; align-items:center; gap:8px; padding:4px 10px; }
+  .special-card-head>div { min-width:0; flex:1; }
+  .special-mark { width:42px; height:42px; flex:0 0 42px; display:grid; place-items:center; padding:0; border:0; background:none; color:var(--recipe-text); cursor:pointer; }
+  .special-mark:hover,.special-mark:focus-visible { filter:brightness(1.2); outline:1px solid currentColor; }
+  .special-fallback { font-size:27px; }
+  .special-eyebrow { display:block; font:9px/13px Minecraft,monospace; }
+  .special-card h2 { margin:3px 0 0; overflow-wrap:anywhere; color:var(--recipe-title); font:18px/24px Minecraft,monospace; text-shadow:var(--recipe-shadow); }
+  .special-card-head p { margin:4px 0 0; font-size:11px; }
+  .special-id { display:none; }
+  .special-card-body { padding:10px; }
+  .special-empty { margin:0; font-size:12px; }
 </style>

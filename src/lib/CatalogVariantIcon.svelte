@@ -9,12 +9,14 @@
     entry,
     exactEntries,
     size = 56,
-    selected = false
+    selected = false,
+    frame = true
   }: {
     entry: CatalogBrowseEntry;
     exactEntries: ReadonlyMap<string, CatalogEntry>;
     size?: number;
     selected?: boolean;
+    frame?: boolean;
   } = $props();
 
   let element: HTMLSpanElement;
@@ -48,7 +50,7 @@
   aria-hidden="true"
   bind:this={element}
 >
-  <ItemIcon entry={displayEntry} {size} {selected} />
+  <ItemIcon entry={displayEntry} {size} {selected} {frame} />
 </span>
 
 <style>

@@ -251,26 +251,26 @@
 <style>
   .ore-stat-card { display:flex; flex-direction:column; gap:13px; min-width:0; }
   .layer-list { display:flex; flex-direction:column; gap:5px; }
-  .layer-row { display:grid; grid-template-columns:56px minmax(0,1fr); align-items:center; gap:10px; min-height:56px; padding:4px 7px; border:1px solid #3e4247; border-radius:7px; background:#25282c; }
-  .layer-row :global(.special-goods) { width:56px; }
-  .layer-row :global(.special-goods-grid) { width:56px; }
+  .layer-row { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:10px; min-height:48px; padding:4px 7px; border:0; border-radius:0; background:transparent; }
+  .layer-row :global(.special-goods) { width:48px; }
+  .layer-row :global(.special-goods-grid) { width:48px; }
   .layer-copy,.ore-primary-copy { display:flex; flex-direction:column; min-width:0; gap:3px; }
-  .layer-copy b,.ore-primary-copy b { color:#e0e3e5; font-size:12px; overflow-wrap:anywhere; }
-  .layer-copy span,.ore-primary-copy span { color:#aeb3b8; font-size:11px; line-height:1.3; overflow-wrap:anywhere; }
+  .layer-copy b,.ore-primary-copy b { color:var(--recipe-text); font:18px/24px Minecraft,monospace; overflow-wrap:anywhere; }
+  .layer-copy span,.ore-primary-copy span { color:var(--recipe-text); font-size:11px; line-height:1.3; overflow-wrap:anywhere; }
   .generated-world { display:flex; flex-direction:column; gap:6px; padding-top:2px; min-width:0; }
-  .generated-world-label { color:#d7dade; font-size:12px; font-weight:700; letter-spacing:.03em; }
-  .dimension-caption { color:#aeb3b8; font-size:10px; line-height:1.25; }
+  .generated-world-label { color:var(--recipe-text); font:18px/24px Minecraft,monospace; font-weight:700; letter-spacing:.03em; }
+  .dimension-caption { color:var(--recipe-text); font:9px/13px Minecraft,monospace; line-height:1.25; }
   .dimension-list { display:flex; align-items:flex-start; gap:3px; min-width:0; max-width:100%; overflow-x:auto; overscroll-behavior-inline:contain; padding:2px 2px 5px; scrollbar-width:thin; }
-  .dimension-slot { flex:0 0 56px; width:56px; min-height:56px; display:grid; place-items:center; }
-  .dimension-slot :global(.special-goods),.dimension-slot :global(.special-goods-grid) { width:56px; }
-  .empty-slot { width:56px; height:56px; display:grid; place-items:center; border:1px dashed #545960; border-radius:6px; color:#82878c; font-size:20px; }
-  .ore-primary-stat { display:grid; grid-template-columns:56px minmax(0,1fr); align-items:center; gap:10px; padding:5px 7px; border:1px solid #45494e; border-radius:7px; background:#292c30; }
-  .ore-primary-stat :global(.special-goods-grid) { width:56px; }
-  .ore-primary-copy span { color:#c0c5c9; }
+  .dimension-slot { flex:0 0 48px; width:48px; min-height:48px; display:grid; place-items:center; }
+  .dimension-slot :global(.special-goods),.dimension-slot :global(.special-goods-grid) { width:48px; }
+  .empty-slot { width:48px; height:48px; display:grid; place-items:center; border:1px dashed #545960; border-radius:0; color:#82878c; font-size:20px; }
+  .ore-primary-stat { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:10px; padding:5px 7px; border:0; border-radius:0; background:transparent; }
+  .ore-primary-stat :global(.special-goods-grid) { width:48px; }
+  .ore-primary-copy span { color:var(--recipe-text); }
   .vein-stats { display:flex; flex-wrap:wrap; gap:7px; padding-top:3px; border-top:1px solid #3b3f44; }
-  .vein-stats span { display:flex; flex-direction:column; gap:2px; min-width:95px; padding:7px 9px; border:1px solid #45494e; border-radius:6px; background:#292c30; color:#d8dbde; font-size:12px; }
-  .vein-stats b { color:#90959a; font-size:10px; letter-spacing:.05em; text-transform:uppercase; }
+  .vein-stats span { display:flex; flex-direction:column; gap:2px; min-width:95px; padding:7px 9px; border:0; border-radius:0; background:transparent; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
+  .vein-stats b { color:var(--recipe-text); font:9px/13px Minecraft,monospace; letter-spacing:.05em; text-transform:uppercase; }
   @media (max-width:520px) {
-    .layer-row,.ore-primary-stat { grid-template-columns:56px minmax(0,1fr); padding-inline:4px; gap:7px; }
+    .layer-row,.ore-primary-stat { grid-template-columns:48px minmax(0,1fr); padding-inline:4px; gap:7px; }
   }
 </style>

@@ -127,14 +127,14 @@
 <style>
   .worldgen-card { display:flex; flex-direction:column; gap:10px; min-width:0; }
   .special-stat-grid { display:flex; flex-wrap:wrap; gap:7px; }
-  .special-stat-grid span { display:flex; flex-direction:column; gap:2px; min-width:92px; padding:7px 9px; border:1px solid #45494e; border-radius:6px; background:#292c30; color:#d8dbde; font-size:12px; }
-  .special-stat-grid b { color:#90959a; font-size:10px; letter-spacing:.05em; text-transform:uppercase; }
-  .loot-group { min-width:0; padding:9px; border:1px solid #45494e; border-radius:7px; background:#24272b; }
-  .loot-group header { display:flex; align-items:center; gap:9px; margin-bottom:7px; color:#d9dcdf; font-size:12px; }
-  .loot-group header span { color:#969ba0; font-size:10px; }
+  .special-stat-grid span { display:flex; flex-direction:column; gap:2px; min-width:92px; padding:7px 9px; border:0; border-radius:0; background:transparent; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
+  .special-stat-grid b { color:var(--recipe-text); font:9px/13px Minecraft,monospace; letter-spacing:.05em; text-transform:uppercase; }
+  .loot-group { min-width:0; padding:9px; border:0; border-radius:0; background:transparent; }
+  .loot-group header { display:flex; align-items:center; gap:9px; margin-bottom:7px; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
+  .loot-group header span { color:var(--recipe-text); font:9px/13px Minecraft,monospace; }
   .loot-group-pages { display:flex; align-items:center; justify-content:center; gap:9px; }
-  .loot-group-pages button { min-height:38px; padding:0 9px; border:1px solid #50555a; border-radius:6px; background:#292c30; color:#d2d5d8; cursor:pointer; }
+  .loot-group-pages button { min-height:38px; padding:0 9px; border:1px solid #50555a; border-radius:0; background:transparent; color:#d2d5d8; cursor:pointer; }
   .loot-group-pages button:disabled { opacity:.4; cursor:default; }
-  .loot-group-pages span { color:#92979c; font-size:11px; }
-  .special-empty { margin:0; color:#92979c; font-size:12px; }
+  .loot-group-pages span { color:var(--recipe-text); font-size:11px; }
+  .special-empty { margin:0; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
 </style>

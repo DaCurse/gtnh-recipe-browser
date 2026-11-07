@@ -80,7 +80,7 @@
   }
 </script>
 
-<article class="card" class:wide={layoutWidth > 550}
+<article class="card nei-panel" class:wide={layoutWidth > 550}
   style:--recipe-text={machineUiTheme.textColor} style:--recipe-title={machineUiTheme.titleColor} style:--recipe-shadow={machineUiTheme.textShadow}>
   <div class="card-head">
     <div>
@@ -172,7 +172,7 @@
 {/if}
 
 <style>
-  .card { width:100%; min-width:0; max-width:550px; justify-self:start; border:6px solid transparent; border-image:url('/assets/machine-ui/nei-panel.png') 2 fill stretch; image-rendering:pixelated; overflow:hidden; }
+  .card { width:100%; min-width:0; max-width:550px; justify-self:start; }
   .card.wide { grid-column:1/-1; max-width:none; }
   .card-head { min-height:48px; padding:0 10px; display:flex; align-items:center; justify-content:space-between; color:var(--recipe-title); text-shadow:var(--recipe-shadow); font:400 18px/24px Minecraft,monospace; }
   .card-head strong { font-weight:400; }

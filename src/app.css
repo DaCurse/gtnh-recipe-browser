@@ -107,7 +107,7 @@ h1 { margin:0 0 9px; font:36px/46px Minecraft; color:#f0f1f2; letter-spacing:0; 
 .type-row button.active { color:#f0f1f2; }
 .type-row button.machine-tab small { max-width:88px; overflow:hidden; color:inherit; font-size:9px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
 .type-row button.special-tab { position:relative; width:92px; height:78px; flex-basis:92px; gap:1px; border:1px solid transparent; border-radius:7px; color:#92979c; font-size:19px; }
-.type-row button.special-tab.active { border-color:#62676d; background:#2a2d31; color:#f0f1f2; }
+.type-row button.special-tab.active { color:#f0f1f2; }
 .type-row button.special-tab small { max-width:88px; overflow:hidden; color:inherit; font-size:9px; font-weight:700; text-overflow:ellipsis; white-space:nowrap; }
 .special-fallback { line-height:1; }
 .special-tab-count { position:absolute; right:4px; top:3px; padding:2px 5px; border-radius:8px; background:#383b40; color:#d8dbde; font-size:9px; }
@@ -189,3 +189,6 @@ h1 { margin:0 0 9px; font:36px/46px Minecraft; color:#f0f1f2; letter-spacing:0; 
 .primary-nav a { min-height:42px; display:flex; align-items:center; padding:0 14px; color:#a0a9b4; font-size:13px; text-decoration:none; border-bottom:2px solid transparent; }
 .primary-nav a:hover { color:#eef3f9; background:#ffffff08; }.primary-nav a[aria-current="page"] { color:#e6effb; border-bottom-color:#a8bfdc; }
 @media(max-width:800px) { .primary-nav { padding:0 8px; } }
+
+/* Shared native NEI shell for ordinary recipes and special handler pages. */
+.nei-panel { border:6px solid transparent; border-image:url('/assets/machine-ui/nei-panel.png') 2 fill stretch; image-rendering:pixelated; overflow:hidden; color:var(--recipe-text); text-shadow:var(--recipe-shadow); }

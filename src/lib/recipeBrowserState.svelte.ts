@@ -1,4 +1,5 @@
 import { onMount, untrack } from 'svelte';
+import { recipeViewCount } from './recipeCounts';
 import { toRecipeSearchCatalogEntry, toRecipeSearchRecord } from './recipeSearch';
 import {
   specialLabel,
@@ -286,12 +287,7 @@ export class RecipeBrowserState {
 
   recipeCount(view: RecipeView): number | undefined {
     const selected = this.context.selected();
-    const declared = view === 'recipes'
-      ? selected.productionCount
-      : view === 'usages'
-        ? selected.usageCount
-        : undefined;
-    return this.loadedRecipeCounts[`${selected.id}:${view}`] ?? declared;
+    return recipeViewCount(selected, view, this.loadedRecipeCounts[`${selected.id}:${view}`]);
   }
 
   specialCount(view: RecipeView, viewType = this.specialType): number | undefined {

@@ -1,5 +1,8 @@
 <script lang="ts">
   import SpecialGoods from './SpecialGoods.svelte';
+  import SpecialNeiStage from './SpecialNeiStage.svelte';
+  import { specialCategory, type SpecialGoods as Goods } from './specialData';
+  import type { UiSlot } from './machineUi';
   import {
     toSpecialDrops,
     toSpecialGoodsList,
@@ -53,9 +56,36 @@
   const underBlocks = $derived(toSpecialGoodsList(rawPayload.underBlocks ?? rawPayload.blocksUnder));
   const machineCatalysts = $derived(toSpecialGoodsList(rawPayload.machineCatalysts));
   const requirements = $derived(displayValues(rawPayload.requirements));
+  const category = $derived(specialCategory(record.category));
+  const seed = $derived(outputSeed ?? toSpecialGoodsList(record.inputs ?? []).find(item => /:genericSeed:/.test(item.goodsId))
+    ?? toSpecialGoods(record.goodsIds?.find(id => /:genericSeed:/.test(id))));
+  // PositionedStack coordinates describe the 16px sprite, inside an 18px slot.
+  const slot = (x: number, y: number): UiSlot => ({ pos: [x - 1, y - 1] });
+  function alternatives(goods: Goods[]): Goods[] {
+    if (!goods.length) return [];
+    return [{ ...goods[0]!, alternatives: goods.flatMap(item => item.alternatives ?? [item.goodsId]) }];
+  }
+  const nativeBreeding = $derived(category === 'cropBreeding' && Boolean(seed)
+    && parentGroups.length === 1 && parents.length <= 4);
+  const nativeCrop = $derived(category === 'crop' && Boolean(seed) && drops.length <= 9);
+  const nativeGroups = $derived(nativeBreeding ? [
+    { label: 'Result crop', goods: seed ? [seed] : [], positions: [slot(75, 22)] },
+    { label: 'Parents', goods: parents, positions: [44, 106, 23, 127].map(x => slot(x, 22)) },
+    { label: 'Soil block', goods: alternatives(soils), positions: [slot(75, 43)] },
+    { label: 'Subsoil / under block', goods: alternatives(underBlocks), positions: [slot(75, 64)] }
+  ] : [
+    { label: 'Crop seed', goods: seed ? [seed] : [], positions: [slot(33, 20)] },
+    { label: 'Crop outputs', goods: drops, positions: drops.map((_, i) => slot(104 + 18 * (i % 3), 16 + 18 * Math.floor(i / 3))), amounts: true, chances: true },
+    { label: 'Soil block', goods: alternatives(soils), positions: [slot(33, 41)] },
+    { label: 'Subsoil / under block', goods: alternatives(underBlocks), positions: [slot(33, 62)] }
+  ]);
 </script>
 
 <div class="crop-card">
+  {#if nativeBreeding || nativeCrop}
+    <SpecialNeiStage background={nativeBreeding ? (parents.length > 2 ? 'breeding4' : 'breeding2') : 'cropList'}
+      height={nativeBreeding ? 87 : 85} groups={nativeGroups} {resolve} {navigate} />
+  {:else}
   {#if drops.length}
     <SpecialGoods goods={drops} resolve={resolve} {navigate} compact label={payload.poolLabel ?? (payload.poolId ? `Pool · ${payload.poolId}` : 'Crop outputs')} />
   {/if}
@@ -76,7 +106,12 @@
     <SpecialGoods goods={parents} resolve={resolve} {navigate} label={`${payload.parentCount ?? parents.length}-parent breeding`} showAmounts={false} showChance={false} />
   {/if}
   {#if poolMembers.length}
-    <SpecialGoods goods={poolMembers} resolve={resolve} {navigate} label="Pool members" showAmounts={false} showChance={false} />
+    <div class="pool-grid">
+      <SpecialGoods goods={poolMembers} resolve={resolve} {navigate} label="Pool members" hideLabels pageSize={81}
+        positions={Array.from({ length: Math.min(81, poolMembers.length) }, (_, i) => ({ pos: [18 * (i % 9), 18 * Math.floor(i / 9)] }))}
+        showAmounts={false} showChance={false} />
+    </div>
+  {/if}
   {/if}
   {#if machineCatalysts.length}
     <SpecialGoods goods={machineCatalysts} resolve={resolve} {navigate} label="Machine catalysts" showAmounts={false} showChance={false} />
@@ -97,10 +132,11 @@
 
 <style>
   .crop-card { display:flex; flex-direction:column; gap:11px; }
+  .pool-grid { max-width:100%; overflow-x:auto; scrollbar-width:thin; }
   .crop-notes { display:flex; flex-direction:column; gap:8px; margin-top:2px; padding-top:9px; border-top:1px solid #3b3f44; }
   .special-stat-grid { display:flex; flex-wrap:wrap; gap:7px; }
-  .special-stat-grid span { display:flex; flex-direction:column; gap:2px; min-width:92px; padding:7px 9px; border:1px solid #45494e; border-radius:6px; background:#292c30; color:#d8dbde; font-size:12px; }
-  .special-stat-grid b,.special-line b { color:#90959a; font-size:10px; letter-spacing:.05em; text-transform:uppercase; }
+  .special-stat-grid span { display:flex; flex-direction:column; gap:2px; min-width:92px; padding:7px 9px; border:0; border-radius:0; background:transparent; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
+  .special-stat-grid b,.special-line b { color:var(--recipe-text); font:9px/13px Minecraft,monospace; letter-spacing:.05em; text-transform:uppercase; }
   .special-stat-grid .warning { color:#f0d782; border-color:#675b32; }
-  .special-line { margin:0; color:#b8bdc1; font-size:12px; line-height:1.4; }
+  .special-line { margin:0; color:var(--recipe-text); font:18px/24px Minecraft,monospace; line-height:1.4; }
 </style>
