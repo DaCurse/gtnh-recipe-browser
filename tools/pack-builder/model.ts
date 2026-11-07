@@ -9,6 +9,7 @@ interface DecodedCrafter {
   id: string;
   name: string;
   iconId: number;
+  maxVoltageTier?: number;
 }
 
 export interface DecodedRecipeType {

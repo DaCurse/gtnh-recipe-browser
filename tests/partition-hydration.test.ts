@@ -18,6 +18,7 @@ function partition(kind: 'groups' | 'details') {
     entriesById: entries,
     goodsIds: new Set(kind === 'details' ? ids : ['member']),
     goodsDetails: new Map(),
+    additionalMachineCapabilities: new Map(),
     ingredientGroups: new Map(kind === 'groups' ? ids.map((id) => [id, { id, itemIds: [] }]) : []),
     hydratedGroups: new Set(),
     detailShard: vi.fn(() => gate), groupShard: vi.fn(() => gate)

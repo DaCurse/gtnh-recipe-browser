@@ -250,11 +250,14 @@ const releaseLayout = extendSharedLayout(baseLayout, [repository], [layoutSpecia
 await writeFile(resolvedLayoutPath, `${JSON.stringify(releaseLayout, null, 2)}\n`);
 
 const sourceRevision = combinedRevision(data, atlas);
+const machineCraftersPath = join(outputWorkDirectory, 'machine-crafters.json');
+run('python3', [join(repositoryRoot, 'tools/data-export/machine-crafters.py'), '--script', scripts[0]!, '--output', machineCraftersPath]);
 const options = {
   dataPath,
   atlasPath,
   gtnhVersion: session.gtnhVersion,
   revision: sourceRevision,
+  machineCraftersPath,
   ...(specialDataPath ? { specialDataPath } : {})
 };
 const buildOptions = {
@@ -277,6 +280,7 @@ const verification = await verifyPack({
   layoutPath: resolvedLayoutPath,
   atlasPath,
   specialDataPath,
+  machineCraftersPath,
   spriteSamples: 100
 });
 await verifyPack({
@@ -285,6 +289,7 @@ await verifyPack({
   layoutPath: resolvedLayoutPath,
   atlasPath,
   specialDataPath,
+  machineCraftersPath,
   spriteSamples: 100
 });
 await rm(secondBuild, { recursive: true });
@@ -313,6 +318,7 @@ const provenance = {
     sha256: await sha256File(previousData)
   },
   processed: {
+    machineCrafters: { sha256: await sha256File(machineCraftersPath) },
     dataBin: { bytes: data.byteLength, sha256: await sha256File(dataPath) },
     atlasWebp: { bytes: atlas.byteLength, sha256: await sha256File(atlasPath) }
   },

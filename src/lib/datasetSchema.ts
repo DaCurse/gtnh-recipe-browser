@@ -202,8 +202,9 @@ export interface PackedRecipeType {
   shapeless: boolean;
   dimensions: RecipeLayout;
   defaultCrafter: { id: string } | null;
-  singleblocks: Array<{ id: string }>;
+  singleblocks: Array<{ id: string; maxVoltageTier?: number }>;
   multiblocks: Array<{ id: string }>;
+  additionalCrafters?: import('./recipePresentation').AdditionalCrafter[];
 }
 
 export interface PackedOreDictionary {

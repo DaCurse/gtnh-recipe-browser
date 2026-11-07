@@ -44,7 +44,8 @@ import { installOfflineAssets } from './offline';
 import { materializeRecipe } from './recipeMaterialization';
 import { applyFrontendPresentation } from './recipeFrontendPresentation';
 import { hasNativeOreDiagrams, nativeOreRecords } from './oreDiagram';
-import { machineCanProcessVoltage } from './recipePresentation';
+import { machineCanProcessVoltage, machineCapabilitiesByCrafter, propagateOreMachineCapabilities } from './recipePresentation';
+import { addRecipeTypeCrafters, publishedMachineCrafters } from './machineCrafters';
 import { mapProgressively } from './progressive';
 import {
   buildCatalogSearchDocuments,
@@ -421,6 +422,7 @@ export class DatasetRepository {
   private readonly manifestUrl: string;
   private readonly goodsIds: Set<string>;
   private readonly types: Map<string, PackedRecipeType>;
+  private readonly additionalMachineCapabilities: Map<string, import('./types').MachineRecipeCapability[]>;
   private readonly ingredientGroups: Map<string, PackedOreDictionary | PackedIngredientGroup>;
   private readonly entriesById: Map<string, CatalogEntry>;
   private readonly goodsDetails = new Map<string, PackedGoodsDetail>();
@@ -485,7 +487,12 @@ export class DatasetRepository {
     const resolved = prepared?.resolved ?? materializeCatalog(manifest, manifestUrl, catalog!, false);
     this.entries = resolved.entries;
     this.goodsIds = new Set(this.entries.filter((entry) => entry.kind === 'item' || entry.kind === 'fluid').map((entry) => entry.id));
-    this.types = resolved.recipeTypes;
+    const recoveredCrafters = publishedMachineCrafters(this.datasetId);
+    this.types = new Map([...resolved.recipeTypes].map(([id, type]) => [id,
+      addRecipeTypeCrafters(type, recoveredCrafters?.types[id] ?? [], this.goodsIds)]));
+    this.additionalMachineCapabilities = machineCapabilitiesByCrafter([...this.types.values()].map(type => ({
+      ...type, singleblocks: [], multiblocks: [], defaultCrafter: null
+    })), manifest.recipeShards);
     this.ingredientGroups = resolved.ingredientGroups;
     this.entriesById = new Map(this.entries.map((entry) => [entry.id, entry]));
     if (!prepared && manifest.formatVersion === 7) {
@@ -931,6 +938,26 @@ export class DatasetRepository {
 
   /** Hydrate exactly one stable detail partition and overlay its catalog entries. */
   async entryFor(id: string, signal?: AbortSignal): Promise<CatalogEntry | undefined> {
+    const entry = await this.loadEntry(id, signal);
+    if (!entry) return undefined;
+    let additional = this.additionalMachineCapabilities.get(id);
+    if (!additional && entry.members) {
+      const members = new Map(entry.members.flatMap(member => {
+        const capabilities = this.additionalMachineCapabilities.get(member);
+        return capabilities ? [[member, capabilities] as const] : [];
+      }));
+      additional = propagateOreMachineCapabilities(members, [{ id, itemIds: entry.members }]).get(id) ?? [];
+      this.additionalMachineCapabilities.set(id, additional);
+    }
+    if (!additional?.length) return entry;
+    const capabilities = new Map((entry.machineCapabilities ?? []).map(value => [value.recipeTypeId, value]));
+    for (const value of additional) capabilities.set(value.recipeTypeId, value);
+    const updated = { ...entry, machineCapabilities: [...capabilities.values()] };
+    this.entriesById.set(id, updated);
+    return updated;
+  }
+
+  private async loadEntry(id: string, signal?: AbortSignal): Promise<CatalogEntry | undefined> {
     if (signal?.aborted) throw new DOMException('Operation was cancelled', 'AbortError');
     const entry = this.entriesById.get(id);
     if (!entry || this.manifest.formatVersion !== 7) return entry;
@@ -1554,9 +1581,11 @@ export class DatasetRepository {
         const displayedGroups = new Set(matched.flatMap((recipe) => [...recipe.inputs, ...recipe.outputs])
           .filter((io) => io.kind === 'oreDict' || io.kind === 'itemGroup').map((io) => io.goodsId));
         await Promise.all([...displayedGroups].map((groupId) => this.entryFor(groupId, signal)));
-        const batch = await Promise.all(matched.map((recipe, recipeIndex) => applyFrontendPresentation(materializeRecipe(
-          recipe, shardIndex * 1_000_000 + recipeIndex, this.types, this.ingredientGroups, this.gtnhVersion
-        ))));
+        const batch = await Promise.all(matched.map((recipe, recipeIndex) => {
+          const displayed = materializeRecipe(recipe, shardIndex * 1_000_000 + recipeIndex, this.types, this.ingredientGroups, this.gtnhVersion);
+          if (view === 'machineUsages' && isGoods && displayed.crafters?.some(crafter => crafter.id === entryId)) displayed.crafterId = entryId;
+          return applyFrontendPresentation(displayed);
+        }));
         await yieldToBrowser();
         return batch;
       },

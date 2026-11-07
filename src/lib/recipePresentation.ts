@@ -15,12 +15,20 @@ export function ingredientTooltipNotes(ingredient: Ingredient | undefined, fluid
 
 interface CrafterReference {
   id: string;
+  maxVoltageTier?: number;
 }
 
 export interface RecipeTypeCrafterReferences {
   singleblocks: CrafterReference[];
   multiblocks: CrafterReference[];
   defaultCrafter: CrafterReference | null;
+  additionalCrafters?: AdditionalCrafter[];
+}
+
+export interface AdditionalCrafter {
+  id: string;
+  role: 'singleblock' | 'multiblock';
+  maxVoltageTier?: number;
 }
 
 export interface MachineCapability {
@@ -32,7 +40,9 @@ export function recipeCrafterId(
   type: RecipeTypeCrafterReferences,
   voltageTier?: number
 ): string | undefined {
-  const tierCrafter = voltageTier === undefined ? undefined : type.singleblocks[voltageTier];
+  const tierCrafter = voltageTier === undefined ? undefined : type.singleblocks.find((crafter, index) =>
+    (type.additionalCrafters?.find(value => value.id === crafter.id)?.maxVoltageTier ?? crafter.maxVoltageTier ?? index) === voltageTier)
+    ?? type.additionalCrafters?.find(crafter => crafter.role === 'singleblock' && crafter.maxVoltageTier === voltageTier);
   return tierCrafter?.id ?? type.defaultCrafter?.id ?? type.multiblocks[0]?.id;
 }
 
@@ -54,6 +64,7 @@ export function recipeTypeCrafters(type: RecipeTypeCrafterReferences): Array<{
   type.singleblocks.forEach((crafter) => add(crafter.id, 'singleblock'));
   type.multiblocks.forEach((crafter) => add(crafter.id, 'multiblock'));
   add(type.defaultCrafter?.id, 'default');
+  type.additionalCrafters?.forEach(crafter => add(crafter.id, crafter.role));
   return crafters;
 }
 
@@ -62,10 +73,10 @@ export function recipeTypeMachineCapabilities(
 ): MachineCapability[] {
   const capabilities: MachineCapability[] = [];
   const seen = new Set<string>();
-  type.singleblocks.forEach((crafter, maxVoltageTier) => {
+  type.singleblocks.forEach((crafter, index) => {
     if (seen.has(crafter.id)) return;
     seen.add(crafter.id);
-    capabilities.push({ id: crafter.id, maxVoltageTier });
+    capabilities.push({ id: crafter.id, maxVoltageTier: crafter.maxVoltageTier ?? index });
   });
   for (const crafter of type.multiblocks) {
     if (seen.has(crafter.id)) continue;
@@ -73,9 +84,38 @@ export function recipeTypeMachineCapabilities(
     capabilities.push({ id: crafter.id });
   }
   if (type.defaultCrafter && !seen.has(type.defaultCrafter.id)) {
+    seen.add(type.defaultCrafter.id);
     capabilities.push({ id: type.defaultCrafter.id });
   }
+  for (const crafter of type.additionalCrafters ?? []) {
+    if (seen.has(crafter.id)) {
+      const index = capabilities.findIndex(value => value.id === crafter.id);
+      capabilities[index] = { id: crafter.id, maxVoltageTier: crafter.maxVoltageTier };
+      continue;
+    }
+    seen.add(crafter.id);
+    capabilities.push({ id: crafter.id, maxVoltageTier: crafter.maxVoltageTier });
+  }
   return capabilities;
+}
+
+export function machineCapabilitiesByCrafter(
+  types: ReadonlyArray<RecipeTypeCrafterReferences & { id: string; name: string }>,
+  shards: ReadonlyArray<{ id: string; recipeTypeId: string }>
+): Map<string, MachineRecipeCapability[]> {
+  const shardIds = new Map<string, string[]>();
+  for (const shard of shards) {
+    const ids = shardIds.get(shard.recipeTypeId) ?? [];
+    ids.push(shard.id); shardIds.set(shard.recipeTypeId, ids);
+  }
+  const result = new Map<string, MachineRecipeCapability[]>();
+  for (const type of types) for (const machine of recipeTypeMachineCapabilities(type)) {
+    const values = result.get(machine.id) ?? [];
+    values.push({ recipeTypeId: type.id, recipeTypeName: type.name,
+      recipeShards: [...(shardIds.get(type.id) ?? [])].sort(), maxVoltageTier: machine.maxVoltageTier });
+    result.set(machine.id, values);
+  }
+  return result;
 }
 
 export function machineCanProcessVoltage(

@@ -138,10 +138,12 @@ export function decodeFormat5(compressed: Uint8Array): DecodedRepository {
       name: required(reader.stringAt(itemPointer + 5, `${label} name`), `${label} name`),
       iconId: reader.int(itemPointer + 9, `${label} icon id`)
     });
-    const crafters = (offset: number, label: string) =>
+    const crafters = (offset: number, label: string, tiered = false) =>
       Array.from(reader.sliceAt(pointer + offset, `recipe type ${order} ${label}`))
-        .filter((itemPointer) => itemPointer !== -1)
-        .map((itemPointer, index) => crafter(itemPointer, `recipe type ${order} ${label}[${index}]`));
+        .flatMap((itemPointer, index) => itemPointer === -1 ? [] : [{
+          ...crafter(itemPointer, `recipe type ${order} ${label}[${index}]`),
+          ...(tiered ? { maxVoltageTier: index } : {})
+        }]);
     const defaultCrafterPointer = reader.pointer(pointer + 6, `recipe type ${order} default crafter`, true);
     recipeTypeByPointer.set(pointer, {
       id: typeId(order, category, name),
@@ -156,7 +158,7 @@ export function decodeFormat5(compressed: Uint8Array): DecodedRepository {
       },
       shapeless: reader.int(pointer + 4, `recipe type ${order} shapeless`) === 1,
       multiblocks: crafters(3, 'multiblocks'),
-      singleblocks: crafters(5, 'singleblocks'),
+      singleblocks: crafters(5, 'singleblocks', true),
       defaultCrafter: defaultCrafterPointer === null
         ? null
         : crafter(defaultCrafterPointer, `recipe type ${order} default crafter`)

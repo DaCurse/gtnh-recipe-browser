@@ -58,6 +58,13 @@ static Thaumcraft research/aspects required by the export, clears warp, runs the
 image archive, and sidecar, then exits the JVM itself. Require distinct atomic launcher/controller/orchestrator
 status files and an explicit controller `complete` phase.
 
+The processor's format-v5 `singleblocks` array contains only one display
+representative per tier. `export:process` also recovers the full catalyst list
+from the original database, passes `machine-crafters.json` into both builds and
+verification, and includes it in provenance and the immutable revision. Never
+derive complete machine capabilities from those representatives alone; see
+[`machine-crafters.md`](machine-crafters.md).
+
 Processing must:
 
 1. validate the combined tooltip schema and image-path audit;

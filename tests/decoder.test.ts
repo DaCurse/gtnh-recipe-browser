@@ -5,6 +5,7 @@ import { describe, expect, it } from 'vitest';
 import { decodeFormat5, PackDecodeError } from '../tools/pack-builder/decoder';
 import { fluidRecipeScope } from '../src/lib/fluidContainers';
 import { productionFallbackDictionary } from '../src/lib/oreDictionary';
+import { recipeCrafterId, recipeTypeMachineCapabilities } from '../src/lib/recipePresentation';
 
 function words(...values: number[]): Buffer {
   const buffer = Buffer.alloc(values.length * 4);
@@ -12,7 +13,7 @@ function words(...values: number[]): Buffer {
   return buffer;
 }
 
-function repositoryWithNullableUnlocalizedName(): Buffer {
+function repositoryWithNullableUnlocalizedName(withSparseType = false): Buffer {
   const values = [5, 8, 10, 10, 10, 10, 10, 10, 1, 11, 0];
   const itemPointer = 11;
   values.push(...Array.from({ length: 18 }, () => 0));
@@ -43,6 +44,17 @@ function repositoryWithNullableUnlocalizedName(): Buffer {
   values[itemPointer + 15] = 64;
   values[itemPointer + 16] = 0;
   values[itemPointer + 17] = -1;
+  if (withSparseType) {
+    const name = pushString('Bio Lab'), category = pushString('gregtech');
+    const dimensions = values.length;
+    values.push(8, 1, 1, 0, 0, 1, 1, 0, 0);
+    const singleblocks = values.length;
+    values.push(3, -1, -1, itemPointer);
+    const recipeType = values.length;
+    values.push(name, category, dimensions, 10, 1, singleblocks, itemPointer);
+    values[4] = values.length;
+    values.push(1, recipeType);
+  }
   return gzipSync(words(...values));
 }
 
@@ -69,6 +81,13 @@ describe('format-v5 decoder rejection', () => {
     const repository = decodeFormat5(repositoryWithNullableUnlocalizedName());
     expect(repository.items).toHaveLength(1);
     expect(repository.items[0]?.unlocalizedName).toBe('');
+  });
+  it('preserves original voltage tiers when empty representative slots are omitted', () => {
+    const type = decodeFormat5(repositoryWithNullableUnlocalizedName(true)).recipeTypes[0]!;
+    expect(type.singleblocks).toHaveLength(1);
+    expect(type.singleblocks[0]?.maxVoltageTier).toBe(2);
+    expect(recipeTypeMachineCapabilities(type)).toEqual([{ id: 'i:test:nullable:0', maxVoltageTier: 2 }]);
+    expect(recipeCrafterId(type, 2)).toBe('i:test:nullable:0');
   });
 });
 

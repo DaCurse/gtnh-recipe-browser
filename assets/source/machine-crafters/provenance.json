@@ -1,0 +1,11 @@
+{
+  "datasetId": "2.9.0-v7-rbd0b48ae8ad7",
+  "baseManifestSha256": "1c1dd6c151360ea095e08e5c58ebd97ab72dd3c37b9eccc8f37951cf69565809",
+  "sourceScriptSha256": "71720d85b2a706035190d76c316f4bbda03764afc6f412a9093872ee675264eb",
+  "sourceCategories": 168,
+  "sourceCrafters": 845,
+  "restoredCategories": 7,
+  "restoredCrafters": 17,
+  "correctedVoltageTiers": 38,
+  "patchedBindings": 55
+}

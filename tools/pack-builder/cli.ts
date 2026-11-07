@@ -6,7 +6,7 @@ function usage(): never {
   npm run pack -- --data <data.bin> --atlas <atlas.webp> --gtnh-version <version> \\
     --revision <immutable-revision> --output <directory> [--dataset-id <id>] \\
     [--display-name <name>] [--base-url <url>] \\
-    [--special-data <browser-nei-special.json>] \\
+    [--special-data <browser-nei-special.json>] [--machine-crafters <machine-crafters.json>] \\
     --layout <shared-layout.json> [--reuse-packs <pack-directory,...>]
 
 The output directory must not already exist. Inputs must be ShadowTheAge format-v5 assets.`);
@@ -23,7 +23,7 @@ function parseArguments(args: string[]): BuildPackOptions {
   }
   const required = (key: string) => values.get(key) ?? usage();
   const supported = new Set(['data', 'atlas', 'gtnh-version', 'revision', 'output', 'dataset-id',
-    'display-name', 'base-url', 'special-data', 'layout', 'reuse-packs', 'format-version']);
+    'display-name', 'base-url', 'special-data', 'machine-crafters', 'layout', 'reuse-packs', 'format-version']);
   for (const key of values.keys()) {
     if (!supported.has(key)) throw new Error(`Unknown option --${key}`);
   }
@@ -39,6 +39,7 @@ function parseArguments(args: string[]): BuildPackOptions {
     displayName: values.get('display-name'),
     baseUrl: values.get('base-url'),
     specialDataPath: values.get('special-data'),
+    machineCraftersPath: values.get('machine-crafters'),
     layoutPath: values.get('layout'),
     reusePacks: values.get('reuse-packs')?.split(',')
   };

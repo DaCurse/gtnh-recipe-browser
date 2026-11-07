@@ -8,6 +8,9 @@ import { decodeRecordPage, recordPageSelections, RECORD_PAGE_TARGET_BYTES } from
 import { decode } from '@msgpack/msgpack';
 import sharp from 'sharp';
 import { sharedIconPixelsEquivalent } from './sharedIcons';
+import { parseMachineCrafters } from '../../src/lib/machineCrafters';
+import { recipeTypeMachineCapabilities } from '../../src/lib/recipePresentation';
+import type { PackedRecipeType } from '../../src/lib/datasetSchema';
 import { decodeFormat5 } from './decoder';
 import type {
   GeneratedPackManifest,
@@ -80,6 +83,7 @@ export interface VerifyPackOptions {
   atlasPath?: string;
   /** Optional raw input sidecar for an explicit provenance check. */
   specialDataPath?: string;
+  machineCraftersPath?: string;
   spriteSamples?: number;
 }
 
@@ -394,6 +398,7 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
   const catalogItemIds = new Set<string>();
   const catalogSearchIds = new Set<string>();
   const decodedCatalogs = new Map<string, DecodedCatalog>();
+  const catalogRecipeTypes: PackedRecipeType[] = [];
   let coreAssets = 0;
   const catalogRoleCounts = new Map<string, number>();
   for (const descriptor of manifest.catalogAssets) {
@@ -448,6 +453,7 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
       if (!Array.isArray(catalog.recipeTypes) || catalog.goods !== undefined) {
         throw new Error(`${descriptor.id}: invalid recipe-type catalog payload`);
       }
+      catalogRecipeTypes.push(...catalog.recipeTypes as PackedRecipeType[]);
       continue;
     }
     if (descriptor.role === 'recipeRemaps') {
@@ -500,6 +506,17 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
     for (const role of requiredRoles) {
       if (catalogRoleCounts.get(role) !== 1) {
         throw new Error(`Format-${formatVersion} pack requires exactly one ${role} catalog role`);
+      }
+    }
+  }
+  if (options.machineCraftersPath) {
+    const source = parseMachineCrafters(JSON.parse(await readFile(options.machineCraftersPath, 'utf8')));
+    for (const type of catalogRecipeTypes) {
+      const actual = new Map(recipeTypeMachineCapabilities(type).map(crafter => [crafter.id, crafter]));
+      for (const crafter of source.types[type.id] ?? []) {
+        const retained = actual.get(crafter.id);
+        if (!catalogGoodsIds.has(crafter.id) || !retained
+          || retained.maxVoltageTier !== crafter.maxVoltageTier) throw new Error(`Lost or incorrect machine capability: ${type.id} / ${crafter.id}`);
       }
     }
   }

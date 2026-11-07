@@ -43,7 +43,8 @@ import { compactRelations } from '../../src/lib/packedRelations';
 import { specialLookupMatchesView } from '../../src/lib/specialData';
 import { minecraftFormattingSpans, minecraftHtmlPlainText } from '../../src/lib/minecraftText';
 import { productionFallbackDictionary } from '../../src/lib/oreDictionary';
-import { propagateOreMachineCapabilities, recipeTypeMachineCapabilities } from '../../src/lib/recipePresentation';
+import { machineCapabilitiesByCrafter, propagateOreMachineCapabilities } from '../../src/lib/recipePresentation';
+import { addRecipeTypeCrafters, parseMachineCrafters, type MachineCrafterSource } from '../../src/lib/machineCrafters';
 import {
   groupSharedRecords,
   sharedLogicalId,
@@ -71,6 +72,8 @@ export interface BuildPackOptions {
   specialData?: unknown;
   /** Path to browser-nei-special.json emitted by the special exporter. */
   specialDataPath?: string;
+  /** Complete source catalysts, independent of legacy per-tier representatives. */
+  machineCraftersPath?: string;
   /** Persistent append-only prefix layout required by the shared pack. */
   layoutPath?: string;
 }
@@ -409,6 +412,7 @@ function buildCatalog(
       })),
       singleblocks: recipeType.singleblocks.map((crafter) => ({
         id: crafter.id,
+        ...(crafter.maxVoltageTier !== undefined ? { maxVoltageTier: crafter.maxVoltageTier } : {}),
         name: crafter.name,
         icon: iconResolver(crafter.id, crafter.iconId)
       })),
@@ -703,7 +707,8 @@ async function buildSharedCatalogAssets(
   shardByRecipeId: Map<string, string>,
   assetsDirectory: string,
   baseUrl: string,
-  iconSlots: ReadonlyMap<string, { sheetId: string; index: number }>
+  iconSlots: ReadonlyMap<string, { sheetId: string; index: number }>,
+  machineCrafters?: MachineCrafterSource
 ): Promise<{
   catalogAssets: CatalogAsset[];
   goodsDetailShards: GoodsDetailShardAsset[];
@@ -720,6 +725,10 @@ async function buildSharedCatalogAssets(
     }
   );
   const { goods } = catalog;
+  if (machineCrafters) {
+    const goodsIds = new Set(goods.map(goods => goods.id));
+    catalog.recipeTypes = catalog.recipeTypes.map(type => addRecipeTypeCrafters(type, machineCrafters.types[type.id] ?? [], goodsIds));
+  }
   const coreLogicalId = 'catalog-core';
   const allGroups = [...catalog.oreDictionaries, ...catalog.ingredientGroups];
   const coreBytes = sharedCatalogMetadataPayload('core', coreLogicalId, {
@@ -884,19 +893,8 @@ async function buildSharedCatalogAssets(
     if (!values.includes(shard)) values.push(shard);
     shardsByRecipeType.set(descriptor.recipeTypeId, values);
   }
-  const directCapabilities = new Map<string, Array<{
-    recipeTypeId: string; recipeTypeName: string; recipeShards: string[]; maxVoltageTier?: number;
-  }>>();
-  for (const type of catalog.recipeTypes) for (const machine of recipeTypeMachineCapabilities(type)) {
-    const values = directCapabilities.get(machine.id) ?? [];
-    values.push({
-      recipeTypeId: type.id,
-      recipeTypeName: type.name,
-      recipeShards: [...(shardsByRecipeType.get(type.id) ?? [])].sort(),
-      maxVoltageTier: machine.maxVoltageTier
-    });
-    directCapabilities.set(machine.id, values);
-  }
+  const directCapabilities = machineCapabilitiesByCrafter(catalog.recipeTypes,
+    [...shardsByRecipeType].flatMap(([recipeTypeId, ids]) => ids.map(id => ({ id, recipeTypeId }))));
   const capabilities = propagateOreMachineCapabilities(directCapabilities, allGroups);
   const cropMembers = new Map<string, string[]>();
   const lookupCounts = (lookupIds: string[]) => Object.fromEntries((catalog.specialViewTypes ?? [])
@@ -1077,9 +1075,14 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
     ? Buffer.from(canonicalSpecialDataJson(specialData), 'utf8')
     : undefined;
   const specialDataSha256 = specialDataBytes ? sha256(specialDataBytes) : undefined;
-  const effectiveRevision = specialDataBytes
+  const machineCraftersBytes = options.machineCraftersPath ? await readFile(options.machineCraftersPath) : undefined;
+  const machineCrafters = machineCraftersBytes ? parseMachineCrafters(JSON.parse(machineCraftersBytes.toString())) : undefined;
+  const baseRevision = specialDataBytes
     ? createHash('sha256').update(options.revision).update('\0').update(specialDataBytes).digest('hex').slice(0, 12)
     : options.revision;
+  const effectiveRevision = machineCraftersBytes
+    ? createHash('sha256').update(baseRevision).update('\0').update(machineCraftersBytes).digest('hex').slice(0, 12)
+    : baseRevision;
   // Dataset URLs are immutable. Keep the browser-pack format in the generated
   // identity so a format migration cannot reuse an older manifest URL that a
   // browser or CDN has cached as immutable.
@@ -1140,7 +1143,8 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
     shardByRecipeId,
     assetsDirectory,
     baseUrl,
-    icons.slots
+    icons.slots,
+    machineCrafters
   );
   const iconSheets = icons.assets;
   const recordPages = await buildRecordPages(
