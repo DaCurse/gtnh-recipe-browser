@@ -204,11 +204,13 @@
             >
               <div class="special-slot">
                 {#if !nativeBackground}<SlotSurface width={18} height={18} fluid={entry.kind === 'fluid'} />{/if}
+                <div class="special-slot-content">
                 {#if oreIcon}
                   <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={48} frame={false} />
                 {:else}
                   <ItemIcon entry={entry} size={48} frame={false} />
                 {/if}
+                </div>
                 {#if showAmounts && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
                   <span class="special-amount" class:non-consumable={item.amount === 0 && entry.kind !== 'fluid'} class:fluid-amount={entry.kind === 'fluid'}>{item.amount === 0 && entry.kind !== 'fluid' ? 'NC' : item.minAmount !== undefined || item.maxAmount !== undefined
                     ? `${item.minAmount ?? item.maxAmount}–${item.maxAmount ?? item.minAmount}`
@@ -290,6 +292,7 @@
   .special-good-cell { width:max-content; min-width:72px; max-width:100%; display:flex; flex-direction:column; align-items:center; justify-self:center; gap:2px; text-align:center; }
   .special-good,.unresolved { position:relative; width:48px; height:48px; min-width:48px; min-height:48px; display:flex; align-items:center; justify-content:center; padding:0; border:1px solid transparent; border-radius:0; background:transparent; color:#d9dcdf; cursor:pointer; }
   .special-slot { position:relative; width:48px; height:48px; flex:0 0 48px; }
+  .special-slot-content { position:relative; z-index:1; }
   .special-good.ore-dictionary { border-color:#7565a2; box-shadow:0 0 0 1px #7565a255,0 0 8px #8b78ce66; animation:ore-dictionary-pulse 1.8s ease-in-out infinite; }
   .special-good:hover,.special-good:focus-visible { border-color:#5b6167; background:#303338; filter:brightness(1.08); outline:0; }
   .special-good-label,.unresolved small { width:max-content; max-width:100%; overflow:hidden; color:var(--recipe-text); font-size:9px; text-overflow:ellipsis; white-space:nowrap; }

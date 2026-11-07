@@ -1,11 +1,27 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-/* global document, getComputedStyle, innerWidth */
+/* global document, getComputedStyle, innerWidth, Image */
 const [base, playwrightModule, screenshots] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-special-ui.mjs <app-url> <playwright-module> [screenshots]');
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch();
 if (screenshots) await mkdir(screenshots, { recursive: true });
+async function assertSlotPaint(slot) {
+  const sprite = slot.locator('.atlas-sprite');
+  await sprite.waitFor({ timeout: 120000 });
+  await sprite.evaluate(async element => {
+    const image = new Image();
+    image.src = getComputedStyle(element).backgroundImage.slice(5, -2);
+    await image.decode();
+  });
+  // DOM visibility does not detect an opaque sibling painting over a sprite.
+  // Hiding the item must change the pixels while leaving the slot intact.
+  const painted = await slot.screenshot();
+  await slot.locator('.slot').evaluate(element => element.style.visibility = 'hidden');
+  const background = await slot.screenshot();
+  assert(!painted.equals(background), 'Special item sprite must paint above its slot background');
+  await slot.locator('.slot').evaluate(element => element.style.visibility = '');
+}
 try {
   const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
   await page.route('**/*', route => new URL(route.request().url()).hostname.includes('posthog') ? route.abort() : route.continue());
@@ -38,8 +54,27 @@ try {
   const ingredient = page.locator('.special-card .special-good').first();
   await ingredient.click();
   await page.waitForURL(next => next.searchParams.get('item') !== 'i:gregtech:gt.blockores2:6382');
+  const poolUrl = new URL(base);
+  poolUrl.searchParams.set('item', 'i:cropsnh:genericSeed:0:4d096604a46bf1a05b02bcf08e9550d6d33e630e');
+  poolUrl.searchParams.set('view', 'recipes');
+  poolUrl.searchParams.set('special', 'mutation-pool');
+  await page.goto(poolUrl.href);
+  const pool = page.locator('.pool-grid').first();
+  await pool.waitFor({ timeout: 120000 });
+  await assertSlotPaint(pool.locator('.special-slot').first());
+  if (screenshots) await page.screenshot({ path: `${screenshots}/pool-mobile.png` });
+  const meteorUrl = new URL(base);
+  meteorUrl.searchParams.set('item', 'i:appliedenergistics2:tile.BlockSkyChest:1');
+  meteorUrl.searchParams.set('view', 'usages');
+  meteorUrl.searchParams.set('special', 'meteor-ritual');
+  await page.goto(meteorUrl.href);
+  const meteor = page.locator('.meteor-card').first();
+  await meteor.waitFor({ timeout: 120000 });
+  await assertSlotPaint(meteor.locator('.special-slot').first());
+  await assertSlotPaint(meteor.locator('.special-goods').filter({ hasText: 'Weighted outputs' }).locator('.special-slot').first());
+  if (screenshots) await page.screenshot({ path: `${screenshots}/meteor-mobile.png` });
   assert.deepEqual(errors, []);
-  console.log('Special-only totals, native crop layout, shared panel/slots, global counts, mobile and item navigation passed.');
+  console.log('Special-only totals, native crop layout, shared panel/slots, visible pool and meteor sprites, global counts, mobile and item navigation passed.');
 } finally {
   await browser.close();
 }
