@@ -70,6 +70,20 @@ try {
     if (screenshots) await page.screenshot({ path: `${screenshots}/${example.map}-desktop.png` });
     await page.setViewportSize({ width: 390, height: 844 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    if (example.type === 'Distillation Tower') {
+      await page.mouse.move(0, 0);
+      const rulerCoversLabel = await page.evaluate(() => {
+        const detail = document.querySelector('.detail');
+        const label = document.querySelector('.non-consumable');
+        const ruler = document.querySelector('.type-row');
+        const labelRect = label.getBoundingClientRect();
+        const targetY = detail.getBoundingClientRect().top + 35 + ruler.getBoundingClientRect().height / 2;
+        detail.scrollTop += labelRect.top + labelRect.height / 2 - targetY;
+        const rect = label.getBoundingClientRect();
+        return Boolean(document.elementFromPoint(rect.left + rect.width / 2, rect.top + rect.height / 2)?.closest('.type-row'));
+      });
+      assert(rulerCoversLabel, 'Mobile sticky machine ruler must cover recipe labels while scrolling');
+    }
     if (screenshots) await page.screenshot({ path: `${screenshots}/${example.map}-mobile.png` });
     await page.setViewportSize({ width: 1440, height: 1000 });
   }

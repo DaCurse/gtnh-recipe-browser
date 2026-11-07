@@ -230,7 +230,7 @@
   .slot-grid { position:relative; display:grid; grid-auto-rows:var(--slot-size); }
   .slot-grid.positioned { display:block; }
   .positioned .ingredient, .positioned .empty-slot { position:absolute; }
-  .ingredient { position:relative; width:var(--slot-size); height:var(--slot-size); padding:0; border:0; background:none; cursor:pointer; }
+  .ingredient { position:relative; isolation:isolate; width:var(--slot-size); height:var(--slot-size); padding:0; border:0; background:none; cursor:pointer; }
   .ingredient:hover { filter:brightness(1.14); z-index:1; }
   .empty-slot { position:relative; width:var(--slot-size); height:var(--slot-size); }
   .amount { position:absolute; right:1px; bottom:1px; z-index:2; max-width:calc(var(--slot-size) - 2px); overflow:hidden; color:#fff; font:400 18px/18px Minecraft,monospace; letter-spacing:0; white-space:nowrap; text-shadow:-1px 0 #000,1px 0 #000,0 -1px #000,0 1px #000,1px 1px #000; }

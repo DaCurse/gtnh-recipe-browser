@@ -291,7 +291,7 @@
   .special-goods-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:7px; min-width:0; }
   .special-good-cell { width:max-content; min-width:72px; max-width:100%; display:flex; flex-direction:column; align-items:center; justify-self:center; gap:2px; text-align:center; }
   .special-good,.unresolved { position:relative; width:48px; height:48px; min-width:48px; min-height:48px; display:flex; align-items:center; justify-content:center; padding:0; border:1px solid transparent; border-radius:0; background:transparent; color:#d9dcdf; cursor:pointer; }
-  .special-slot { position:relative; width:48px; height:48px; flex:0 0 48px; }
+  .special-slot { position:relative; isolation:isolate; width:48px; height:48px; flex:0 0 48px; }
   .special-slot-content { position:relative; z-index:1; }
   .special-good.ore-dictionary { border-color:#7565a2; box-shadow:0 0 0 1px #7565a255,0 0 8px #8b78ce66; animation:ore-dictionary-pulse 1.8s ease-in-out infinite; }
   .special-good:hover,.special-good:focus-visible { border-color:#5b6167; background:#303338; filter:brightness(1.08); outline:0; }
