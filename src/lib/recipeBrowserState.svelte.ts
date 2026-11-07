@@ -1,9 +1,11 @@
 import { onMount, untrack } from 'svelte';
 import { recipeViewCount } from './recipeCounts';
-import { loadOreDiagramIndex, oreDiagramMatches, type OreDiagramIndex } from './oreDiagram';
+import { loadOreDiagramIndex, oreDiagramMatches, oreSceneBounds, type OreDiagramIndex, type OreScene } from './oreDiagram';
+import { RECIPE_UI_SCALE } from './machineUi';
 import { toRecipeSearchCatalogEntry, toRecipeSearchRecord } from './recipeSearch';
 import {
   specialLabel,
+  compareSpecialViewTypes,
   isSpecialViewEnabled,
   specialLookupMatchesView,
   specialRepository,
@@ -49,7 +51,19 @@ export class RecipeBrowserState {
   specialQuery = $state('');
   specialFilter = $state('');
   readonly recipePageSize = 20;
-  get specialPageSize(): number { return this.specialType === 'gt-ore-processing' ? 1 : 20; }
+  private oreColumns = $state(1);
+  get specialPageSize(): number { return this.specialType === 'gt-ore-processing' ? this.oreColumns : 20; }
+  get oreCardWidth(): number {
+    return this.specialRecords.reduce((width, record) => {
+      const scene = (record.payload as { nativeScene?: OreScene }).nativeScene;
+      return scene ? Math.max(width, oreSceneBounds(scene).width * RECIPE_UI_SCALE + 32) : width;
+    }, 480);
+  }
+  setOreColumns(columns: number) {
+    if (columns === this.oreColumns) return;
+    if (this.specialType === 'gt-ore-processing') this.specialPage = Math.floor(this.specialPage * this.oreColumns / columns);
+    this.oreColumns = columns;
+  }
 
   private loadedRecipeCounts = $state<Record<string, number>>({});
   private oreDiagramIndex = $state.raw<OreDiagramIndex>();
@@ -216,7 +230,7 @@ export class RecipeBrowserState {
         const count = this.specialCount(mode, viewType.id);
         return typeof count === 'number' && Number.isFinite(count) && count > 0;
       })
-      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
+      .sort(compareSpecialViewTypes);
   }
 
   get specialTypeLabel(): string {

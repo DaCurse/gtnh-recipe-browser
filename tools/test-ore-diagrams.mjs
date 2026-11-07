@@ -32,7 +32,12 @@ try {
     await page.goto(url.href); lastUrl = url.href;
     const card = page.locator(`[data-record-id="native-ore:${sceneId}"]`);
     await card.waitFor({ timeout: 120000 });
+    assert.equal(await page.locator('.type-row .special-tab small').first().innerText(), 'GT Ore Processing');
     const chart = card.locator('.native-ore-diagram');
+    assert(await card.evaluate(element => {
+      const card = element.getBoundingClientRect(), list = element.parentElement.getBoundingClientRect();
+      return Math.abs((card.left + card.right) / 2 - (list.left + list.right) / 2) < 1;
+    }), 'A single diagram should be centered in the available width');
     assert.equal(await chart.locator('.diagram-segment').count(), scene.paths.length);
     assert.equal(await chart.locator('svg image').count(), scene.slots.length);
     assert.equal(await chart.locator('.diagram-item:not(.diagram-machine)').count(), scene.groups.length);
@@ -71,6 +76,16 @@ try {
   await page.locator('.recipe-pagination').getByRole('button', { name: 'Next', exact: true }).click();
   assert.notEqual(await page.locator('.special-card').getAttribute('data-record-id'), firstRecord);
   assert.equal(await page.locator('.view-tabs').innerText(), itemTotals);
+  await page.setViewportSize({ width: 1920, height: 1100 });
+  await page.waitForFunction(() => document.querySelectorAll('.native-ore-diagram').length === 2);
+  assert(await page.locator('.diagram-scroll').evaluateAll(elements => elements.every(element => element.scrollWidth <= element.clientWidth)), 'Two diagrams must fit at native size without horizontal scrolling');
+  const twoCards = await page.locator('.special-card').evaluateAll(elements => elements.map(element => {
+    const rect = element.getBoundingClientRect(); return { left: rect.left, right: rect.right, top: rect.top };
+  }));
+  assert(Math.abs(twoCards[0].top - twoCards[1].top) < 1 && twoCards[0].right <= twoCards[1].left);
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.waitForFunction(() => document.querySelectorAll('.native-ore-diagram').length === 1);
+  await page.setViewportSize({ width: 1440, height: 1800 });
   await page.locator('.special-mark').first().click();
   await page.locator('.native-ore-diagram').first().waitFor();
   const pendingDownload = page.waitForEvent('download');

@@ -372,6 +372,22 @@ export function specialLabel(viewType: SpecialViewType): string {
   return viewType.shortLabel || viewType.label || viewType.id;
 }
 
+// GTNH 2.9.0 config/NEI/handlerordering.csv. NEI sorts priorities ascending;
+// handlers absent from that file use zero. Keep exported order for ties.
+const NEI_SPECIAL_PRIORITIES: Partial<Record<SpecialCategory, number>> = {
+  oreProcessing: -1000,
+  lootBag: 99,
+  worldgenLoot: 100,
+  vending: 101
+};
+export function compareSpecialViewTypes(left: SpecialViewType, right: SpecialViewType): number {
+  const priority = (view: SpecialViewType) => {
+    const category = specialCategory(view.id) ?? specialCategory(view.category ?? '');
+    return category ? NEI_SPECIAL_PRIORITIES[category] ?? 0 : 0;
+  };
+  return priority(left) - priority(right) || (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id);
+}
+
 export function isSpecialViewEnabled(viewTypeId: string): boolean {
   return !DISABLED_SPECIAL_VIEW_TYPES.has(viewTypeId);
 }

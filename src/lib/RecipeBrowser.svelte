@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { trackEvent } from './analytics';
   import {
     browserExportFilename,
@@ -89,6 +90,12 @@
   const specialPageCount = $derived(browserState.specialPageCount);
   const specialSearchPending = $derived(browserState.specialSearchPending);
   const recipeCount = (view: RecipeView) => browserState.recipeCount(view);
+  let recipeListWidth = $state(0);
+  const oreCardWidth = $derived(browserState.oreCardWidth);
+  $effect(() => {
+    const columns = recipeListWidth >= oreCardWidth * 2 + 14 ? 2 : 1;
+    untrack(() => browserState.setOreColumns(columns));
+  });
 
   type ExportTarget = 'pane' | 'machine' | 'category';
   type ExportChoice = 'filtered' | 'all';
@@ -411,7 +418,8 @@
   </div>
 </div>
 
-<div class="recipe-list">
+<div class="recipe-list" class:ore-diagrams={browserState.showingSpecial && browserState.specialType === 'gt-ore-processing'}
+  style:--ore-card-width={`${oreCardWidth}px`} bind:clientWidth={recipeListWidth}>
   {#if itemDataError}
     <div class="no-recipes recipe-error" role="alert">
       <span aria-hidden="true">!</span>

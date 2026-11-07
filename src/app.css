@@ -131,6 +131,9 @@ h1 { margin:0 0 9px; font:36px/46px Minecraft; color:#f0f1f2; letter-spacing:0; 
 .recipe-search-wrap button svg { width:18px; height:18px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; }
 .recipe-search-block>small { display:block; min-height:16px; margin:6px 3px 0; color:#858a8f; font-size:11px; }
 .recipe-list { max-width:1200px;margin:auto;display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,550px),1fr));gap:14px; }
+.recipe-list.ore-diagrams { grid-template-columns:repeat(auto-fit,minmax(min(100%,var(--ore-card-width)),1fr)); justify-items:center; }
+.recipe-list.ore-diagrams>.special-card { justify-self:center; }
+.recipe-list.ore-diagrams>.recipe-pagination { grid-column:1/-1; }
 .no-recipes,.recipe-loading { grid-column:1/-1; width:100%; min-width:0; max-width:100%; display:grid; place-items:center; padding:70px; overflow:hidden; color:#7f8489; text-align:center; }.no-recipes>span { font-size:40px; }.no-recipes b,.recipe-loading b { margin-top:10px; color:#b5b9bd; }.no-recipes p,.recipe-loading p { max-width:100%; margin:8px 0 0; overflow-wrap:anywhere; }
 .recipe-loading .spinner { width:32px; height:32px; }
 .recipe-loading.partial { padding:20px; border:1px solid #3d4145; border-radius:8px; background:#202226; }

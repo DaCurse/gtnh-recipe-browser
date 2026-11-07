@@ -35,6 +35,12 @@ ore-dictionary choices and bounded pagination; native handler coordinates can
 be supplied through its `positions` prop. Active special tabs use the same
 icon ruler treatment as machine tabs.
 
+Special-tab priorities follow GTNH 2.9.0's `config/NEI/handlerordering.csv`:
+Ore Processing −1000, unconfigured/default handlers 0, Enhanced LootBags 99,
+World-Generation Loot 100, and Vending Machine 101. As in NEI, lower values
+come first. Ties retain the exported relative order; the config does not
+define a unique order among zero-priority handlers.
+
 `recipeViewCount` combines ordinary counts with enabled special-category
 counts for the Recipes/Usages direction. Machine usages remain independent.
 Loading ordinary recipe shards must not overwrite the special contribution,
@@ -84,8 +90,11 @@ The renderer uses the exact native positions, machine labels, source arrows,
 cycle alternatives and Shadow UI slot textures. It supports size controls,
 horizontal scrolling on phones, item/machine navigation, tooltips, full JSON
 export and cached offline rendering. Original legacy graph box/rank/panning
-code is removed. One complete chart is mounted per page, including global
-browsing of all 331 diagrams. Other releases retain disabled legacy graphs until they get
+code is removed. A lone chart is centered; two charts are mounted per page
+when the available width fits both at native size without internal horizontal
+scrolling. Narrow layouts use one chart, and resizing preserves the current
+diagram. This also applies to global browsing of all 331 diagrams.
+Other releases retain disabled legacy graphs until they get
 their own validated native snapshots.
 
 Reproduction and licensing are in
