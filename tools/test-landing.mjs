@@ -18,7 +18,8 @@ const refreshedItems = await page.locator('.sequence').first().locator('a').eval
 assert.notDeepEqual(refreshedItems, firstItems, 'Refresh should choose a new showcase');
 assert.equal(await page.locator('header .project-links').count(),0);
 assert.equal(await page.locator('.landing footer .project-links a').count(),2);
-assert.equal(await page.locator('.row').count(),3);
+assert.equal(await page.locator('.row').count(),4);
+assert.equal(await page.locator('.row.reverse').count(),2);
 assert.equal(await page.locator('.primary-nav').count(),0);
 const tile=page.locator('.sequence a').nth(2);const box=await tile.boundingBox();await page.mouse.move(box.x+30,box.y+30);
 await page.locator('.floating-tooltip').waitFor();

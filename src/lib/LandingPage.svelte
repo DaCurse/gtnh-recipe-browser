@@ -8,6 +8,9 @@
     openItems: () => void; openFinder: () => void; navigate: (id: string) => void;
     loadEntry: (id: string, signal: AbortSignal) => Promise<CatalogEntry | undefined>;
   } = $props();
+  const rowCount = 4;
+  const itemsPerRow = 20;
+  const showcaseCount = rowCount * itemsPerRow;
   const rows = $derived.by(() => {
     const sheets = new Set<string>();
     // Pick sheets first so a fresh showcase never downloads dozens of atlases.
@@ -20,17 +23,17 @@
     for (const entry of catalog) {
       if (!entry.icon || entry.searchable === false || !sheets.has(entry.icon.url)) continue;
       seen++;
-      if (entries.length < 60) entries.push(entry);
+      if (entries.length < showcaseCount) entries.push(entry);
       else {
         const index = Math.floor(Math.random() * seen);
-        if (index < 60) entries[index] = entry;
+        if (index < showcaseCount) entries[index] = entry;
       }
     }
     for (let index = entries.length - 1; index > 0; index--) {
       const other = Math.floor(Math.random() * (index + 1));
       [entries[index], entries[other]] = [entries[other]!, entries[index]!];
     }
-    return [entries.slice(0, 20), entries.slice(20, 40), entries.slice(40, 60)];
+    return Array.from({length:rowCount},(_,index)=>entries.slice(index*itemsPerRow,(index+1)*itemsPerRow));
   });
   function itemHref(id: string) {
     const url = new URL(itemsUrl);
@@ -87,7 +90,7 @@
 
 <style>
   .landing { display:flex; flex:1; flex-direction:column; overflow:auto; font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif; background:radial-gradient(ellipse at 50% 30%,#ad8e3020,transparent 65%); }
-  .hero { text-align:center; padding:clamp(40px,7vh,90px) 24px 24px; margin:auto auto 0; max-width:850px; }
+  .hero { text-align:center; padding:clamp(32px,5vh,64px) 24px 20px; margin:auto auto 0; max-width:850px; }
   .eyebrow { font-family:inherit; text-shadow:none; color:#b9a476; font-size:11px; letter-spacing:.22em; font-weight:650; }
   h1 { font-family:inherit; text-shadow:none; font-size:clamp(38px,6vw,72px); letter-spacing:-.055em; line-height:1.08; margin:20px 0; font-weight:750; }
   .intro { max-width:630px; margin:auto; color:#a5abb3; font-size:clamp(15px,2vw,18px); line-height:1.7; }
@@ -96,7 +99,7 @@
   .actions .primary { background:#d3ba83; color:#201d16; border-color:#d3ba83; }
   .actions a:hover { filter:brightness(1.12); }
   .details { font-size:12px; color:#777f89; line-height:1.6; }
-  .showcase { overflow:hidden; flex-shrink:0; padding:14px 0 24px; mask-image:linear-gradient(90deg,transparent,black 8%,black 92%,transparent); }
+  .showcase { overflow:hidden; flex-shrink:0; padding:14px 0 20px; mask-image:linear-gradient(90deg,transparent,black 8%,black 92%,transparent); }
   .row { width:100%; overflow:hidden; padding:4px 0; }
   .track { display:flex; width:max-content; animation:drift 75s linear infinite; }
   .reverse .track { animation-direction:reverse; animation-duration:85s; }
