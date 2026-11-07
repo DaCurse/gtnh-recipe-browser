@@ -51,11 +51,20 @@ try {
     await machine.hover(); await page.locator('.floating-tooltip').waitFor();
     await page.mouse.move(0, 0);
     assert.equal(await chart.locator('.diagram-controls').count(), 0);
-    assert.equal(await page.locator('.special-tab-count').count(), 0);
+    for (const tab of await page.locator('.type-row .machine-tab').all()) {
+      const count = tab.locator('.machine-tab-count');
+      assert.equal((await count.innerText()).replaceAll(',', ''), (await tab.getAttribute('title')).match(/\((\d+)\)$/)[1]);
+      assert(await count.evaluate(element => {
+        const count = element.getBoundingClientRect(), icon = element.parentElement.getBoundingClientRect();
+        return count.left >= icon.left && count.right <= icon.right && count.bottom <= icon.bottom;
+      }), 'Recipe count should stay inside the icon rather than float above it');
+    }
+    if (screenshots) await page.locator('.type-row').screenshot({ path: `${screenshots}/${name}-ruler-desktop.png` });
     assert.match(await page.locator('.machine-tab small').first().evaluate(element => getComputedStyle(element).fontFamily), /Minecraft/);
     await page.setViewportSize({ width: 390, height: 844 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert(await chart.locator('.diagram-scroll').evaluate(element => element.scrollWidth > element.clientWidth));
+    if (screenshots) await page.locator('.type-row').screenshot({ path: `${screenshots}/${name}-ruler-mobile.png` });
     if (screenshots) await page.screenshot({ path: `${screenshots}/${name}-mobile.png` });
     await page.setViewportSize({ width: 1440, height: 1800 });
     console.log(`${name}: ${item}, ${scene.groups.length} item groups, ${scene.paths.length} native segments`);

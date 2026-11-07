@@ -70,6 +70,11 @@
   });
   const entryById = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
   const related = $derived(itemDataLoading || itemDataError ? [] : browserState.related);
+  const machineCounts = $derived.by(() => {
+    const counts = new Map<string, number>();
+    for (const recipe of related) counts.set(recipe.type, (counts.get(recipe.type) ?? 0) + 1);
+    return counts;
+  });
   const types = $derived(itemDataLoading || itemDataError ? [] : browserState.types);
   const specialTypes = $derived(browserState.specialTypes);
   const visibleSpecialRecords = $derived(browserState.visibleSpecialRecords);
@@ -305,14 +310,17 @@
       class="machine-tab"
       class:active={browserState.type === tab}
       onclick={() => browserState.selectRecipeType(tab)}
-      title={tab}
+      title={`${tab} (${machineCounts.get(tab) ?? 0})`}
       aria-label={tab}
     >
+      <span class="machine-tab-icon">
       {#if tabCrafter}
         <ItemIcon entry={tabCrafter} size={60} selected={browserState.type === tab} />
       {:else}
         <span class="machine-fallback">⚙</span>
       {/if}
+        <span class="machine-tab-count" aria-hidden="true">{(machineCounts.get(tab) ?? 0).toLocaleString()}</span>
+      </span>
       <small>{tab}</small>
     </button>
   {/each}
@@ -325,11 +333,16 @@
       title={`${tab.label} (${browserState.specialCount(mode, tab.id) ?? 0})`}
       aria-label={tab.label}
     >
+      <span class="machine-tab-icon">
       {#if tabIcon}
         <ItemIcon entry={tabIcon} size={60} selected={browserState.specialType === tab.id} />
       {:else}
         <span class="special-fallback">{tab.glyph ?? '✦'}</span>
       {/if}
+        {#if browserState.specialCount(mode, tab.id) !== undefined}
+          <span class="machine-tab-count" aria-hidden="true">{browserState.specialCount(mode, tab.id)!.toLocaleString()}</span>
+        {/if}
+      </span>
       <small>{tab.shortLabel ?? tab.label}</small>
     </button>
   {/each}
