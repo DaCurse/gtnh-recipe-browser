@@ -25,6 +25,7 @@ build = target/'nesql-exporter'
 shutil.copytree(source/'nesql-exporter',build,ignore=shutil.ignore_patterns('build','.gradle','.git'))
 package = build/'src/main/java/com/github/dcysteine/nesql/exporter/main'
 shutil.copy2(root/'tools/machine-ui-export/BrowserLayoutExporter.java',package/'BrowserLayoutExporter.java')
+shutil.copy2(root/'tools/machine-ui-export/BrowserOreDiagramExporter.java',package/'BrowserOreDiagramExporter.java')
 main = package/'Main.java'
 text = main.read_text()
 anchor = 'ExportAutomationController.install();'

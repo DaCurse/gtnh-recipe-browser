@@ -1,6 +1,5 @@
 import { readFile } from 'node:fs/promises';
 import { describe, expect, it } from 'vitest';
-import { layoutOreProcessingGraph, stagesToOreGraph } from '../src/lib/oreProcessingGraph';
 import {
   boundedSpecialPage,
   gtDimensionDisplayGoodsId,
@@ -143,21 +142,6 @@ describe('NEI special browser presentation', () => {
     });
   });
 
-  it('uses a unique key for duplicate semantic ore routes', async () => {
-    const source = await readFile('src/lib/OreProcessingGraph.svelte', 'utf8');
-    expect(source).toContain('as edge, edgeIndex (`${edge.from}:${edge.to}:${edge.branch ?? \'\'}:${edgeIndex}`)');
-    const input = {
-      nodes: [
-        { id: 'source', label: 'Source', kind: 'source' },
-        { id: 'result', label: 'Result', kind: 'result' }
-      ],
-      edges: [
-        { from: 'source', to: 'result', chance: 0.5 },
-        { from: 'source', to: 'result', chance: 0.25 }
-      ]
-    } as const;
-    expect(layoutOreProcessingGraph(input).edges).toHaveLength(2);
-  });
 
   it('retains category payload fields in search text', () => {
     const record: SpecialRecord = {
@@ -234,56 +218,4 @@ describe('NEI special browser presentation', () => {
     expect(tooltipSource).toContain('class="tooltip-notes"');
   });
 
-  it('builds semantic stage nodes, including reagent and branch outputs', () => {
-    const graph = stagesToOreGraph([
-      {
-        id: 'bath',
-        machine: 'Chemical Bath',
-        kind: 'chemicalBath',
-        inputs: [{ goodsId: 'fluid:acid', role: 'reagent' }],
-        outputs: [{ goodsId: 'dust:washed', chance: 0.75, role: 'output' }],
-        branches: ['acid']
-      },
-      {
-        id: 'sift',
-        machine: 'Sifter',
-        kind: 'sifter',
-        outputs: [{ goodsId: 'dust:nugget', chance: 0.2, role: 'output' }]
-      }
-    ], { goodsId: 'ore:raw' });
-    expect(graph.nodes.find((node) => node.goodsId === 'fluid:acid')?.kind).toBe('reagent');
-    expect(graph.nodes.find((node) => node.id === 'bath')?.kind).toBe('chemicalBath');
-    expect(graph.nodes.find((node) => node.id === 'sift')?.kind).toBe('sifter');
-    expect(graph.edges.some((edge) => edge.branch === 'acid')).toBe(true);
-  });
-
-  it('allocates stable non-overlapping boxes and orthogonal routes', () => {
-    const input = {
-      nodes: [
-        { id: 'source', label: 'Source', kind: 'source' },
-        { id: 'machine', label: 'Macerator', kind: 'machine' },
-        { id: 'result-a', label: 'A', kind: 'result' },
-        { id: 'result-b', label: 'B', kind: 'result' }
-      ],
-      edges: [
-        { from: 'source', to: 'machine' },
-        { from: 'machine', to: 'result-a', chance: 0.5 },
-        { from: 'machine', to: 'result-b', chance: 0.25 }
-      ]
-    } as const;
-    const left = layoutOreProcessingGraph(input);
-    const right = layoutOreProcessingGraph(input);
-    expect(left).toEqual(right);
-    for (let index = 0; index < left.nodes.length; index += 1) {
-      for (let next = index + 1; next < left.nodes.length; next += 1) {
-        const a = left.nodes[index]!;
-        const b = left.nodes[next]!;
-        const overlap = a.x < b.x + b.width && a.x + a.width > b.x
-          && a.y < b.y + b.height && a.y + a.height > b.y;
-        expect(overlap).toBe(false);
-      }
-    }
-    expect(left.edges[1]?.points.length).toBe(4);
-    expect(left.edges[1]?.points[1]?.x).toBe(left.edges[1]?.points[2]?.x);
-  });
 });

@@ -1,0 +1,87 @@
+import assert from 'node:assert/strict';
+import { mkdir, readFile } from 'node:fs/promises';
+import { gunzipSync } from 'node:zlib';
+/* global document, innerWidth */
+const [base, playwrightModule, screenshots] = process.argv.slice(2);
+if (!playwrightModule) throw new Error('Usage: node tools/test-ore-diagrams.mjs <app-url> <playwright-module> [screenshots]');
+const registry = JSON.parse(await readFile('src/lib/generated/ore-diagrams.json', 'utf8'));
+const datasetId = '2.9.0-v7-rbd0b48ae8ad7';
+const index = JSON.parse(gunzipSync(await readFile(`public/assets/sha256/${registry.releases[datasetId].sha256}`)));
+const data = JSON.parse(gunzipSync(await readFile(`public/assets/sha256/${index.scenes.sha256}`)));
+const { chromium } = await import(playwrightModule);
+const browser = await chromium.launch();
+if (screenshots) await mkdir(screenshots, { recursive: true });
+try {
+  const context = await browser.newContext({ viewport: { width: 1440, height: 1800 } });
+  const page = await context.newPage();
+  await page.route('**/*', route => new URL(route.request().url()).hostname.includes('posthog') ? route.abort() : route.continue());
+  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  const cases = [
+    ['chemical-baths', keys => keys.has('crushed-ore-bath-mercury') && keys.has('crushed-ore-bath-sodium-persulfate')],
+    ['sifting', keys => keys.has('purified-ore-sift')],
+    ['split-thermal', keys => keys.has('ore-thermal-centrifuge-crushed') && keys.has('ore-thermal-centrifuge-purified')],
+    ['additional-recipes', keys => keys.has('additional-recipe-outputs')]
+  ];
+  let lastUrl;
+  for (const [name, matches] of cases) {
+    const [sceneId, scene] = Object.entries(data.scenes).find(([, scene]) => matches(new Set(scene.slots.map(slot => slot.key))));
+    const slot = scene.slots.find(slot => slot.key === 'raw-ore');
+    const item = scene.groups.find(group => group.pos[0] === slot.pos[0] && group.pos[1] === slot.pos[1]).components[0].id;
+    const url = new URL(base); url.searchParams.set('version', datasetId); url.searchParams.set('item', item);
+    url.searchParams.set('view', 'usages'); url.searchParams.set('special', 'gt-ore-processing');
+    await page.goto(url.href); lastUrl = url.href;
+    const card = page.locator(`[data-record-id="native-ore:${sceneId}"]`);
+    await card.waitFor({ timeout: 120000 });
+    const chart = card.locator('.native-ore-diagram');
+    assert.equal(await chart.locator('.diagram-segment').count(), scene.paths.length);
+    assert.equal(await chart.locator('svg image').count(), scene.slots.length);
+    assert.equal(await chart.locator('.diagram-item:not(.diagram-machine)').count(), scene.groups.length);
+    assert.equal(await chart.locator('.diagram-machine').count(), scene.labels.length);
+    await page.waitForFunction(element => [...element.querySelectorAll('.diagram-item')].every(item => item.querySelector('.atlas-sprite')), await chart.elementHandle(), { timeout: 120000 });
+    await page.waitForLoadState('networkidle');
+    assert.equal(await chart.locator('.slot:not(.frameless)').count(), 0);
+    assert.equal(await card.locator('.ore-graph-node').count(), 0);
+    if (screenshots) await card.screenshot({ path: `${screenshots}/${name}-desktop.png` });
+    const machine = chart.locator('.diagram-machine').first();
+    await machine.hover(); await page.locator('.floating-tooltip').waitFor();
+    await page.mouse.move(0, 0);
+    await chart.getByRole('button', { name: 'Smaller diagram' }).click();
+    assert.equal(await chart.getByRole('button', { name: 'Reset diagram size' }).innerText(), '75%');
+    await chart.getByRole('button', { name: 'Reset diagram size' }).click();
+    await page.setViewportSize({ width: 390, height: 844 });
+    assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
+    assert(await chart.locator('.diagram-scroll').evaluate(element => element.scrollWidth > element.clientWidth));
+    if (screenshots) await page.screenshot({ path: `${screenshots}/${name}-mobile.png` });
+    await page.setViewportSize({ width: 1440, height: 1800 });
+    console.log(`${name}: ${item}, ${scene.groups.length} item groups, ${scene.paths.length} native segments`);
+  }
+  const chart = page.locator('.native-ore-diagram').first();
+  const ingredient = chart.locator('.diagram-item:not(.diagram-machine)').first();
+  const itemId = await ingredient.getAttribute('data-goods-id');
+  await ingredient.click();
+  await page.waitForURL(url => url.searchParams.get('item') === itemId && url.searchParams.get('view') === 'recipes');
+  await page.goto(lastUrl);
+  await page.locator('.native-ore-diagram').first().waitFor({ timeout: 120000 });
+  const itemTotals = await page.locator('.view-tabs').innerText();
+  await page.locator('.special-mark').first().click();
+  await page.locator('.recipe-pagination').waitFor();
+  assert.equal(await page.locator('.native-ore-diagram').count(), 1, 'Mount one complete diagram at a time');
+  assert.match(await page.locator('.recipe-pagination').innerText(), /of 331/);
+  const firstRecord = await page.locator('.special-card').getAttribute('data-record-id');
+  await page.locator('.recipe-pagination').getByRole('button', { name: 'Next', exact: true }).click();
+  assert.notEqual(await page.locator('.special-card').getAttribute('data-record-id'), firstRecord);
+  assert.equal(await page.locator('.view-tabs').innerText(), itemTotals);
+  await page.locator('.special-mark').first().click();
+  await page.locator('.native-ore-diagram').first().waitFor();
+  const pendingDownload = page.waitForEvent('download');
+  await page.locator('.export-actions > button').first().click();
+  const download = await pendingDownload;
+  const exported = JSON.parse(await readFile(await download.path(), 'utf8'));
+  assert(exported.records.some(record => record.payload.nativeScene?.paths.length > 0));
+  await page.waitForLoadState('networkidle');
+  await context.setOffline(true);
+  await page.reload();
+  await page.locator('.native-ore-diagram').first().waitFor({ timeout: 120000 });
+  assert.deepEqual(errors, []);
+  console.log('Native optional routes, geometry, icons, tooltips, size controls, mobile scrolling, navigation, global pagination, exports and cached offline rendering passed.');
+} finally { await browser.close(); }

@@ -36,7 +36,9 @@ try {
   await breeding.click();
   const card = page.locator('.special-card').first();
   await card.waitFor({ timeout: 120000 });
-  assert.match(await page.locator('.view-tabs').innerText(), /Recipes\s+1\b/);
+  const specialTotal = (await page.locator('.special-tab-count').allTextContents()).reduce((sum, count) => sum + Number(count), 0);
+  assert(specialTotal > 0);
+  assert.match(await page.locator('.view-tabs').innerText(), new RegExp(`Recipes\\s+${specialTotal}\\b`));
   assert.match(await card.evaluate(element => getComputedStyle(element).borderImageSource), /nei-panel\.png/);
   assert.equal(await breeding.evaluate(element => getComputedStyle(element).backgroundColor), 'rgba(0, 0, 0, 0)');
   assert.equal(await card.locator('.special-good .slot:not(.frameless)').count(), 0);

@@ -43,6 +43,7 @@ import { restoreMinecraftFormatting } from './minecraftText';
 import { installOfflineAssets } from './offline';
 import { materializeRecipe } from './recipeMaterialization';
 import { applyFrontendPresentation } from './recipeFrontendPresentation';
+import { hasNativeOreDiagrams, nativeOreRecords } from './oreDiagram';
 import { machineCanProcessVoltage } from './recipePresentation';
 import { mapProgressively } from './progressive';
 import {
@@ -1323,6 +1324,14 @@ export class DatasetRepository {
     signal?: AbortSignal
   ): Promise<SpecialRecord[]> {
     await this.entryFor(entryId, signal);
+    if (viewType === 'gt-ore-processing' && hasNativeOreDiagrams(this.datasetId)) {
+      const entry = this.entriesById.get(entryId);
+      if (!entry) { onProgress?.({ loadedShards: 0, totalShards: 0, batch: [] }); return []; }
+      const records = await withAbort(nativeOreRecords(this.datasetId, entry, view,
+        id => this.entriesById.get(id)), signal);
+      onProgress?.({ loadedShards: 1, totalShards: 1, batch: records });
+      return records;
+    }
     const fallbackId = view === 'recipes' ? this.goodsDetails.get(entryId)?.productionOreDictionaryId : undefined;
     if (fallbackId) await this.entryFor(fallbackId, signal);
     const entryIds = this.specialRecordIds(entryId, view);
@@ -1363,6 +1372,11 @@ export class DatasetRepository {
     }) => void,
     signal?: AbortSignal
   ): Promise<SpecialRecord[]> {
+    if (viewType === 'gt-ore-processing' && hasNativeOreDiagrams(this.datasetId)) {
+      const records = await withAbort(nativeOreRecords(this.datasetId, undefined, view, id => this.entriesById.get(id)), signal);
+      onProgress?.({ loadedShards: 1, totalShards: 1, batch: records });
+      return records;
+    }
     return this.specialFromShards(
       this.specialShardIdsForViewType(viewType),
       view,

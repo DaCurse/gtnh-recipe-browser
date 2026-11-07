@@ -1,5 +1,6 @@
 import { onMount, untrack } from 'svelte';
 import { recipeViewCount } from './recipeCounts';
+import { loadOreDiagramIndex, oreDiagramMatches, type OreDiagramIndex } from './oreDiagram';
 import { toRecipeSearchCatalogEntry, toRecipeSearchRecord } from './recipeSearch';
 import {
   specialLabel,
@@ -48,9 +49,10 @@ export class RecipeBrowserState {
   specialQuery = $state('');
   specialFilter = $state('');
   readonly recipePageSize = 20;
-  readonly specialPageSize = 20;
+  get specialPageSize(): number { return this.specialType === 'gt-ore-processing' ? 1 : 20; }
 
   private loadedRecipeCounts = $state<Record<string, number>>({});
+  private oreDiagramIndex = $state.raw<OreDiagramIndex>();
   private loadedSpecialCounts = $state<Record<string, number>>({});
   private recipeDebouncePending = $state(false);
   private recipeWorkerPending = $state(false);
@@ -201,13 +203,14 @@ export class RecipeBrowserState {
     return [...(repository.specialViewTypes ?? [])]
       .map((viewType) => ({
         ...viewType,
-        iconId: viewType.iconId
+        iconId: (viewType.id === 'gt-ore-processing' ? this.oreDiagramIndex?.iconId : undefined) ?? viewType.iconId
           ?? (viewType.serviceIconId ? serviceIcons.get(viewType.serviceIconId)?.goodsId : undefined),
         glyph: viewType.glyph
           ?? serviceIcons.get(viewType.serviceIconId ?? '')?.label.slice(0, 1)
       }))
       .filter((viewType) => viewType.id.length > 0)
-      .filter((viewType) => isSpecialViewEnabled(viewType.id))
+      .filter((viewType) => isSpecialViewEnabled(viewType.id)
+        || (viewType.id === 'gt-ore-processing' && this.oreDiagramIndex?.datasetId === this.context.repository().datasetId))
       .filter(() => mode !== 'machineUsages')
       .filter((viewType) => {
         const count = this.specialCount(mode, viewType.id);
@@ -287,12 +290,14 @@ export class RecipeBrowserState {
 
   recipeCount(view: RecipeView): number | undefined {
     const selected = this.context.selected();
-    return recipeViewCount(selected, view, this.loadedRecipeCounts[`${selected.id}:${view}`]);
+    return recipeViewCount(selected, view, this.loadedRecipeCounts[`${selected.id}:${view}`],
+      oreDiagramMatches(this.oreDiagramIndex, selected, view).length);
   }
 
   specialCount(view: RecipeView, viewType = this.specialType): number | undefined {
     if (!viewType) return undefined;
     const selected = this.context.selected();
+    if (viewType === 'gt-ore-processing') return oreDiagramMatches(this.oreDiagramIndex, selected, view).length;
     const counts = view === 'recipes' ? selected.specialProductionCounts : selected.specialUsageCounts;
     if (counts) return counts[viewType] ?? 0;
     const declared = selected as CatalogEntry & {
@@ -412,7 +417,17 @@ export class RecipeBrowserState {
     this.recipeLoading = true;
     this.recipeError = '';
     try {
-      await repository.entryFor(entryId, controller.signal);
+      if (this.oreDiagramIndex?.datasetId !== repository.datasetId) this.oreDiagramIndex = undefined;
+      const pendingIndex = loadOreDiagramIndex(repository.datasetId).catch(() => undefined);
+      const entry = repository.entryFor(entryId, controller.signal);
+      if (this.specialType === 'gt-ore-processing') {
+        const [, index] = await Promise.all([entry, pendingIndex]);
+        if (request === this.recipeRequest) this.oreDiagramIndex = index;
+      } else {
+        await entry;
+        // Ordinary recipe chunks must not wait for an optional diagram index.
+        void pendingIndex.then(index => { if (request === this.recipeRequest) this.oreDiagramIndex = index; });
+      }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
       if (request === this.recipeRequest) {

@@ -181,14 +181,28 @@ async function verifyPublishedManifest(destinationDirectory: string): Promise<vo
 
 async function pruneUnreferencedSharedObjects(): Promise<number> {
   const manifests: GeneratedPackManifest[] = [];
+  const manifestDigests = new Map<string, string>();
   for (const directory of await readdir(publicData, { withFileTypes: true })) {
     if (!directory.isDirectory() || directory.name.startsWith('.')) continue;
     const manifestPath = join(publicData, directory.name, 'pack-manifest.json');
     try {
-      manifests.push(JSON.parse(await readFile(manifestPath, 'utf8')) as GeneratedPackManifest);
+      const bytes = await readFile(manifestPath);
+      const manifest = JSON.parse(bytes.toString()) as GeneratedPackManifest;
+      manifests.push(manifest);
+      manifestDigests.set(manifest.datasetId, createHash('sha256').update(bytes).digest('hex'));
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
     }
+  }
+  const companions: Array<{ datasetId: string; assets: Array<{ sha256: string }> }> = [];
+  for (const path of ['assets/source/high-resolution-icons/provenance.json', 'assets/source/ore-diagrams/provenance.json']) {
+    const companion = JSON.parse(await readFile(join(repositoryRoot, path), 'utf8')) as {
+      datasetId: string; baseManifestSha256: string; assets: Array<{ sha256: string }>;
+    };
+    const digest = manifestDigests.get(companion.datasetId);
+    if (!digest) continue;
+    if (digest !== companion.baseManifestSha256) throw new Error(`Companion does not match its immutable dataset: ${path}`);
+    companions.push(companion);
   }
   const objectEntries = await readdir(globalAssets, { withFileTypes: true });
   if (objectEntries.some((entry) => !entry.isFile())) {
@@ -196,7 +210,8 @@ async function pruneUnreferencedSharedObjects(): Promise<number> {
   }
   const unreferenced = unreferencedSharedObjectNames(
     objectEntries.map((entry) => entry.name),
-    manifests
+    manifests,
+    companions
   );
   for (const name of unreferenced) await rm(join(globalAssets, name));
   return unreferenced.length;

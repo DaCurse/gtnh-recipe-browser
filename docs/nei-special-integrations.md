@@ -63,6 +63,34 @@ Unknown/oversized layouts retain all goods in the shared slot-grid fallback.
 Additional machine catalysts and requirements remain visible below the native
 diagram. Soil alternatives share one native slot and cycle as in NEI.
 
+## Native ore processing
+
+The enabled 2.9.0 ore-processing tab uses **NEI Custom Diagram 1.8.36**, rather
+than GTNEIOrePlugin or an inferred recipe closure. Its
+[`DiagramBuilder`](https://github.com/GTNewHorizons/nei-custom-diagram/blob/042a8c7f643b26e2645252ef58dea9bdf41a34c6/src/main/java/com/github/dcysteine/neicustomdiagram/generators/gregtech5/oreprocessing/DiagramBuilder.java)
+chooses each optional route; `LayoutHandler` supplies the slot groups and
+orthogonal paths. The runtime snapshot retains all 331 generated diagrams,
+including alternative bath fluids, sifter outputs, electromagnetic separation,
+extra recipes and distinct crushed/purified thermal-centrifuge branches.
+
+`oreDiagram.ts` loads a verified, dataset-bound 75KB gzip matcher index only
+when the item browser is active. The 102KB scene asset loads when an ore tab
+opens. Both use normal asset caching, ownership and deletion accounting. The
+directional matcher ignores NBT, unions ore-dictionary members and matches a
+container's fluid, following the upstream handler. Main recipe counts include
+the native matches and exclude the old inferred ore graph counts.
+
+The renderer uses the exact native positions, machine labels, source arrows,
+cycle alternatives and Shadow UI slot textures. It supports size controls,
+horizontal scrolling on phones, item/machine navigation, tooltips, full JSON
+export and cached offline rendering. Original legacy graph box/rank/panning
+code is removed. One complete chart is mounted per page, including global
+browsing of all 331 diagrams. Other releases retain disabled legacy graphs until they get
+their own validated native snapshots.
+
+Reproduction and licensing are in
+[`assets/source/ore-diagrams`](../assets/source/ore-diagrams/README.md).
+
 ## Other reusable anchors
 
 - CropsNH pages use `CropsNHItemList.cropSticks` for crop output, pool, and

@@ -58,19 +58,27 @@ export interface VersionsIndex {
 
 interface SharedObjectManifest {
   formatVersion: number;
+  datasetId?: string;
   recordPages?: Array<{ sha256: string }>;
   iconSheets?: Array<{ sha256: string }>;
+}
+interface SharedObjectCompanion {
+  datasetId: string;
+  assets: Array<{ sha256: string }>;
 }
 
 const FULL_SHA256 = /^[a-f0-9]{64}$/;
 
 /** Collect physical objects referenced by the frozen v6 bridge and current v7 packs. */
 export function referencedSharedObjectHashes(
-  manifests: readonly SharedObjectManifest[]
+  manifests: readonly SharedObjectManifest[],
+  companions: readonly SharedObjectCompanion[] = []
 ): Set<string> {
   const hashes = new Set<string>();
+  const datasets = new Set<string>();
   for (const manifest of manifests) {
     if (manifest.formatVersion !== 6 && manifest.formatVersion !== 7) continue;
+    if (manifest.datasetId) datasets.add(manifest.datasetId);
     if (!Array.isArray(manifest.recordPages) || !Array.isArray(manifest.iconSheets)) {
       throw new Error(`Format-${manifest.formatVersion} manifest is missing physical object lists`);
     }
@@ -81,15 +89,23 @@ export function referencedSharedObjectHashes(
       hashes.add(asset.sha256);
     }
   }
+  for (const companion of companions) {
+    if (!datasets.has(companion.datasetId)) continue;
+    for (const asset of companion.assets) {
+      if (!FULL_SHA256.test(asset.sha256)) throw new Error(`Invalid companion SHA-256 ${String(asset.sha256)}`);
+      hashes.add(asset.sha256);
+    }
+  }
   return hashes;
 }
 
 /** Return immutable objects which no currently published manifest owns. */
 export function unreferencedSharedObjectNames(
   objectNames: readonly string[],
-  manifests: readonly SharedObjectManifest[]
+  manifests: readonly SharedObjectManifest[],
+  companions: readonly SharedObjectCompanion[] = []
 ): string[] {
-  const referenced = referencedSharedObjectHashes(manifests);
+  const referenced = referencedSharedObjectHashes(manifests, companions);
   return objectNames.filter((name) => {
     if (!FULL_SHA256.test(name)) throw new Error(`Invalid shared object filename ${name}`);
     return !referenced.has(name);

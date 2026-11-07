@@ -169,6 +169,7 @@ public final class BrowserLayoutExporter {
             }
             if (maps.size() < 100) throw new IllegalStateException("Recipe registry incomplete: " + maps.size());
             root.add("recipePresentation", recipePresentation(registry));
+            root.add("oreDiagrams", BrowserOreDiagramExporter.export());
         } catch (Throwable e) { root.addProperty("error", e.toString()); e.printStackTrace(); }
         try { Files.write(Paths.get(System.getProperty("browser.ui.output")), new GsonBuilder().setPrettyPrinting().create().toJson(root).getBytes(StandardCharsets.UTF_8)); }
         catch (Throwable e) { e.printStackTrace(); }

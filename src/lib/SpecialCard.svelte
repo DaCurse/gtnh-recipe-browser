@@ -3,7 +3,8 @@
   import ItemIcon from './ItemIcon.svelte';
   import LootBagSpecialCard from './LootBagSpecialCard.svelte';
   import MeteorSpecialCard from './MeteorSpecialCard.svelte';
-  import OreProcessingGraph from './OreProcessingGraph.svelte';
+  import OreProcessingDiagram from './OreProcessingDiagram.svelte';
+  import type { OreScene } from './oreDiagram';
   import SpecialGoods from './SpecialGoods.svelte';
   import VeinSpecialCard from './VeinSpecialCard.svelte';
   import VendingSpecialCard from './VendingSpecialCard.svelte';
@@ -26,6 +27,7 @@
   const title = $derived(specialTitle(record, category, resolve));
   const iconEntry = $derived(viewType?.iconId ? resolve(viewType.iconId) : undefined);
   const iconLabel = $derived(viewType?.label ?? record.category);
+  const nativeScene = $derived((record.payload as { nativeScene?: OreScene }).nativeScene);
 
   function specialTitle(value: SpecialRecord, valueCategory: string, resolver: SpecialResolver): string {
     if (valueCategory === 'cropPool') {
@@ -82,7 +84,7 @@
   }
 </script>
 
-<article class="special-card nei-panel"
+<article class="special-card nei-panel" data-record-id={record.id}
   style:--recipe-text={machineUiTheme.textColor} style:--recipe-title={machineUiTheme.titleColor} style:--recipe-shadow={machineUiTheme.textShadow}>
   <header class="special-card-head">
     <button
@@ -119,7 +121,11 @@
     {:else if category === 'worldgenLoot'}
       <WorldgenLootSpecialCard {record} {resolve} {navigate} />
     {:else if category === 'oreProcessing'}
-      <OreProcessingGraph {record} {resolve} {navigate} />
+      {#if nativeScene}
+      <OreProcessingDiagram scene={nativeScene} {resolve} {navigate} />
+      {:else}
+      <p class="special-empty">No native ore-processing layout is available for this dataset.</p>
+      {/if}
     {:else}
       {#if inputGoods.length}<SpecialGoods goods={inputGoods} resolve={resolve} {navigate} label="Inputs" />{/if}
       <SpecialGoods goods={outputGoods} resolve={resolve} {navigate} label="Outputs" />

@@ -23,8 +23,8 @@ const SPECIAL_CATEGORY_ORDER = [
   'oreProcessing'
 ] as const;
 
-// Keep the exported records available for later repair, but do not expose the
-// currently unreliable graph as a browser tab or load it on item selection.
+// Legacy inferred ore graphs remain disabled. RecipeBrowserState enables the
+// native replacement only after loading an index bound to the exact dataset.
 const DISABLED_SPECIAL_VIEW_TYPES = new Set(['gt-ore-processing']);
 
 export type SpecialCategory = typeof SPECIAL_CATEGORY_ORDER[number];
@@ -191,7 +191,7 @@ export interface WorldgenSpecialPayload {
   chance?: number;
 }
 
-export interface OreProcessingStage {
+interface OreProcessingStage {
   id: string;
   machine: string;
   machineId?: string;
@@ -203,7 +203,7 @@ export interface OreProcessingStage {
   probability?: number;
 }
 
-export interface OreProcessingSpecialPayload {
+interface OreProcessingSpecialPayload {
   source?: SpecialGoods;
   result?: SpecialGoods;
   stages: OreProcessingStage[];
@@ -211,7 +211,7 @@ export interface OreProcessingSpecialPayload {
   edges?: SpecialProcessingEdge[];
 }
 
-export interface SpecialProcessingNode {
+interface SpecialProcessingNode {
   id: string;
   label: string;
   kind?: 'source' | 'machine' | 'result' | 'probability' | 'reagent' | string;
@@ -223,7 +223,7 @@ export interface SpecialProcessingNode {
   branch?: string;
 }
 
-export interface SpecialProcessingEdge {
+interface SpecialProcessingEdge {
   from: string;
   to: string;
   chance?: number;

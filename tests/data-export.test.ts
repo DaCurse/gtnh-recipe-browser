@@ -38,6 +38,14 @@ describe('data export tooling', () => {
     expect(argumentsMap(['--version', '2.9.0-beta-2']).get('version')).toBe('2.9.0-beta-2');
     expect(() => argumentsMap(['--version'])).toThrow(/Invalid argument/);
   });
+  it('retains registered companion objects only while their owning dataset is published', () => {
+    const asset = 'd'.repeat(64), orphan = 'e'.repeat(64);
+    const manifests = [{ formatVersion: 7, datasetId: 'current', recordPages: [], iconSheets: [] }];
+    const companions = [{ datasetId: 'current', assets: [{ sha256: asset }] }];
+    expect(unreferencedSharedObjectNames([asset, orphan], manifests, companions)).toEqual([orphan]);
+    expect(unreferencedSharedObjectNames([asset, orphan], manifests, [{ ...companions[0]!, datasetId: 'retired' }])).toEqual([asset, orphan]);
+    expect(() => referencedSharedObjectHashes(manifests, [{ datasetId: 'current', assets: [{ sha256: 'invalid' }] }])).toThrow(/companion SHA/);
+  });
 
   it('rejects changing bytes behind an immutable dataset URL', () => {
     const original = new TextEncoder().encode('{"formatVersion":4}');

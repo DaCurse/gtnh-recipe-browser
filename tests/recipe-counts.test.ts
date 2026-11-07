@@ -19,6 +19,10 @@ describe('recipe direction counts', () => {
     expect(recipeViewCount(entry, 'machineUsages')).toBeUndefined();
     expect(recipeViewCount(entry, 'machineUsages', 42)).toBe(42);
   });
+  it('adds native ore pages without counting the disabled inferred ore graphs', () => {
+    expect(recipeViewCount(entry, 'recipes', 0, 2)).toBe(3);
+    expect(recipeViewCount(entry, 'machineUsages', 42, 2)).toBe(42);
+  });
   it('supports old datasets and unknown counts', () => {
     expect(recipeViewCount({ specialProductionCount: 4 } as CatalogEntry, 'recipes')).toBe(4);
     expect(recipeViewCount({} as CatalogEntry, 'recipes')).toBeUndefined();

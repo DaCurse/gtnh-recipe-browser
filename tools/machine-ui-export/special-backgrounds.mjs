@@ -26,3 +26,8 @@ await writeFile(`${sourceDir}/provenance.json`, JSON.stringify({
   license: 'CC-BY-NC-SA-4.0', cropsNhVersion: '2.0.140',
   cropsNhRef: 'db0a9936bdcc00ac72c083790dbce8c76b73df41', images
 }, null, 2) + '\n');
+const oreSlots = execFileSync('unzip', ['-p', resourcePack, 'assets/neicustomdiagram/textures/slots.png']);
+await writeFile(`${sourceDir}/ore-slots.png`, oreSlots);
+for (const [name, left, size] of [['ore-slot', 0, 18], ['ore-slot-big', 18, 26]]) {
+  await sharp(oreSlots).extract({ left, top: 0, width: size, height: size }).png().toFile(`public/assets/machine-ui/${name}.png`);
+}
