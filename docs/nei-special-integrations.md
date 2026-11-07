@@ -34,6 +34,11 @@ placement. `SpecialGoods` retains ranges, weights, Fortune summaries,
 ore-dictionary choices and bounded pagination; native handler coordinates can
 be supplied through its `positions` prop. Active special tabs use the same
 icon ruler treatment as machine tabs.
+Ruler captions use the Minecraft font at its native 9px size. Counts stay in
+tab hover titles and the direction totals rather than floating over icons.
+When a direction has no ordinary recipes, it opens the first available
+special tab after its native index is ready. Filtering a category to zero
+matches does not trigger that fallback.
 
 Special-tab priorities follow GTNH 2.9.0's `config/NEI/handlerordering.csv`:
 Ore Processing −1000, unconfigured/default handlers 0, Enhanced LootBags 99,
@@ -87,7 +92,7 @@ container's fluid, following the upstream handler. Main recipe counts include
 the native matches and exclude the old inferred ore graph counts.
 
 The renderer uses the exact native positions, machine labels, source arrows,
-cycle alternatives and Shadow UI slot textures. It supports size controls,
+cycle alternatives and Shadow UI slot textures. It uses a fixed native size,
 horizontal scrolling on phones, item/machine navigation, tooltips, full JSON
 export and cached offline rendering. Original legacy graph box/rank/panning
 code is removed. A lone chart is centered; two charts are mounted per page

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { mkdir, readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
-/* global document, innerWidth */
+/* global document, innerWidth, getComputedStyle */
 const [base, playwrightModule, screenshots] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-ore-diagrams.mjs <app-url> <playwright-module> [screenshots]');
 const registry = JSON.parse(await readFile('src/lib/generated/ore-diagrams.json', 'utf8'));
@@ -50,9 +50,9 @@ try {
     const machine = chart.locator('.diagram-machine').first();
     await machine.hover(); await page.locator('.floating-tooltip').waitFor();
     await page.mouse.move(0, 0);
-    await chart.getByRole('button', { name: 'Smaller diagram' }).click();
-    assert.equal(await chart.getByRole('button', { name: 'Reset diagram size' }).innerText(), '75%');
-    await chart.getByRole('button', { name: 'Reset diagram size' }).click();
+    assert.equal(await chart.locator('.diagram-controls').count(), 0);
+    assert.equal(await page.locator('.special-tab-count').count(), 0);
+    assert.match(await page.locator('.machine-tab small').first().evaluate(element => getComputedStyle(element).fontFamily), /Minecraft/);
     await page.setViewportSize({ width: 390, height: 844 });
     assert(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth));
     assert(await chart.locator('.diagram-scroll').evaluate(element => element.scrollWidth > element.clientWidth));
@@ -97,6 +97,30 @@ try {
   await context.setOffline(true);
   await page.reload();
   await page.locator('.native-ore-diagram').first().waitFor({ timeout: 120000 });
+  await context.setOffline(false);
+  const specialOnly = new URL(base);
+  specialOnly.searchParams.set('item', 'i:gregtech:gt.blockores2:86');
+  specialOnly.searchParams.set('view', 'recipes');
+  await page.goto(specialOnly.href);
+  await page.locator('.special-card').first().waitFor({ timeout: 120000 });
+  assert.equal(await page.locator('.no-recipes').count(), 0);
+  const firstSpecial = page.locator('.special-tab').first();
+  assert(await firstSpecial.evaluate(element => element.classList.contains('active')), 'Special-only items default to the first available special tab');
+  await page.locator('.view-tabs').getByRole('button', { name: /^Usages/ }).click();
+  await page.waitForURL(url => url.searchParams.get('view') === 'usages');
+  await page.locator('.recipe-list article.card').first().waitFor();
+  assert.equal(await page.locator('.special-tab.active').count(), 0, 'Ordinary recipes keep their normal default');
+  await page.locator('.view-tabs').getByRole('button', { name: /^Recipes/ }).click();
+  await page.waitForURL(url => url.searchParams.get('view') === 'recipes' && Boolean(url.searchParams.get('special')));
+  await page.locator('.special-card').first().waitFor();
+  assert(await firstSpecial.evaluate(element => element.classList.contains('active')), 'Switching back to Recipes selects its first special tab');
+  await page.locator('.view-tabs').getByRole('button', { name: /^Recipes/ }).click();
+  await page.waitForURL(url => Boolean(url.searchParams.get('special')));
+  await page.locator('.special-card').first().waitFor();
+  assert(await firstSpecial.evaluate(element => element.classList.contains('active')), 'Clicking the current Recipes direction keeps its special default');
+  await page.locator('.pane-toolbar input').fill('no-such-recipe-348726');
+  await page.locator('.no-recipes').waitFor();
+  assert.equal(await page.locator('.no-recipes > span').count(), 0, 'Empty state must not use a decorative glyph');
   assert.deepEqual(errors, []);
-  console.log('Native optional routes, geometry, icons, tooltips, size controls, mobile scrolling, navigation, global pagination, exports and cached offline rendering passed.');
+  console.log('Native routes, geometry, icons, tooltips, clean ruler labels, special-only defaults, empty state, mobile layout, navigation, pagination, exports and offline rendering passed.');
 } finally { await browser.close(); }

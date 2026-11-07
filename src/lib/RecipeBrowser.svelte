@@ -322,16 +322,13 @@
       class="machine-tab special-tab"
       class:active={browserState.specialType === tab.id}
       onclick={() => browserState.selectSpecialType(tab.id)}
-      title={tab.label}
+      title={`${tab.label} (${browserState.specialCount(mode, tab.id) ?? 0})`}
       aria-label={tab.label}
     >
       {#if tabIcon}
         <ItemIcon entry={tabIcon} size={60} selected={browserState.specialType === tab.id} />
       {:else}
         <span class="special-fallback">{tab.glyph ?? '✦'}</span>
-      {/if}
-      {#if browserState.specialCount(mode, tab.id) !== undefined}
-        <span class="special-tab-count">{browserState.specialCount(mode, tab.id)}</span>
       {/if}
       <small>{tab.shortLabel ?? tab.label}</small>
     </button>
@@ -459,7 +456,6 @@
     </div>
   {:else if browserState.showingSpecial && visibleSpecialRecords.length === 0}
     <div class="no-recipes">
-      <span>⌁</span>
       <b>{browserState.specialFilter ? `No matching ${browserState.specialTypeLabel}` : `No ${browserState.specialTypeLabel} found`}</b>
       <p>{browserState.specialFilter
         ? 'Try fewer terms or clear the special-data filter.'
@@ -536,7 +532,6 @@
     </div>
   {:else if !browserState.recipeLoading && visibleRecipes.length === 0}
     <div class="no-recipes">
-      <span>⌁</span>
       <b>{browserState.recipeFilter ? `No matching ${modeLabel}` : `No ${modeLabel} found`}</b>
       <p>{browserState.recipeFilter
         ? 'Try fewer terms or clear the recipe filter.'

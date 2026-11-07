@@ -9,8 +9,7 @@
   let { scene, resolve, navigate }: {
     scene: OreScene; resolve: SpecialResolver; navigate: (id: string, view: RecipeView) => void;
   } = $props();
-  let zoom = $state(1);
-  const scale = $derived(RECIPE_UI_SCALE * zoom);
+  const scale = RECIPE_UI_SCALE;
   const bounds = $derived(oreSceneBounds(scene));
   let tooltip = $state<{ entry: CatalogEntry; notes: string[]; machine: boolean }>();
   let x = $state(0), y = $state(0);
@@ -31,11 +30,6 @@
 </script>
 
 <section class="native-ore-diagram" aria-label="Ore processing diagram">
-  <nav class="diagram-controls" aria-label="Diagram size">
-    <button disabled={zoom <= .5} onclick={() => zoom = Math.max(.5, zoom - .25)} aria-label="Smaller diagram">−</button>
-    <button onclick={() => zoom = 1} aria-label="Reset diagram size">{Math.round(zoom * 100)}%</button>
-    <button disabled={zoom >= 1.5} onclick={() => zoom = Math.min(1.5, zoom + .25)} aria-label="Larger diagram">+</button>
-  </nav>
   <div class="diagram-scroll">
     <div class="diagram-canvas" style:width={`${bounds.width * scale}px`} style:height={`${bounds.height * scale}px`}>
       <svg class="diagram-background" viewBox={`0 0 ${bounds.width} ${bounds.height}`} aria-hidden="true">
@@ -95,9 +89,6 @@
 {/if}
 
 <style>
-  .diagram-controls { display:flex; justify-content:flex-end; gap:4px; margin-bottom:6px; }
-  .diagram-controls button { min-width:36px; height:32px; border:1px solid #727272; background:#383838; color:#bfbfbf; cursor:pointer; }
-  .diagram-controls button:disabled { opacity:.4; cursor:default; }
   .diagram-scroll { max-width:100%; overflow-x:auto; scrollbar-width:thin; }
   .diagram-canvas { position:relative; margin:auto; }
   .diagram-background { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; pointer-events:none; }

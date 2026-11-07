@@ -573,6 +573,15 @@ export class RecipeBrowserState {
           [`${entryId}:${view}`]: loaded.length
         };
         if (!this.type) this.type = loaded[0]?.type ?? '';
+        if (loaded.length === 0) {
+          // Special pages belong to the same Recipes/Usages direction. Wait
+          // for the optional native index only when ordinary recipes are empty.
+          const index = await loadOreDiagramIndex(repository.datasetId).catch(() => undefined);
+          if (request !== this.recipeRequest) return;
+          this.oreDiagramIndex = index;
+          const firstSpecial = this.specialTypes[0];
+          if (firstSpecial) this.selectSpecialType(firstSpecial.id);
+        }
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;

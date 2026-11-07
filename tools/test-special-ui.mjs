@@ -33,10 +33,11 @@ try {
   await page.goto(url.href);
   const breeding = page.locator('.type-row button').filter({ hasText: /breeding/i });
   await breeding.waitFor({ timeout: 120000 });
+  await page.locator('.special-card').first().waitFor({ timeout: 120000 });
   await breeding.click();
   const card = page.locator('.special-card').first();
   await card.waitFor({ timeout: 120000 });
-  const specialTotal = (await page.locator('.special-tab-count').allTextContents()).reduce((sum, count) => sum + Number(count), 0);
+  const specialTotal = (await page.locator('.special-tab').evaluateAll(elements => elements.map(element => Number(element.title.match(/\((\d+)\)$/)?.[1] ?? 0)))).reduce((sum, count) => sum + count, 0);
   assert(specialTotal > 0);
   assert.match(await page.locator('.view-tabs').innerText(), new RegExp(`Recipes\\s+${specialTotal}\\b`));
   assert.match(await card.evaluate(element => getComputedStyle(element).borderImageSource), /nei-panel\.png/);
