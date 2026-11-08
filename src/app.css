@@ -58,7 +58,7 @@ aside footer { margin-top:auto; min-height:42px; padding:0 14px; border-top:1px 
 .header-links { justify-self:end; }
 .mobile-sidebar-links { display:none; }
 .detail { min-width:0; overflow:auto; padding:30px clamp(24px,5vw,74px) 60px; background:transparent; }
-.back { display:none; min-height:44px; align-items:center; gap:4px; border:0; background:none; color:#c0c4c8; padding:0; cursor:pointer; }
+.back { display:none; margin-block-end:12px; min-height:44px; align-items:center; gap:4px; border:0; background:none; color:#c0c4c8; padding:0; cursor:pointer; }
 .back svg { width:19px; height:19px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round; }
 .item-head { display:flex; align-items:flex-start; gap:20px; max-width:1020px; margin:auto; }
 .item-overview { width:min(720px,calc(100% - 108px)); min-width:0; }
