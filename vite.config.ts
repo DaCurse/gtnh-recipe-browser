@@ -25,6 +25,7 @@ export default defineConfig({
       includeAssets: [
         'favicon.ico',
         'assets/machine-ui/*.png',
+        'assets/stone-background.png',
         'assets/gtnh-logo.png',
         'assets/gtnh-logo-header.webp',
         'assets/gtnh-logo-192.png'

@@ -55,12 +55,13 @@
 :root .mc-theme .mc-button.category-export { width:auto; min-width:max-content; flex-basis:auto; }
 :root .mc-theme .view-tabs { gap:4px; padding:4px 0; }
 :root .mc-theme .view-tabs .mc-button > span { background:none; padding:0; color:inherit; font:400 12px/16px Minecraft,monospace; text-shadow:1px 1px #222; }
-:root .mc-theme .primary-nav { padding-top:5px; padding-bottom:5px; }
+:root .mc-theme .primary-nav { padding-top:5px; padding-bottom:5px; background:transparent; }
 :root .mc-theme .finder-modes { gap:4px; padding:0; border:0; border-radius:0; background:none; }
 :root .mc-theme :is(.dataset-actions,.choice-actions,.crafter-option>span,.special-choice-option>span) { flex-wrap:wrap; }
 @media(max-width:800px) {
   :root .mc-theme :is(button,a).mc-button { min-height:44px; }
   :root .mc-theme .mc-button.version { min-width:0; }
   :root .mc-theme .type-row { top:41px; }
+  :root .mc-theme :is(.view-tabs,.type-row) { background-color:#111214; background-image:var(--page-background); }
   :root .mc-theme .dataset-actions .active-label { width:100%; min-height:20px; padding:0; justify-content:flex-start; }
 }

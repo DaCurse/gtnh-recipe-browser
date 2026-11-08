@@ -89,7 +89,7 @@
 {#if hovered}<FloatingCatalogTooltip entry={hovered} {x} {y} hydrate={loadEntry} />{/if}
 
 <style>
-  .landing { display:flex; flex:1; flex-direction:column; overflow:auto; font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif; background:radial-gradient(ellipse at 50% 30%,#ad8e3020,transparent 65%); }
+  .landing { display:flex; flex:1; flex-direction:column; overflow:auto; font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif; background:transparent; }
   .hero { text-align:center; padding:clamp(32px,5vh,64px) 24px 20px; margin:auto auto 0; max-width:850px; }
   .eyebrow { font-family:inherit; text-shadow:none; color:#b9a476; font-size:11px; letter-spacing:.22em; font-weight:650; }
   h1 { font-family:inherit; text-shadow:none; font-size:clamp(38px,6vw,72px); letter-spacing:-.055em; line-height:1.08; margin:20px 0; font-weight:750; }
@@ -98,7 +98,7 @@
   .actions a { padding:14px 22px; border:1px solid #66604f; border-radius:8px; text-decoration:none; color:#e9e6df; font-weight:650; font-size:14px; background:#242422; }
   .actions .primary { background:#d3ba83; color:#201d16; border-color:#d3ba83; }
   .actions a:hover { filter:brightness(1.12); }
-  .details { font-size:12px; color:#777f89; line-height:1.6; }
+  .details { font-size:12px; color:#8b9095; line-height:1.6; }
   .showcase { overflow:hidden; flex-shrink:0; padding:14px 0 20px; mask-image:linear-gradient(90deg,transparent,black 8%,black 92%,transparent); }
   .row { width:100%; overflow:hidden; padding:4px 0; }
   .track { display:flex; width:max-content; animation:drift 75s linear infinite; }
@@ -109,7 +109,7 @@
   .sequence a:hover { filter:brightness(1.2); }
   .sequence a:focus-visible { outline:2px solid #d3ba83; }
   @keyframes drift { to { transform:translateX(-50%); } }
-  footer { margin-top:auto; padding:20px 28px; border-top:1px solid #ffffff0b; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; color:#727a85; font-size:12px; }
+  footer { margin-top:auto; padding:20px 28px; border-top:1px solid #ffffff0b; display:flex; align-items:center; justify-content:space-between; gap:20px; flex-wrap:wrap; color:#8b9095; font-size:12px; }
   footer :global(.project-links) { display:flex; gap:20px; flex-wrap:wrap; }
   footer :global(a) { color:#a4aab2; text-decoration:none; }
   footer :global(svg) { width:14px; height:14px; vertical-align:-2px; fill:currentColor; }

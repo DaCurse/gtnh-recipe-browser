@@ -1,0 +1,10 @@
+{
+  "source": "Minecraft Java Edition 1.7.10 client",
+  "archiveSha1": "e80d9b3bf5085002218d4be59e668bac718abbc6",
+  "resource": "assets/minecraft/textures/blocks/stone.png",
+  "sourceSha256": "489928bc2549424b7f8d979b7983e4398789dbff80b8c61f68368a02235d6927",
+  "outputSha256": "b938572f2f33d88092e557a08e78cce4e1689d84f3410bafd6414148a9d45006",
+  "bytes": 326,
+  "processing": "Nearest-neighbour 16x16 to 32x32; no pixel recolouring. Dark blue-grey tint applied in CSS.",
+  "copyright": "Mojang Studios / Microsoft. Not part of the Shadow UI licence."
+}
