@@ -106,14 +106,13 @@
     untrack(() => browserState.setOreColumns(columns));
   });
 
-  type ExportTarget = 'pane' | 'machine' | 'category';
+  type ExportTarget = 'pane' | 'category';
   type ExportChoice = 'filtered' | 'all';
   let exportPrompt = $state<ExportTarget | null>(null);
   let exportWorking = $state(false);
   let exportError = $state('');
 
   function exportQuery(target: ExportTarget): string {
-    if (target === 'machine') return browserState.recipeQuery;
     if (target === 'category') return '';
     return browserState.showingSpecial ? browserState.specialQuery : browserState.recipeQuery;
   }
@@ -185,31 +184,6 @@
           view: mode,
           scope: 'pane',
           recipeType: null,
-          records
-        });
-        downloadBrowserExport(value, browserExportFilename(value));
-        reportExport(value.records.length);
-        return;
-      }
-
-      if (target === 'machine') {
-        const machineRecipes = await repository.recipesFor(selected.id, 'machineUsages');
-        const activeMachineRecipes = machineRecipes.filter((recipe) => recipe.type === browserState.type);
-        const records = recipeRecordsForExport(
-          repository,
-          activeMachineRecipes,
-          browserState.type || null,
-          query,
-          applyFilter
-        );
-        const value = createRecipeExport({
-          repository,
-          selected,
-          view: 'machineUsages',
-          scope: 'machine',
-          recipeType: browserState.type || null,
-          query,
-          applied: applyFilter,
           records
         });
         downloadBrowserExport(value, browserExportFilename(value));
@@ -416,18 +390,6 @@
       </svg>
       <span>{exportWorking ? 'Preparing JSON…' : 'Export data'}</span>
     </button>
-    {#if selected.machineCapabilities?.length && browserState.type}
-      <button class="mc-button"
-        type="button"
-        onclick={() => requestExport('machine')}
-        disabled={itemDataLoading || Boolean(itemDataError) || exportWorking || browserState.recipeLoading}
-      >
-        <svg class="export-icon" viewBox="0 0 24 24" aria-hidden="true">
-          <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 20h14"></path>
-        </svg>
-        <span>Download machine JSON</span>
-      </button>
-    {/if}
     {#if exportError}<p class="export-error">Could not download JSON: {exportError}</p>{/if}
   </div>
 </div>

@@ -1,6 +1,6 @@
 <script lang="ts">
-  import { untrack } from 'svelte';
   import CatalogTooltip from './CatalogTooltip.svelte';
+  import { useCatalogEntry } from './catalogEntryLoad.svelte';
   import type { CatalogEntry } from './types';
 
   let {
@@ -8,8 +8,7 @@
     x,
     y,
     action,
-    notes,
-    hydrate
+    notes
   }: {
     entry: CatalogEntry;
     x: number;
@@ -17,7 +16,6 @@
     action?: string;
     /** Additional plain-text lines supplied by a specialized goods view. */
     notes?: readonly string[];
-    hydrate?: (id: string, signal: AbortSignal) => Promise<CatalogEntry | undefined>;
   } = $props();
 
   let element = $state<HTMLDivElement>();
@@ -25,27 +23,9 @@
   let viewportHeight = $state(0);
   let width = $state(0);
   let height = $state(0);
-  let hydrated = $state<CatalogEntry>();
-  const entryId = $derived(entry.id);
-  const displayEntry = $derived(hydrate ? hydrated?.id === entry.id ? hydrated : undefined : entry);
-  $effect(() => {
-    const id = entryId;
-    const current = untrack(() => entry);
-    const load = hydrate;
-    hydrated = undefined;
-    if (!load) return;
-    const controller = new AbortController();
-    // Avoid downloading detail partitions when the pointer only crosses an icon.
-    const timer = setTimeout(() => {
-      void load(id, controller.signal).then((detail) => {
-        if (!controller.signal.aborted) hydrated = detail ?? current;
-      }).catch(() => {
-        // A failed/offline load may show the fallback once, without later recolouring.
-        if (!controller.signal.aborted) hydrated = current;
-      });
-    }, 100);
-    return () => { clearTimeout(timer); controller.abort(); };
-  });
+  // Delay a crossed icon, but never paint a catalogue stub before formatting arrives.
+  const detail = useCatalogEntry(() => entry.id, 100);
+  const displayEntry = $derived(!detail.active ? entry : detail.loading || detail.error ? undefined : detail.entry);
   const position = $derived.by(() => {
     if (typeof window === 'undefined') return '';
     const gap = 14;

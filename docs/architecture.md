@@ -9,6 +9,7 @@ The browser is organized around feature-owned state and a small application coor
 Feature views live in `src/lib/*.svelte`:
 
 - `CatalogPane.svelte` owns catalog search, incremental result paging, tooltips, and sidebar resizing.
+- `catalogEntryLoad.svelte.ts` shares complete-entry readiness and cancellation between selected item details and every floating tooltip through repository context; see [`tooltip-loading.md`](tooltip-loading.md).
 - `RecipeBrowser.svelte` renders tabs, filters, loading progress, bounded recipe pages, and recipe cards.
 - `MachineRecipeStage.svelte` renders verified native frontend geometry; `RecipeGrid.svelte` owns ingredient interactions over shared slot surfaces. See [`machine-recipe-ui.md`](machine-recipe-ui.md).
 - `machineCrafters.ts` retains complete source machine families separately from per-tier display representatives. Dataset-bound recovery is applied after cached detail hydration; new packs encode these bindings directly. See [`machine-crafters.md`](machine-crafters.md).

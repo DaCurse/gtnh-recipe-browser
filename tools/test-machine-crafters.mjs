@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 /* global document */
 const [base, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-machine-crafters.mjs <app-url> <playwright-module>');
@@ -22,6 +23,26 @@ try {
     await card.waitFor({ timeout: 120000 });
     await page.waitForFunction(() => !document.querySelector('.recipe-loading.recipe-progress'));
     assert.match(await page.locator('.view-tabs').innerText(), /Machine Usages\s+[1-9][0-9]*/);
+    assert.equal(await page.locator('.export-actions button').count(), 1, 'One contextual export action, without a duplicate machine download');
+    if (id === 262) {
+      const pending = page.waitForEvent('download');
+      await page.locator('.export-actions button').click();
+      const full = JSON.parse(await readFile(await (await pending).path(), 'utf8'));
+      assert.equal(full.view, 'machineUsages');
+      assert.equal(full.recipeType, category);
+      assert(full.records.length > 20, 'Export all matching machine recipes, beyond the visible page');
+      assert(full.records.every(recipe => recipe.type === category));
+      await page.getByRole('textbox', { name: 'Filter machine usages', exact: true }).fill('glass');
+      const filteredDownload = page.waitForEvent('download');
+      await page.locator('.export-actions button').click();
+      await page.getByRole('button', { name: 'Filtered results', exact: true }).click();
+      const filtered = JSON.parse(await readFile(await (await filteredDownload).path(), 'utf8'));
+      assert.equal(filtered.filter.applied, true);
+      assert(filtered.records.length > 0 && filtered.records.length < full.records.length);
+      const ids = new Set(full.records.map(recipe => recipe.id));
+      assert(filtered.records.every(recipe => ids.has(recipe.id)));
+      await page.getByRole('textbox', { name: 'Filter machine usages', exact: true }).fill('');
+    }
     const crafter = card.locator('.machine-mark.interactive');
     assert.match(await crafter.getAttribute('aria-label'), new RegExp(`^${currentName}:`));
     await crafter.click();

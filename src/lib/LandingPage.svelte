@@ -1,12 +1,12 @@
 <script lang="ts">
   import ItemIcon from './ItemIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
+  import { CatalogTooltipHover } from './catalogTooltipHover.svelte';
   import ProjectLinks from './ProjectLinks.svelte';
   import type { CatalogEntry } from './types';
-  let { catalog, itemsUrl, finderHref, openItems, openFinder, navigate, loadEntry }: {
+  let { catalog, itemsUrl, finderHref, openItems, openFinder, navigate }: {
     catalog: CatalogEntry[]; itemsUrl: string; finderHref: string;
     openItems: () => void; openFinder: () => void; navigate: (id: string) => void;
-    loadEntry: (id: string, signal: AbortSignal) => Promise<CatalogEntry | undefined>;
   } = $props();
   const rowCount = 4;
   const itemsPerRow = 20;
@@ -42,13 +42,7 @@
     url.searchParams.set('view', 'recipes');
     return url.href;
   }
-  let hovered = $state<CatalogEntry>();
-  let x = $state(0), y = $state(0);
-  function pointer(event: PointerEvent, entry: CatalogEntry) {
-    if (event.pointerType === 'touch') return;
-    if (hovered?.id !== entry.id) hovered = entry;
-    x = event.clientX; y = event.clientY;
-  }
+  const tooltip = new CatalogTooltipHover();
 </script>
 
 <main class="landing">
@@ -70,11 +64,11 @@
             <div class="sequence" aria-hidden={copy === 1 ? 'true' : undefined}>
               {#each row as entry (entry.id)}
                 <a href={itemHref(entry.id)} aria-label={entry.name} tabindex={copy === 1 ? -1 : 0}
-                  onpointerenter={(event) => pointer(event, entry)} onpointermove={(event) => pointer(event, entry)}
-                  onpointerleave={() => hovered = undefined}
-                  onfocus={(event) => { const rect = event.currentTarget.getBoundingClientRect(); hovered = entry; x = rect.right; y = rect.bottom; }}
-                  onblur={() => hovered = undefined}
-                  onclick={(event) => { event.preventDefault(); hovered = undefined; navigate(entry.id); }}>
+                  onpointerenter={(event) => tooltip.pointer(event, entry)} onpointermove={(event) => tooltip.pointer(event, entry)}
+                  onpointerleave={() => tooltip.clear()}
+                  onfocus={(event) => tooltip.focus(event, entry)}
+                  onblur={() => tooltip.clear()}
+                  onclick={(event) => { event.preventDefault(); tooltip.clear(); navigate(entry.id); }}>
                   <ItemIcon {entry} size={64} bare />
                 </a>
               {/each}
@@ -86,7 +80,7 @@
   </section>
   <footer><span>GT: New Horizons Recipe Browser</span><ProjectLinks /></footer>
 </main>
-{#if hovered}<FloatingCatalogTooltip entry={hovered} {x} {y} hydrate={loadEntry} />{/if}
+{#if tooltip.entry}<FloatingCatalogTooltip entry={tooltip.entry} x={tooltip.x} y={tooltip.y} />{/if}
 
 <style>
   .landing { display:flex; flex:1; flex-direction:column; overflow:auto; font-family:ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif; background:transparent; }

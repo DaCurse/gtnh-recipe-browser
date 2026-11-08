@@ -1,16 +1,23 @@
 <script lang="ts">
   import CatalogTooltip from './CatalogTooltip.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
+  import { CatalogTooltipHover } from './catalogTooltipHover.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import { oreCycle } from './oreCycle';
   import type { CatalogEntry, RecipeView } from './types';
 
   let {
     selected,
+    loading = false,
+    error = '',
+    retry,
     entryById,
     navigate
   }: {
     selected: CatalogEntry;
+    loading?: boolean;
+    error?: string;
+    retry?: () => void;
     entryById: Map<string, CatalogEntry>;
     navigate: (id: string, view: RecipeView) => void;
   } = $props();
@@ -19,36 +26,24 @@
     (selected.kind === 'oreDict' || selected.kind === 'itemGroup') && selected.members?.length
     ? entryById.get(selected.members[$oreCycle % selected.members.length]) ?? selected
     : selected);
-  let tooltipEntry = $state<CatalogEntry>();
-  let tooltipX = $state(0);
-  let tooltipY = $state(0);
+  const tooltip = new CatalogTooltipHover();
   const tooltipAction = 'Left-click: Recipes · Right-click: Usages';
 
-  function showPointerTooltip(event: PointerEvent, entry: CatalogEntry) {
-    if (event.pointerType === 'touch') return;
-    tooltipEntry = entry;
-    tooltipX = event.clientX;
-    tooltipY = event.clientY;
-  }
-
-  function movePointerTooltip(event: PointerEvent) {
-    if (!tooltipEntry || event.pointerType === 'touch') return;
-    tooltipX = event.clientX;
-    tooltipY = event.clientY;
-  }
-
-  function showFocusTooltip(event: FocusEvent, entry: CatalogEntry) {
-    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    tooltipEntry = entry;
-    tooltipX = rect.right;
-    tooltipY = rect.bottom;
-  }
 </script>
 
 <div class="item-head" class:compact={selected.tooltipLayout === 'compact'}>
   <ItemIcon entry={iconEntry} size={88} selected />
   <div class="item-overview">
-    <CatalogTooltip entry={selected} />
+    {#if loading}
+      <div class="tooltip-skeleton" role="status" aria-label="Loading item tooltip" aria-busy="true">
+        <span></span><span></span><span></span>
+      </div>
+    {:else if error}
+      <p class="tooltip-load-error" role="status">Item tooltip could not be loaded.</p>
+      {#if retry}<button class="mc-button" onclick={retry}>Retry item details</button>{/if}
+    {:else}
+      <CatalogTooltip entry={selected} />
+    {/if}
   </div>
 </div>
 
@@ -61,18 +56,18 @@
         {#if member}
           <button
             aria-label={`${member.name}: left-click for recipes, right-click for usages`}
-            onpointerenter={(event) => showPointerTooltip(event, member)}
-            onpointermove={movePointerTooltip}
-            onpointerleave={() => tooltipEntry = undefined}
-            onfocus={(event) => showFocusTooltip(event, member)}
-            onblur={() => tooltipEntry = undefined}
+            onpointerenter={(event) => tooltip.pointer(event, member)}
+            onpointermove={(event) => tooltip.pointer(event)}
+            onpointerleave={() => tooltip.clear()}
+            onfocus={(event) => tooltip.focus(event, member)}
+            onblur={() => tooltip.clear()}
             onclick={() => {
-              tooltipEntry = undefined;
+              tooltip.clear();
               navigate(member.id, 'recipes');
             }}
             oncontextmenu={(event) => {
               event.preventDefault();
-              tooltipEntry = undefined;
+              tooltip.clear();
               navigate(member.id, 'usages');
             }}
           ><ItemIcon entry={member} size={52} /></button>
@@ -82,11 +77,19 @@
   </div>
 {/if}
 
-{#if tooltipEntry}
+<style>
+  .tooltip-skeleton { width:min(360px,100%); padding:10px 0; }
+  .tooltip-skeleton span { display:block; height:14px; margin:0 0 12px; background:#35373c; }
+  .tooltip-skeleton span:first-child { width:65%; height:20px; }
+  .tooltip-skeleton span:last-child { width:80%; }
+  .tooltip-load-error { margin:0; color:#a5aaaf; font-size:13px; }
+</style>
+
+{#if tooltip.entry}
   <FloatingCatalogTooltip
-    entry={tooltipEntry}
-    x={tooltipX}
-    y={tooltipY}
+    entry={tooltip.entry}
+    x={tooltip.x}
+    y={tooltip.y}
     action={tooltipAction}
   />
 {/if}

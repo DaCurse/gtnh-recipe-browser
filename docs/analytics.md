@@ -24,6 +24,12 @@ event/property combinations for creating saved insights in the project's UI.
 | Are exports used? | `data_export_clicked`, `data_export_completed`, `data_export_failed` | `target`, `kind`, `choice`, `record_count` |
 | Is loading slow or failing? | `dataset_loaded`, `dataset_load_failed` | `duration_ms`, dataset version where available |
 
+The contextual **Export data** action uses `target: pane` for Recipes, Usages,
+Machine Usages and special views, including the current category and filter.
+The category-wide action uses `target: category`. The old additional machine
+download repeated the same records in Machine Usages and has been removed;
+historical `target: machine` events may remain in older reports.
+
 For average daily traffic, select a date range and daily intervals in Web Analytics. For popular
 queries/features, use total events and a property breakdown; use unique users when measuring how
 many different visitors used a feature rather than how often it was used.

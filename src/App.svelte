@@ -14,6 +14,7 @@
   import RecipeFinder from './lib/RecipeFinder.svelte';
   import type { RecipeConstraints } from './lib/recipeFinder';
   import { DatasetRepository } from './lib/dataset';
+  import { provideCatalogEntrySource, useCatalogEntry } from './lib/catalogEntryLoad.svelte';
   import { clearIconSheetCache } from './lib/iconCache';
   import { createSpecialContextEntry } from './lib/specialContext';
   import {
@@ -34,6 +35,7 @@
   let datasetLoadSequence = 0;
   let catalog = $state.raw<CatalogEntry[]>([]);
   let repository = $state<DatasetRepository | null>(null);
+  provideCatalogEntrySource(() => repository);
   let datasetVersion = $state('…');
   let datasetStatus = $state<'loading' | 'ready' | 'error'>('loading');
   let datasetError = $state('');
@@ -84,9 +86,9 @@
   let sidebarWidth = $state(410);
   let sidebarResizing = $state(false);
   let searchInput = $state<HTMLInputElement>();
-  let hydratedSelection = $state<CatalogEntry>();
-  let itemDataLoading = $state(false);
-  let itemDataError = $state('');
+  const selection = useCatalogEntry(() => detailsOpen ? selectedId : undefined);
+  const itemDataLoading = $derived(selection.loading);
+  const itemDataError = $derived(selection.error);
 
   const navigationBase = $derived.by(() => {
     const url = catalogSearchUrl(location.href, query);
@@ -94,28 +96,7 @@
     return url;
   });
   const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
-  const selected = $derived(hydratedSelection?.id === selectedId
-    ? hydratedSelection : entryById.get(selectedId));
-  $effect(() => {
-    const source = repository;
-    const id = selectedId;
-    const open = detailsOpen;
-    hydratedSelection = undefined;
-    itemDataError = '';
-    itemDataLoading = Boolean(source && id && open);
-    if (!source || !id || !open) return;
-    const controller = new AbortController();
-    void source.entryFor(id, controller.signal).then((entry) => {
-      if (controller.signal.aborted) return;
-      hydratedSelection = entry ? { ...entry } : undefined;
-      itemDataLoading = false;
-    }).catch((error: unknown) => {
-      if (controller.signal.aborted) return;
-      itemDataError = error instanceof Error ? error.message : String(error);
-      itemDataLoading = false;
-    });
-    return () => controller.abort();
-  });
+  const selected = $derived(selection.entry ?? entryById.get(selectedId));
   const specialContextViewType = $derived(
     specialScope === 'all'
       ? repository?.specialViewTypes.find((viewType) => viewType.id === specialType)
@@ -500,7 +481,6 @@
 
   {#if landingOpen}
     <LandingPage {catalog} itemsUrl={catalogUrl(navigationBase).href} finderHref={finderUrl(navigationBase, { inputs: [], outputs: [] }).href}
-      loadEntry={(id, signal) => repository?.entryFor(id, signal) ?? Promise.resolve(undefined)}
       openItems={() => showItemList(true)} openFinder={() => showFinder({ inputs: [], outputs: [] })} navigate={(id) => select(id)} />
   {:else if datasetStatus !== 'ready'}
     <ApplicationState
@@ -537,6 +517,9 @@
       </button>
       <ItemOverview
         selected={itemOverviewSelected!}
+        loading={itemDataLoading}
+        error={itemDataError}
+        retry={() => selection.retry()}
         {entryById}
         navigate={(id, view) => select(id, true, view)}
       />

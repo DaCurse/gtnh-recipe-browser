@@ -2,6 +2,8 @@
   import CatalogPane from './CatalogPane.svelte';
   import { trackEvent } from './analytics';
   import ItemIcon from './ItemIcon.svelte';
+  import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
+  import { CatalogTooltipHover } from './catalogTooltipHover.svelte';
   import RecipeCard from './RecipeCard.svelte';
   import RecipeChain from './RecipeChain.svelte';
   import { RecipeFinderState } from './recipeFinderState.svelte';
@@ -41,6 +43,11 @@
   let resizing = $state(false);
   let dialog = $state<HTMLDialogElement>();
   let opener: HTMLButtonElement | undefined;
+  const tooltip = new CatalogTooltipHover();
+  $effect(() => {
+    const id = tooltip.entry?.id;
+    if (id && !constraints.inputs.includes(id) && !constraints.outputs.includes(id)) tooltip.clear();
+  });
 
   $effect(() => {
     if (picker && dialog && !dialog.open) {
@@ -49,6 +56,7 @@
     }
   });
   function openPicker(side: 'inputs' | 'outputs', event: MouseEvent) {
+    tooltip.clear();
     opener = event.currentTarget as HTMLButtonElement;
     pickerQuery = '';
     picker = side;
@@ -68,6 +76,7 @@
     closePicker();
   }
   function remove(side: 'inputs' | 'outputs', id: string) {
+    tooltip.clear();
     change({ ...constraints, [side]: constraints[side].filter((selected) => selected !== id) });
   }
 </script>
@@ -87,7 +96,9 @@
           <div class="ingredient-chips">
             {#each constraints[direction] as id (id)}
               {@const entry = entries.get(id)}
-              <button class="ingredient-chip" aria-label={`Remove ${entry?.name ?? id} from ${side}`} onclick={() => remove(direction, id)}>
+              <button class="ingredient-chip" aria-label={`Remove ${entry?.name ?? id} from ${side}`} onclick={() => remove(direction, id)}
+                onpointerenter={(event) => tooltip.pointer(event, entry)} onpointermove={(event) => tooltip.pointer(event)}
+                onpointerleave={() => tooltip.clear()} onfocus={(event) => tooltip.focus(event, entry)} onblur={() => tooltip.clear()}>
                 {#if entry}<ItemIcon {entry} size={32} />{/if}<span>{entry?.name ?? id}<small>{entry?.mod ?? 'Unavailable in this version'}</small></span><b aria-hidden="true">×</b>
               </button>
             {:else}<p class="side-hint">{side === 'inputs' ? 'What goes in?' : 'What comes out?'} Items and fluids both work.</p>{/each}
@@ -135,6 +146,10 @@
     {/if}
   </div>
 </main>
+
+{#if tooltip.entry}
+  <FloatingCatalogTooltip entry={tooltip.entry} x={tooltip.x} y={tooltip.y} action="Click: Remove ingredient" />
+{/if}
 
 {#if picker}
   <dialog bind:this={dialog} class="finder-picker" aria-labelledby="picker-title" onkeydown={(event) => {
