@@ -101,7 +101,7 @@ describe('NEI special browser presentation', () => {
   it('keeps the all-category export beside the direction tabs', async () => {
     const browser = await readFile('src/lib/RecipeBrowser.svelte', 'utf8');
     const viewTabs = browser.indexOf('<nav class="view-tabs"');
-    const categoryExport = browser.indexOf('class="category-export"');
+    const categoryExport = browser.search(/class="[^"]*\bcategory-export\b[^"]*"/);
     const machineTabs = browser.indexOf('<div class="type-row">');
     expect(categoryExport).toBeGreaterThan(viewTabs);
     expect(categoryExport).toBeLessThan(machineTabs);

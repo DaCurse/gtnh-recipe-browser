@@ -272,12 +272,12 @@
       <div class="special-choice-option">
         <ItemIcon entry={chosenItem} size={52} />
         <b>{chosenItem.name}</b>
-        <span><button onclick={() => choose(chosenItem.id, 'recipes')}>Recipes</button><button onclick={() => choose(chosenItem.id, 'usages')}>Usages</button></span>
+        <span><button class="mc-button" onclick={() => choose(chosenItem.id, 'recipes')}>Recipes</button><button class="mc-button" onclick={() => choose(chosenItem.id, 'usages')}>Usages</button></span>
       </div>
       <div class="special-choice-option">
         <ItemIcon entry={chosenGroup} size={52} />
         <b>{chosenGroup.name}</b>
-        <span><button onclick={() => choose(chosenGroup.id, 'recipes')}>Recipes</button><button onclick={() => choose(chosenGroup.id, 'usages')}>Usages</button></span>
+        <span><button class="mc-button" onclick={() => choose(chosenGroup.id, 'recipes')}>Recipes</button><button class="mc-button" onclick={() => choose(chosenGroup.id, 'usages')}>Usages</button></span>
       </div>
     </div>
   </div>

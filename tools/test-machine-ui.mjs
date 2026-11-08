@@ -9,9 +9,11 @@ if (screenshots) await mkdir(screenshots, { recursive: true });
 try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage(); const errors = [], uiImages = new Set();
+  await page.route('**/*', route => new URL(route.request().url()).hostname.includes('posthog') ? route.abort() : route.continue());
   page.on('pageerror', error => errors.push(error.message));
   page.on('response', response => { if (response.url().includes('/assets/machine-ui/')) {
-    assert.equal(response.status(), 200); assert.match(response.headers()['content-type'], /^image\/png/); uiImages.add(response.url());
+    assert.equal(response.status(), 200); assert.match(response.headers()['content-type'], /^image\/png/);
+    if (!/\/button-(normal|hover|disabled)\.png$/.test(response.url())) uiImages.add(response.url());
   } });
   const examples = [
     { type: 'Distillation Tower', item: 'f:BuildCraft|Energy:oil', view: 'usages', map: 'gt.recipe.distillationtower' },

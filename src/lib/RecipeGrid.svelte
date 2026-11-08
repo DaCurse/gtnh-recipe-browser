@@ -208,16 +208,16 @@
         <ItemIcon entry={chosenItem} size={56} />
         <div><b>{chosenItem.name}</b><small>Only this specific item</small></div>
         <span class="choice-actions">
-          <button onclick={() => choose(chosenItem.id, 'recipes')}>Recipes</button>
-          <button onclick={() => choose(chosenItem.id, 'usages')}>Usages</button>
+          <button class="mc-button" onclick={() => choose(chosenItem.id, 'recipes')}>Recipes</button>
+          <button class="mc-button" onclick={() => choose(chosenItem.id, 'usages')}>Usages</button>
         </span>
       </div>
       <div class="choice-option">
         <ItemIcon entry={chosenItem} size={56} />
         <div><b>{chosenGroup.name}</b><small>All {chosenGroup.members?.length ?? 0} valid alternatives</small></div>
         <span class="choice-actions">
-          <button onclick={() => choose(chosenGroup.id, 'recipes')}>Recipes</button>
-          <button onclick={() => choose(chosenGroup.id, 'usages')}>Usages</button>
+          <button class="mc-button" onclick={() => choose(chosenGroup.id, 'recipes')}>Recipes</button>
+          <button class="mc-button" onclick={() => choose(chosenGroup.id, 'usages')}>Usages</button>
         </span>
       </div>
     </div>

@@ -186,17 +186,17 @@
               {#if current}
                 <span class="active-label">Active</span>
               {:else}
-                <button
+                <button class="mc-button"
                   disabled={Boolean(switchingDatasetId || installingDatasetId)}
                   onclick={() => switchDataset(managed.version)}
                 >{switching ? 'Switching…' : 'Switch'}</button>
               {/if}
               {#if state?.status !== 'complete'}
                 {#if installing}
-                  <button class="cancel" onclick={cancelInstall}>Cancel</button>
+                  <button class="mc-button cancel" onclick={cancelInstall}>Cancel</button>
                 {:else}
                   <button
-                    class="primary"
+                    class="mc-button primary"
                     disabled={Boolean(installingDatasetId || switchingDatasetId)}
                     onclick={() => install(managed.version)}
                   >
@@ -209,7 +209,7 @@
               {/if}
               {#if state}
                 <button
-                  class="delete"
+                  class="mc-button delete"
                   disabled={Boolean(installingDatasetId || switchingDatasetId)}
                   onclick={() => deleteDataset(state)}
                 >Delete</button>

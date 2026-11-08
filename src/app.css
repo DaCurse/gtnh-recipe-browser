@@ -44,7 +44,7 @@ kbd { color:#777c81; border:1px solid #3d4044; border-radius:4px; padding:3px 6p
 .item-tile { min-width:0; min-height:108px; padding:8px 3px 5px; display:flex; flex-direction:column; align-items:center; gap:4px; border:1px solid transparent; border-radius:7px; background:transparent; cursor:pointer; overflow:hidden; text-align:center; }
 .item-tile:hover { background:#25272a; }.item-tile.active { border-color:#62676d; background:#2a2d31; }
 .item-summary { display:flex; width:100%; min-width:0; flex-direction:column; gap:3px; overflow:hidden; }
-.item-summary strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; color:#d9dcdf; font-weight:500; }
+.item-summary strong { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font:400 9px/13px Minecraft,monospace; color:#d9dcdf; text-shadow:1px 1px #222; }
 .item-summary small { width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#81868b; font-size:10px; text-transform:capitalize; }
 .tooltip-preview,.row-arrow { display:none; }
 .search-loading .spinner { width:30px; height:30px; margin:0 auto 14px; }

@@ -268,21 +268,21 @@
 </script>
 
 <nav class="view-tabs" aria-label="Item views">
-  <button class:active={mode === 'recipes'} onclick={() => setMode('recipes')}>
+  <button class="mc-button" class:active={mode === 'recipes'} onclick={() => setMode('recipes')}>
     Recipes {#if recipeCount('recipes') !== undefined}<span>{recipeCount('recipes')}</span>{/if}
   </button>
-  <button class:active={mode === 'usages'} onclick={() => setMode('usages')}>
+  <button class="mc-button" class:active={mode === 'usages'} onclick={() => setMode('usages')}>
     Usages {#if recipeCount('usages') !== undefined}<span>{recipeCount('usages')}</span>{/if}
   </button>
   {#if selected.machineCapabilities?.length}
-    <button class:active={mode === 'machineUsages'} onclick={() => setMode('machineUsages')}>
+    <button class="mc-button" class:active={mode === 'machineUsages'} onclick={() => setMode('machineUsages')}>
       Machine Usages
       {#if recipeCount('machineUsages') !== undefined}<span>{recipeCount('machineUsages')}</span>{/if}
     </button>
   {/if}
   {#if related.length > 0 || browserState.showingSpecial}
     <button
-      class="category-export"
+      class="mc-button category-export"
       type="button"
       onclick={() => requestExport('category')}
       disabled={itemDataLoading || Boolean(itemDataError) || exportWorking || browserState.recipeLoading || browserState.specialLoading}
@@ -300,7 +300,7 @@
 {#if mode === 'recipes' && selected.productionOreDictionaryId}
   <div class="ore-production-note">
     No direct output exists for this exact item. Showing recipes which produce an
-    interchangeable <button onclick={() => navigate(selected.productionOreDictionaryId!, 'recipes')}>
+    interchangeable <button class="mc-button" onclick={() => navigate(selected.productionOreDictionaryId!, 'recipes')}>
       {selected.productionOreDictionaryId!.replace(/^o:/, '')}
     </button> member.
   </div>
@@ -404,7 +404,7 @@
     </div>
   {/if}
   <div class="export-actions">
-    <button
+    <button class="mc-button"
       type="button"
       onclick={() => requestExport('pane')}
       disabled={itemDataLoading || Boolean(itemDataError) || exportWorking || browserState.recipeLoading || browserState.specialLoading}
@@ -417,7 +417,7 @@
       <span>{exportWorking ? 'Preparing JSON…' : 'Export data'}</span>
     </button>
     {#if selected.machineCapabilities?.length && browserState.type}
-      <button
+      <button class="mc-button"
         type="button"
         onclick={() => requestExport('machine')}
         disabled={itemDataLoading || Boolean(itemDataError) || exportWorking || browserState.recipeLoading}
@@ -464,7 +464,7 @@
       <span>!</span>
       <b>Could not load {browserState.specialTypeLabel}</b>
       <p>{browserState.specialError}</p>
-      <button onclick={() => browserState.refresh()}>Try again</button>
+      <button class="mc-button" onclick={() => browserState.refresh()}>Try again</button>
     </div>
   {:else if browserState.showingSpecial && specialSearchPending && visibleSpecialRecords.length === 0}
     <div class="recipe-loading partial" aria-live="polite">
@@ -500,7 +500,7 @@
     {/each}
     {#if specialSearchTotal > browserState.specialPageSize}
       <nav class="recipe-pagination" aria-label="Special data pages">
-        <button
+        <button class="mc-button"
           disabled={browserState.specialPage === 0}
           onclick={() => browserState.setSpecialPage(browserState.specialPage - 1)}
         >Previous</button>
@@ -511,7 +511,7 @@
           )}
           of {specialSearchTotal.toLocaleString()}
         </span>
-        <button
+        <button class="mc-button"
           disabled={browserState.specialPage >= specialPageCount - 1}
           onclick={() => browserState.setSpecialPage(browserState.specialPage + 1)}
         >Next</button>
@@ -540,7 +540,7 @@
       <span>!</span>
       <b>Could not load {modeLabel}</b>
       <p>{browserState.recipeError}</p>
-      <button onclick={() => browserState.refresh()}>Try again</button>
+      <button class="mc-button" onclick={() => browserState.refresh()}>Try again</button>
     </div>
   {:else if !browserState.recipeLoading && recipeSearchPending && visibleRecipes.length === 0}
     <div class="recipe-loading partial" aria-live="polite">
@@ -567,7 +567,7 @@
     {/each}
     {#if recipeSearchTotal > browserState.recipePageSize}
       <nav class="recipe-pagination" aria-label="Recipe pages">
-        <button
+        <button class="mc-button"
           disabled={browserState.recipePage === 0}
           onclick={() => browserState.setPage(browserState.recipePage - 1)}
         >Previous</button>
@@ -578,7 +578,7 @@
           )}
           of {recipeSearchTotal.toLocaleString()}
         </span>
-        <button
+        <button class="mc-button"
           disabled={browserState.recipePage >= recipePageCount - 1}
           onclick={() => browserState.setPage(browserState.recipePage + 1)}
         >Next</button>
@@ -599,8 +599,8 @@
         This export has an active filter: <pre class="export-filter">"{exportQuery(exportPrompt)}"</pre>. Would you like to download only matching records or all records in this view?
       </div>
       <div class="export-choice-actions">
-        <button class="primary" onclick={() => confirmExport('filtered')}>Filtered results</button>
-        <button onclick={() => confirmExport('all')}>All results</button>
+        <button class="mc-button primary" onclick={() => confirmExport('filtered')}>Filtered results</button>
+        <button class="mc-button" onclick={() => confirmExport('all')}>All results</button>
       </div>
     </div>
   </div>

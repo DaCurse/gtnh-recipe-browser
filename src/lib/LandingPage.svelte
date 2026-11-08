@@ -57,8 +57,8 @@
     <h1 id="landing-title">Your Pocket NEI</h1>
     <p class="intro">A quick, out-of-game recipe browser for GregTech: New Horizons. Browse items and machine recipes, find recipes by their ingredients, or follow a production chain.</p>
     <div class="actions">
-      <a class="primary" href={itemsUrl} onclick={(event) => { event.preventDefault(); openItems(); }}>Open item catalogue</a>
-      <a href={finderHref} onclick={(event) => { event.preventDefault(); openFinder(); }}>Recipe Finder</a>
+      <a class="mc-button primary" href={itemsUrl} onclick={(event) => { event.preventDefault(); openItems(); }}>Open item catalogue</a>
+      <a class="mc-button" href={finderHref} onclick={(event) => { event.preventDefault(); openFinder(); }}>Recipe Finder</a>
     </div>
     <p class="details">GTNH 2.9.0 &amp; earlier versions · Offline browsing · JSON data exports</p>
   </section>

@@ -1,6 +1,7 @@
 import { mount } from 'svelte';
 import App from './App.svelte';
 import './app.css';
+import './mc-controls.css';
 import { initializeAnalytics } from './lib/analytics';
 
 const target = document.getElementById('app')!;

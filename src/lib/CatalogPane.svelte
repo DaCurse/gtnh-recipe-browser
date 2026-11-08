@@ -477,7 +477,7 @@
         <div class="catalog-empty"><b>No matches</b><span>Try fewer terms or another @mod filter.</span></div>
       {/each}
       {#if visibleEntries.length < searchTotal}
-        <button class="item-more" use:loadMoreItems onclick={requestMoreItems}>
+        <button class="mc-button item-more" use:loadMoreItems onclick={requestMoreItems}>
           {searchLoadingMore
             ? 'Loading more items…'
             : `Showing ${visibleEntries.length.toLocaleString()} of ${searchTotal.toLocaleString()} · Load next 60`}

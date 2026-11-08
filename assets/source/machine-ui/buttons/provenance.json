@@ -1,0 +1,39 @@
+{
+  "resource": "assets/minecraft/textures/gui/widgets.png",
+  "sourceSha256": "067583b280464c463f8d795c3eab2782b4ebe1d13d620e234caa301a0b381e9f",
+  "packSha256": "dbff3a014e64703df3cd82c0ae46ca8762d7da851bafe2e18752dc46c6eff273",
+  "license": "CC-BY-NC-SA-4.0",
+  "processing": "Exact source crops; no recolouring. CSS stretches the flat centre and preserves the bevel.",
+  "slices": {
+    "disabled": {
+      "bounds": {
+        "left": 0,
+        "top": 46,
+        "width": 200,
+        "height": 20
+      },
+      "file": "public/assets/machine-ui/button-disabled.png",
+      "sha256": "1271b3bfec13991793e34d396e7fe63e087fffc8418c9e1d8a6d4920abe44cd7"
+    },
+    "normal": {
+      "bounds": {
+        "left": 0,
+        "top": 66,
+        "width": 200,
+        "height": 20
+      },
+      "file": "public/assets/machine-ui/button-normal.png",
+      "sha256": "d5c21e9374fa4e9237f656d682f31eadfdfd02af8b9983ccd69bc6198634d5b8"
+    },
+    "hover": {
+      "bounds": {
+        "left": 0,
+        "top": 86,
+        "width": 200,
+        "height": 20
+      },
+      "file": "public/assets/machine-ui/button-hover.png",
+      "sha256": "177cc2f167e4b63752feaf896f3d22e6d071fd4b53396671cb420b9f5aa5d70a"
+    }
+  }
+}

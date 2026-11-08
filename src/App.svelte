@@ -492,8 +492,8 @@
 
   {#if !landingOpen}
   <nav class="primary-nav" aria-label="Main navigation">
-    <a href={catalogUrl(navigationBase).href} aria-current={!finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); showItemList(); }}>Items</a>
-    <a href={finderUrl(navigationBase, finderConstraints, finderMode).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); acknowledgeFinder(); if (!finderOpen) showFinder(); }}>Recipe Finder{#if !finderDiscovered}<span class="finder-blip" aria-hidden="true"></span>{/if}</a>
+    <a class="mc-button" href={catalogUrl(navigationBase).href} aria-current={!finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); showItemList(); }}>Items</a>
+    <a class="mc-button" href={finderUrl(navigationBase, finderConstraints, finderMode).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); acknowledgeFinder(); if (!finderOpen) showFinder(); }}>Recipe Finder{#if !finderDiscovered}<span class="finder-blip" aria-hidden="true"></span>{/if}</a>
   </nav>
 
   {/if}
@@ -531,7 +531,7 @@
     />
 
     <section class:mobile-visible={detailsOpen} class="detail">
-      <button class="back" onclick={() => showItemList()}>
+      <button class="mc-button back" onclick={() => showItemList()}>
         <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
         Back to items
       </button>

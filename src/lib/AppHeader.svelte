@@ -31,7 +31,7 @@
   </a>
   <button
     class:has-update={datasetUpdateAvailable}
-    class="version"
+    class="mc-button version"
     title="Open dataset manager"
     onclick={openDatasetManager}
   >
@@ -61,7 +61,7 @@
 </header>
 
 {#if updateReady}
-  <button class="update-banner" onclick={() => location.reload()}>
+  <button class="mc-button update-banner" onclick={() => location.reload()}>
     A new app version is ready · Refresh
   </button>
 {/if}

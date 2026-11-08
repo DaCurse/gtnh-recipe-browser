@@ -13,6 +13,11 @@ of the underlying mods and the browser's source code.
 [Author and source](https://github.com/Ranzuu/Shadow-UI) ·
 [Pinned release](https://github.com/Ranzuu/Shadow-UI/releases/tag/v2.9.X/v5.47)
 
+`buttons/` preserves the same pack's Minecraft `widgets.png` and exact crop
+provenance for the normal, hovered and disabled web controls. These crops use
+the same CC-BY-NC-SA-4.0 licence. Reproduction and text colours are documented
+in `docs/minecraft-controls.md`.
+
 Original non-overridden PNGs in `textures/` are extracted without pixel changes from the GTNH
 2.9.0 mod jars listed in `textures.json`. Each entry records the original resource
 path, file SHA-256 and jar filename. `runtime.json` records jar digests and runtime

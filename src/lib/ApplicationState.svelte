@@ -41,8 +41,8 @@
       <p>The browser could not verify or open the active GTNH dataset.</p>
       <pre>{error}</pre>
       <div class="state-actions">
-        <button onclick={copyError}>{errorCopied ? 'Copied' : 'Copy error'}</button>
-        <button class="primary" onclick={retry}>Try again</button>
+        <button class="mc-button" onclick={copyError}>{errorCopied ? 'Copied' : 'Copy error'}</button>
+        <button class="mc-button primary" onclick={retry}>Try again</button>
       </div>
     </section>
   {/if}

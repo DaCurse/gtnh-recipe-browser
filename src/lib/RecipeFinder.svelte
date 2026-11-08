@@ -76,14 +76,14 @@
   <div class="finder-content" class:chain-mode={mode === 'chain'}>
     <div class="finder-heading">
       <div><h1 id="finder-title">{mode === 'chain' ? 'Recipe chain' : 'Recipe finder'}</h1><p>{mode === 'chain' ? 'Trace a route from available inputs to the outputs you want.' : 'Know part of a recipe? Add its inputs or outputs to find it across all machines.'}</p></div>
-      {#if hasConstraints}<button class="finder-button" onclick={() => change({ inputs: [], outputs: [] })}>Clear all</button>{/if}
+      {#if hasConstraints}<button class="mc-button finder-button" onclick={() => change({ inputs: [], outputs: [] })}>Clear all</button>{/if}
     </div>
-    <nav class="finder-modes" aria-label="Finder mode"><button aria-pressed={mode === 'recipes'} onclick={() => setMode('recipes')}>Single recipe</button><button aria-pressed={mode === 'chain'} onclick={() => setMode('chain')}>Recipe chain</button></nav>
+    <nav class="finder-modes" aria-label="Finder mode"><button class="mc-button" aria-pressed={mode === 'recipes'} onclick={() => setMode('recipes')}>Single recipe</button><button class="mc-button" aria-pressed={mode === 'chain'} onclick={() => setMode('chain')}>Recipe chain</button></nav>
     <div class="finder-constraints">
       {#each ['inputs', 'outputs'] as side (side)}
         {@const direction = side as 'inputs' | 'outputs'}
         <section class="constraint-side" aria-label={side === 'inputs' ? 'Required inputs' : 'Required outputs'}>
-          <div class="side-heading"><h2>{side === 'inputs' ? 'Inputs' : 'Outputs'}</h2><button class="finder-button" onclick={(event) => openPicker(direction, event)}>+ Add {side === 'inputs' ? 'input' : 'output'}</button></div>
+          <div class="side-heading"><h2>{side === 'inputs' ? 'Inputs' : 'Outputs'}</h2><button class="mc-button finder-button" onclick={(event) => openPicker(direction, event)}>+ Add {side === 'inputs' ? 'input' : 'output'}</button></div>
           <div class="ingredient-chips">
             {#each constraints[direction] as id (id)}
               {@const entry = entries.get(id)}
@@ -121,7 +121,7 @@
       </nav>
     {/if}
     {#if finderState.error}
-      <div class="finder-message" role="alert"><b>Could not finish loading recipes</b><p>{finderState.error}</p><button class="finder-button" onclick={() => finderState.retry()}>Try again</button></div>
+      <div class="finder-message" role="alert"><b>Could not finish loading recipes</b><p>{finderState.error}</p><button class="mc-button finder-button" onclick={() => finderState.retry()}>Try again</button></div>
     {:else if !hasConstraints}
       <div class="finder-message"><span class="finder-symbol" aria-hidden="true">⌕</span><b>A few clues are enough</b><p>Add any known input or output above. Combine both sides to narrow the results.</p></div>
     {:else if !finderState.loading && !filtered.length}
@@ -130,7 +130,7 @@
     {#if finderState.loading}<div class="finder-progress" role="status"><span class="mini-spinner" aria-hidden="true"></span> Finding recipes… {#if finderState.total}<small>{finderState.loaded} of {finderState.total} chunks</small>{/if}</div>{/if}
     <div class="recipe-list finder-recipes">{#each visible as recipe (recipe.id)}<RecipeCard {recipe} {navigate} resolve={(id) => entries.get(id)} />{/each}</div>
     {#if filtered.length > 20}
-      <nav class="finder-pagination" aria-label="Finder result pages"><button class="finder-button" disabled={finderState.page === 0} onclick={() => finderState.page -= 1}>Previous</button><span>Page {finderState.page + 1} of {pageCount}</span><button class="finder-button" disabled={finderState.page + 1 >= pageCount} onclick={() => finderState.page += 1}>Next</button></nav>
+      <nav class="finder-pagination" aria-label="Finder result pages"><button class="mc-button finder-button" disabled={finderState.page === 0} onclick={() => finderState.page -= 1}>Previous</button><span>Page {finderState.page + 1} of {pageCount}</span><button class="mc-button finder-button" disabled={finderState.page + 1 >= pageCount} onclick={() => finderState.page += 1}>Next</button></nav>
     {/if}
     {/if}
   </div>
@@ -141,7 +141,7 @@
     // Let the nested variant picker handle Escape without closing both layers.
     if (event.key === 'Escape' && dialog?.querySelector('.variant-picker')) event.preventDefault();
   }} oncancel={(event) => { event.preventDefault(); closePicker(); }}>
-    <div class="picker-heading"><h2 id="picker-title">Add {picker === 'inputs' ? 'input' : 'output'}</h2><button class="finder-button" onclick={closePicker}>Close</button></div>
+    <div class="picker-heading"><h2 id="picker-title">Add {picker === 'inputs' ? 'input' : 'output'}</h2><button class="mc-button finder-button" onclick={closePicker}>Close</button></div>
     <div class="picker-catalog">
       <CatalogPane searchContext={picker === 'inputs' ? 'finder_input' : 'finder_output'} selected={repository.entries[0]!} detailsOpen={false} bind:query={pickerQuery} bind:searchInput={pickerInput} catalog={repository.browseEntries} exactCatalog={repository.entries} loadSearchDocuments={() => repository.loadSearchDocuments()} bind:sidebarWidth={pickerWidth} bind:sidebarResizing={resizing} select={add} />
     </div>

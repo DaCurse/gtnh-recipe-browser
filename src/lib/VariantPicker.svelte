@@ -91,7 +91,7 @@
         <div class="variant-empty">No variants match this search.</div>
       {/each}
       {#if visible.length < distinctFiltered.length}
-        <button class="variant-more" onclick={() => limit += 100}>
+        <button class="mc-button variant-more" onclick={() => limit += 100}>
           Load next {Math.min(100, distinctFiltered.length - visible.length).toLocaleString()}
         </button>
       {/if}

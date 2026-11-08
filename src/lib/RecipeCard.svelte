@@ -159,8 +159,8 @@
               <small>{crafterRole(option.role)}{option.id === recipe.crafterId ? ' · shown on this recipe' : ''}</small>
             </div>
             <span>
-              <button onclick={() => inspectCrafter(option.id, 'recipes')}>Recipes</button>
-              <button onclick={() => inspectCrafter(option.id, 'machineUsages')}>Machine Usages</button>
+              <button class="mc-button" onclick={() => inspectCrafter(option.id, 'recipes')}>Recipes</button>
+              <button class="mc-button" onclick={() => inspectCrafter(option.id, 'machineUsages')}>Machine Usages</button>
             </span>
           </section>
         {:else}
