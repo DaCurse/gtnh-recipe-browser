@@ -1,16 +1,6 @@
 {
   "schemaVersion": 1,
   "indexes": {
-    "2.9.0-v7-rbd0b48ae8ad7": {
-      "id": "recipe-chain-index",
-      "bytes": 4743580,
-      "sha256": "b07173980e7276f976ee0425af06efe8665754e54bee46f4b06658b1ef78cec9",
-      "url": "./assets/recipe-chains/b07173980e7276f976ee0425af06efe8665754e54bee46f4b06658b1ef78cec9",
-      "encoding": "gzip",
-      "manifestSha256": "e28a24f4c0a84f2538eb59e1beaa2894e6bb235667a2d89645f292b06dcbff91",
-      "recipes": 287414,
-      "nodes": 135962
-    },
     "2.9.0-RC-1-v7-rbf5fd70ecad0": {
       "id": "recipe-chain-index",
       "bytes": 4703131,
@@ -50,6 +40,16 @@
       "manifestSha256": "14d3868df8ad47f84a677cf08da2ddf740f4fc80acdc42376a5ad55a6657164a",
       "recipes": 190080,
       "nodes": 43265
+    },
+    "2.9.0-v7-r9ec25114d4a7": {
+      "id": "recipe-chain-index",
+      "bytes": 4687695,
+      "sha256": "5441444dd848ff68ef1d849ac0b5c29537f4c43fe354d78e0b3c0109e75239f8",
+      "url": "./assets/recipe-chains/5441444dd848ff68ef1d849ac0b5c29537f4c43fe354d78e0b3c0109e75239f8",
+      "encoding": "gzip",
+      "manifestSha256": "d7a1ae748ea03d1ebcc5bf193720fd9abea6a619d6e6e2cf360a122e0e4a6ce7",
+      "recipes": 283927,
+      "nodes": 137291
     }
   }
 }

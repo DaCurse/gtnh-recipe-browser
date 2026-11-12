@@ -43,6 +43,7 @@ try {
       if (Date.now() > deadline) throw new Error(`Missing event: ${name}; received ${events.map((event) => event.event).join(', ')}`);
       await page.waitForTimeout(100);
     }
+    console.log(`Verified analytics: ${name}`);
     return events.find((event) => event.event === name && predicate(event.properties));
   };
   await page.goto(`${production}/?search=IRon#private-route`, { waitUntil: 'domcontentloaded' });
@@ -145,6 +146,7 @@ try {
     const tab = await isolated.newPage(); const pageErrors = [];
     tab.on('pageerror', (error) => pageErrors.push(error.message));
     await tab.goto(`${production}/`, { waitUntil: 'domcontentloaded' });
+    await tab.getByRole('link',{name:'Open item catalogue',exact:true}).click();
     await tab.locator('.item-tile').first().waitFor({ timeout: 120000 });
     await tab.waitForTimeout(3500);
     if (preference === 'dnt') assert.equal(requests, 0); else assert(requests > 0);

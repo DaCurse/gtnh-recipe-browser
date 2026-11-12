@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { ensureChainIndex, pruneChainIndexes } from '../chain-index';
 import { access, copyFile, cp, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
@@ -264,6 +265,9 @@ if (mode === 'stage' || mode === 'publish') {
   await verifyPublishedManifest(destination);
 }
 
+// Chain graphs must be available before a version can become active.
+await ensureChainIndex(resolve(publicData, '..'), manifest);
+
 if (mode === 'stage') {
   const prunedSharedObjects = await pruneUnreferencedSharedObjects();
   console.log(JSON.stringify({
@@ -297,6 +301,7 @@ const next = withPublishedVersion(versions, {
 const temporaryVersions = `${versionsPath}.tmp-${process.pid}`;
 await writeFile(temporaryVersions, `${JSON.stringify(next, null, 2)}\n`, { flag: 'wx' });
 await rename(temporaryVersions, versionsPath);
+await pruneChainIndexes(resolve(publicData, '..'), next.versions.map(version=>version.datasetId));
 for (const datasetId of replacedDatasetIds) {
   // A replacement release is immutable while staged, then the superseded
   // revision is removed only after the new version index is atomically active.

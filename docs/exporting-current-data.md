@@ -198,3 +198,10 @@ in the deployed object pool.
 
 The former interactive/launcher-assisted export procedure is retired; its implementation history is preserved in
 Git commits rather than duplicated in this runbook.
+
+The publisher now generates and verifies the manifest-bound Recipe Finder chain
+index before staging/activating a dataset. Existing matching, verified graph
+assets are reused; changing a recipe manifest rebuilds its graph. Activation
+prunes graph entries and files for retired datasets. `npm run build:chain-index`
+can also rebuild/repair the indexes for every currently published version.
+The quality suite checks that every published dataset has a matching graph.
