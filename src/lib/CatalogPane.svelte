@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { ItemTouch, openItemActions } from './itemTouch.svelte';
+  import type { RecipeView } from './types';
   import { onMount } from 'svelte';
   import { analyticsSearch, trackEvent } from './analytics';
   import CatalogVariantIcon from './CatalogVariantIcon.svelte';
@@ -18,11 +20,13 @@
     query = $bindable(),
     searchInput = $bindable(),
     catalog,
-    exactCatalog,
+    entryById,
+    exactEntryById,
     loadSearchDocuments,
     sidebarWidth = $bindable(),
     sidebarResizing = $bindable(),
     select,
+    navigate,
     searchContext = 'catalog',
   }: {
     selected: CatalogEntry;
@@ -30,11 +34,13 @@
     query: string;
     searchInput?: HTMLInputElement;
     catalog: CatalogBrowseEntry[];
-    exactCatalog: CatalogEntry[];
+    entryById: ReadonlyMap<string, CatalogBrowseEntry>;
+    exactEntryById: ReadonlyMap<string, CatalogEntry>;
     loadSearchDocuments?: () => Promise<CatalogSearchDocument[]>;
     sidebarWidth: number;
     sidebarResizing: boolean;
     select: (id: string) => void;
+    navigate?: (id: string, view: RecipeView) => void;
     searchContext?: 'catalog' | 'finder_input' | 'finder_output';
   } = $props();
 
@@ -51,10 +57,15 @@
   let searchGeneration = 0;
   let tooltipEntry = $state<CatalogBrowseEntry>();
   let variantGroup = $state<CatalogBrowseEntry>();
+  let variantActions = $state(false);
+  const touch = new ItemTouch();
+  function openVariant(entry: CatalogBrowseEntry, actions: boolean) {
+    hideTooltip();
+    variantActions = actions;
+    variantGroup = entry;
+  }
   let tooltipX = $state(0);
   let tooltipY = $state(0);
-  const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
-  const exactEntryById = $derived(new Map(exactCatalog.map((entry) => [entry.id, entry])));
   const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
   const visibleEntries = $derived(searchIds
     .map((id) => entryById.get(id))
@@ -440,6 +451,13 @@
           class:active={entry.variantIds.includes(selected.id)}
           class="item-tile"
           aria-label={entry.name}
+          use:touch.action={{ key: entry.id, entry: resolveCatalogVariant(entry, exactEntryById, $oreCycle),
+            enabled: searchContext === 'catalog', clearHover: hideTooltip,
+            activate: (item) => entry.variantKind !== 'single' ? openVariant(entry, false) : select(item.id),
+            hold: (item) => {
+              if (entry.variantKind !== 'single') openVariant(entry, true);
+              else if (navigate) openItemActions(item, navigate);
+            } }}
           onpointerenter={(event) => showPointerTooltip(event, entry)}
           onpointermove={movePointerTooltip}
           onpointerleave={hideTooltip}
@@ -447,7 +465,7 @@
           onblur={hideTooltip}
           onclick={() => {
             hideTooltip();
-            if (entry.variantKind !== 'single') variantGroup = entry;
+            if (entry.variantKind !== 'single') openVariant(entry, false);
             else select(entry.variantIds[0]!);
           }}
         >
@@ -456,6 +474,7 @@
             exactEntries={exactEntryById}
             size={56}
             selected={entry.variantIds.includes(selected.id)}
+            frozen={touch.frozen(entry.id)}
           />
           <span class="item-summary">
             <strong>{entry.name}</strong>
@@ -522,7 +541,9 @@
     close={() => variantGroup = undefined}
     select={(id) => {
       variantGroup = undefined;
-      select(id);
+      const entry = exactEntryById.get(id);
+      if (variantActions && entry && navigate) openItemActions(entry, navigate);
+      else select(id);
     }}
   />
 {/if}

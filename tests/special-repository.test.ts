@@ -2,6 +2,7 @@ import 'fake-indexeddb/auto';
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { encode } from '@msgpack/msgpack';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -30,7 +31,7 @@ describe('canonical DatasetRepository special shards', () => {
   });
 
   it('loads item and global special views with direction, progress, cache, and cancellation', async () => {
-    const root = await mkdtemp('/tmp/gtnh-special-repository-');
+    const root = await mkdtemp(join(tmpdir(), 'gtnh-special-repository-'));
     temporaryPacks.push(root);
     await mkdir(join(root, 'assets', 'sha256'), { recursive: true });
     const datasetId = `special-repository-${crypto.randomUUID()}`;

@@ -39,6 +39,9 @@ npm run test:cached-startup -- http://localhost:4173 <playwright-module>
 npm run test:item-loading -- http://localhost:4173 <playwright-module> [screenshot-directory]
 npm run test:recipe-finder -- http://localhost:4173 <playwright-module> [screenshot-directory]
 npm run test:recipe-chain -- http://localhost:4173 <playwright-module> [screenshot-directory]
+npm run test:touch-items -- http://localhost:4173 <playwright-module> [screenshot-directory]
+npm run test:touch-refinements -- http://localhost:4173 <playwright-module> [screenshot-directory]
+npm run test:landing-loading -- http://localhost:4173 <playwright-module> [screenshot-directory]
 ```
 
 The profile compares cold and warm mobile browsing under an optional CPU throttle. The cache check covers

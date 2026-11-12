@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ItemTouch } from './itemTouch.svelte';
   import type { CatalogEntry, Recipe, RecipeView } from './types';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
@@ -15,6 +16,7 @@
       + Math.max(recipe.layout.itemOutputs.columns, recipe.layout.fluidOutputs.columns)) * 18 * RECIPE_UI_SCALE + 78);
   const crafter = $derived(recipe.crafterId ? resolve(recipe.crafterId) : undefined);
   let tooltipVisible = $state(false);
+  const touch = new ItemTouch();
   let tooltipX = $state(0);
   let tooltipY = $state(0);
   let crafterModalOpen = $state(false);
@@ -87,6 +89,8 @@
       {#if crafter}
         <button
           class="machine-mark interactive"
+          use:touch.action={{ key: crafter.id, entry: crafter, activate: openCrafterModal, hold: openCrafterModal,
+            clearHover: () => tooltipVisible = false }}
           aria-label={`${crafter.name}: view valid machines for ${recipe.type}`}
           onpointerenter={showPointerTooltip}
           onpointermove={movePointerTooltip}

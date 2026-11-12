@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ItemTouch } from './itemTouch.svelte';
   import CatalogTooltip from './CatalogTooltip.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import { CatalogTooltipHover } from './catalogTooltipHover.svelte';
@@ -18,7 +19,7 @@
     loading?: boolean;
     error?: string;
     retry?: () => void;
-    entryById: Map<string, CatalogEntry>;
+    entryById: ReadonlyMap<string, CatalogEntry>;
     navigate: (id: string, view: RecipeView) => void;
   } = $props();
 
@@ -27,6 +28,7 @@
     ? entryById.get(selected.members[$oreCycle % selected.members.length]) ?? selected
     : selected);
   const tooltip = new CatalogTooltipHover();
+  const touch = new ItemTouch();
   const tooltipAction = 'Left-click: Recipes · Right-click: Usages';
 
 </script>
@@ -55,6 +57,8 @@
         {@const member = entryById.get(memberId)}
         {#if member}
           <button
+            use:touch.action={{ key: member.id, entry: member, activate: (entry) => navigate(entry.id, 'recipes'),
+              navigate, clearHover: () => tooltip.clear() }}
             aria-label={`${member.name}: left-click for recipes, right-click for usages`}
             onpointerenter={(event) => tooltip.pointer(event, member)}
             onpointermove={(event) => tooltip.pointer(event)}

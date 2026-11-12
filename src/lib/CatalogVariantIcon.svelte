@@ -10,19 +10,21 @@
     exactEntries,
     size = 56,
     selected = false,
-    frame = true
+    frame = true,
+    frozen
   }: {
     entry: CatalogBrowseEntry;
     exactEntries: ReadonlyMap<string, CatalogEntry>;
     size?: number;
     selected?: boolean;
     frame?: boolean;
+    frozen?: CatalogEntry;
   } = $props();
 
   let element: HTMLSpanElement;
   let visible = $state(false);
   let cycle = $state(0);
-  const displayEntry = $derived(resolveCatalogVariant(entry, exactEntries, cycle));
+  const displayEntry = $derived(frozen ?? resolveCatalogVariant(entry, exactEntries, cycle));
 
   $effect(() => {
     if (entry.variantKind === 'single' || !visible) return;

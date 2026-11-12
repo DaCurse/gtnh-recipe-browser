@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ItemTouch } from './itemTouch.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import SlotSurface from './SlotSurface.svelte';
@@ -37,6 +38,7 @@
   const slots = $derived(Array.from({ length: cellCount }, (_, slot) => slot));
   const slotIngredients = $derived(ingredientsByGridSlot(ingredients, dimensions));
   let chooserOpen = $state(false);
+  const touch = new ItemTouch();
   let chosenItemId = $state('');
   let chosenGroupId = $state('');
   let tooltipSlot = $state(-1);
@@ -119,12 +121,20 @@
       {#each slots as slot (slot)}
         {@const ingredient = slotIngredients.get(slot)}
         {@const alternatives = ingredient?.alternatives ?? []}
-        {@const alternativeIndex = alternatives.length > 0 ? $oreCycle % alternatives.length : 0}
+        {@const frozen = touch.frozen(String(slot))}
+        {@const alternativeIndex = frozen && alternatives.includes(frozen.id)
+          ? alternatives.indexOf(frozen.id) : alternatives.length > 0 ? $oreCycle % alternatives.length : 0}
         {@const displayId = alternatives[alternativeIndex] ?? ingredient?.id}
-        {@const entry = displayId ? resolve(displayId) : undefined}
+        {@const entry = touch.display(String(slot), displayId ? resolve(displayId) : undefined)}
         {#if ingredient && entry}
           <button
             class="ingredient"
+            use:touch.action={{ key: String(slot), entry, clearHover: hideTooltip,
+              notes: ingredientTooltipNotes(ingredient, entry.kind === 'fluid', showChances),
+              activate: (item) => ingredient.ingredientGroupId
+                ? openGroupChooser(item.id, ingredient.ingredientGroupId) : navigate(item.id, 'recipes'),
+              hold: ingredient.ingredientGroupId ? (item) => openGroupChooser(item.id, ingredient.ingredientGroupId!) : undefined,
+              navigate }}
             style:left={positions ? `${positions[slot]!.pos[0] * RECIPE_UI_SCALE}px` : undefined}
             style:top={positions ? `${positions[slot]!.pos[1] * RECIPE_UI_SCALE}px` : undefined}
             aria-label={ingredient.ingredientGroupId

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import IconSkeleton from './IconSkeleton.svelte';
   import { resolveRenderedIcon, supportsHighResolutionIcon } from './highResolutionIcons';
   import { resolveCachedIconSheetUrl } from './iconCache';
   import type { RenderedIcon } from './highResolutionIcons';
@@ -38,6 +39,8 @@
       style:background-size={`${rendered.columns * 100}% ${rendered.columns * 100}%`}
       style:background-position={`${(rendered.index % rendered.columns) * 100 / (rendered.columns - 1)}% ${Math.floor(rendered.index / rendered.columns) * 100 / (rendered.columns - 1)}%`}
     ></div>
+  {:else if entry.icon}
+    <IconSkeleton {size} />
   {:else}
     <div class:fluid={entry.kind === 'fluid'} class="sprite" style:width={`${spriteSize}px`} style:height={`${spriteSize}px`} style:--item-color={entry.color}>
       <span>{entry.glyph}</span>

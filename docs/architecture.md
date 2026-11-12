@@ -10,14 +10,23 @@ Feature views live in `src/lib/*.svelte`:
 
 - `CatalogPane.svelte` owns catalog search, incremental result paging, tooltips, and sidebar resizing.
 - `catalogEntryLoad.svelte.ts` shares complete-entry readiness and cancellation between selected item details and every floating tooltip through repository context; see [`tooltip-loading.md`](tooltip-loading.md).
+- `itemTouch.svelte.ts` coordinates one touch inspection across navigable item surfaces. The action captures a displayed entry on pointer-down, freezes its slot until dismissal, and separates first-tap preview, second-tap activation, and hold actions. `ItemTouchOverlay.svelte` owns dismissal and the shared action dialog; feature components supply their existing group/machine destinations. Finder selection controls bypass these navigation gestures.
+- `landingShowcase.ts` samples catalogue families within six randomly selected base sprite sheets per landing mount. Cycling members stay within that sheet mix; optional high-resolution companions retain their normal loading behavior.
 - `RecipeBrowser.svelte` renders tabs, filters, loading progress, bounded recipe pages, and recipe cards.
 - `MachineRecipeStage.svelte` renders verified native frontend geometry; `RecipeGrid.svelte` owns ingredient interactions over shared slot surfaces. See [`machine-recipe-ui.md`](machine-recipe-ui.md).
 - `machineCrafters.ts` retains complete source machine families separately from per-tier display representatives. Dataset-bound recovery is applied after cached detail hydration; new packs encode these bindings directly. See [`machine-crafters.md`](machine-crafters.md).
 - `OreProcessingDiagram.svelte` renders the actual NEI Custom Diagram scene for each material. `oreDiagram.ts` owns its dataset-bound index, verified lazy assets and upstream directional matching. The old inferred graph layout is removed; see [`nei-special-integrations.md`](nei-special-integrations.md).
 - `ItemIcon.svelte` selects verified original-resolution companion sprites for larger icons through `highResolutionIcons.ts`, retaining the existing 32px/offline fallback. See [`icon-resolution.md`](icon-resolution.md).
+- `IconSkeleton.svelte` owns the shared icon-loading shape and motion. Both initial carousel slots and pending `ItemIcon.svelte` sprites use it; glyphs are reserved for entries without an icon reference.
 - `RecipeFinder.svelte` owns the input/output picker and cross-machine subset-search page.
 - `RecipeChain.svelte` renders conversion routes, alternatives, search controls, and external ingredients inside the finder.
 - `DatasetManager.svelte` renders local dataset installation and switching.
+
+Touch gesture hint completion is stored per browser origin under `gtnh-touch-tutorial-v1`, independently for second-tap activation and holding. Unavailable storage falls back to in-memory progress. `TooltipSkeleton.svelte` shares a text-free, accessible loading frame between touch previews and action dialogs; the landing view shows inert carousel slots until catalogue bootstrap is ready.
+
+Dataset startup begins in `App.svelte` regardless of the current view. The landing progress indicator receives the same progress as `ApplicationState.svelte`; navigating between the landing page and catalogue neither cancels nor starts a dataset load.
+
+Cold bootstrap fetching, verification, decoding, materialization, and family grouping run in `catalogBootstrap.worker.ts`, using `catalogBootstrap.ts`. `catalogPreparation.ts` receives bounded batches and builds lookup indexes while yielding to input/rendering; cached startup uses the same index builder. Views reuse those indexes instead of rebuilding full-catalogue maps on mount. The landing sampler uses a reservoir of at most 80 families rather than cloning every eligible family.
 
 Stateful feature workflows use Svelte 5 rune modules:
 

@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, tick } from 'svelte';
+  import { onMount, tick, untrack } from 'svelte';
   import { trackEvent } from './lib/analytics';
   import { initializeShellUpdate } from './lib/shellUpdate';
   import AppHeader from './lib/AppHeader.svelte';
@@ -12,6 +12,8 @@
   import ProjectLinks from './lib/ProjectLinks.svelte';
   import LandingPage from './lib/LandingPage.svelte';
   import RecipeFinder from './lib/RecipeFinder.svelte';
+  import ItemTouchOverlay from './lib/ItemTouchOverlay.svelte';
+  import { clearItemTouch, itemTouchState } from './lib/itemTouch.svelte';
   import type { RecipeConstraints } from './lib/recipeFinder';
   import { DatasetRepository } from './lib/dataset';
   import { provideCatalogEntrySource, useCatalogEntry } from './lib/catalogEntryLoad.svelte';
@@ -33,9 +35,13 @@
   import type { CatalogEntry, RecipeView, SpecialScope } from './lib/types';
 
   let datasetLoadSequence = 0;
-  let catalog = $state.raw<CatalogEntry[]>([]);
   let repository = $state<DatasetRepository | null>(null);
   provideCatalogEntrySource(() => repository);
+  $effect(() => {
+    void repository;
+    void selectedId; void landingOpen; void finderOpen; void detailsOpen; void query;
+    untrack(() => { clearItemTouch(); itemTouchState.menu = undefined; });
+  });
   let datasetVersion = $state('…');
   let datasetStatus = $state<'loading' | 'ready' | 'error'>('loading');
   let datasetError = $state('');
@@ -95,7 +101,7 @@
     if (repository) url.searchParams.set('version', repository.datasetId);
     return url;
   });
-  const entryById = $derived(new Map(catalog.map((entry) => [entry.id, entry])));
+  const entryById = $derived(repository?.catalogEntriesById ?? new Map<string, CatalogEntry>());
   const selected = $derived(selection.entry ?? entryById.get(selectedId));
   const specialContextViewType = $derived(
     specialScope === 'all'
@@ -269,7 +275,6 @@
 
   async function applyRepository(loaded: DatasetRepository, preserveSelection: boolean) {
     repository = loaded;
-    catalog = loaded.entries;
     datasetVersion = loaded.gtnhVersion;
     const linkedId = new URLSearchParams(location.search).get('item');
     const preferredId = preserveSelection ? selectedId : linkedId;
@@ -323,7 +328,6 @@
     errorCopied = false;
     const previousRepository = repository;
     repository = null;
-    catalog = [];
     if (!preserveSelection) selectedId = '';
     datasetVersion = expectedVersion ?? '…';
     try {
@@ -480,8 +484,8 @@
   {/if}
 
   {#if landingOpen}
-    <LandingPage {catalog} itemsUrl={catalogUrl(navigationBase).href} finderHref={finderUrl(navigationBase, { inputs: [], outputs: [] }).href}
-      openItems={() => showItemList(true)} openFinder={() => showFinder({ inputs: [], outputs: [] })} navigate={(id) => select(id)} />
+    <LandingPage exactEntries={entryById} families={repository?.browseEntries ?? []} loading={datasetStatus === 'loading'} progress={datasetProgress} itemsUrl={catalogUrl(navigationBase).href} finderHref={finderUrl(navigationBase, { inputs: [], outputs: [] }).href}
+      openItems={() => showItemList(true)} openFinder={() => showFinder({ inputs: [], outputs: [] })} navigate={(id, view) => select(id, true, view)} />
   {:else if datasetStatus !== 'ready'}
     <ApplicationState
       status={datasetStatus}
@@ -503,11 +507,13 @@
       bind:query
       bind:searchInput
       catalog={repository.browseEntries}
-      exactCatalog={catalog}
+      entryById={repository.browseEntriesById}
+      exactEntryById={entryById}
       loadSearchDocuments={() => repository!.loadSearchDocuments()}
       bind:sidebarWidth
       bind:sidebarResizing
       select={(id) => select(id)}
+      navigate={(id, view) => select(id, true, view)}
     />
 
     <section class:mobile-visible={detailsOpen} class="detail">
@@ -568,6 +574,8 @@
     deleteDataset={(state) => datasetManager.deleteDataset(state)}
   />
 {/if}
+
+<ItemTouchOverlay />
 
 <style>
   .finder-mobile-footer { display:none; }

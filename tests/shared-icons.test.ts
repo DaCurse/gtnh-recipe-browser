@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { afterEach, describe, expect, it } from 'vitest';
 import sharp from 'sharp';
 import {
@@ -13,6 +14,8 @@ import {
 } from '../tools/pack-builder/sharedIcons';
 
 const temporaryDirectories: string[] = [];
+// libvips otherwise keeps source files open across fixture cleanup on Windows.
+sharp.cache(false);
 
 async function writeAtlas(
   directory: string,
@@ -61,7 +64,7 @@ afterEach(async () => {
 
 describe('content-addressed shared icon pages', () => {
   it('deduplicates identical pixels and canonicalizes invisible RGB', async () => {
-    const directory = await mkdtemp('/tmp/gtnh-shared-icons-test-');
+    const directory = await mkdtemp(join(tmpdir(), 'gtnh-shared-icons-test-'));
     temporaryDirectories.push(directory);
     const common = sprite(10, true);
     const invisibleRgb = sprite(10, true);
@@ -95,7 +98,7 @@ describe('content-addressed shared icon pages', () => {
   });
 
   it('keeps old slots and pages frozen while appending a changed sprite', async () => {
-    const directory = await mkdtemp('/tmp/gtnh-shared-icons-test-');
+    const directory = await mkdtemp(join(tmpdir(), 'gtnh-shared-icons-test-'));
     temporaryDirectories.push(directory);
     const firstAtlas = await writeAtlas(directory, 'first', new Map([
       [0, sprite(10)],
@@ -160,7 +163,7 @@ describe('content-addressed shared icon pages', () => {
   });
 
   it('reuses the owner slot for sub-visible renderer noise', async () => {
-    const directory = await mkdtemp('/tmp/gtnh-shared-icons-test-');
+    const directory = await mkdtemp(join(tmpdir(), 'gtnh-shared-icons-test-'));
     temporaryDirectories.push(directory);
     const firstAtlas = await writeAtlas(directory, 'first-noise', new Map([[0, sprite(40)]]));
     const first = await buildSharedIcons({
@@ -196,7 +199,7 @@ describe('content-addressed shared icon pages', () => {
   });
 
   it('is independent of owner order and uses SHA-sorted new pages', async () => {
-    const directory = await mkdtemp('/tmp/gtnh-shared-icons-test-');
+    const directory = await mkdtemp(join(tmpdir(), 'gtnh-shared-icons-test-'));
     temporaryDirectories.push(directory);
     const atlasPath = await writeAtlas(directory, 'source', new Map([
       [0, sprite(10)],

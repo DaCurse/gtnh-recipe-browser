@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { ItemTouch } from './itemTouch.svelte';
+  import { resolveCatalogVariant } from './catalogVariants';
   import CatalogVariantIcon from './CatalogVariantIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
@@ -43,6 +45,7 @@
   } = $props();
 
   let page = $state(0);
+  const touch = new ItemTouch();
   let tooltipId = $state('');
   let tooltipX = $state(0);
   let tooltipY = $state(0);
@@ -124,8 +127,8 @@
     return item.label;
   }
 
-  function inspect(item: SpecialGoods, view: RecipeView) {
-    const id = displayId(item);
+  function inspect(item: SpecialGoods, view: RecipeView, exactId = displayId(item)) {
+    const id = exactId;
     // A semantic soil/subsoil entry already points at the ore-dictionary
     // catalog row. Opening a chooser with the same row twice is noisy and
     // misleading; concrete goods with an ore-dictionary alternative still
@@ -179,18 +182,24 @@
         style:width={positions ? `${Math.max(...positions.map(slot => slot.pos[0] + 18)) * RECIPE_UI_SCALE}px` : undefined}
         style:height={positions ? `${Math.max(...positions.map(slot => slot.pos[1] + 18)) * RECIPE_UI_SCALE}px` : undefined}>
       {#each visible as item, itemIndex (`${itemIndex}:${item.goodsId}:${item.role ?? ''}:${item.amount ?? ''}`)}
+        {@const touchKey = `${page}:${itemIndex}:${item.goodsId}`}
         {@const entry = resolve(displayId(item))}
         {@const iconEntry = resolve(iconId(item)) ?? entry}
         {@const oreIcon = iconEntry ? oreDictionaryIcon(iconEntry, item.alternatives) : undefined}
+        {@const displayed = touch.display(touchKey, oreIcon ? resolveCatalogVariant(oreIcon.browse, oreIcon.exactEntries, $oreCycle) : entry)}
         {@const fortune = fortuneLabel(item)}
-        {#if entry}
+        {#if entry && displayed}
           <div class="special-good-cell"
             style:left={positions?.[itemIndex] ? `${positions[itemIndex]!.pos[0] * RECIPE_UI_SCALE}px` : undefined}
             style:top={positions?.[itemIndex] ? `${positions[itemIndex]!.pos[1] * RECIPE_UI_SCALE}px` : undefined}>
             <button
               class:ore-dictionary={Boolean(item.oreDictionaryId)}
               class="special-good"
-              aria-label={`${entry.name}${item.amount !== undefined ? `, ${item.amount}` : ''}`}
+              use:touch.action={{ key: touchKey, entry: displayed, clearHover: hideTooltip, notes: item.tooltipNotes,
+                activate: (frozen) => inspect(item, 'recipes', entry.id === item.oreDictionaryId ? entry.id : frozen.id),
+                hold: item.oreDictionaryId && resolve(item.oreDictionaryId) && entry.id !== item.oreDictionaryId
+                  ? (frozen) => inspect(item, 'recipes', frozen.id) : undefined, navigate }}
+              aria-label={`${displayed.name}${item.amount !== undefined ? `, ${item.amount}` : ''}`}
               onpointerenter={(event) => showPointerTooltip(event, item)}
               onpointermove={movePointerTooltip}
               onpointerleave={hideTooltip}
@@ -206,7 +215,7 @@
                 {#if !nativeBackground}<SlotSurface width={18} height={18} fluid={entry.kind === 'fluid'} />{/if}
                 <div class="special-slot-content">
                 {#if oreIcon}
-                  <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={48} frame={false} />
+                  <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={48} frame={false} frozen={touch.frozen(touchKey)} />
                 {:else}
                   <ItemIcon entry={entry} size={48} frame={false} />
                 {/if}

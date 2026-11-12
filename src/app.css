@@ -76,7 +76,7 @@ h1 { margin:0 0 9px; font:36px/46px Minecraft; color:#f0f1f2; letter-spacing:0; 
 .tooltip-text { margin-top:1px; color:#aca1ab; }
 .tooltip-formula { display:inline-block; margin-right:7px; color:#fff; }
 .tooltip-mod { margin-top:2px; color:#5457fa; line-height:1.2; }
-.tooltip-action { margin-top:8px; color:#ffff55; }
+.tooltip-action { margin-top:8px; color:#b5aa74; font:400 12px/18px Minecraft,ui-monospace,monospace; text-shadow:1px 1px #342c34; }
 .minecraft-text,.minecraft-line { display:block; font-kerning:none; font-variant-ligatures:none; letter-spacing:0; }
 .minecraft-line { min-height:1lh; white-space:pre-wrap; overflow-wrap:anywhere; }
 .tooltip-preview .minecraft-line.empty { display:none; }
@@ -195,3 +195,14 @@ h1 { margin:0 0 9px; font:36px/46px Minecraft; color:#f0f1f2; letter-spacing:0; 
 
 /* Shared native NEI shell for ordinary recipes and special handler pages. */
 .nei-panel { border:6px solid transparent; border-image:url('/assets/machine-ui/nei-panel.png') 2 fill stretch; image-rendering:pixelated; overflow:hidden; color:var(--recipe-text); text-shadow:var(--recipe-shadow); }
+
+/* Touch holds open inspection dialogs; their text should not become a selection. */
+@media(any-pointer:coarse) {
+  :is([data-touch-item],.item-action-dialog,.ore-choice,.special-choice,.crafter-modal,.variant-picker),
+  :is([data-touch-item],.item-action-dialog,.ore-choice,.special-choice,.crafter-modal,.variant-picker) *:not(input):not(textarea) {
+    -webkit-user-select:none;
+    user-select:none;
+    -webkit-touch-callout:none;
+  }
+  .variant-picker input,.variant-picker textarea { -webkit-user-select:text; user-select:text; }
+}

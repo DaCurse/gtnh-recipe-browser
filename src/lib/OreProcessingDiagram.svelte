@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { ItemTouch, openItemActions } from './itemTouch.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import { oreCycle } from './oreCycle';
@@ -10,6 +11,7 @@
     scene: OreScene; resolve: SpecialResolver; navigate: (id: string, view: RecipeView) => void;
   } = $props();
   const scale = RECIPE_UI_SCALE;
+  const touch = new ItemTouch();
   const bounds = $derived(oreSceneBounds(scene));
   let tooltip = $state<{ entry: CatalogEntry; notes: string[]; machine: boolean }>();
   let x = $state(0), y = $state(0);
@@ -47,10 +49,13 @@
         {/each}
       </svg>
       {#each scene.groups as group, index (index)}
-        {@const component = group.components[$oreCycle % group.components.length]!}
-        {@const entry = resolve(component.id)}
+        {@const frozen = touch.frozen(`group:${index}`)}
+        {@const component = (frozen ? group.components.find((component) => component.id === frozen.id) : undefined) ?? group.components[$oreCycle % group.components.length]!}
+        {@const entry = frozen ?? resolve(component.id)}
         {#if entry}
           <button class="diagram-item" data-goods-id={component.id} aria-label={entry.name}
+            use:touch.action={{ key: `group:${index}`, entry, activate: (item) => navigate(item.id, 'recipes'),
+              navigate, notes: [...group.notes, ...component.notes], clearHover: () => tooltip = undefined }}
             style:left={`${(group.pos[0] - 9) * scale}px`} style:top={`${(group.pos[1] - 9) * scale}px`}
             style:width={`${18 * scale}px`} style:height={`${18 * scale}px`}
             onpointerenter={event => show(event, entry, [...group.notes, ...component.notes])}
@@ -70,6 +75,9 @@
         {@const entry = resolve(label.id)}
         {#if entry}
           <button class="diagram-item diagram-machine" aria-label={label.notes.join(' · ') || entry.name}
+            use:touch.action={{ key: `machine:${index}`, entry, activate: (item) => navigate(item.id, 'machineUsages'),
+              hold: (item) => openItemActions(item, (id, view) => navigate(id, view === 'usages' ? 'machineUsages' : view), 'Machine Usages'),
+              notes: label.notes, clearHover: () => tooltip = undefined }}
             style:left={`${(label.pos[0] - 9) * scale}px`} style:top={`${(label.pos[1] - 9) * scale}px`}
             style:width={`${18 * scale}px`} style:height={`${18 * scale}px`}
             onpointerenter={event => show(event, entry, label.notes, true)} onpointermove={move} onpointerleave={() => tooltip = undefined}

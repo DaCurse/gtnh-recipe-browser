@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 import { encode } from '@msgpack/msgpack';
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
@@ -11,7 +12,7 @@ import { sharedPrefixLayoutFingerprint } from '../tools/pack-builder/sharedLayou
 
 describe('canonical format-7 generated packs', () => {
   it('verifies family-isolated pages and rejects a bootstrap/detail boundary violation', async () => {
-    const root = await mkdtemp('/tmp/gtnh-pack-v7-');
+    const root = await mkdtemp(join(tmpdir(), 'gtnh-pack-v7-'));
     try {
       const directory = join(root, 'assets', 'sha256');
       await mkdir(directory, { recursive: true });

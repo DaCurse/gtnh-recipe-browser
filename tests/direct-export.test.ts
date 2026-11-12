@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, mkdtemp, rm, rename, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -253,7 +253,7 @@ describe('direct export orchestration', () => {
         pollIntervalMs: 1,
         dependencies: {
           commandRunner: async ({ args }) => {
-            if (args.some((argument) => argument.endsWith('/prepare.ts'))) {
+            if (args.some((argument) => argument.replaceAll('\\', '/').endsWith('/prepare.ts'))) {
               prepared = true;
               const archivePath = args[args.indexOf('--archive') + 1]!;
               const preparedWork = args[args.indexOf('--work-dir') + 1]!;
@@ -264,7 +264,7 @@ describe('direct export orchestration', () => {
               ));
               return;
             }
-            if (args.some((argument) => argument.endsWith('/process.ts'))) {
+            if (args.some((argument) => argument.replaceAll('\\', '/').endsWith('/process.ts'))) {
               processed = true;
               expect(args[args.indexOf('--reuse-packs') + 1]).toBe(join(root, 'previous-pack'));
               const processedWork = args[args.indexOf('--work-dir') + 1]!;
@@ -312,18 +312,20 @@ describe('direct export orchestration', () => {
             await writeFile(join(persistedDirectory, persistedHash), persistedContent);
             await writeFile(join(persistedDirectory, `${persistedHash}.part`), 'partial');
             await writeFile(join(persistedDirectory, '0'.repeat(40)), 'invalid digest');
-            await writeFile(launchConfig.statusFile!, JSON.stringify({
+            await writeFile(`${launchConfig.statusFile!}.tmp`, JSON.stringify({
               schemaVersion: 1,
               state: 'exited',
               exitCode: 0,
               updatedAt: new Date().toISOString()
             }));
-            await writeFile(join(statusDirectory, 'automation.json'), JSON.stringify({
+            await rename(`${launchConfig.statusFile!}.tmp`, launchConfig.statusFile!);
+            await writeFile(join(statusDirectory, 'automation.json.tmp'), JSON.stringify({
               schemaVersion: 1,
               phase: 'complete',
               message: 'done',
               updatedAt: new Date().toISOString()
             }));
+            await rename(join(statusDirectory, 'automation.json.tmp'), join(statusDirectory, 'automation.json'));
             return {
               schemaVersion: 1,
               state: 'exited' as const,

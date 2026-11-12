@@ -20,7 +20,7 @@
     navigate: (id: string, view: RecipeView) => void;
   } = $props();
   const finderState = new RecipeFinderState({ repository: () => repository, constraints: () => constraints, ingredientName: (id) => entries.get(id)?.name ?? 'Unknown ingredient', enabled: () => mode === 'recipes' });
-  const entries = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
+  const entries = $derived(repository.catalogEntriesById);
   const machines = $derived.by(() => {
     const types = new Map<string, { name: string; count: number; iconId?: string }>();
     for (const recipe of finderState.recipes) {
@@ -158,7 +158,7 @@
   }} oncancel={(event) => { event.preventDefault(); closePicker(); }}>
     <div class="picker-heading"><h2 id="picker-title">Add {picker === 'inputs' ? 'input' : 'output'}</h2><button class="mc-button finder-button" onclick={closePicker}>Close</button></div>
     <div class="picker-catalog">
-      <CatalogPane searchContext={picker === 'inputs' ? 'finder_input' : 'finder_output'} selected={repository.entries[0]!} detailsOpen={false} bind:query={pickerQuery} bind:searchInput={pickerInput} catalog={repository.browseEntries} exactCatalog={repository.entries} loadSearchDocuments={() => repository.loadSearchDocuments()} bind:sidebarWidth={pickerWidth} bind:sidebarResizing={resizing} select={add} />
+      <CatalogPane searchContext={picker === 'inputs' ? 'finder_input' : 'finder_output'} selected={repository.entries[0]!} detailsOpen={false} bind:query={pickerQuery} bind:searchInput={pickerInput} catalog={repository.browseEntries} entryById={repository.browseEntriesById} exactEntryById={entries} loadSearchDocuments={() => repository.loadSearchDocuments()} bind:sidebarWidth={pickerWidth} bind:sidebarResizing={resizing} select={add} />
     </div>
   </dialog>
 {/if}
