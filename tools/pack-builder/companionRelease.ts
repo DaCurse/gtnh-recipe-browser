@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
 /** Keep older dataset companions usable when another export of the same game
@@ -36,8 +36,8 @@ export async function writeCompanionRelease(
 }
 
 /** Retired datasets must not leave companion indexes pointing at pruned assets.
- * Their archived source provenance remains available for release auditing. */
-export async function retireCompanionReleases(registryPath: string, datasetIds: readonly string[]): Promise<void> {
+ * Git history retains provenance for retired releases. */
+export async function retireCompanionReleases(registryPath: string, datasetIds: readonly string[], provenanceDirectory: string): Promise<void> {
   if (!datasetIds.length) return;
   const bytes = await readFile(registryPath, 'utf8').catch(error => {
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
@@ -46,6 +46,10 @@ export async function retireCompanionReleases(registryPath: string, datasetIds: 
   if (!bytes) return;
   const registry = JSON.parse(bytes) as { schemaVersion: number; releases: Record<string, unknown> };
   if (registry.schemaVersion !== 1 || !registry.releases) throw new Error('Invalid companion registry');
-  for (const id of datasetIds) delete registry.releases[id];
+  for (const id of datasetIds) {
+    if (!/^[A-Za-z0-9._-]+$/.test(id)) throw new Error('Invalid companion dataset identity');
+    delete registry.releases[id];
+    await rm(join(provenanceDirectory, 'releases', `${id}.json`), { force: true });
+  }
   await writeFile(registryPath, JSON.stringify(registry) + '\n');
 }

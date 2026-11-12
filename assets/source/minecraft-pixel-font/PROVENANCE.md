@@ -2,8 +2,7 @@
 
 Originals here are from Idrees Hassan's Minecraft-Font, commit
 `261ac77fbf28796ca09c22eb83ecdfe386c4b838`, under SIL OFL 1.1.
-`provenance.json` records the source hashes. LICENSE and README.md are preserved
-upstream files. These are an open recreation, not Mojang's font assets.
+`provenance.json` records the source hashes. LICENSE is preserved unchanged from upstream. These are an open recreation, not Mojang's font assets.
 
 The web derivatives are renamed Pocket NEI Pixel. Run:
 

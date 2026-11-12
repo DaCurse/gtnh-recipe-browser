@@ -148,8 +148,9 @@ npm run analyze:pack-reuse -- --left <beta-2-pack> --right <beta-3-pack> \
 
 Use its object counts and incremental-byte results to choose targets. CDC boundaries must remain between complete
 records, but independently computed CDC layouts do not preserve a stable logical shard map across datasets; the
-beta2/beta3 measurements therefore favor the persistent trie. The detailed figures and decision are recorded in
-[`pack-reuse-beta-2-beta-3.md`](pack-reuse-beta-2-beta-3.md).
+beta2/beta3 measurements therefore favor the persistent trie. See [`architecture.md`](architecture.md) for the persistent-layout invariants.
+Compare intrinsic item identity separately from generated search/relation metadata;
+numeric NEI indexes and tooltip changes are not changes to item identity.
 
 New shells read `public/versions-v7.json` and accept only format 7. Keep the existing
 `public/versions.json` and v6 manifests byte-for-byte frozen as a returning-PWA bridge.

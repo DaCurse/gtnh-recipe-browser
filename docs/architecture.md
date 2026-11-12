@@ -14,7 +14,7 @@ Feature views live in `src/lib/*.svelte`:
 - `landingShowcase.ts` samples catalogue families within six randomly selected base sprite sheets per landing mount. Cycling members stay within that sheet mix; optional high-resolution companions retain their normal loading behavior.
 - `RecipeBrowser.svelte` renders tabs, filters, loading progress, bounded recipe pages, and recipe cards.
 - `MachineRecipeStage.svelte` renders verified native frontend geometry; `RecipeGrid.svelte` owns ingredient interactions over shared slot surfaces. See [`machine-recipe-ui.md`](machine-recipe-ui.md).
-- `machineCrafters.ts` retains complete source machine families separately from per-tier display representatives. Dataset-bound recovery is applied after cached detail hydration; new packs encode these bindings directly. See [`machine-crafters.md`](machine-crafters.md).
+- `machineCrafters.ts` retains complete source machine families separately from per-tier display representatives. The export pipeline encodes these bindings directly in each pack. See [`machine-crafters.md`](machine-crafters.md).
 - `OreProcessingDiagram.svelte` renders the actual NEI Custom Diagram scene for each material. `oreDiagram.ts` owns its dataset-bound index, verified lazy assets and upstream directional matching. The old inferred graph layout is removed; see [`nei-special-integrations.md`](nei-special-integrations.md).
 - `ItemIcon.svelte` selects verified original-resolution companion sprites for larger icons through `highResolutionIcons.ts`, retaining the existing 32px/offline fallback. See [`icon-resolution.md`](icon-resolution.md).
 - Icon requests use stable sprite identity and resolution tiers rather than catalogue-object identity or every zoom value. `highResolutionIcons.ts` shares pending work and ready sprites; `iconCache.ts` shares sheet decoding and invalidates rendering caches when object URLs are released. A loaded sprite stays painted during upgrades, and ready HD sprites are reused on remount without downgrading. `npm run test:icon-stability -- <app-url> <playwright-module>` exercises delayed decoding, zoom, warm navigation and carousel ticks.
@@ -104,9 +104,8 @@ later dataset is smaller or differently distributed. A partition containing one
 record that is still above the byte target is explicitly marked as an
 `oversizedSingleton` and remains above the cap. If the payload is a large
 secondary index, model that index as a separate record family instead; never
-distort the trie to hide the exception. See
-[`pack-reuse-beta-2-beta-3.md`](pack-reuse-beta-2-beta-3.md) for the measured
-comparison with record-aware CDC. Format-7 manifests carry the compact prefix
+distort the trie to hide the exception. Independently computed content-defined
+chunk boundaries move after insertions and cannot replace stable logical routing. Format-7 manifests carry the compact prefix
 map and its fingerprint; publishing compares it with every existing format-7
 manifest and rejects removal, reassignment, or a changed target cap.
 

@@ -12,7 +12,7 @@
 ## Build, Test, and Development Commands
 
 ```sh
-npm install          # Install locked dependencies
+npm ci               # Install locked dependencies
 npm run dev          # Start local Vite development
 npm run dev:lan      # Expose HTTP development server to phones on the LAN
 npm run lint         # Check TypeScript and Svelte lint rules
@@ -37,7 +37,7 @@ Vitest is the unit-test framework. Add focused tests for decoder validation, sea
 
 ## Dataset Export Work
 
-Before preparing or publishing a GTNH dataset, read `docs/agent-data-export-runbook.md`. Keep both ShadowTheAge submodules read-only, use native WSL dependencies, and run the documented disposable direct-export workflow rather than touching an existing player instance.
+Before preparing or publishing a GTNH dataset, read `docs/agent-data-export-runbook.md`. Keep both ShadowTheAge submodules read-only, use the documented native Windows or Linux dependencies, and run the documented disposable direct-export workflow rather than touching an existing player instance.
 
 ## Commit & Pull Request Guidelines
 

@@ -30,7 +30,6 @@
     "profile:incremental": "node tools/profile-incremental.mjs",
     "verify-pack": "tsx tools/pack-builder/verify-cli.ts",
     "export:process": "tsx tools/data-export/process.ts",
-    "recover:machine-crafters": "tsx tools/data-export/recover-machine-crafters.ts",
     "export:publish": "tsx tools/data-export/publish.ts",
     "export:direct": "tsx tools/data-export/direct-export-cli.ts",
     "fixture:browser-policy": "tsx tools/data-export/create-browser-policy-fixture.ts",

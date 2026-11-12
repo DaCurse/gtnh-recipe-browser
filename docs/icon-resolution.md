@@ -58,9 +58,9 @@ start Minecraft or regenerate recipe records:
 python3 tools/high-resolution-icons/source.py \
   --export .export-work/2.9.0-direct/client-instance/.minecraft/nesql/browser-export \
   --output .export-work/icons64-source
-npm run build:icons64 -- public/data/2.9.0-v7-rbd0b48ae8ad7 .export-work/icons64-source
-npm run verify:icons64 -- public/data/2.9.0-v7-rbd0b48ae8ad7 .export-work/icons64-source
-npm run verify-pack -- --pack public/data/2.9.0-v7-rbd0b48ae8ad7 --asset-directory public/assets/sha256
+npm run build:icons64 -- public/data/2.9.0-v7-r9ec25114d4a7 .export-work/icons64-source
+npm run verify:icons64 -- public/data/2.9.0-v7-r9ec25114d4a7 .export-work/icons64-source
+npm run verify-pack -- --pack public/data/2.9.0-v7-r9ec25114d4a7 --asset-directory public/assets/sha256
 npm run quality
 ```
 

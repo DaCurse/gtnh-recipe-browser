@@ -1,5 +1,5 @@
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { dirname } from 'node:path';
 import { questItemReferences } from './references';
 import { questSnbt, type NbtObject } from './source';
 import { nbtIdentity } from '../../src/lib/nbt';
@@ -35,5 +35,5 @@ const report = ['# GTNH 2.9.0 questbook export shopping list', '',
   ...missing.map(item => `| ${cell(item.item)} | ${item.damage} | ${item.nbt ? 'Yes' : 'No'} | ${item.reason} | ${item.uses.length} | ${cell([...new Set(item.uses.map(use => `${use.role}: ${use.title}`))].join('; '))} |`), '',
   'The machine-readable inventory includes full typed NBT, source JSON paths, and every use. Generate it with:', '',
   '```sh', `npx tsx tools/questbook/export-list.ts <DefaultQuests> ${output.replaceAll('\\', '/')}`, '```', ''];
-await writeFile(join('docs', 'questbook-export-shopping-list.md'), report.join('\n'));
+await writeFile(`${output.replace(/\.json$/i, '')}.md`, report.join('\n'));
 console.log(`${references.length} references, ${groups.size} unique stacks, ${missing.length} current missing variants; ${missing.filter(item => !item.uses.length).length} unmatched audit entries.`);

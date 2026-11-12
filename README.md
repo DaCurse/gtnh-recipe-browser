@@ -128,9 +128,7 @@ and migrate same-version cache rows after v7 bootstrap loads successfully.
   `assets/source/machine-ui`.
 - The pixel-aligned web font derives from [Idrees Hassan's Minecraft Font](https://github.com/IdreesInc/Minecraft-Font),
   under SIL Open Font License 1.1. Original files, licence and pinned provenance are in
-  `assets/source/minecraft-pixel-font`; see `tools/build-minecraft-font.py`. The previous Public Domain font archive
-  remains in `assets/source/minecraft-font.zip`. The supplied inventory-slot artwork remains subject to its owner's terms and is not covered by this
-  repository's source-code license.
+  `assets/source/minecraft-pixel-font`; see `tools/build-minecraft-font.py`.
 
 However, the project contains some assets from Minecraft (Mojang trademark and copyright), the GTNH development
 team, and respective mod authors. These assets are used under fair use.

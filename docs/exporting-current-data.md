@@ -72,7 +72,7 @@ The builder rejects missing inventory entries and canonical IDs absent from the
 selected recipe dataset. Native wildcard alternatives and ore-group members use
 the existing item renderer. Unavailable references carry a tooltip note; an empty
 ore dictionary can show its valid configured base item without offering that
-empty group as a chooser. The full inventory and original missing-icon list are
+empty group as a chooser. The inventory rules and audit command are
 documented in `docs/questbook-export-shopping-list.md`.
 
 If preparation completed but launch preflight failed, `--prepared-session
@@ -92,9 +92,10 @@ player installation.
 
 ## Run
 
-For 2.9.0 final, first read the [reviewed client source and release notes](release-2.9.0.md).
-The GitHub modpack ZIP contains configuration only. This profile pins a locally assembled client from
-GTNH's official final manifest; retain that exact reviewed archive locally or supply it with `--archive`.
+For 2.9.0, the profile in `tools/data-export/direct-export.ts` pins the official
+MultiMC client URL, byte size and SHA-256. Supply the matching downloaded client
+with `--archive <path>` if it is stored elsewhere. The GitHub configuration-only
+ZIP is not a runnable client.
 
 ```sh
 npm run export:direct -- \

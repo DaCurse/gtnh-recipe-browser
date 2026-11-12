@@ -36,7 +36,6 @@ import { materializeRecipe } from './recipeMaterialization';
 import { applyFrontendPresentation } from './recipeFrontendPresentation';
 import { hasNativeOreDiagrams, nativeOreRecords } from './oreDiagram';
 import { machineCanProcessVoltage, machineCapabilitiesByCrafter, propagateOreMachineCapabilities } from './recipePresentation';
-import { addRecipeTypeCrafters, publishedMachineCrafters } from './machineCrafters';
 import { mapProgressively } from './progressive';
 import {
   buildCatalogSearchDocuments,
@@ -359,9 +358,7 @@ export class DatasetRepository {
     const resolved = prepared.resolved;
     this.entries = resolved.entries;
     this.goodsIds = indexes.goodsIds;
-    const recoveredCrafters = publishedMachineCrafters(this.datasetId);
-    this.types = new Map([...resolved.recipeTypes].map(([id, type]) => [id,
-      addRecipeTypeCrafters(type, recoveredCrafters?.types[id] ?? [], this.goodsIds)]));
+    this.types = resolved.recipeTypes;
     this.additionalMachineCapabilities = machineCapabilitiesByCrafter([...this.types.values()].map(type => ({
       ...type, singleblocks: [], multiblocks: [], defaultCrafter: null
     })), manifest.recipeShards);

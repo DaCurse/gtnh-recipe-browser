@@ -18,8 +18,8 @@ it('retains older companion registrations and their exact provenance when anothe
     expect(await readFile(join(provenance, 'releases/2.9.0-old.json'), 'utf8')).toBe(oldBytes);
     expect(await readFile(join(provenance, 'releases/2.9.0-next.json'), 'utf8')).toBe(await readFile(join(provenance, 'provenance.json'), 'utf8'));
     await expect(writeCompanionRelease(registry, provenance, nextDescriptor, { datasetId: '../outside' })).rejects.toThrow(/identity/);
-    await retireCompanionReleases(registry, ['2.9.0-old']);
+    await retireCompanionReleases(registry, ['2.9.0-old'], provenance);
     expect(JSON.parse(await readFile(registry, 'utf8')).releases).toEqual({ '2.9.0-next': nextDescriptor });
-    expect(await readFile(join(provenance, 'releases/2.9.0-old.json'), 'utf8')).toBe(oldBytes);
+    await expect(readFile(join(provenance, 'releases/2.9.0-old.json'))).rejects.toMatchObject({ code: 'ENOENT' });
   } finally { await rm(directory, { recursive: true, force: true }); }
 });

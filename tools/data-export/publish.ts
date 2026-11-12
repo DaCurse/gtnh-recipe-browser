@@ -311,7 +311,8 @@ for (const datasetId of replacedDatasetIds) {
   await rm(retiredDirectory, { recursive: true, force: true });
 }
 for (const file of ['high-resolution-icons.json', 'ore-diagrams.json']) {
-  await retireCompanionReleases(join(repositoryRoot, 'src/lib/generated', file), replacedDatasetIds);
+  await retireCompanionReleases(join(repositoryRoot, 'src/lib/generated', file), replacedDatasetIds,
+    join(repositoryRoot, 'assets/source', file.replace(/\.json$/, '')));
 }
 const prunedSharedObjects = await pruneUnreferencedSharedObjects();
 console.log(JSON.stringify({

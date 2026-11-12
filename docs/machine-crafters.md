@@ -28,37 +28,8 @@ valid-machine list and derive machine usages from all candidates. Verification
 checks every source catalyst and its tier against the encoded recipe types.
 The annotation bytes participate in the immutable revision hash.
 
-## Published-data recovery
-
-The current immutable 2.9.0 pack is not rewritten. Its complete original source
-contains 845 GT catalysts across 168 categories. Comparing them to the pack
-finds 17 lost machines, all in Furnace. The dataset-bound generated
-`src/lib/generated/machine-crafters.json` restores those exact source bindings
-and corrects 38 compacted voltage tiers across six other categories (55
-bindings across seven categories in total).
-`assets/source/machine-crafters/provenance.json` records the source database and
-base manifest digests; no machine IDs or counts are guessed from display names.
-
-Reproduce the recovery:
-
-```sh
-python3 tools/data-export/machine-crafters.py \
-  --script <validated-export>/nesql-db.script \
-  --output .export-work/machine-crafters/source.json
-npm run recover:machine-crafters -- \
-  .export-work/machine-crafters/source.json \
-  public/data/2.9.0-v7-rbd0b48ae8ad7
-```
-
-`DatasetRepository` applies recovered type bindings after opening either a cold
-or prepared catalogue. It merges their capabilities after detail hydration,
-so old cached zero-capability records cannot suppress the restored machine
-usages. Ore-dictionary groups inherit their members' restored capabilities.
-New packs encode them directly and need no dataset-specific recovery. Other
-datasets are not modified by this recovery registry.
-
 Machine-usage recipe cards show the selected concrete machine when it is among
 the recipe's valid crafters. The chooser still includes every family and tier.
 Tests cover same-tier collisions, voltage ceilings, annotation validation,
-source parsing, the restored current-release bindings, correct machine context,
+source parsing, correct machine context,
 and cached offline reloads for electric furnaces and electric ovens.

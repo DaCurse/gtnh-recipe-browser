@@ -1,4 +1,3 @@
-import published from './generated/machine-crafters.json';
 import { recipeTypeMachineCapabilities, type AdditionalCrafter, type RecipeTypeCrafterReferences } from './recipePresentation';
 
 export interface MachineCrafterSource {
@@ -34,8 +33,4 @@ export function addRecipeTypeCrafters<T extends RecipeTypeCrafterReferences & { 
     known.set(crafter.id, crafter); additional.set(crafter.id, { ...crafter });
   }
   return additional.size ? { ...type, additionalCrafters: [...additional.values()] } : type;
-}
-export function publishedMachineCrafters(datasetId: string): MachineCrafterSource | undefined {
-  const source = (published.releases as Record<string, MachineCrafterSource>)[datasetId];
-  return source ? parseMachineCrafters(source) : undefined;
 }

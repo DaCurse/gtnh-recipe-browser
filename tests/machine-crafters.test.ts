@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { addRecipeTypeCrafters, parseMachineCrafters, publishedMachineCrafters } from '../src/lib/machineCrafters';
+import { addRecipeTypeCrafters, parseMachineCrafters } from '../src/lib/machineCrafters';
 import { machineCanProcessVoltage, machineCapabilitiesByCrafter, recipeCrafterId, recipeTypeCrafters, recipeTypeMachineCapabilities, type AdditionalCrafter } from '../src/lib/recipePresentation';
 
 const type = { id: 'recipeType:gregtech:Furnace', name: 'Furnace', singleblocks: [{ id: 'microwave' }], multiblocks: [], defaultCrafter: { id: 'microwave' } };
@@ -33,7 +33,6 @@ describe('complete machine crafter lists', () => {
     expect(() => parseMachineCrafters({ ...source, schemaVersion: 2 })).toThrow();
     expect(() => parseMachineCrafters({ ...source, types: { [type.id]: [{ ...candidates[0], maxVoltageTier: 14 }] } })).toThrow();
     expect(() => addRecipeTypeCrafters(type, candidates, new Set())).toThrow(/missing from the catalogue/);
-    expect(publishedMachineCrafters('unrelated-dataset')).toBeUndefined();
   });
   it('corrects a compacted representative tier using authoritative source metadata', () => {
     const legacy = { id: 'bio', singleblocks: [{ id: 'i:test:hv:0' }], multiblocks: [], defaultCrafter: { id: 'i:test:hv:0' } };
@@ -41,13 +40,6 @@ describe('complete machine crafter lists', () => {
     expect(recipeTypeMachineCapabilities(corrected)[0]?.maxVoltageTier).toBe(2);
     expect(recipeCrafterId(corrected, 2)).toBe('i:test:hv:0');
     expect(recipeTypeCrafters(corrected)).toHaveLength(1);
-  });
-  it('recovers every lost current-release furnace family from the original source', () => {
-    const source = publishedMachineCrafters('2.9.0-v7-rbd0b48ae8ad7')!;
-    const restored = source.types[type.id]!;
-    expect(restored).toHaveLength(17);
-    expect(restored).toContainEqual({ id: 'i:gregtech:gt.blockmachines:262', role: 'singleblock', maxVoltageTier: 1 });
-    expect(restored).toContainEqual({ id: 'i:gregtech:gt.blockmachines:671', role: 'singleblock', maxVoltageTier: 0 });
   });
   it('reads source catalysts without tier collisions and uses input voltage rather than other tier labels', async () => {
     const directory = await mkdtemp(join(tmpdir(), 'gtnh-crafters-'));
