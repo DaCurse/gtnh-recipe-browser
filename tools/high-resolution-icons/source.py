@@ -26,7 +26,7 @@ def text(value):
 goods = {}
 script = args.export/'nesql-db.script'
 archive = args.export/'image.zip'
-with script.open() as stream:
+with script.open(encoding='utf-8') as stream:
     for line in stream:
         item = line.startswith('INSERT INTO ITEM VALUES(')
         fluid = line.startswith('INSERT INTO FLUID VALUES(')
@@ -67,5 +67,5 @@ def file_hash(path):
 (output/'sources.json').write_text(json.dumps({
     'schemaVersion':1, 'spriteSize':64, 'scriptSha256':file_hash(script),
     'imagesSha256':file_hash(archive), 'goods':records, 'unavailable':unavailable
-},separators=(',',':'))+'\n')
+},separators=(',',':'))+'\n', encoding='utf-8', newline='\n')
 print(f'Recovered {len(records)} exact goods identities from original 64px PNGs')

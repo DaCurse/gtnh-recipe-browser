@@ -1,19 +1,19 @@
 {
   "schemaVersion": 1,
   "rollout": {
-    "epoch": 4,
-    "targetDatasetId": "2.9.0-v7-rbd0b48ae8ad7"
+    "epoch": 5,
+    "targetDatasetId": "2.9.0-v7-r9ec25114d4a7"
   },
-  "generatedAt": "2026-10-31T17:07:42.411Z",
+  "generatedAt": "2026-11-12T16:23:55.054Z",
   "versions": [
     {
-      "datasetId": "2.9.0-v7-rbd0b48ae8ad7",
+      "datasetId": "2.9.0-v7-r9ec25114d4a7",
       "gtnhVersion": "2.9.0",
-      "revision": "bd0b48ae8ad7",
-      "publishedAt": "2026-10-31T16:43:03.393Z",
-      "packManifestUrl": "./data/2.9.0-v7-rbd0b48ae8ad7/pack-manifest.json",
-      "catalogBytes": 8048473,
-      "offlineBytes": 95238413
+      "revision": "9ec25114d4a7",
+      "publishedAt": "2026-11-12T16:23:55.054Z",
+      "packManifestUrl": "./data/2.9.0-v7-r9ec25114d4a7/pack-manifest.json",
+      "catalogBytes": 8939844,
+      "offlineBytes": 99644861
     },
     {
       "datasetId": "2.9.0-RC-1-v7-rbf5fd70ecad0",

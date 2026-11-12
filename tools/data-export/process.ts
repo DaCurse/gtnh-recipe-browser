@@ -21,6 +21,8 @@ import {
   validateCombinedTooltipSchema
 } from './lib';
 import { readSpecialSidecar, validateCropsNhSeedReferences } from './special';
+import { validateQuestExport, validateQuestGoods, type QuestExportReport } from './quest-items';
+import type { QuestItemReference } from '../questbook/references';
 
 function usage(): string {
   return [
@@ -119,6 +121,12 @@ try {
 const specialData = await readSpecialSidecar(sidecarPath);
 validateCropsNhSeedReferences(specialData);
 const specialDataPath = sidecarPath;
+const questRequestsPath = join(session.workDirectory, 'quest-item-requests.json');
+const questReportPath = join(nesqlDirectory, 'browser-quest-items.json');
+const questRequests = JSON.parse(await readFile(questRequestsPath, 'utf8')) as { references: QuestItemReference[] };
+const questReport = JSON.parse(await readFile(questReportPath, 'utf8')) as QuestExportReport;
+validateQuestExport(questRequests.references, questReport, session.gtnhVersion);
+console.log(`Quest item inventory: ${questReport.references.length} references, ${questReport.references.filter(row => row.status === 'unavailable').length} explicitly unavailable in the game registry.`);
 
 const processedDirectory = join(outputWorkDirectory, 'processed');
 const processorDirectory = join(outputWorkDirectory, 'processor');
@@ -211,6 +219,7 @@ const atlasPath = join(processedDirectory, 'atlas.webp');
 const data = await readFile(dataPath);
 const atlas = await readFile(atlasPath);
 const repository = decodeFormat5(data);
+validateQuestGoods(questReport, new Set([...repository.items, ...repository.fluids, ...repository.oreDictionaries, ...repository.ingredientGroups].map(goods => goods.id)));
 if (repository.items.length < 75_000 || repository.recipes.length < 200_000) {
   throw new Error(
     `Processed repository is unexpectedly small: ${repository.items.length} items, `
@@ -292,7 +301,8 @@ await verifyPack({
   machineCraftersPath,
   spriteSamples: 100
 });
-await rm(secondBuild, { recursive: true });
+// Windows virus scanners can briefly hold a freshly verified asset open.
+await rm(secondBuild, { recursive: true, maxRetries: 20, retryDelay: 500 });
 await rename(firstBuild, finalPack);
 
 const provenance = {
@@ -313,6 +323,9 @@ const provenance = {
     patchSha256: await sha256File(namedOreDictionariesPatch)
   },
   toolchains: session.toolchains,
+  questItems: { requestsSha256: await sha256File(questRequestsPath), reportSha256: await sha256File(questReportPath),
+    retentionSha256: await sha256File(specialRetentionSource), referenceCount: questReport.references.length,
+    unavailableCount: questReport.references.filter(row => row.status === 'unavailable').length },
   previousData: {
     path: 'tests/fixtures/shadowtheage-v5-2.8.0/data.bin',
     sha256: await sha256File(previousData)

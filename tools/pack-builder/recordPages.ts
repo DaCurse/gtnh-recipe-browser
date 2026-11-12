@@ -263,7 +263,7 @@ export async function buildRecordPages(
 const verifiedPages = new WeakMap<GeneratedPackManifest, Map<string, Promise<Uint8Array[]>>>();
 
 export async function readLogicalAsset(
-  asset: ImmutableAsset,
+  asset: Pick<ImmutableAsset, 'id' | 'segments' | 'sha256' | 'url' | 'bytes' | 'encoding'>,
   manifest: GeneratedPackManifest,
   directory: string
 ): Promise<Uint8Array> {

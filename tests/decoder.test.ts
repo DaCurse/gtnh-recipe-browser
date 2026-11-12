@@ -59,6 +59,15 @@ function repositoryWithNullableUnlocalizedName(withSparseType = false): Buffer {
 }
 
 describe('format-v5 decoder rejection', () => {
+  it('retains goods and metadata when recipe materialization is disabled', () => {
+    const bytes = repositoryWithNullableUnlocalizedName(true);
+    const full = decodeFormat5(bytes);
+    const goodsOnly = decodeFormat5(bytes, { recipes: false });
+    expect(goodsOnly.items).toEqual(full.items);
+    expect(goodsOnly.recipeTypes).toEqual(full.recipeTypes);
+    expect(goodsOnly.recipes).toEqual([]);
+  });
+
   it('rejects input which is not gzip data', () => {
     expect(() => decodeFormat5(Buffer.from('not gzip'))).toThrow(/decompress/i);
   });

@@ -26,7 +26,7 @@ function required(value: string | null, context: string): string {
   return value;
 }
 
-export function decodeFormat5(compressed: Uint8Array): DecodedRepository {
+export function decodeFormat5(compressed: Uint8Array, options: { recipes?: boolean } = {}): DecodedRepository {
   const reader = new WordReader(compressed);
   const formatVersion = reader.int(0, 'format version');
   if (formatVersion !== FORMAT_VERSION) {
@@ -261,7 +261,7 @@ export function decodeFormat5(compressed: Uint8Array): DecodedRepository {
   });
 
   const ioKind: RecipeIoKind[] = ['item', 'oreDict', 'fluid', 'item', 'fluid'];
-  const recipes: DecodedRecipe[] = recipePointers.map((pointer, recipeIndex) => {
+  const recipes: DecodedRecipe[] = options.recipes === false ? [] : recipePointers.map((pointer, recipeIndex) => {
     const packedIo = reader.sliceAt(pointer + 5, `recipe ${recipeIndex} I/O`);
     if (packedIo.length % 5 !== 0) {
       throw new PackDecodeError(`recipe ${recipeIndex} I/O: expected groups of 5, got ${packedIo.length} values`);

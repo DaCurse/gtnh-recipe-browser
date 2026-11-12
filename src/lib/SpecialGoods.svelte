@@ -5,6 +5,7 @@
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import SlotSurface from './SlotSurface.svelte';
+  import MinecraftText from './MinecraftText.svelte';
   import { RECIPE_UI_SCALE, type UiSlot } from './machineUi';
   import { oreCycle } from './oreCycle';
   import { boundedSpecialPage, displaySpecialAmount, type SpecialGoods, type SpecialResolver } from './specialData';
@@ -21,8 +22,13 @@
     compact = false,
     wrapLabels = false,
     horizontal = false,
+    rows = false,
+    rowSeparator,
+    rowSeparatorColor,
     hideLabels = false,
     positions,
+    grid,
+    joined = false,
     nativeBackground = false
   }: {
     goods: readonly SpecialGoods[];
@@ -38,12 +44,20 @@
     wrapLabels?: boolean;
     /** Render a single goods slot and its caption on one line for stat rows. */
     horizontal?: boolean;
+    /** Native quest-style rows: a slot followed by its formatted item name. */
+    rows?: boolean;
+    rowSeparator?: string;
+    rowSeparatorColor?: string;
     /** Omit the caption under the slot when the parent supplies row text. */
     hideLabels?: boolean;
     positions?: UiSlot[];
+    grid?: { columns: number; rows: number };
+    /** Responsive adjacent slots, without item captions. */
+    joined?: boolean;
     nativeBackground?: boolean;
   } = $props();
 
+  let availableWidth = $state(432);
   let page = $state(0);
   const touch = new ItemTouch();
   let tooltipId = $state('');
@@ -55,11 +69,15 @@
   const safePageSize = $derived(Math.max(1, Math.floor(pageSize)));
   const pageCount = $derived(Math.max(1, Math.ceil(goods.length / safePageSize)));
   const visible = $derived(boundedSpecialPage(goods, page, safePageSize));
+  const slotGrid = $derived(grid ?? (joined ? {
+    columns: Math.max(1, Math.min(9, visible.length, Math.floor(availableWidth / 48))),
+    rows: Math.ceil(visible.length / Math.max(1, Math.min(9, visible.length, Math.floor(availableWidth / 48))))
+  } : undefined));
   const tooltipGoods = $derived(goods.find((item) => item.goodsId === tooltipId));
   const tooltipEntry = $derived(tooltipGoods ? resolve(
     tooltipGoods.oreDictionaryId ?? displayId(tooltipGoods)
   ) : undefined);
-  const tooltipNotes = $derived(tooltipGoods?.tooltipNotes);
+  const tooltipNotes = $derived(tooltipGoods ? itemNotes(tooltipGoods) : undefined);
   const chosenItem = $derived(chosenItemId ? resolve(chosenItemId) : undefined);
   const chosenGroup = $derived(chosenGroupId ? resolve(chosenGroupId) : undefined);
 
@@ -170,17 +188,32 @@
       : '';
   }
 
+  function itemNotes(item: SpecialGoods): string[] | undefined {
+    if (!joined) return item.tooltipNotes;
+    const amount = item.minAmount !== undefined || item.maxAmount !== undefined
+      ? `${item.minAmount ?? item.maxAmount}–${item.maxAmount ?? item.minAmount}` : item.amount;
+    return [...item.tooltipNotes ?? [],
+      ...(amount !== undefined ? [`Amount: ${amount}`] : []),
+      ...(item.chance !== undefined ? [`Chance: ${chanceLabel(item)}`] : []),
+      ...(fortuneLabel(item) ? [fortuneLabel(item)] : []),
+      ...(item.weight !== undefined ? [`Weight: ${item.weight}`] : []),
+      ...(item.limit !== undefined ? [`Limit: ${item.limit}`] : [])];
+  }
+
   function hideTooltip() {
     tooltipId = '';
   }
 </script>
 
-{#if goods.length > 0}
-  <section class:compact class:wrap-labels={wrapLabels} class:horizontal class:hide-labels={hideLabels} class="special-goods" aria-label={label ?? 'Goods'}>
+{#if goods.length > 0 || grid}
+  <section class:compact class:wrap-labels={wrapLabels} class:horizontal class:rows class:hide-labels={hideLabels || joined} bind:clientWidth={availableWidth} class="special-goods" aria-label={label ?? 'Goods'}>
     {#if label}<div class="special-goods-label">{label}</div>{/if}
-      <div class="special-goods-grid" class:positioned={Boolean(positions)}
+      <div class="special-goods-grid" class:positioned={Boolean(positions)} class:slotted={Boolean(slotGrid)}
+        style:grid-template-columns={slotGrid ? `repeat(${slotGrid.columns},48px)` : undefined}
+        style:grid-template-rows={slotGrid ? `repeat(${slotGrid.rows},48px)` : undefined}
         style:width={positions ? `${Math.max(...positions.map(slot => slot.pos[0] + 18)) * RECIPE_UI_SCALE}px` : undefined}
         style:height={positions ? `${Math.max(...positions.map(slot => slot.pos[1] + 18)) * RECIPE_UI_SCALE}px` : undefined}>
+      {#if slotGrid}<SlotSurface width={slotGrid.columns * 18} height={slotGrid.rows * 18} />{/if}
       {#each visible as item, itemIndex (`${itemIndex}:${item.goodsId}:${item.role ?? ''}:${item.amount ?? ''}`)}
         {@const touchKey = `${page}:${itemIndex}:${item.goodsId}`}
         {@const entry = resolve(displayId(item))}
@@ -188,6 +221,7 @@
         {@const oreIcon = iconEntry ? oreDictionaryIcon(iconEntry, item.alternatives) : undefined}
         {@const displayed = touch.display(touchKey, oreIcon ? resolveCatalogVariant(oreIcon.browse, oreIcon.exactEntries, $oreCycle) : entry)}
         {@const fortune = fortuneLabel(item)}
+        {#if rows && rowSeparator && itemIndex > 0}<span class="special-row-separator" style:color={rowSeparatorColor}>{rowSeparator}</span>{/if}
         {#if entry && displayed}
           <div class="special-good-cell"
             style:left={positions?.[itemIndex] ? `${positions[itemIndex]!.pos[0] * RECIPE_UI_SCALE}px` : undefined}
@@ -195,7 +229,7 @@
             <button
               class:ore-dictionary={Boolean(item.oreDictionaryId)}
               class="special-good"
-              use:touch.action={{ key: touchKey, entry: displayed, clearHover: hideTooltip, notes: item.tooltipNotes,
+              use:touch.action={{ key: touchKey, entry: displayed, clearHover: hideTooltip, notes: itemNotes(item),
                 activate: (frozen) => inspect(item, 'recipes', entry.id === item.oreDictionaryId ? entry.id : frozen.id),
                 hold: item.oreDictionaryId && resolve(item.oreDictionaryId) && entry.id !== item.oreDictionaryId
                   ? (frozen) => inspect(item, 'recipes', frozen.id) : undefined, navigate }}
@@ -212,7 +246,7 @@
               }}
             >
               <div class="special-slot">
-                {#if !nativeBackground}<SlotSurface width={18} height={18} fluid={entry.kind === 'fluid'} />{/if}
+                {#if !nativeBackground && !slotGrid}<SlotSurface width={18} height={18} fluid={entry.kind === 'fluid'} />{/if}
                 <div class="special-slot-content">
                 {#if oreIcon}
                   <CatalogVariantIcon entry={oreIcon.browse} exactEntries={oreIcon.exactEntries} size={48} frame={false} frozen={touch.frozen(touchKey)} />
@@ -233,8 +267,8 @@
                 {/if}
               </div>
             </button>
-            {#if !hideLabels}<small class="special-good-label">{displayLabel(item, entry)}</small>{/if}
-            {#if fortune && !hideLabels}<small class="special-fortune">{fortune}</small>{/if}
+            {#if !hideLabels && !joined}<small class="special-good-label">{#if rows}<MinecraftText text={displayLabel(item, entry)} inline />{:else}{displayLabel(item, entry)}{/if}</small>{/if}
+            {#if fortune && !hideLabels && !joined}<small class="special-fortune">{fortune}</small>{/if}
           </div>
         {:else}
           <div class:compact class="special-good unresolved" title={item.goodsId}>
@@ -246,9 +280,9 @@
     </div>
     {#if pageCount > 1}
       <nav class="special-goods-pages" aria-label={`${label ?? 'Goods'} pages`}>
-        <button disabled={page === 0} onclick={() => page -= 1} aria-label="Previous goods">‹</button>
+        <button class="mc-button" disabled={page === 0} onclick={() => page -= 1} aria-label="Previous goods">‹</button>
         <span>{page + 1} / {pageCount}</span>
-        <button disabled={page >= pageCount - 1} onclick={() => page += 1} aria-label="Next goods">›</button>
+        <button class="mc-button" disabled={page >= pageCount - 1} onclick={() => page += 1} aria-label="Next goods">›</button>
       </nav>
     {/if}
   </section>
@@ -297,6 +331,8 @@
   .special-goods-label { margin-bottom:6px; color:var(--recipe-text); font-size:10px; font-weight:700; letter-spacing:.65px; text-transform:uppercase; }
   .special-goods-grid.positioned { position:relative; display:block; }
   .positioned .special-good-cell { position:absolute; min-width:0; width:48px; height:48px; }
+  .special-goods-grid.slotted { position:relative; gap:0; width:max-content; }
+  .slotted .special-good-cell { position:relative; min-width:0; width:48px; }
   .special-goods-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(72px,1fr)); gap:7px; min-width:0; }
   .special-good-cell { width:max-content; min-width:72px; max-width:100%; display:flex; flex-direction:column; align-items:center; justify-self:center; gap:2px; text-align:center; }
   .special-good,.unresolved { position:relative; width:48px; height:48px; min-width:48px; min-height:48px; display:flex; align-items:center; justify-content:center; padding:0; border:1px solid transparent; border-radius:0; background:transparent; color:#d9dcdf; cursor:pointer; }
@@ -315,8 +351,6 @@
   .unresolved { flex-direction:column; justify-content:center; border-color:#4a4d51; color:#b7bbbf; cursor:default; }
   .unresolved>span { font-size:27px; }
   .special-goods-pages { display:flex; align-items:center; justify-content:center; gap:10px; margin-top:8px; }
-  .special-goods-pages button { min-width:38px; min-height:38px; border:1px solid #50555a; border-radius:6px; background:#292c30; color:#d2d5d8; font-size:20px; cursor:pointer; }
-  .special-goods-pages button:disabled { opacity:.4; cursor:default; }
   .special-goods-pages span { color:#92979c; font-size:11px; }
   .special-goods.compact .special-goods-label { margin-bottom:3px; }
   .special-goods.compact .special-goods-grid { gap:2px; }
@@ -340,6 +374,11 @@
   .special-goods.horizontal .special-good-label { display:none; }
   .special-goods.horizontal .special-fortune { display:none; }
   .special-goods.horizontal.hide-labels .special-good-cell { min-width:48px; }
+  .special-goods.rows .special-goods-grid { display:flex; flex-direction:column; gap:10px; align-items:stretch; }
+  .special-goods.rows .special-good-cell { width:100%; min-width:0; flex-direction:row; align-items:center; gap:12px; text-align:left; }
+  .special-goods.rows .special-good { flex:0 0 48px; }
+  .special-row-separator { width:48px; flex:none; text-align:center; font:16px/24px Minecraft,monospace; text-shadow:2px 2px #342c34; }
+  .special-goods.rows .special-good-label { width:auto; min-width:0; white-space:normal; overflow-wrap:anywhere; font:18px/1.35 Minecraft,monospace; color:#bfbfbf; text-shadow:2px 2px #222; }
   .special-choice-scrim { position:fixed; inset:0; z-index:60; display:grid; place-items:center; padding:18px; background:#050607cc; backdrop-filter:blur(6px); }.special-choice { position:relative; width:min(560px,100%); padding:26px; border:1px solid #4b4f54; border-radius:14px; background:#202226; box-shadow:0 30px 90px #000; }.special-choice>p { margin:0 40px 7px 0; color:#a5aaaf; font:9px/13px Minecraft,monospace; letter-spacing:0; }.special-choice h2 { margin:0 40px 18px 0; color:#f0f1f2; font:18px/24px Minecraft,monospace; }.special-choice-close { position:absolute; top:8px; right:8px; width:40px; height:40px; border:0; background:none; color:#b3b8bd; font-size:25px; cursor:pointer; }.special-choice-option { display:grid; grid-template-columns:52px minmax(0,1fr) auto; align-items:center; gap:10px; padding:10px; border:1px solid #464a4f; border-radius:8px; background:#292c30; }.special-choice-option+.special-choice-option { margin-top:9px; }.special-choice-option b { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }.special-choice-option span { display:flex; gap:6px; }.special-choice-option button { min-height:40px; padding:0 9px; border:1px solid #5a5f65; border-radius:6px; background:#35393d; color:#e3e5e7; cursor:pointer; }.special-choice-option button:first-child { background:#d1d4d7; color:#17191b; }
   @keyframes ore-dictionary-pulse { 0%,100% { box-shadow:0 0 0 1px #7565a255,0 0 5px #8b78ce44; } 50% { box-shadow:0 0 0 1px #b49bf4aa,0 0 13px #a58ce999; } }
   @media (prefers-reduced-motion: reduce) { .special-good.ore-dictionary { animation:none; } }

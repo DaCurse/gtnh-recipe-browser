@@ -1,6 +1,7 @@
 /* Opt-in chrome: item slots, recipe diagrams and clear/close icons keep their own surfaces.
    The theme selector lets this shared theme override older component button paint. */
-:root .mc-theme :is(button,a).mc-button {
+:root .mc-theme :is(button,a).mc-button,
+:root .mc-theme .mc-button-surface {
   --mc-button-image:url('/assets/machine-ui/button-normal.png');
   --mc-button-text:#bfbfbf;
   display:inline-flex;
@@ -28,8 +29,10 @@
   filter:none;
   transition:none;
 }
+:root .mc-theme .mc-button-surface { cursor:default; }
 :root .mc-theme .mc-button.primary { --mc-button-text:#e2d4ab; }
 :root .mc-theme .mc-button.delete { --mc-button-text:#efb0a8; }
+:root .mc-theme :is(button,a).mc-button.wrap { min-width:0; white-space:normal; text-align:left; justify-content:flex-start; }
 :root .mc-theme :is(button,a).mc-button:is(.active,[aria-current='page'],[aria-pressed='true']) {
   --mc-button-image:url('/assets/machine-ui/button-hover.png');
   --mc-button-text:#efc62f;
@@ -59,7 +62,9 @@
 :root .mc-theme .finder-modes { gap:4px; padding:0; border:0; border-radius:0; background:none; }
 :root .mc-theme :is(.dataset-actions,.choice-actions,.crafter-option>span,.special-choice-option>span) { flex-wrap:wrap; }
 @media(max-width:800px) {
+  :root .mc-theme .primary-nav .mc-button { font-size:13px; line-height:18px; padding:4px 6px; min-width:0; gap:4px; }
   :root .mc-theme :is(button,a).mc-button { min-height:44px; }
+  :root .mc-theme .ore-production-note button.mc-button { display:inline; min-width:0; min-height:0; padding:1px 5px; border-width:2px; border-image-width:2px; font:inherit; line-height:inherit; text-shadow:none; white-space:normal; overflow-wrap:anywhere; vertical-align:baseline; }
   :root .mc-theme .mc-button.version { min-width:0; }
   :root .mc-theme .type-row { top:41px; }
   :root .mc-theme :is(.view-tabs,.type-row) { background-color:#111214; background-image:var(--page-background); }

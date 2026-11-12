@@ -22,6 +22,8 @@ export interface CatalogEntry {
   numericId?: number;
   damage?: number;
   nbt?: string | null;
+  /** Show the exact variant data as a structured tooltip section. */
+  showNbt?: boolean;
   /** Bootstrap fingerprint used to group variants without loading full NBT. */
   variantNbtKey?: string;
   searchMask?: number[];
@@ -35,6 +37,8 @@ export interface CatalogEntry {
   color: string;
   glyph: string;
   icon?: {
+    /** A projected variant can intentionally reuse a known base item's sprite. */
+    ownerId?: string;
     id?: string;
     url: string;
     index: number;

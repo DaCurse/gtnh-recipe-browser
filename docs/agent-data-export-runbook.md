@@ -53,6 +53,26 @@ retain every referenced goods ID and must reject a missing sidecar; there is no 
 
 ## Automated client and processing checks
 
+Questbook retention is part of the same automated export. Before launch, inventory
+all typed item/fluid compounds in the prepared client's DefaultQuests files,
+including rewards/choices, task requirements, icons and decorative stacks.
+`RuntimeQuestItems` loads these with BetterQuesting's own NBT/stack decoder and
+registers them through the normal special-overlay item/fluid/ore factories.
+Metadata wildcards expand to populated NEI variants; unresolved native registry
+references remain explicit unavailable records. Do not replace them with guessed
+metadata, scraped icons, or hand-created assets.
+
+Require `browser-quest-items.json` alongside the existing special sidecar. Verify
+one resolution per requested source path, preserve every resolved goods ID through
+the processor, and include request/report/retention hashes in provenance. The
+quest pack importer can consume the same report and source request file to reuse
+the game's exact canonical IDs (including NBT and wildcard resolutions).
+
+Windows uses native x64 libraries, semicolon-separated classpaths and no Xvfb.
+Run build preparation with JDK 21 and the .NET 8 SDK on PATH. Keep all client,
+Gradle project and game saves inside the disposable export workspace. Linux/WSL
+remains supported with the same inventory and validation rules.
+
 `ExportAutomationController` creates a flat creative integrated world, waits for a populated NEI registry, grants the
 static Thaumcraft research/aspects required by the export, clears warp, runs the exporter, validates the database,
 image archive, and sidecar, then exits the JVM itself. Require distinct atomic launcher/controller/orchestrator

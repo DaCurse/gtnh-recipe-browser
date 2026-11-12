@@ -1,3 +1,4 @@
+import { trackEvent } from './analytics';
 import type { CatalogEntry } from './types';
 
 type ItemView = 'recipes' | 'usages';
@@ -51,7 +52,7 @@ export function loadItemTouchTutorial(): void {
   } catch { /* Keep in-memory progress when storage is unavailable. */ }
 }
 
-function completeTouchGesture(gesture: 'opened' | 'held'): void {
+export function completeTouchGesture(gesture: 'opened' | 'held'): void {
   itemTouchState.tutorial[gesture] = true;
   try { localStorage.setItem(tutorialKey, JSON.stringify(itemTouchState.tutorial)); }
   catch { /* Gesture hints still disappear for this visit. */ }
@@ -109,6 +110,7 @@ export class ItemTouch {
         cancel();
         if (!held || itemTouchState.session?.node !== node) return;
         completeTouchGesture('held');
+        trackEvent('item_touch_interaction', {action:'hold',item_name:held.entry.name,item_kind:held.entry.kind});
         window.getSelection()?.removeAllRanges();
         if (held.options.hold) { clearItemTouch(); held.options.hold(held.entry); }
         else if (held.options.navigate) openItemActions(held.entry, held.options.navigate);
@@ -126,8 +128,8 @@ export class ItemTouch {
       cancel();
       suppressUntil = Date.now() + 1500;
       if (itemTouchState.session?.node !== node) return;
-      if (tapped.second) { completeTouchGesture('opened'); clearItemTouch(); tapped.options.activate(tapped.entry); }
-      else itemTouchState.session.preview = true;
+      if (tapped.second) { trackEvent('item_touch_interaction', {action:'activate',item_name:tapped.entry.name,item_kind:tapped.entry.kind}); completeTouchGesture('opened'); clearItemTouch(); tapped.options.activate(tapped.entry); }
+      else { itemTouchState.session.preview = true; trackEvent('item_touch_interaction', {action:'preview',item_name:tapped.entry.name,item_kind:tapped.entry.kind}); }
     };
     const pointerCancel = (event: PointerEvent) => {
       if (event.pointerId === lastTouchPointer) suppressTouchEventUntil = suppressUntil = Date.now() + 1500;

@@ -597,7 +597,7 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
   }
 
   for (const descriptor of manifest.iconSheets) {
-    const metadata = await sharp(localAssetPath(options.packDirectory, descriptor, options.assetDirectory)).metadata();
+    const metadata = await sharp(await readFile(localAssetPath(options.packDirectory, descriptor, options.assetDirectory))).metadata();
     const expectedSize = descriptor.columns * descriptor.spriteSize;
     if (metadata.width !== expectedSize || metadata.height !== descriptor.rows * descriptor.spriteSize) {
       throw new Error(`${descriptor.id}: expected ${expectedSize}x${descriptor.rows * descriptor.spriteSize}, got ${metadata.width}x${metadata.height}`);
@@ -679,7 +679,7 @@ export async function verifyPack(options: VerifyPackOptions): Promise<VerifyPack
         if (!sheet) throw new Error(`No icon sheet contains sampled icon slot ${slot}`);
         let decodedSheet = decodedSheets.get(sheet.id);
         if (!decodedSheet) {
-          const result = await sharp(localAssetPath(options.packDirectory, sheet, options.assetDirectory))
+          const result = await sharp(await readFile(localAssetPath(options.packDirectory, sheet, options.assetDirectory)))
             .ensureAlpha()
             .raw()
             .toBuffer({ resolveWithObject: true });

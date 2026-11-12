@@ -4,6 +4,8 @@ import { argumentsMap, assertPathMissing, requiredArgument } from '../data-expor
 import { resolveRuntime, createLaunchPlan, launchRuntime } from '../data-export/direct-runtime';
 
 const args = argumentsMap(process.argv.slice(2));
+const heap = args.get('xmx') ?? '7G';
+if (!/^\d+[mMgG]$/.test(heap)) throw new Error('--xmx must be a JVM memory size such as 5G');
 const root = resolve(requiredArgument(args, 'instance'));
 const output = resolve(requiredArgument(args, 'output'));
 const workspace = resolve('.export-work');
@@ -16,7 +18,7 @@ await mkdir(dirname(output), { recursive: true });
 const runtime = await resolveRuntime({ root,
   cacheDirectory: resolve(args.get('cache') ?? '.export-work/direct-export-cache/runtime'),
   download: args.get('download') === 'true', extractNatives: true });
-runtime.jvmArgs.push('-Xms1G', '-Xmx7G', '-XX:+UseG1GC', '-Djava.awt.headless=false',
+runtime.jvmArgs.push('-Xms1G', `-Xmx${heap}`, '-XX:+UseG1GC', '-Djava.awt.headless=false',
   '-Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true', '-Dorg.lwjgl.opengl.Display.enableSoftwareOpenGL=true',
   `-Dbrowser.ui.output=${output}`);
 const plan = createLaunchPlan(runtime, { java: args.get('java') ?? 'java',

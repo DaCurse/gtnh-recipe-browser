@@ -11,6 +11,8 @@
     size = 56,
     selected = false,
     frame = true,
+    bare = false,
+    renderScale = 1,
     frozen
   }: {
     entry: CatalogBrowseEntry;
@@ -18,6 +20,8 @@
     size?: number;
     selected?: boolean;
     frame?: boolean;
+    bare?: boolean;
+    renderScale?: number;
     frozen?: CatalogEntry;
   } = $props();
 
@@ -52,7 +56,7 @@
   aria-hidden="true"
   bind:this={element}
 >
-  <ItemIcon entry={displayEntry} {size} {selected} {frame} />
+  <ItemIcon entry={displayEntry} {size} {selected} {frame} {bare} {renderScale} />
 </span>
 
 <style>

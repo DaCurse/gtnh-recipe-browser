@@ -272,6 +272,7 @@ export interface SpecialLoadProgress {
 
 /** Optional surface implemented by the canonical DatasetRepository. */
 export interface SpecialRepository {
+  countFor?: (entryId: string, view: RecipeView, viewType: string) => number | undefined;
   readonly specialViewTypes?: readonly SpecialViewType[];
   readonly specialServiceIcons?: readonly SpecialServiceIcon[];
   specialFor?: (

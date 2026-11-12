@@ -132,7 +132,9 @@ try {
   await actionDialog.getByRole('button', { name: 'Close item actions' }).click();
 
   const registry = JSON.parse(await readFile('src/lib/generated/ore-diagrams.json', 'utf8'));
-  const index = JSON.parse(gunzipSync(await readFile(`public/assets/sha256/${registry.releases['2.9.0-v7-rbd0b48ae8ad7'].sha256}`)));
+  const versions = JSON.parse(await readFile('public/versions-v7.json', 'utf8'));
+  const datasetId = versions.versions.find(version => version.gtnhVersion === '2.9.0').datasetId;
+  const index = JSON.parse(gunzipSync(await readFile(`public/assets/sha256/${registry.releases[datasetId].sha256}`)));
   const data = JSON.parse(gunzipSync(await readFile(`public/assets/sha256/${index.scenes.sha256}`)));
   const scene = Object.values(data.scenes).find(scene => scene.slots.some(slot => slot.key === 'raw-ore'));
   const raw = scene.slots.find(slot => slot.key === 'raw-ore');

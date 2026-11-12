@@ -22,7 +22,7 @@ async function serve(context) {
 }
 
 try {
-  const context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: true });
+  const context = await browser.newContext({ serviceWorkers: 'block', acceptDownloads: true, hasTouch:true });
   await serve(context);
   const events = [], paths = [], errors = [];
   await context.route('https://us.i.posthog.com/**', async (route) => {
@@ -100,10 +100,34 @@ try {
   await choices.getByRole('button', { name: 'Search more routes', exact: true }).click();
   await page.getByRole('button', { name: 'Stop searching', exact: true }).click();
   await waitEvent('chain_more_requested'); await waitEvent('chain_more_stopped');
+  await page.goto(`${production}/?page=quests&chapter=q0&quest=q0`);
+  await page.locator('.quest-description').waitFor({timeout:120000});
+  await waitEvent('questbook_loaded');
+  await waitEvent('quest_viewed',properties=>properties.quest_name==='Your First Night');
+  await page.getByRole('button',{name:'Back to quests',exact:true}).click();
+  await waitEvent('quest_chapter_viewed');
+  await page.locator('.desktop-search input').fill('hammer');
+  await waitEvent('quest_search',properties=>properties.query==='hammer'&&properties.result_count>0);
+  await page.goto(`${production}/?item=i:minecraft:apple:0&view=recipes`);
+  const questTab=page.locator('.special-tab[aria-label="Quests"]');await questTab.waitFor({timeout:120000});await questTab.click();
+  await waitEvent('special_viewed',properties=>properties.special_type==='quests');
+  const questName=page.locator('.quest-name-link').first();await questName.waitFor();
+  await questName.tap();await waitEvent('quest_touch_preview');
+  await questName.tap();await waitEvent('quest_link_opened',properties=>properties.source==='item_recipes');
+  await page.goto(`${production}/?item=i:minecraft:apple:0&view=recipes&special=quests`);
+  const reward=page.locator('.quest-linked-goods .special-good').first();await reward.waitFor({timeout:120000});
+  await reward.tap();await waitEvent('item_touch_interaction',properties=>properties.action==='preview');
+  const box=await reward.boundingBox();
+  await reward.dispatchEvent('pointerdown',{pointerId:77,pointerType:'touch',isPrimary:true,clientX:box.x+10,clientY:box.y+10});
+  await page.locator('.item-action-dialog').waitFor();
+  await page.dispatchEvent('body','pointerup',{pointerId:77,pointerType:'touch'});
+  await waitEvent('item_touch_interaction',properties=>properties.action==='hold');
+  await page.locator('.item-action-dialog').getByRole('button',{name:'Recipes',exact:true}).click();
+  await waitEvent('item_action_selected',properties=>properties.view==='recipes');
   for (const event of events) {
     for (const [key, value] of Object.entries(event.properties)) {
       if (key.toLowerCase().includes('url') && typeof value === 'string') {
-        assert.doesNotMatch(value, /[?&](search|item|input|output|version|recipe-filter)=|private-route/);
+        assert.doesNotMatch(value, /[?&](search|item|input|output|version|recipe-filter|quest|chapter|quest-search|quest-version)=|private-route/);
       }
     }
   }

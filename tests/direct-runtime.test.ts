@@ -9,6 +9,7 @@ import {
   matchesRuntimeRule,
   isAllowedByRuntimeRules,
   LINUX_X86_64,
+  WINDOWS_X86_64,
   offlineUuid,
   readRuntimePackMetadata,
   resolveRuntime,
@@ -148,6 +149,7 @@ describe('direct GTNH runtime resolver', () => {
 
       const resolution = await resolveRuntime({
         root,
+        platform: LINUX_X86_64,
         cacheDirectory: join(root, 'cache'),
         extractNatives: false,
         identity: { username: 'OfflineUser' },
@@ -178,9 +180,20 @@ describe('direct GTNH runtime resolver', () => {
       expect(plan.command[0]).toBe('/usr/bin/java');
       expect(plan.command).toContain('-cp');
       expect(plan.command).toContain('com.example.Wrapper');
+      const windows = await resolveRuntime({ root, platform: WINDOWS_X86_64, cacheDirectory: join(root, 'windows-cache'), extractNatives: false,
+        fetch: async () => new Response(await readFile(objectPath), { status: 200 }) });
+      expect(windows.artifacts.map(artifact => artifact.name)).toContain('com.example:native:1:natives-windows-64');
+      expect(windows.artifacts.map(artifact => artifact.name)).not.toContain('com.example:native:1:natives-linux');
+      const windowsPlan = createLaunchPlan(windows, { windowless: false });
+      expect(windowsPlan.xvfbRun).toBeUndefined();
+      expect(windowsPlan.command[windowsPlan.command.indexOf('-cp') + 1]).toBe(windows.classpath.join(';'));
+      const hiddenPlan = createLaunchPlan(windows);
+      expect(hiddenPlan.command[0]).toMatch(/powershell\.exe$/);
+      expect(hiddenPlan.hiddenArguments?.values).toContain(windows.classpath.join(';'));
 
       const cached = await resolveRuntime({
         root,
+        platform: LINUX_X86_64,
         cacheDirectory: join(root, 'cache'),
         extractNatives: false,
         download: false,
@@ -311,6 +324,7 @@ describe('direct GTNH runtime resolver', () => {
       const resolution = await resolveRuntime({
         root,
         cacheDirectory: join(root, 'cache'),
+        platform: LINUX_X86_64,
         extractNatives: false,
         identity: { username: 'OfflineUser' }
       });
@@ -361,6 +375,7 @@ describe('direct GTNH runtime resolver', () => {
       });
       await expect(resolveRuntime({
         root,
+        platform: LINUX_X86_64,
         cacheDirectory: join(root, 'cache'),
         extractNatives: false,
         fetch: async () => new Response('asset-index')

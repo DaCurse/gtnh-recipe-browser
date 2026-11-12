@@ -94,7 +94,7 @@ describe('NEI special browser presentation', () => {
     const browser = await readFile('src/lib/RecipeBrowser.svelte', 'utf8');
     const variants = await readFile('src/lib/VariantPicker.svelte', 'utf8');
     expect(browser).toContain('class="machine-tab"');
-    expect(browser).toContain('<small>{tab}</small>');
+    expect(browser).toContain('<small class:single-word={!/\\s/.test(tab)}>{tab}</small>');
     expect(variants).toContain(".filter(Boolean).join(' · ')");
   });
 
@@ -174,7 +174,7 @@ describe('NEI special browser presentation', () => {
     expect(source).toContain('text-overflow:clip;');
     expect(source).toContain('font-weight:400;');
     const lootSource = await readFile('src/lib/LootBagSpecialCard.svelte', 'utf8');
-    expect(lootSource).toContain('wrapLabels label="Drops"');
+    expect(lootSource).toContain('joined label="Drops"');
   });
 
   it('renders world-generation tables as chance grids and vending trades as NEI slots', async () => {
@@ -211,9 +211,12 @@ describe('NEI special browser presentation', () => {
   it('supports reusable tooltip notes for special goods', async () => {
     const goodsSource = await readFile('src/lib/SpecialGoods.svelte', 'utf8');
     const floatingSource = await readFile('src/lib/FloatingCatalogTooltip.svelte', 'utf8');
+    const contentSource = await readFile('src/lib/CatalogTooltipContent.svelte', 'utf8');
     const tooltipSource = await readFile('src/lib/CatalogTooltip.svelte', 'utf8');
     expect(goodsSource).toContain('notes={tooltipNotes}');
-    expect(floatingSource).toContain('<CatalogTooltip entry={displayEntry} {action} {notes} />');
+    expect(floatingSource).toContain('<CatalogTooltipContent');
+    expect(floatingSource).toContain('{action} {notes}');
+    expect(contentSource).toContain('<CatalogTooltip {entry} {action} {notes} />');
     expect(tooltipSource).toContain('notes?: readonly string[];');
     expect(tooltipSource).toContain('class="tooltip-notes"');
   });

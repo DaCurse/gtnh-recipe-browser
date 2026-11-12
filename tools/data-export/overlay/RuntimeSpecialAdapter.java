@@ -84,6 +84,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
     public void export(NeiSpecialOverlay.Sink sink) throws Exception {
         resetItemValidation();
         requirePinnedRuntime();
+        RuntimeQuestItems.export(sink);
         registerViewTypes(sink);
 
         category(sink, "crop-output", new CategoryExport() {

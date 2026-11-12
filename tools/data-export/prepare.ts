@@ -11,6 +11,7 @@ import {
   type ExportSession
 } from './lib';
 import { getDirectExportProfile, type DirectExportProfile } from './direct-export';
+import { configureUnattendedClient } from './client-options';
 
 function run(command: string, args: string[], cwd?: string): void {
   const result = spawnSync(command, args, { cwd, stdio: 'inherit' });
@@ -192,6 +193,8 @@ const providerTarget = join(
   'src/main/java/com/github/dcysteine/nesql/exporter/special/RuntimeSpecialAdapter.java'
 );
 await cp(specialProviderSource, providerTarget);
+await cp(join(repositoryRoot, 'tools/data-export/overlay/RuntimeQuestItems.java'),
+  join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/special/RuntimeQuestItems.java'));
 const automationControllerSource = join(
   repositoryRoot,
   'tools/data-export/overlay/ExportAutomationController.java'
@@ -217,9 +220,12 @@ const buildBeforeRuntimeJars = await readFile(buildPath, 'utf8');
 const runtimeCompileOnly = profile.runtimeMods.map(
   (mod) => `    compileOnly(files("${gradlePath(join(runtimeJarsDirectory, mod.jarName))}"))`
 ).join('\n');
+const dependencyOverrides = profile.compileDependencyOverrides?.length
+  ? `\nconfigurations.configureEach { resolutionStrategy.force(${profile.compileDependencyOverrides.map(value => JSON.stringify(value)).join(', ')}) }\n`
+  : '';
 await writeFile(
   buildPath,
-  `${buildBeforeRuntimeJars}\n// Exact GTNH ${gtnhVersion} jars used by RuntimeSpecialAdapter.\ndependencies {\n${runtimeCompileOnly}\n}\n`,
+  `${buildBeforeRuntimeJars}\n// Exact GTNH ${gtnhVersion} jars used by RuntimeSpecialAdapter.\ndependencies {\n${runtimeCompileOnly}\n}\n${dependencyOverrides}`,
   'utf8'
 );
 const patchedBuild = await readFile(buildPath, 'utf8');
@@ -314,6 +320,7 @@ await writeFile(
   'utf8'
 );
 const modsDirectory = join(instanceDirectory, '.minecraft/mods');
+await configureUnattendedClient(join(instanceDirectory, '.minecraft'));
 const bugTorch = (await readdir(modsDirectory)).find((name) => /^bugtorch-.*\.jar$/i.test(name));
 if (!bugTorch) throw new Error('The official instance does not contain the expected BugTorch jar');
 const disabledMods = join(instanceDirectory, '.minecraft/disabled-mods');

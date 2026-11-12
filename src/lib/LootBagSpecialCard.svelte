@@ -35,24 +35,24 @@
 </script>
 
 <div class="loot-card">
-  <SpecialGoods goods={bag ? [bag] : []} resolve={resolve} {navigate} label="Loot bag" showAmounts={false} showChance={false} />
+  <SpecialGoods goods={bag ? [bag] : []} resolve={resolve} {navigate} joined label="Loot bag" showAmounts={false} showChance={false} />
   {#if payload.trashGroup || typeof rawPayload.trashGroupInheritance === 'string'}<p class="special-line"><b>Trash group inheritance</b> {payload.trashGroup ?? rawPayload.trashGroupInheritance}</p>{/if}
   {#each visibleGroups as rawGroup, index (`${groupPage * groupPageSize + index}:${JSON.stringify(rawGroup)}`)}
     {@const group = rawGroup as Record<string, unknown>}
     {@const alternatives = toSpecialDrops(group.alternatives ?? group.drops ?? [])}
     <section class:inherited={group.inherited === true} class="loot-group">
       <header><b>{typeof group.label === 'string' ? group.label : typeof group.id === 'string' ? group.id : 'Drop group'}</b>{#if typeof group.weight === 'number'}<span>weight {group.weight}</span>{/if}{#if typeof group.limit === 'number'}<span>limit {group.limit}</span>{/if}</header>
-      <SpecialGoods goods={alternatives} resolve={resolve} {navigate} wrapLabels label={group.inherited === true ? 'Inherited alternatives' : undefined} />
+      <SpecialGoods goods={alternatives} resolve={resolve} {navigate} joined label={group.inherited === true ? 'Inherited alternatives' : undefined} />
     </section>
   {/each}
   {#if groupPageCount > 1}
     <nav class="loot-group-pages" aria-label="Loot groups">
-      <button disabled={groupPage === 0} onclick={() => groupPage -= 1}>Previous groups</button>
+      <button class="mc-button" disabled={groupPage === 0} onclick={() => groupPage -= 1} aria-label="Previous groups">Previous</button>
       <span>{groupPage + 1} / {groupPageCount}</span>
-      <button disabled={groupPage >= groupPageCount - 1} onclick={() => groupPage += 1}>Next groups</button>
+      <button class="mc-button" disabled={groupPage >= groupPageCount - 1} onclick={() => groupPage += 1} aria-label="Next groups">Next</button>
     </nav>
   {/if}
-  <SpecialGoods goods={drops} resolve={resolve} {navigate} wrapLabels label="Drops" />
+  <SpecialGoods goods={drops} resolve={resolve} {navigate} joined label="Drops" />
   {#if fortuneChances.length && !hasPerDropFortune}
     <section class="fortune-summary" aria-label="Legacy Fortune reference">
       <b>Legacy Fortune reference</b>
@@ -68,5 +68,5 @@
 </div>
 
 <style>
-  .loot-card { display:flex; flex-direction:column; gap:10px; }.loot-group { padding:9px; border:0; border-radius:0; background:transparent; }.loot-group.inherited { border-style:dashed; }.loot-group header { display:flex; align-items:center; gap:8px; margin-bottom:7px; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }.loot-group header span { color:var(--recipe-text); font:9px/13px Minecraft,monospace; }.loot-group-pages { display:flex; align-items:center; justify-content:center; gap:9px; }.loot-group-pages button { min-height:38px; padding:0 9px; border:1px solid #50555a; border-radius:0; background:transparent; color:#d2d5d8; cursor:pointer; }.loot-group-pages button:disabled { opacity:.4; cursor:default; }.loot-group-pages span { color:var(--recipe-text); font-size:11px; }.special-line { margin:0; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }.special-line b,.fortune-summary>b { color:var(--recipe-text); font:9px/13px Minecraft,monospace; text-transform:uppercase; }.fortune-summary { padding:9px; border:0; border-radius:0; background:transparent; }.fortune-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-top:7px; }.fortune-grid span { display:flex; flex-direction:column; gap:3px; padding:6px; border-radius:5px; background:transparent; text-align:center; }.fortune-grid small { color:var(--recipe-text); font:9px/13px Minecraft,monospace; }.fortune-grid strong { color:#ffff55; font:9px/13px Minecraft,monospace; text-shadow:2px 2px #342c34; }.fortune-note { display:block; margin-top:7px; color:var(--recipe-text); font:9px/13px Minecraft,monospace; line-height:1.35; }
+  .loot-card { display:flex; flex-direction:column; gap:10px; }.loot-group { padding:9px; border:0; border-radius:0; background:transparent; }.loot-group.inherited { border-style:dashed; }.loot-group header { display:flex; align-items:center; gap:8px; margin-bottom:7px; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }.loot-group header span { color:var(--recipe-text); font:9px/13px Minecraft,monospace; }.loot-group-pages { display:flex; align-items:center; justify-content:center; gap:9px; }.loot-group-pages span { color:var(--recipe-text); font-size:11px; }.special-line { margin:0; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }.special-line b,.fortune-summary>b { color:var(--recipe-text); font:9px/13px Minecraft,monospace; text-transform:uppercase; }.fortune-summary { padding:9px; border:0; border-radius:0; background:transparent; }.fortune-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:6px; margin-top:7px; }.fortune-grid span { display:flex; flex-direction:column; gap:3px; padding:6px; border-radius:5px; background:transparent; text-align:center; }.fortune-grid small { color:var(--recipe-text); font:9px/13px Minecraft,monospace; }.fortune-grid strong { color:#ffff55; font:9px/13px Minecraft,monospace; text-shadow:2px 2px #342c34; }.fortune-note { display:block; margin-top:7px; color:var(--recipe-text); font:9px/13px Minecraft,monospace; line-height:1.35; }
 </style>

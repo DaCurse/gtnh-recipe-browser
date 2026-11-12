@@ -417,7 +417,7 @@ describe('NEI special sidecar contract', () => {
   it('retains sidecar item/fluid and ore-dictionary references before projection', async () => {
     const retention = await readFile('tools/data-export/patches/SpecialRetention.cs', 'utf8');
     expect(retention).toContain('item.touched = true');
-    expect(retention).toContain('candidate.oreDictNames.Contains(name)');
+    expect(retention).toContain('candidate.oreDictNames.Contains(normalized)');
     expect(retention).toContain('references unknown item');
     const patch = await readFile('tools/data-export/patches/special-retention.patch', 'utf8');
     expect(patch).toContain('SpecialRetention.Mark(generator.DatabasePath, items, fluids)');

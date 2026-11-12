@@ -1,8 +1,9 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { gzipSync } from 'node:zlib';
 import { decode } from '@msgpack/msgpack';
 import { readLogicalAsset } from '../pack-builder/recordPages';
+import { writeCompanionRelease } from '../pack-builder/companionRelease';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
 import type { PackedGoods } from '../../src/lib/datasetSchema';
 import type { OreScene } from '../../src/lib/oreDiagram';
@@ -11,7 +12,7 @@ const [snapshotPath, packPath] = process.argv.slice(2);
 if (!snapshotPath || !packPath) throw new Error('Usage: tsx tools/machine-ui-export/build-ore-diagrams.ts <runtime-snapshot> <published-pack>');
 const bytes = await readFile(`${packPath}/pack-manifest.json`);
 const manifest = JSON.parse(bytes.toString()) as GeneratedPackManifest;
-if (manifest.datasetId !== '2.9.0-v7-rbd0b48ae8ad7') throw new Error('Native diagrams are pinned to the validated GTNH 2.9.0 export');
+if (manifest.gtnhVersion !== '2.9.0') throw new Error('Native diagrams require a validated GTNH 2.9.0 export');
 const store = 'public/assets/sha256';
 const goods = new Map<string, PackedGoods>();
 for (const asset of manifest.catalogAssets.filter(asset => asset.role === 'goods')) {
@@ -83,11 +84,9 @@ function compactMatches(matches: Record<string, string[]>) {
 const matches = { recipes: compactMatches(raw.oreDiagrams.matches.CRAFTING), usages: compactMatches(raw.oreDiagrams.matches.USAGE) };
 const index = await writeAsset({ schemaVersion: 1, datasetId: manifest.datasetId, scenes: scenesAsset,
   iconId: canonical(raw.oreDiagrams.icon), sceneIds, lists, matches });
-await writeFile('src/lib/generated/ore-diagrams.json', JSON.stringify({ schemaVersion: 1, releases: { [manifest.datasetId]: index } }) + '\n');
-await mkdir('assets/source/ore-diagrams', { recursive: true });
-await writeFile('assets/source/ore-diagrams/provenance.json', JSON.stringify({
+await writeCompanionRelease('src/lib/generated/ore-diagrams.json', 'assets/source/ore-diagrams', index, {
   datasetId: manifest.datasetId, baseManifestSha256: sha(bytes), runtimeSnapshotSha256: sha(snapshotBytes),
   generator: 'NEI Custom Diagram 1.8.36', sourceCommit: '042a8c7f643b26e2645252ef58dea9bdf41a34c6',
   diagrams: Object.keys(scenes).length, assets, index
-}, null, 2) + '\n');
+});
 console.log(JSON.stringify({ scenes: Object.keys(scenes).length, assets, immutablePackUnchanged: true }));

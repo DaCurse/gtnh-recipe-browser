@@ -110,15 +110,15 @@
   {#each visibleGroups as group (`${group.id}`)}
     <section class="loot-group">
       <header><b>{group.label}</b>{#if group.totalWeight !== undefined}<span>Total weight {group.totalWeight}</span>{/if}</header>
-      <SpecialGoods goods={group.drops} resolve={resolve} {navigate} compact wrapLabels pageSize={12} label="Possible loot" />
+      <SpecialGoods goods={group.drops} resolve={resolve} {navigate} joined pageSize={12} label="Possible loot" />
     </section>
   {/each}
 
   {#if groupPageCount > 1}
     <nav class="loot-group-pages" aria-label="World-generation loot tables">
-      <button disabled={groupPage === 0} onclick={() => groupPage -= 1}>Previous tables</button>
+      <button class="mc-button" disabled={groupPage === 0} onclick={() => groupPage -= 1} aria-label="Previous tables">Previous</button>
       <span>{groupPage + 1} / {groupPageCount}</span>
-      <button disabled={groupPage >= groupPageCount - 1} onclick={() => groupPage += 1}>Next tables</button>
+      <button class="mc-button" disabled={groupPage >= groupPageCount - 1} onclick={() => groupPage += 1} aria-label="Next tables">Next</button>
     </nav>
   {/if}
   {#if groups.length === 0}<p class="special-empty">No world-generation loot was recorded.</p>{/if}
@@ -133,8 +133,6 @@
   .loot-group header { display:flex; align-items:center; gap:9px; margin-bottom:7px; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
   .loot-group header span { color:var(--recipe-text); font:9px/13px Minecraft,monospace; }
   .loot-group-pages { display:flex; align-items:center; justify-content:center; gap:9px; }
-  .loot-group-pages button { min-height:38px; padding:0 9px; border:1px solid #50555a; border-radius:0; background:transparent; color:#d2d5d8; cursor:pointer; }
-  .loot-group-pages button:disabled { opacity:.4; cursor:default; }
   .loot-group-pages span { color:var(--recipe-text); font-size:11px; }
   .special-empty { margin:0; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
 </style>

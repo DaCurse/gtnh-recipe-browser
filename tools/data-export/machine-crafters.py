@@ -19,7 +19,7 @@ def text(value):
 
 items, types, links = {}, {}, []
 tiers = ['LV', 'MV', 'HV', 'EV', 'IV', 'LuV', 'ZPM', 'UV', 'UHV', 'UEV', 'UIV', 'UMV', 'UXV', 'MAX']
-with args.script.open() as stream:
+with args.script.open(encoding='utf-8') as stream:
     for line in stream:
         table = next((name for name in ['ITEM', 'RECIPE_TYPE', 'RECIPE_TYPE_ITEM'] if line.startswith('INSERT INTO ' + name + ' VALUES(')), None)
         if table is None:
@@ -59,5 +59,5 @@ for type_id, item_id in links:
 output = {'schemaVersion': 1, 'sourceScriptSha256': hashlib.sha256(args.script.read_bytes()).hexdigest(),
           'types': {key: list(sorted(value.values(), key=lambda item: (item.get('maxVoltageTier', 99), item['id']))) for key, value in sorted(result.items())}}
 args.output.parent.mkdir(parents=True, exist_ok=True)
-args.output.write_text(json.dumps(output, separators=(',', ':')) + '\n')
+args.output.write_text(json.dumps(output, separators=(',', ':')) + '\n', encoding='utf-8', newline='\n')
 print(f'Recovered {sum(map(len, output["types"].values()))} catalysts across {len(result)} GT recipe categories')

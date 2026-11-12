@@ -14,7 +14,7 @@
   import RecipeCard from './RecipeCard.svelte';
   import SpecialCard from './SpecialCard.svelte';
   import { RecipeBrowserState } from './recipeBrowserState.svelte';
-  import { specialRepository } from './specialData';
+  import { loadQuestLinks, type QuestLinksRepository } from './questbook/linksRepository';
   import type { CatalogEntry, RecipeView, SpecialScope } from './types';
 
   let {
@@ -30,7 +30,8 @@
     setRecipeQuery,
     setMode,
     setSpecialNavigation,
-    navigate
+    navigate,
+    openQuest
   }: {
     repository: DatasetRepository;
     selected: CatalogEntry;
@@ -45,7 +46,25 @@
     setMode: (view: RecipeView) => void;
     setSpecialNavigation: (specialType: string, specialScope: SpecialScope) => void;
     navigate: (id: string, view: RecipeView) => void;
+    openQuest: (id:string, version:string, chapter?:string) => void;
   } = $props();
+
+  let questLinks=$state.raw<QuestLinksRepository>();
+  let questLinksRevision=$state(0);
+  let questLinksReady=$state(false);
+  $effect(()=>{
+    const datasetId=repository.datasetId,id=selected.id;
+    if(!active) return;
+    let cancelled=false;
+    questLinksReady=false;
+    if(questLinks?.data.recipeDatasetId!==datasetId) questLinks=undefined;
+    void loadQuestLinks(datasetId).then(async links=>{
+      await links?.prepare(id);
+      if(!cancelled) { questLinks=links;questLinksRevision++; }
+    }).catch(()=>{/* Optional companion data must not block ordinary recipes. */})
+      .finally(()=>{if(!cancelled) questLinksReady=true;});
+    return()=>{cancelled=true;};
+  });
 
   const browserState = new RecipeBrowserState({
     repository: () => repository,
@@ -53,7 +72,8 @@
     catalogEntry: (id) => entryById.get(id),
     mode: () => mode,
     active: () => active,
-    detailReady: () => !itemDataLoading && !itemDataError,
+    detailReady: () => !itemDataLoading && !itemDataError && (specialType !== 'quests' || questLinksReady),
+    extraSpecial: () => { void questLinksRevision;return questLinks; },
     specialType: () => specialType,
     specialScope: () => specialScope,
     onSpecialNavigation: (nextType, nextScope) => setSpecialNavigation(nextType, nextScope)
@@ -68,7 +88,7 @@
     const nextQuery = recipeQuery;
     if (nextQuery !== browserState.recipeQuery) browserState.recipeQuery = nextQuery;
   });
-  const entryById = $derived(new Map(repository.entries.map((entry) => [entry.id, entry])));
+  const entryById = $derived(repository.catalogEntriesById);
   const related = $derived(itemDataLoading || itemDataError ? [] : browserState.related);
   const machineCounts = $derived.by(() => {
     const counts = new Map<string, number>();
@@ -153,7 +173,7 @@
         if (browserState.showingSpecial) {
           const viewType = specialTypes.find((candidate) => candidate.id === browserState.specialType);
           if (!viewType) return;
-          const specialRepo = specialRepository(repository);
+          const specialRepo = browserState.specialProvider();
           const loader = specialRepo.specialForAll ?? specialRepo.specialRecordsForAll;
           const records = loader
             ? await loader.call(specialRepo, mode, viewType.id)
@@ -299,7 +319,7 @@
       {/if}
         <span class="machine-tab-count" style:font-size={countFontSize(machineCounts.get(tab) ?? 0)} aria-hidden="true">{(machineCounts.get(tab) ?? 0).toLocaleString()}</span>
       </span>
-      <small>{tab}</small>
+      <small class:single-word={!/\s/.test(tab)}>{tab}</small>
     </button>
   {/each}
   {#each specialTypes as tab (tab.id)}
@@ -321,7 +341,7 @@
           <span class="machine-tab-count" style:font-size={countFontSize(browserState.specialCount(mode, tab.id)!)} aria-hidden="true">{browserState.specialCount(mode, tab.id)!.toLocaleString()}</span>
         {/if}
       </span>
-      <small>{tab.shortLabel ?? tab.label}</small>
+      <small class:single-word={!/\s/.test(tab.shortLabel ?? tab.label)}>{tab.shortLabel ?? tab.label}</small>
     </button>
   {/each}
 </div>
@@ -454,6 +474,9 @@
         viewType={specialTypes.find((tab) => tab.id === browserState.specialType)}
         resolve={(id) => entryById.get(id)}
         {navigate}
+        {questLinks}
+        questLinksLoading={!questLinksReady}
+        openQuest={(id)=>{if(questLinks) openQuest(id,questLinks.data.version,questLinks.data.chapters[id]?.[0]?.id);}}
         showingGlobal={browserState.showingGlobalSpecial}
         showAll={() => browserState.showingGlobalSpecial
           ? browserState.returnToItemSpecial()

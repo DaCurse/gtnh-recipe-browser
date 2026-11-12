@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 import { access, copyFile, cp, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
-import { basename, join, resolve } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { GeneratedPackManifest, ImmutableAsset } from '../pack-builder/manifest';
 import { verifyPack } from '../pack-builder/verifier';
+import { retireCompanionReleases } from '../pack-builder/companionRelease';
 import { recordPageSelections } from '../../src/lib/recordPages';
 import {
   assertSharedLayoutExtension,
@@ -195,7 +196,16 @@ async function pruneUnreferencedSharedObjects(): Promise<number> {
     }
   }
   const companions: Array<{ datasetId: string; assets: Array<{ sha256: string }> }> = [];
-  for (const path of ['assets/source/high-resolution-icons/provenance.json', 'assets/source/ore-diagrams/provenance.json']) {
+  const archivedCompanions: string[] = [];
+  for (const directory of ['assets/source/high-resolution-icons/releases', 'assets/source/ore-diagrams/releases']) {
+    const files = await readdir(join(repositoryRoot, directory)).catch(error => {
+      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+      return [] as string[];
+    });
+    archivedCompanions.push(...files.filter(file => file.endsWith('.json')).map(file => join(directory, file)));
+  }
+  for (const path of ['assets/source/high-resolution-icons/provenance.json', 'assets/source/ore-diagrams/provenance.json',
+    ...archivedCompanions]) {
     const companion = JSON.parse(await readFile(join(repositoryRoot, path), 'utf8')) as {
       datasetId: string; baseManifestSha256: string; assets: Array<{ sha256: string }>;
     };
@@ -291,7 +301,12 @@ for (const datasetId of replacedDatasetIds) {
   // A replacement release is immutable while staged, then the superseded
   // revision is removed only after the new version index is atomically active.
   // Dataset IDs come from the validated index and are joined beneath public/data.
-  await rm(join(publicData, datasetId), { recursive: true, force: true });
+  const retiredDirectory = resolve(publicData, datasetId);
+  if (dirname(retiredDirectory) !== resolve(publicData)) throw new Error(`Retired dataset escapes public/data: ${datasetId}`);
+  await rm(retiredDirectory, { recursive: true, force: true });
+}
+for (const file of ['high-resolution-icons.json', 'ore-diagrams.json']) {
+  await retireCompanionReleases(join(repositoryRoot, 'src/lib/generated', file), replacedDatasetIds);
 }
 const prunedSharedObjects = await pruneUnreferencedSharedObjects();
 console.log(JSON.stringify({

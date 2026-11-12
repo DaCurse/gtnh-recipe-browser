@@ -8,18 +8,23 @@
   import SpecialGoods from './SpecialGoods.svelte';
   import VeinSpecialCard from './VeinSpecialCard.svelte';
   import VendingSpecialCard from './VendingSpecialCard.svelte';
+  import QuestSpecialCard from './questbook/QuestSpecialCard.svelte';
+  import type { QuestLinksRepository } from './questbook/linksRepository';
   import WorldgenLootSpecialCard from './WorldgenLootSpecialCard.svelte';
   import { humanizeGtOreName, humanizeSpecialName, specialCategory, toSpecialGoods, type SpecialRecord, type SpecialResolver, type SpecialViewType } from './specialData';
   import type { RecipeView } from './types';
   import { machineUiTheme } from './machineUi';
 
-  let { record, viewType, resolve, navigate, showAll, showingGlobal = false }: {
+  let { record, viewType, resolve, navigate, showAll, showingGlobal = false, questLinks, openQuest, questLinksLoading = false }: {
     record: SpecialRecord;
     viewType?: SpecialViewType;
     resolve: SpecialResolver;
     navigate: (id: string, view: RecipeView) => void;
     showAll: () => void;
     showingGlobal?: boolean;
+    questLinks?: QuestLinksRepository;
+    openQuest?: (id:string) => void;
+    questLinksLoading?: boolean;
   } = $props();
   const category = $derived(specialCategory(record.category) ?? record.category);
   const inputGoods = $derived(record.inputs ?? []);
@@ -28,6 +33,7 @@
   const iconEntry = $derived(viewType?.iconId ? resolve(viewType.iconId) : undefined);
   const iconLabel = $derived(viewType?.label ?? record.category);
   const nativeScene = $derived((record.payload as { nativeScene?: OreScene }).nativeScene);
+  const questPayload = $derived(record.payload as {questId?:string;view?:RecipeView});
 
   function specialTitle(value: SpecialRecord, valueCategory: string, resolver: SpecialResolver): string {
     if (valueCategory === 'cropPool') {
@@ -117,7 +123,9 @@
     {:else if category === 'lootBag'}
       <LootBagSpecialCard {record} {resolve} {navigate} />
     {:else if category === 'vending'}
-      <VendingSpecialCard {record} {resolve} {navigate} />
+      <VendingSpecialCard {record} {resolve} {navigate} {questLinks} {openQuest} {questLinksLoading} />
+    {:else if category === 'quest' && questLinks && openQuest}
+      <QuestSpecialCard questId={questPayload.questId ?? ''} repository={questLinks} {openQuest} {resolve} {navigate} source={questPayload.view === 'usages' ? 'item_usages' : 'item_recipes'} goods={questPayload.view === 'usages' ? inputGoods : outputGoods} />
     {:else if category === 'worldgenLoot'}
       <WorldgenLootSpecialCard {record} {resolve} {navigate} />
     {:else if category === 'oreProcessing'}
@@ -139,7 +147,8 @@
   .special-card-head { min-height:48px; display:flex; align-items:center; gap:8px; padding:4px 10px; }
   .special-card-head>div { min-width:0; flex:1; }
   .special-mark { width:42px; height:42px; flex:0 0 42px; display:grid; place-items:center; padding:0; border:0; background:none; color:var(--recipe-text); cursor:pointer; }
-  .special-mark:hover,.special-mark:focus-visible { filter:brightness(1.2); outline:1px solid currentColor; }
+  .special-mark:hover,.special-mark:focus-visible { filter:brightness(1.2); }
+  .special-mark:focus-visible { outline:1px solid currentColor; }
   .special-fallback { font-size:27px; }
   .special-eyebrow { display:block; font:9px/13px Minecraft,monospace; }
   .special-card h2 { margin:3px 0 0; overflow-wrap:anywhere; color:var(--recipe-title); font:18px/24px Minecraft,monospace; text-shadow:var(--recipe-shadow); }

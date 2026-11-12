@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 /* global document */
 const [base, playwrightModule] = process.argv.slice(2);
+const versions = JSON.parse(await readFile('public/versions-v7.json', 'utf8'));
+const datasetId = versions.versions.find(version => version.gtnhVersion === '2.9.0').datasetId;
 if (!playwrightModule) throw new Error('Usage: node tools/test-machine-crafters.mjs <app-url> <playwright-module>');
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch();
@@ -15,7 +17,7 @@ try {
     [12699, 'Basic Bio Lab', 'Bio Lab'], [31033, 'Cold Trap I', 'Cold Trap']
   ]) {
     const url = new URL(base);
-    url.searchParams.set('version', '2.9.0-v7-rbd0b48ae8ad7');
+    url.searchParams.set('version', datasetId);
     url.searchParams.set('item', `i:gregtech:gt.blockmachines:${id}`);
     url.searchParams.set('view', 'machine-usages');
     await page.goto(url.href);

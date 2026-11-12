@@ -1,4 +1,5 @@
 import { physicalDescriptorsFor, sharedPrefixIsPublished } from './datasetLayout';
+import { ingredientGroupPreview } from './catalogMaterialization';
 import { matchesRecipeConstraints, type RecipeConstraints } from './recipeFinder';
 import { decode } from '@msgpack/msgpack';
 import { catalogIndexes, prepareCatalog, type PreparedCatalogIndexes } from './catalogPreparation';
@@ -73,9 +74,9 @@ import {
   replacementDatasetActive
 } from './datasetVersions';
 
-function specialRecordGoodsIds(record: PackedSpecialRecord): string[] {
+function specialRecordGoodsIds(record: Pick<SpecialRecord, 'goodsIds' | 'productionGoodsIds' | 'usageGoodsIds' | 'payload'>): string[] {
   const result = new Set<string>([
-    ...record.goodsIds,
+    ...(record.goodsIds ?? []),
     ...(record.productionGoodsIds ?? []),
     ...(record.usageGoodsIds ?? [])
   ]);
@@ -857,13 +858,8 @@ export class DatasetRepository {
         this.hydratedGroups.add(group.id);
         const target = this.entriesById.get(group.id);
         if (!target) throw new Error(`${descriptor.id}: group references unknown entry ${group.id}`);
-        const representativeId = group.itemIds.find((member) => this.entriesById.has(member));
-        const representative = representativeId === undefined ? undefined : this.entriesById.get(representativeId);
         this.entriesById.set(group.id, { ...target,
-          members: group.itemIds,
-          tooltip: [`${group.itemIds.length.toLocaleString('en-US')} interchangeable item${group.itemIds.length === 1 ? '' : 's'}`,
-            'All listed members are valid recipe ingredients.'],
-          icon: representative?.icon,
+          ...ingredientGroupPreview(group.itemIds, this.entriesById),
           productionShards: group.productionShards ?? [],
           usageShards: group.usageShards ?? [],
           productionCount: group.productionCount,
@@ -1168,6 +1164,11 @@ export class DatasetRepository {
             view,
             shardIndex * 1_000_000 + recordIndex
           ));
+        // Special slots may reference groups absent from the current item's
+        // detail partition. Load their member lists before publishing the card.
+        const groups = new Set(batch.flatMap(record => specialRecordGoodsIds(record))
+          .filter(id => this.ingredientGroups.has(id)));
+        await Promise.all([...groups].map(id => this.entryFor(id, signal)));
         await yieldToBrowser();
         return batch;
       },

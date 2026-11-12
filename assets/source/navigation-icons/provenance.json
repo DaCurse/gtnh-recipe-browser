@@ -1,0 +1,26 @@
+{
+  "datasetId": "2.9.0-v7-r9ec25114d4a7",
+  "icons": [
+    {
+      "name": "items",
+      "goodsId": "i:minecraft:crafting_table:0",
+      "sheetSha256": "44d16dbaca87aa7ab2b43546d3127634bfd44aeda08ec2ebee8de2069b273f2b",
+      "index": 269,
+      "sha256": "a81a1c20894e3670a0b0c5f02c85ead8cb16b73d59c3d3991ae603bd66fd99a1"
+    },
+    {
+      "name": "finder",
+      "goodsId": "i:cropsnh:plantLens:0",
+      "sheetSha256": "5047f51ae253ff6caea6df6b61670a033f1054d50466ce97f7f82ae6a700e92b",
+      "index": 402,
+      "sha256": "8e71f0191c91431d895648ba96a94452a039c21ab898032c97d2a21969c84230"
+    },
+    {
+      "name": "quests",
+      "goodsId": "i:questbook:ItemQuestBook:0",
+      "sheetSha256": "bf13a999a453404e0336646aef38078b974abc56a2aeae4dda6493ec034b352f",
+      "index": 491,
+      "sha256": "655a2d1d86c2295d715a8925775b31e60c01baba32cd251ae84dd8cb98b51046"
+    }
+  ]
+}

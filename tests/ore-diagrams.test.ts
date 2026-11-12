@@ -3,17 +3,18 @@ import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import registry from '../src/lib/generated/ore-diagrams.json';
+import versions from '../public/versions-v7.json';
 import { oreArrowRects, oreDiagramMatches, oreLineRect, oreSceneBounds, type OreDiagramIndex, type OreScene } from '../src/lib/oreDiagram';
 import type { CatalogEntry } from '../src/lib/types';
 
-const datasetId = '2.9.0-v7-rbd0b48ae8ad7';
+const datasetId = versions.versions.find(version => version.gtnhVersion === '2.9.0')!.datasetId;
 async function verified<T>(asset: { sha256: string; bytes: number }): Promise<T> {
   const bytes = await readFile(`public/assets/sha256/${asset.sha256}`);
   expect(bytes.length).toBe(asset.bytes);
   expect(createHash('sha256').update(bytes).digest('hex')).toBe(asset.sha256);
   return JSON.parse(gunzipSync(bytes).toString()) as T;
 }
-const index = await verified<OreDiagramIndex>(registry.releases[datasetId]);
+const index = await verified<OreDiagramIndex>((registry.releases as Record<string, { sha256: string; bytes: number }>)[datasetId]!);
 const data = await verified<{ scenes: Record<string, OreScene>; datasetId: string }>(index.scenes);
 
 describe('native GTNH ore diagrams', () => {

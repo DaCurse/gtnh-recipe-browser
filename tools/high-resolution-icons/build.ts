@@ -1,10 +1,11 @@
 import { createHash } from 'node:crypto';
-import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { resolve, join } from 'node:path';
 import { gzipSync } from 'node:zlib';
 import { decode } from '@msgpack/msgpack';
 import sharp from 'sharp';
 import { readLogicalAsset } from '../pack-builder/recordPages';
+import { writeCompanionRelease } from '../pack-builder/companionRelease';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
 import type { PackedGoods } from '../../src/lib/datasetSchema';
 
@@ -114,13 +115,10 @@ for (const {low,cells,owners} of deferred) {
   lookups[low]=await writeAsset(gzipSync(JSON.stringify(lookup),{level:9}));
 }
 const descriptor = await writeAsset(gzipSync(JSON.stringify({schemaVersion:1,datasetId:manifest.datasetId,unavailable:missing,lookups}),{level:9}));
-const registry = {schemaVersion:1,releases:{[manifest.datasetId]:descriptor}};
-await mkdir(join(root,'src/lib/generated'),{recursive:true});
-await writeFile(join(root,'src/lib/generated/high-resolution-icons.json'),JSON.stringify(registry)+'\n');
+const registryPath = join(root,'src/lib/generated/high-resolution-icons.json');
 const provenance = {schemaVersion:1,datasetId:manifest.datasetId,baseManifestSha256:sha(manifestBytes),
   sourceImagesSha256:sources.imagesSha256,sourceDatabaseSha256:sources.scriptSha256,
   originalSpriteSize:64,columns:8,rows:8,uniqueSprites:unique,sheets:pages.length,
   goods:[...groups.values()].reduce((n,rows)=>n+rows.length,0),unavailableGoods:missing,assets,root:descriptor};
-await mkdir(join(root,'assets/source/high-resolution-icons'),{recursive:true});
-await writeFile(join(root,'assets/source/high-resolution-icons/provenance.json'),JSON.stringify(provenance,null,2)+'\n');
+await writeCompanionRelease(registryPath,join(root,'assets/source/high-resolution-icons'),descriptor,provenance);
 console.log(JSON.stringify({sprites:unique,sheets:pages.length,assets:assets.length,bytes:assets.reduce((n,a)=>n+a.bytes,0),root:descriptor}));

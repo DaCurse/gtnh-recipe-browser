@@ -1,6 +1,6 @@
 <script lang="ts">
   import { ItemTouch } from './itemTouch.svelte';
-  import CatalogTooltip from './CatalogTooltip.svelte';
+  import CatalogTooltipContent from './CatalogTooltipContent.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import { CatalogTooltipHover } from './catalogTooltipHover.svelte';
   import ItemIcon from './ItemIcon.svelte';
@@ -36,16 +36,7 @@
 <div class="item-head" class:compact={selected.tooltipLayout === 'compact'}>
   <ItemIcon entry={iconEntry} size={88} selected />
   <div class="item-overview">
-    {#if loading}
-      <div class="tooltip-skeleton" role="status" aria-label="Loading item tooltip" aria-busy="true">
-        <span></span><span></span><span></span>
-      </div>
-    {:else if error}
-      <p class="tooltip-load-error" role="status">Item tooltip could not be loaded.</p>
-      {#if retry}<button class="mc-button" onclick={retry}>Retry item details</button>{/if}
-    {:else}
-      <CatalogTooltip entry={selected} />
-    {/if}
+    <CatalogTooltipContent entry={selected} {loading} {error} {retry} />
   </div>
 </div>
 
@@ -81,13 +72,6 @@
   </div>
 {/if}
 
-<style>
-  .tooltip-skeleton { width:min(360px,100%); padding:10px 0; }
-  .tooltip-skeleton span { display:block; height:14px; margin:0 0 12px; background:#35373c; }
-  .tooltip-skeleton span:first-child { width:65%; height:20px; }
-  .tooltip-skeleton span:last-child { width:80%; }
-  .tooltip-load-error { margin:0; color:#a5aaaf; font-size:13px; }
-</style>
 
 {#if tooltip.entry}
   <FloatingCatalogTooltip

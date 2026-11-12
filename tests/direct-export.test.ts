@@ -200,6 +200,33 @@ describe('direct export orchestration', () => {
     }
   });
 
+  it('checks prepared-session jar filenames within the disposable mods directory before retrying launch', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'gtnh-prepared-retry-'));
+    try {
+      const content = 'synthetic archive', profile = tinyProfile(content);
+      const sourcePath = join(root, 'source.zip'), cacheDirectory = join(root, 'cache');
+      await writeFile(sourcePath, content);
+      const archive = await ensurePinnedArchive(profile, { cacheDirectory, sourcePath });
+      const workDirectory = join(root, 'work'), instanceDirectory = join(workDirectory, 'client-instance');
+      const mods = join(instanceDirectory, '.minecraft/mods');
+      await mkdir(mods, { recursive: true });
+      const session = sessionFor(profile, archive.path, workDirectory, instanceDirectory);
+      for (const filename of [session.exporter.mainJar, session.exporter.dependenciesJar]) await writeFile(join(mods, filename), filename);
+      session.exporter.mainJarSha256 = digest(session.exporter.mainJar);
+      session.exporter.dependenciesJarSha256 = digest(session.exporter.dependenciesJar);
+      const preparedSessionPath = join(workDirectory, 'export-session.json');
+      await writeFile(preparedSessionPath, JSON.stringify(session));
+      const options = { profile, workDirectory, cacheDirectory, preparedSessionPath,
+        sharedLayoutPath: join(root, 'layout.json'), dependencies: {
+          prepare: async () => { throw new Error('Unexpected rebuild'); },
+          resolveRuntime: async () => { throw new Error('Reached runtime resolution'); }
+        } };
+      await expect(orchestrateDirectExport(options)).rejects.toThrow('Reached runtime resolution');
+      await writeFile(join(mods, session.exporter.mainJar), 'modified jar');
+      await expect(orchestrateDirectExport(options)).rejects.toThrow('Prepared exporter artifact changed');
+    } finally { await rm(root, { recursive: true, force: true }); }
+  });
+
   it('prepares, launches, monitors separate statuses, then processes the export', async () => {
     const root = await mkdtemp(join(tmpdir(), 'gtnh-direct-export-orchestrator-'));
     try {
@@ -259,6 +286,9 @@ describe('direct export orchestration', () => {
               const preparedWork = args[args.indexOf('--work-dir') + 1]!;
               const instanceDirectory = args[args.indexOf('--instance-dir') + 1]!;
               await mkdir(instanceDirectory, { recursive: true });
+              const quests = join(instanceDirectory, '.minecraft/config/betterquesting/DefaultQuests');
+              await mkdir(quests, { recursive: true });
+              await writeFile(join(quests, 'test.json'), JSON.stringify({ 'icon:10': { 'id:8': 'minecraft:stone', 'Count:3': 1 } }));
               await writeFile(join(preparedWork, 'export-session.json'), JSON.stringify(
                 sessionFor(profile, archivePath, preparedWork, instanceDirectory)
               ));

@@ -19,6 +19,7 @@ describe('focused analytics', () => {
     expect(analyticsUrl(location.href)).toBe('https://dacurse.github.io/gtnh-recipe-browser/?page=finder&finder-mode=chain');
     expect(analyticsUrl('https://site.test/?item=nbt&view=usages&recipe-filter=secret')).toBe('https://site.test/?view=usages');
     expect(analyticsUrl('bad-url')).toBe('');
+    expect(analyticsUrl('https://site.test/?page=quests&quest=q0&chapter=q1&quest-search=private&quest-version=2.9.0#raw')).toBe('https://site.test/?page=quests');
     expect(analyticsSearch('  IRON   Dust  ')).toBe('iron dust');
     expect(analyticsSearch('x'.repeat(200))).toHaveLength(120);
   });
@@ -45,6 +46,7 @@ describe('focused analytics', () => {
     const config = sdk.init.mock.calls[0]![1];
     expect(config).toMatchObject({ api_host: 'https://us.i.posthog.com', autocapture: false,
       capture_pageview: false, capture_pageleave: false, disable_session_recording: true,
+      capture_dead_clicks: false, rageclick: false, capture_heatmaps: false, capture_performance: false,
       disable_external_dependency_loading: true, advanced_disable_flags: true, person_profiles: 'never' });
     const event = { event: '$pageview', properties: { $current_url: location.href, $session_entry_url: location.href,
       $referrer: 'https://example.test/private?secret=1', $set_once: { raw: 'secret' } } };
@@ -67,6 +69,17 @@ describe('focused analytics', () => {
     }
     expect(sdk.init).not.toHaveBeenCalled(); expect(sdk.capture).not.toHaveBeenCalled();
   });
+  it('delivers the explicitly allowed quest, special-view and touch events', async () => {
+    const { trackEvent } = await import('../src/lib/analytics');
+    const names = ['questbook_loaded','questbook_load_failed','quest_version_changed','quest_chapter_viewed',
+      'quest_viewed','quest_search','quest_link_opened','quest_touch_preview','special_viewed','item_touch_interaction','item_action_selected'] as const;
+    for (const name of names) trackEvent(name,{result_count:1});
+    await vi.runAllTimersAsync(); await vi.dynamicImportSettled();
+    const config=sdk.init.mock.calls[0]![1];
+    for (const name of names) expect(config.before_send({event:name,properties:{}})?.event).toBe(name);
+    expect(sdk.capture.mock.calls.map(([name])=>name)).toEqual(names);
+  });
+
   it('contains SDK initialization failures so browsing stays usable', async () => {
     sdk.init.mockImplementationOnce(() => { throw new Error('blocked'); });
     const { initializeAnalytics, trackEvent } = await import('../src/lib/analytics');

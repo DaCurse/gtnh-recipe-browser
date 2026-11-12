@@ -13,20 +13,12 @@ namespace Source
             if (string.IsNullOrEmpty(databasePath))
                 throw new InvalidDataException("Database parser did not retain its source path");
 
-            var sidecarPath = Path.Combine(
-                Path.GetDirectoryName(databasePath) ?? ".",
-                "browser-nei-special.json");
-            if (!File.Exists(sidecarPath))
-                return;
-
             foreach (var item in items.Values)
                 item?.GenerateId();
             foreach (var fluid in fluids.Values)
                 fluid.GenerateId();
 
-            using var document = JsonDocument.Parse(File.ReadAllText(sidecarPath));
-            var references = new HashSet<string>(StringComparer.Ordinal);
-            Visit(document.RootElement, references);
+            var references = ReadReferences(databasePath, Visit);
             foreach (var goodsId in references)
             {
                 if (goodsId.StartsWith("i:", StringComparison.Ordinal))
@@ -59,21 +51,16 @@ namespace Source
             string databasePath,
             Dictionary<string, PackConverter.ItemGroupBuilder> groups)
         {
-            var sidecarPath = Path.Combine(
-                Path.GetDirectoryName(databasePath) ?? ".",
-                "browser-nei-special.json");
-            if (!File.Exists(sidecarPath))
-                return;
-
-            using var document = JsonDocument.Parse(File.ReadAllText(sidecarPath));
-            var references = new HashSet<string>(StringComparer.Ordinal);
-            VisitOreDictionaries(document.RootElement, references);
+            var references = ReadReferences(databasePath, VisitOreDictionaries);
             foreach (var name in references)
             {
+                var normalized = name.StartsWith("o:", StringComparison.Ordinal)
+                    || name.StartsWith("g:", StringComparison.Ordinal) ? name[2..]
+                    : name.StartsWith("od~", StringComparison.Ordinal) ? name[3..] : name;
                 var group = groups.Values.FirstOrDefault(candidate =>
-                    candidate.oreDictNames.Contains(name)
-                    || candidate.oreDictNames.Contains("o:" + name)
-                    || candidate.oreDictNames.Contains("g:" + name));
+                    candidate.oreDictNames.Contains(normalized)
+                    || candidate.oreDictNames.Contains("o:" + normalized)
+                    || candidate.oreDictNames.Contains("g:" + normalized));
                 if (group == null)
                     throw new InvalidDataException("Special sidecar references unknown ore dictionary " + name);
                 group.touched = true;
@@ -102,6 +89,19 @@ namespace Source
                 }
                 Visit(property.Value, references);
             }
+        }
+
+        private static HashSet<string> ReadReferences(string databasePath, Action<JsonElement, HashSet<string>> visit)
+        {
+            var references = new HashSet<string>(StringComparer.Ordinal);
+            foreach (var name in new[] { "browser-nei-special.json", "browser-quest-items.json" })
+            {
+                var path = Path.Combine(Path.GetDirectoryName(databasePath) ?? ".", name);
+                if (!File.Exists(path)) continue;
+                using var document = JsonDocument.Parse(File.ReadAllText(path));
+                visit(document.RootElement, references);
+            }
+            return references;
         }
 
         private static void VisitOreDictionaries(JsonElement value, HashSet<string> references)

@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { orchestrateDirectExport, type DirectExportOptions } from './direct-export';
 
 interface CliOptions extends DirectExportOptions {
@@ -19,6 +20,7 @@ function usage(): string {
     '  --archive <file>          Verify and use a local archive instead of downloading',
     '  --work-dir <directory>    Fresh disposable export workspace',
     '  --instance-dir <dir>      Fresh prepared client directory',
+    '  --prepared-session <file> Retry preflight using a completed disposable preparation with no export output',
     '  --shared-layout <file>    Persistent append-only layout for the pack',
     '  --reuse-packs <dirs>      Comma-separated previous v7 pack directories',
     '',
@@ -35,10 +37,11 @@ function usage(): string {
     '  --xvfb-run <command>      xvfb-run executable (default: xvfb-run)',
     '  --xvfb-arg <argument>     Additional xvfb-run argument (repeatable)',
     '  --no-xvfb                 Do not wrap Java in xvfb-run',
+    '  --windowed                Show the Windows export renderer (hidden by default)',
     '  --xms <size>              Initial heap (default: 2G)',
     '  --xmx <size>              Maximum heap (default: 8G)',
-    '  --launch-timeout <ms>     Launcher wall-clock timeout (default: 2700000)',
-    '  --automation-timeout <ms> Export controller timeout (default: 2700000)',
+    '  --launch-timeout <ms>     Launcher wall-clock timeout (default: 5400000)',
+    '  --automation-timeout <ms> Export controller timeout (default: 5400000)',
     '  --poll-interval <ms>      Status polling interval (default: 1000)',
     '  --jvm-arg <argument>      Extra JVM argument (repeatable)',
     '',
@@ -62,7 +65,7 @@ function parseCli(args: string[]): CliOptions {
   const result: CliOptions = {
     help: false,
     xvfbArgs: ['-a', '--server-args=-screen 0 1280x720x24'],
-    useXvfb: true,
+    useXvfb: process.platform !== 'win32',
     jvmArgs: []
   };
   for (let index = 0; index < args.length; index++) {
@@ -75,6 +78,7 @@ function parseCli(args: string[]): CliOptions {
       result.useXvfb = false;
       continue;
     }
+    if (flag === '--windowed') { result.windowless = false; continue; }
     let value: string;
     if (flag === '--version') {
       [value, index] = takeValue(args, index, flag);
@@ -116,6 +120,9 @@ function parseCli(args: string[]): CliOptions {
     } else if (flag === '--automation-status') {
       [value, index] = takeValue(args, index, flag);
       result.automationStatusFile = value;
+    } else if (flag === '--prepared-session') {
+      [value, index] = takeValue(args, index, flag);
+      result.preparedSessionPath = resolve(value);
     } else if (flag === '--java') {
       [value, index] = takeValue(args, index, flag);
       result.java = value;
@@ -171,7 +178,7 @@ export async function runDirectExportCli(args: string[] = process.argv.slice(2))
   return 0;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === resolve(new URL(import.meta.url).pathname)) {
+if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   runDirectExportCli().then(
     (code) => {
       process.exitCode = code;

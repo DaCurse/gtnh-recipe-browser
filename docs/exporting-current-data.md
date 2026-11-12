@@ -7,7 +7,80 @@ Both `gtnh@ShadowTheAge/` and `nesql-exporter@ShadowTheAge/` remain pinned, read
 
 ## Requirements
 
-Use native WSL tools: Node.js/npm, `bash`, `patch`, `unzip`, JDK 8, JDK 17, JDK 21, and the .NET 8 SDK. Initialize
+Native Windows is supported with MSYS2 `bash`, `patch`, `unzip`, Python, JDK 21,
+and the .NET 8 SDK on PATH. The launcher selects Windows natives and the Windows
+classpath separator automatically; Xvfb is only used on Linux. Keep Java 26 out
+of this build's PATH: the pinned Gradle version runs on JDK 21.
+Windows launches through `launch-hidden.ps1` by default: it hides only windows
+owned by the renderer JVM, suppresses console windows, streams logs, and returns
+the JVM's actual exit code. The OpenGL context still exists. Use `--windowed` for
+interactive debugging. Preparation and launch both disable pause-on-lost-focus
+in the disposable client's options, so Alt+Tab or hiding cannot pause automation.
+The default launcher and automation timeouts are 90 minutes to accommodate the
+full Windows export, including database post-processing. Both remain configurable
+with the direct-export timeout options.
+
+The current 2.9.0 profile uses the official runnable client ZIP at
+`https://downloads.gtnewhorizons.com/Multi_mc_downloads/GT_New_Horizons_2.9.0_Java_17-26.zip`,
+747,848,389 bytes, SHA-256 `6d0ebe7e6be18fb74b4fc920916cc5710e142a3f885072d324da05244d398b16`.
+This is a newly reviewed source, distinct from the historical local assembly documented below.
+
+The preparation/launch boundary inventories every native quest stack. The game
+loads exact typed NBT using BetterQuesting's decoder, retains rewards, choices,
+requirements and icons through the existing NESQL factories, and expands wildcard
+metadata using the populated NEI registry. `browser-quest-items.json` records every
+source path and resolved canonical goods ID. Invalid registry references are
+explicitly marked unavailable instead of assigned substitute assets.
+Processing checks complete request coverage and rejects any resolved item lost
+by retention. The request/report digests are recorded in release provenance.
+
+After staging the verified recipe pack and selecting it in the local version
+index, build the separate quest dataset with the native resolution report:
+
+```sh
+npm run build:quests -- <modpack-checkout> <betterquesting-checkout> \
+  <game-dir>/nesql/browser-export/browser-quest-items.json \
+  <export-work-dir>/quest-item-requests.json \
+  <export-work-dir>/processed/data.bin
+```
+
+The builder verifies the processed database and atlas against the recipe
+manifest's source hashes before using raw NBT for semantic navigation and exact
+quest tooltips. Published recipe shards deliberately omit most raw NBT for size.
+The shared resolver and its source-backed family defaults live in
+`src/lib/itemNavigation.ts`; mappings are rebuilt from export data, not maintained
+as individual item aliases.
+
+The same build generates the item-to-quest companion: shared quest preview
+metadata plus 16 lazy relation buckets, bound to the exact recipe dataset.
+Recipes link to reward and choice-reward quests; usages link to matching task
+requirements. Matching follows each task's native NBT mode (ignored, partial,
+or exact), with full typed source stacks retained during generation. Runtime
+item tabs and vending requirements use these previews without downloading the
+full questbook; opening a quest downloads the separately cached full pack.
+Generated links and pack files no longer referenced by the quest indexes are
+pruned by the builder.
+
+Navigation button PNGs are cropped from the verified recipe sprites during this
+build, with source IDs, sheet hashes and output hashes recorded in
+`assets/source/navigation-icons/provenance.json`. No manually substituted item
+art is needed. Run `npm run test:quest-links -- <app-url> <playwright-module>`
+to check item quest tabs, vending requirements, shared mouse/touch previews,
+Shift-only NBT, native OR placement and compact quest links.
+
+The builder rejects missing inventory entries and canonical IDs absent from the
+selected recipe dataset. Native wildcard alternatives and ore-group members use
+the existing item renderer. Unavailable references carry a tooltip note; an empty
+ore dictionary can show its valid configured base item without offering that
+empty group as a chooser. The full inventory and original missing-icon list are
+documented in `docs/questbook-export-shopping-list.md`.
+
+If preparation completed but launch preflight failed, `--prepared-session
+<work-dir>/export-session.json` can retry that disposable preparation. Its archive,
+version and workspace must still match, and an existing NESQL output repository
+is rejected. This does not resume or overwrite an incomplete game export.
+
+On Linux/WSL use native Node.js/npm, `bash`, `patch`, `unzip`, JDK 8, JDK 17, JDK 21, and the .NET 8 SDK. Initialize
 the submodules before an export:
 
 ```sh

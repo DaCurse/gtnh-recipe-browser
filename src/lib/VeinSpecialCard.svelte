@@ -190,7 +190,7 @@
       </div>
     </section>
     {#if smallOreDrops.length}
-      <SpecialGoods goods={smallOreDrops} resolve={resolve} {navigate} compact label="Drops" />
+      <SpecialGoods goods={smallOreDrops} resolve={resolve} {navigate} joined label="Drops" />
     {/if}
     {#if dimensions.length}
       <section class="generated-world">
@@ -227,6 +227,7 @@
     {#if dimensions.length}
       <section class="generated-world">
         <div class="generated-world-label">Generated World</div>
+        <small class="dimension-caption">Chances per ore chunk</small>
         <div class="dimension-list">
           {#each dimensions as dimension, index (`${dimension.id}:${index}`)}
             <div class="dimension-slot" aria-label={dimension.id}>
@@ -238,7 +239,6 @@
             </div>
           {/each}
         </div>
-        <small class="dimension-caption">Chances per ore chunk</small>
       </section>
     {/if}
     <div class="vein-stats">
@@ -256,7 +256,7 @@
   .layer-row :global(.special-goods-grid) { width:48px; }
   .layer-copy,.ore-primary-copy { display:flex; flex-direction:column; min-width:0; gap:3px; }
   .layer-copy b,.ore-primary-copy b { color:var(--recipe-text); font:18px/24px Minecraft,monospace; overflow-wrap:anywhere; }
-  .layer-copy span,.ore-primary-copy span { color:var(--recipe-text); font-size:11px; line-height:1.3; overflow-wrap:anywhere; }
+  .layer-copy span,.ore-primary-copy span { color:var(--recipe-text); font:16px/1.3 Minecraft,monospace; overflow-wrap:anywhere; }
   .generated-world { display:flex; flex-direction:column; gap:6px; padding-top:2px; min-width:0; }
   .generated-world-label { color:var(--recipe-text); font:18px/24px Minecraft,monospace; font-weight:700; letter-spacing:.03em; }
   .dimension-caption { color:var(--recipe-text); font:9px/13px Minecraft,monospace; line-height:1.25; }

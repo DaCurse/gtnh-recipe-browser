@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "versions": [
+    {
+      "recipeDatasetId": "2.9.0-v7-r9ec25114d4a7",
+      "version": "2.9.0",
+      "root": {
+        "id": "quest-links-bc68f9ab85a9",
+        "url": "./bc68f9ab85a98de8d71f7dbfbfedcc727a886a6ea082fac6b69d8e1dcf1b410d.links.mpk",
+        "sha256": "bc68f9ab85a98de8d71f7dbfbfedcc727a886a6ea082fac6b69d8e1dcf1b410d",
+        "bytes": 334647,
+        "encoding": "gzip"
+      }
+    }
+  ]
+}

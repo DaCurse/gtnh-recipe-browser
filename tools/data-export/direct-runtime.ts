@@ -6,6 +6,8 @@ import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'node
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { promisify } from 'node:util';
+import { fileURLToPath } from 'node:url';
+import { configureUnattendedClient } from './client-options';
 
 const execFile = promisify(execFileCallback);
 
@@ -14,7 +16,7 @@ const DEFAULT_ASSET_CONCURRENCY = 8;
 const SHA1_PATTERN = /^[a-f0-9]{40}$/i;
 
 export interface RuntimePlatform {
-  name: 'linux';
+  name: 'linux' | 'windows';
   arch: 'x86_64';
   version?: string;
   features?: Record<string, boolean>;
@@ -25,6 +27,7 @@ export const LINUX_X86_64: RuntimePlatform = {
   arch: 'x86_64',
   features: {}
 };
+export const WINDOWS_X86_64: RuntimePlatform = { name: 'windows', arch: 'x86_64', features: {} };
 
 export interface RuntimeRule {
   action: 'allow' | 'disallow' | string;
@@ -178,6 +181,7 @@ export interface RuntimeLaunchPlan extends RuntimeResolution {
   command: string[];
   timeoutMs?: number;
   statusFile?: string;
+  hiddenArguments?: { file: string; values: string[] };
 }
 
 export interface ResolveRuntimeOptions {
@@ -200,6 +204,7 @@ export interface LaunchPlanOptions {
   xvfbRun?: string;
   xvfbArgs?: string[];
   useXvfb?: boolean;
+  windowless?: boolean;
   timeoutMs?: number;
   statusFile?: string;
 }
@@ -289,7 +294,7 @@ function matchesPattern(value: string | undefined, pattern: string | undefined):
   }
 }
 
-/** Evaluate MultiMC/Minecraft launcher rules for the fixed Linux x86_64 target. */
+/** Evaluate MultiMC/Minecraft launcher rules for the selected export target. */
 export function matchesRuntimeRule(rule: RuntimeRule, platform: RuntimePlatform = LINUX_X86_64): boolean {
   if (rule.os) {
     if (!matchesPattern(platform.name, rule.os.name)) return false;
@@ -529,9 +534,9 @@ function artifactSource(artifact: RuntimeLibraryArtifact | undefined): ArtifactS
 }
 
 function isNativeArtifact(name: string, classifier?: string, url?: string): boolean {
-  return /(?:^|:)natives-(?:linux|linux-\w+)/.test(name)
+  return /(?:^|:)natives-(?:linux|windows)(?:-\w+)?/.test(name)
     || classifier?.startsWith('natives-') === true
-    || /(?:^|[-/])natives-linux(?:[-/.]|$)/.test(url ?? '');
+    || /(?:^|[-/])natives-(?:linux|windows)(?:[-/.]|$)/.test(url ?? '');
 }
 
 function nativeClassifierForPlatform(
@@ -1068,9 +1073,9 @@ export async function resolveRuntime(options: ResolveRuntimeOptions): Promise<Ru
   const cacheDirectory = resolve(options.cacheDirectory ?? DEFAULT_CACHE_DIRECTORY);
   const packRoot = await resolvePackRootInput(options.root, cacheDirectory);
   const metadata = await readRuntimePackMetadata(packRoot);
-  const platform = options.platform ?? LINUX_X86_64;
-  if (platform.name !== 'linux' || platform.arch !== 'x86_64') {
-    throw new Error(`This runtime currently supports Linux x86_64 only, received ${platform.name}/${platform.arch}`);
+  const platform = options.platform ?? (process.platform === 'win32' ? WINDOWS_X86_64 : LINUX_X86_64);
+  if (!['linux', 'windows'].includes(platform.name) || platform.arch !== 'x86_64') {
+    throw new Error(`Unsupported runtime platform ${platform.name}/${platform.arch}`);
   }
   const minecraftDirectory = join(packRoot, '.minecraft');
   const minecraftDirectoryStat = await stat(minecraftDirectory).catch(() => undefined);
@@ -1143,14 +1148,21 @@ export async function resolveRuntime(options: ResolveRuntimeOptions): Promise<Ru
 
 export function createLaunchPlan(resolution: RuntimeResolution, options: LaunchPlanOptions = {}): RuntimeLaunchPlan {
   const java = options.java ?? process.env.JAVA ?? 'java';
-  const useXvfb = options.useXvfb ?? true;
+  const useXvfb = options.useXvfb ?? resolution.platform.name !== 'windows';
   const xvfbRun = options.xvfbRun ?? process.env.GTNH_XVFB_RUN ?? 'xvfb-run';
   const xvfbArgs = options.xvfbArgs ?? ['-a'];
-  const javaCommand = [java, ...resolution.jvmArgs, '-cp', resolution.classpath.join(':'), resolution.mainClass, ...resolution.gameArgs];
-  const command = useXvfb ? [xvfbRun, ...xvfbArgs, ...javaCommand] : javaCommand;
+  const javaCommand = [java, ...resolution.jvmArgs, '-cp', resolution.classpath.join(resolution.platform.name === 'windows' ? ';' : ':'), resolution.mainClass, ...resolution.gameArgs];
+  const windowless = options.windowless ?? resolution.platform.name === 'windows';
+  const argumentFile = join(resolution.gameDirectory, `.nesql-launch-args-${process.pid}.json`);
+  const command = resolution.platform.name === 'windows' && windowless
+    ? [join(process.env.SystemRoot ?? 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe'),
+      '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', fileURLToPath(new URL('./launch-hidden.ps1', import.meta.url)),
+      '-Java', java, '-ArgumentFile', argumentFile]
+    : useXvfb ? [xvfbRun, ...xvfbArgs, ...javaCommand] : javaCommand;
   return {
     ...resolution,
     java,
+    ...(resolution.platform.name === 'windows' && windowless ? { hiddenArguments: { file: argumentFile, values: javaCommand.slice(1) } } : {}),
     xvfbRun: useXvfb ? xvfbRun : undefined,
     xvfbArgs: useXvfb ? xvfbArgs : [],
     command,
@@ -1167,6 +1179,8 @@ async function writeLaunchStatus(path: string, status: RuntimeLaunchStatus): Pro
 }
 
 export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOptions = {}): Promise<RuntimeLaunchStatus> {
+  await configureUnattendedClient(plan.gameDirectory);
+  if (plan.hiddenArguments) await writeFile(plan.hiddenArguments.file, JSON.stringify(plan.hiddenArguments.values), 'utf8');
   const statusFile = options.statusFile ?? plan.statusFile;
   const update = async (status: RuntimeLaunchStatus): Promise<void> => {
     if (statusFile) await writeLaunchStatus(statusFile, status);
@@ -1182,10 +1196,13 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
   const child = spawn(plan.command[0]!, plan.command.slice(1), {
     cwd: plan.gameDirectory,
     env: { ...process.env, ...options.env },
-    stdio: 'inherit'
+    stdio: 'inherit',
+    windowsHide: true
   });
   const abortChild = () => {
-    child.kill('SIGTERM');
+    if (process.platform === 'win32' && plan.hiddenArguments && child.pid) {
+      void execFile('taskkill.exe', ['/PID', String(child.pid), '/T', '/F']).catch(() => child.kill('SIGTERM'));
+    } else child.kill('SIGTERM');
   };
   if (options.signal?.aborted) abortChild();
   else options.signal?.addEventListener('abort', abortChild, { once: true });
@@ -1202,7 +1219,7 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
     if ((options.timeoutMs ?? plan.timeoutMs) !== undefined && (options.timeoutMs ?? plan.timeoutMs)! > 0) {
       timeout = setTimeout(() => {
         timedOut = true;
-        child.kill('SIGTERM');
+        abortChild();
         void update({
           schemaVersion: 1,
           state: 'timeout',

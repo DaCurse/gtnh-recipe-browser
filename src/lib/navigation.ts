@@ -48,6 +48,7 @@ export function recipeFilterUrl(
 
 export function itemListUrl(currentUrl: string | URL): URL {
   const url = new URL(currentUrl);
+  for (const key of ['quest', 'chapter', 'quest-version', 'quest-search']) url.searchParams.delete(key);
   url.searchParams.delete('page');
   url.searchParams.delete('finder-mode');
   url.searchParams.delete('input');

@@ -19,9 +19,14 @@ event/property combinations for creating saved insights in the project's UI.
 | Which finder ingredients are popular? | `finder_ingredient_added` | `ingredient_name`, `side`, `mode` |
 | What finder queries are completed? | `recipe_search_completed` | `input_names`, `output_names`, `result_count`, `cached` |
 | What chains are searched? | `chain_search_completed` | `input_names`, `output_names`, `route_count`, `limited`, `expanded` |
-| Which features are used most? | `$pageview` and the explicit feature events | `screen`: `catalog`, `item`, `finder`, `chain` |
+| Which features are used most? | `$pageview` and the explicit feature events | `screen`: `landing`, `catalog`, `item`, `finder`, `chain`, `quests` |
 | Do people explore alternatives? | `chain_more_requested`, `chain_more_stopped`, `chain_route_viewed` | Requested count, route number, cached status |
 | Are exports used? | `data_export_clicked`, `data_export_completed`, `data_export_failed` | `target`, `kind`, `choice`, `record_count` |
+| Are quests being explored? | `quest_chapter_viewed`, `quest_viewed`, `quest_search` | Public chapter/quest IDs and names, `quest_version`, settled query and result count |
+| Do item and vending links help discovery? | `quest_link_opened` | `source`: `item_recipes`, `item_usages`, `vending` |
+| Which special tabs get used? | `special_viewed` | `special_type`, `scope`, direction, item name and record count |
+| Are touch previews and holds used? | `item_touch_interaction`, `item_action_selected`, `quest_touch_preview` | Preview/activate/hold action, public item name/kind, selected direction |
+| Does questbook loading work? | `questbook_loaded`, `questbook_load_failed`, `quest_version_changed` | Duration, version and quest/chapter counts |
 | Is loading slow or failing? | `dataset_loaded`, `dataset_load_failed` | `duration_ms`, dataset version where available |
 
 The contextual **Export data** action uses `target: pane` for Recipes, Usages,
@@ -53,7 +58,7 @@ contents, filenames, raw error strings, and individual exported records are not 
 
 ## Collection controls
 
-Automatic click/input capture, session replay, automatic exception capture, surveys, and feature-flag
+Automatic click/input capture, dead/rage clicks, heatmaps, performance recording, session replay, automatic exception capture, surveys, and feature-flag
 requests are disabled. No logged-in identity or person profile is created. PostHog's anonymous browser
 ID is stored in localStorage. DNT and Global Privacy Control are respected before initialization.
 Default PostHog bot filtering remains enabled.
@@ -74,3 +79,21 @@ intercepted ingestion: pageviews, normalized searches, item/finder/chain interac
 success/failure, sanitized URL properties, blocked-network behavior and DNT. It enables bot capture
 only in the test's intercepted script response because production intentionally excludes Playwright.
 The test does not send its synthetic usage to PostHog.
+
+Quest searches use the same 1.2-second settled-query and 120-character
+normalization policy as catalogue searches. Quest/chapter views are deduplicated
+while the same entry stays open; browser history and deep links are covered.
+Mouse hovers, tooltip movement, panning/zooming, cancelled touch gestures and
+pagination do not emit events. First touch previews and successful holds/second
+taps do, and action dialogs record only the direction actually selected.
+Special views emit once per loaded item/direction/category/scope visit, including
+quest reward/requirement tabs. Quest-link clicks emit after touch preview gates,
+so the first tap does not count as opening a quest. No NBT payloads, quest text,
+export contents or raw error messages are recorded. Quest URLs keep only
+`page=quests`, removing quest/chapter IDs, versions and search terms.
+
+The client settings were checked against the [PostHog JavaScript configuration
+reference](https://posthog.com/docs/libraries/js/config). The installed SDK's
+`2026-08-30` defaults remain current; privacy and capture settings are explicit
+rather than relying on changing defaults. Server-side project retention and
+account settings are managed in PostHog and are not changed by this release.

@@ -98,6 +98,29 @@ export function plainMinecraftText(text: string): MinecraftText {
   return { lines, plainText: text.replace(/\r\n?/g, '\n') };
 }
 
+/** Native formatting codes used by Minecraft and BetterQuesting text. */
+export function parseMinecraftCodes(text: string): MinecraftText {
+  const lines: MinecraftTextLine[] = [{ segments: [] }];
+  let formats: MinecraftFormatCode[] = [];
+  for (const match of text.replace(/\r\n?/g, '\n').matchAll(/\\&|[§&][0-9a-fklmnor]|\n|[^§&\n\\]+|./gi)) {
+    const token = match[0];
+    if (token === '\n') { lines.push({ segments: [] }); continue; }
+    if (/^[§&][0-9a-fklmnor]$/i.test(token)) {
+      const code = token[1].toLowerCase();
+      if (code === 'r') formats = [];
+      else if (/^[0-9a-f]$/.test(code)) formats = [code as MinecraftFormatCode];
+      else if (!formats.includes(code as MinecraftFormatCode)) formats = [...formats, code as MinecraftFormatCode];
+      continue;
+    }
+    const value = token === '\\&' ? '&' : token;
+    const segments = lines.at(-1)!.segments;
+    const previous = segments.at(-1);
+    if (previous && sameFormats(previous.formats, formats)) previous.text += value;
+    else segments.push({ text: value, formats: [...formats] });
+  }
+  return { lines, plainText: lines.map(line => line.segments.map(segment => segment.text).join('')).join('\n') };
+}
+
 /**
  * Parses only the output grammar of ShadowTheAge's MinecraftTextConverter.
  * Unknown tags and attributes are discarded; returned text is always rendered

@@ -17,7 +17,7 @@ if not source.is_relative_to(workspace) or not target.is_relative_to(workspace) 
     raise ValueError('Both workspaces must be below this repository .export-work directory')
 if target.exists():
     raise ValueError('UI output workspace must be new')
-session = json.loads((source/'export-session.json').read_text())
+session = json.loads((source/'export-session.json').read_text(encoding='utf-8'))
 if session['gtnhVersion'] != '2.9.0':
     raise ValueError('This adapter is pinned to GTNH 2.9.0 / GT5 5.09.54.265')
 target.mkdir(parents=True)
@@ -27,11 +27,11 @@ package = build/'src/main/java/com/github/dcysteine/nesql/exporter/main'
 shutil.copy2(root/'tools/machine-ui-export/BrowserLayoutExporter.java',package/'BrowserLayoutExporter.java')
 shutil.copy2(root/'tools/machine-ui-export/BrowserOreDiagramExporter.java',package/'BrowserOreDiagramExporter.java')
 main = package/'Main.java'
-text = main.read_text()
+text = main.read_text(encoding='utf-8')
 anchor = 'ExportAutomationController.install();'
 if text.count(anchor) != 1:
     raise ValueError('Exporter controller entry point changed')
-main.write_text(text.replace(anchor,anchor+'\n        BrowserLayoutExporter.install();'))
+main.write_text(text.replace(anchor,anchor+'\n        BrowserLayoutExporter.install();'), encoding='utf-8', newline='\n')
 instance = target/'client-instance'
 instance.mkdir()
 for name in ['mmc-pack.json','instance.cfg','patches','libraries']:
@@ -44,7 +44,7 @@ for name in ['mods','config','scripts','resourcepacks','assets','fonts','angelic
     src = source/'client-instance/.minecraft'/name
     if src.exists():shutil.copytree(src,game/name)
 # All paths refer to independent copies. Saves, credentials and player files are never copied.
-subprocess.run(['sh','gradlew','--offline','build','-x','test'],cwd=build,check=True)
+subprocess.run(['sh','gradlew','--no-daemon','--offline','build','-x','test'],cwd=build,check=True)
 for name in [session['exporter']['mainJar'],session['exporter']['dependenciesJar']]:
     shutil.copy2(build/'build/libs'/name,game/'mods'/name)
 print('Prepared UI snapshot client:',instance)

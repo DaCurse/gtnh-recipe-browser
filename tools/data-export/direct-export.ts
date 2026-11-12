@@ -6,6 +6,7 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'nod
 import { Readable } from 'node:stream';
 import { pipeline } from 'node:stream/promises';
 import { setTimeout as delay } from 'node:timers/promises';
+import { questItemReferences } from '../questbook/references';
 import {
   createLaunchPlan,
   launchRuntime,
@@ -23,14 +24,16 @@ import {
 const DEFAULT_CACHE_DIRECTORY = '.export-work/direct-export-cache';
 const DEFAULT_XMS = '2G';
 const DEFAULT_XMX = '8G';
-const DEFAULT_LAUNCH_TIMEOUT_MS = 45 * 60 * 1_000;
-const DEFAULT_AUTOMATION_TIMEOUT_MS = 45 * 60 * 1_000;
+const DEFAULT_LAUNCH_TIMEOUT_MS = 90 * 60 * 1_000;
+const DEFAULT_AUTOMATION_TIMEOUT_MS = 90 * 60 * 1_000;
 const DEFAULT_POLL_INTERVAL_MS = 1_000;
 const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
 const SHA1_PATTERN = /^[a-f0-9]{40}$/i;
 const SAFE_NAME_PATTERN = /^[A-Za-z0-9._-]+$/;
 
 export interface DirectExportProfile {
+  /** Reviewed compile-only replacements for retired transitive Maven artifacts. */
+  compileDependencyOverrides?: string[];
   version: string;
   archiveFileName: string;
   clientUrl: string;
@@ -92,17 +95,14 @@ const RELEASE_290_RUNTIME_MODS: readonly RuntimeModPin[] = [
 ];
 
 export const DIRECT_EXPORT_PROFILES: Readonly<Record<string, DirectExportProfile>> = {
-  // Locally assembled with the pinned official DreamAssemblerXXL release manifest.
-  // This is not the config-only GitHub ZIP or a nightly client. See docs/release-2.9.0.md.
+  // Official runnable client, reviewed separately from the former locally assembled ZIP.
   '2.9.0': {
+    compileDependencyOverrides: ['com.github.GTNewHorizons:Galacticraft:3.4.37-GTNH'],
     version: '2.9.0',
     archiveFileName: 'GT_New_Horizons_2.9.0_Java_17-26.zip',
-    clientUrl: new URL(
-      '../../.export-work/release-2.9.0-source/DreamAssemblerXXL/releases/multi_poly/GT_New_Horizons_2.9.0_Java_17-26.zip',
-      import.meta.url
-    ).href,
-    bytes: 747_604_764,
-    sha256: 'dba6da2daa53925f12755172fd7d508ebcc5d23aa3c28a36c57db8e30070aa44',
+    clientUrl: 'https://downloads.gtnewhorizons.com/Multi_mc_downloads/GT_New_Horizons_2.9.0_Java_17-26.zip',
+    bytes: 747_848_389,
+    sha256: '6d0ebe7e6be18fb74b4fc920916cc5710e142a3f885072d324da05244d398b16',
     sourcePage: 'https://github.com/GTNewHorizons/DreamAssemblerXXL/blob/1b62ef00ad679c51ab0ec67f8a8e42778a059ce6/releases/manifests/2.9.0.json',
     runtimeMods: RELEASE_290_RUNTIME_MODS
   },
@@ -198,6 +198,8 @@ export interface DirectExportOptions {
   workDirectory?: string;
   instanceDirectory?: string;
   archiveSourcePath?: string;
+  /** Retry launch preflight after a completed preparation; existing exports are never reused. */
+  preparedSessionPath?: string;
   statusFile?: string;
   launcherStatusFile?: string;
   automationStatusFile?: string;
@@ -208,6 +210,7 @@ export interface DirectExportOptions {
   xvfbRun?: string;
   xvfbArgs?: string[];
   useXvfb?: boolean;
+  windowless?: boolean;
   xms?: string;
   xmx?: string;
   /** Persistent append-only prefix layout used by the canonical pack. */
@@ -746,7 +749,7 @@ export async function orchestrateDirectExport(options: DirectExportOptions = {})
   if (pathInside(statusFile, workDirectory)) {
     throw new Error(`Orchestrator status must not be inside the fresh prepare workspace: ${statusFile}`);
   }
-  await assertPathMissing(workDirectory, 'Direct export work directory');
+  if (!options.preparedSessionPath) await assertPathMissing(workDirectory, 'Direct export work directory');
   const now = dependencies.now ?? (() => new Date());
   const writeStatus = async (
     phase: DirectExportPhase,
@@ -774,11 +777,28 @@ export async function orchestrateDirectExport(options: DirectExportOptions = {})
     });
     await writeStatus('preparing', 'Preparing the disposable exporter/client workspace', { archivePath: archive.path });
     const prepareContext = { profile, archive, workDirectory, instanceDirectory, repositoryRoot };
-    if (dependencies.prepare) await dependencies.prepare(prepareContext);
-    else await invokePrepare(prepareContext, repositoryRoot, dependencies.commandRunner ?? defaultCommandRunner);
-    const sessionPath = join(workDirectory, 'export-session.json');
+    if (!options.preparedSessionPath) {
+      if (dependencies.prepare) await dependencies.prepare(prepareContext);
+      else await invokePrepare(prepareContext, repositoryRoot, dependencies.commandRunner ?? defaultCommandRunner);
+    }
+    const sessionPath = resolve(options.preparedSessionPath ?? join(workDirectory, 'export-session.json'));
     const session = await readExportSession(sessionPath);
     validateSession(session, sessionPath, profile, archive, workDirectory, instanceDirectory);
+    if (options.preparedSessionPath) {
+      for (const [filename, expected] of [[session.exporter.mainJar, session.exporter.mainJarSha256],
+        [session.exporter.dependenciesJar, session.exporter.dependenciesJarSha256]]) {
+        const artifact = resolve(instanceDirectory, '.minecraft/mods', filename!);
+        if (!pathInside(artifact, workDirectory) || (await digestFile(artifact, 'sha256')).digest !== expected) {
+          throw new Error(`Prepared exporter artifact changed or escaped its workspace: ${artifact}`);
+        }
+      }
+    }
+    if (!dependencies.prepare) {
+      await assertPathMissing(join(instanceDirectory, '.minecraft/nesql', repositoryName), 'Existing NESQL export repository');
+      const questReferences = await questItemReferences(join(instanceDirectory, '.minecraft/config/betterquesting/DefaultQuests'));
+      if (!questReferences.length) throw new Error('The prepared client contains no quest item references');
+      await writeFile(join(workDirectory, 'quest-item-requests.json'), JSON.stringify({ schemaVersion: 1, version: profile.version, references: questReferences }, null, 2) + '\n');
+    }
     await writeStatus('launching', 'Resolving embedded component metadata and building the direct JVM launch plan', {
       archivePath: archive.path,
       sessionPath
@@ -810,7 +830,8 @@ export async function orchestrateDirectExport(options: DirectExportOptions = {})
       java: options.java,
       xvfbRun: options.xvfbRun,
       xvfbArgs: options.xvfbArgs ?? ['-a', '--server-args=-screen 0 1280x720x24'],
-      useXvfb: options.useXvfb ?? true,
+      useXvfb: options.useXvfb,
+      windowless: options.windowless,
       timeoutMs: launchTimeoutMs,
       statusFile: launcherStatusFile
     });

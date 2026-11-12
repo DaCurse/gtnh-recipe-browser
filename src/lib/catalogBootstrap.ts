@@ -32,9 +32,10 @@ function clearBootstrapRelations(entries: CatalogEntry[]): void {
 export async function prepareBootstrapCatalog(
   manifest: DatasetManifest,
   manifestUrl: string,
-  report: (percent: number, stage: string) => void
+  report: (percent: number, stage: string) => void,
+  readAsset?: (asset: DatasetAsset) => Promise<Uint8Array>
 ): Promise<PreparedCatalog> {
-  const { catalog } = await loadCatalogBootstrap(manifest, manifestUrl, report);
+  const { catalog } = await loadCatalogBootstrap(manifest, manifestUrl, report, readAsset);
   report(92, 'Preparing items');
   const resolved = materializeCatalog(manifest, manifestUrl, catalog, false);
   clearBootstrapRelations(resolved.entries);
@@ -62,7 +63,8 @@ async function decodeAssetPayload(asset: DatasetAsset, bytes: Uint8Array): Promi
 async function loadCatalogBootstrap(
   manifest: DatasetManifest,
   manifestUrl: string,
-  report: (percent: number, stage: string) => void
+  report: (percent: number, stage: string) => void,
+  readAsset?: (asset: DatasetAsset) => Promise<Uint8Array>
 ): Promise<{ catalog: PackedCatalog }> {
   if (manifest.catalogAssets.length === 0) throw new Error('Pack manifest has no bootstrap assets');
   const assetsToDecode = manifest.catalogAssets;
@@ -70,7 +72,7 @@ async function loadCatalogBootstrap(
     .map((page) => [page.sha256, page] as const)).values()];
   const loaded = new Array(pages.length).fill(0) as number[];
   const totalBytes = pages.reduce((total, page) => total + page.bytes, 0);
-  await mapProgressively(pages, 3, async (page, index) => decodePhysicalRecordPage(
+  if (!readAsset) await mapProgressively(pages, 3, async (page, index) => decodePhysicalRecordPage(
     page,
     manifestUrl,
     ({ loaded: count, cached }) => {
@@ -85,7 +87,7 @@ async function loadCatalogBootstrap(
   const decoded = await mapProgressively(manifest.catalogAssets, 3, async (asset) => {
     const value = (await decodeAssetPayload(
       asset,
-      await fetchVerified(asset, manifestUrl, undefined, undefined, manifest)
+      await (readAsset ? readAsset(asset) : fetchVerified(asset, manifestUrl, undefined, undefined, manifest))
     )) as DecodedBootstrapAsset;
     if (value.schemaVersion !== 6 || value.kind !== asset.role || value.logicalId !== asset.logicalId) {
       throw new Error(`${asset.id}: bootstrap logical identity mismatch`);

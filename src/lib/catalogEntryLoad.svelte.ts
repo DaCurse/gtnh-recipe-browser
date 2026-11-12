@@ -10,7 +10,7 @@ export function provideCatalogEntrySource(source: () => EntrySource | null): voi
 }
 
 /** One readiness policy for selected-item details and every floating tooltip. */
-export function useCatalogEntry(id: () => string | undefined, delay = 0) {
+export function useCatalogEntry(id: () => string | undefined) {
   const getSource = getContext<(() => EntrySource | null) | undefined>(sourceContext);
   const source = $derived(getSource?.());
   const entryId = $derived(id());
@@ -33,9 +33,8 @@ export function useCatalogEntry(id: () => string | undefined, delay = 0) {
           error: error instanceof Error ? error.message : String(error) };
       }
     };
-    const timer = delay > 0 ? setTimeout(() => { void load(); }, delay) : undefined;
-    if (timer === undefined) void load();
-    return () => { clearTimeout(timer); controller.abort(); };
+    void load();
+    return () => controller.abort();
   });
   return {
     get entry() { return current?.entry; },

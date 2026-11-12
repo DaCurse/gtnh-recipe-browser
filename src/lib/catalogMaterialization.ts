@@ -12,6 +12,16 @@ import type {
 } from './datasetSchema';
 import type { CatalogEntry } from './types';
 
+export function ingredientGroupPreview(itemIds: string[], entries: ReadonlyMap<string, CatalogEntry>): Pick<CatalogEntry, 'members' | 'tooltip' | 'icon'> {
+  const representative = itemIds.map(id => entries.get(id)).find(entry => entry?.icon);
+  return {
+    members: itemIds,
+    icon: representative?.icon,
+    tooltip: [`${itemIds.length.toLocaleString('en-US')} interchangeable item${itemIds.length === 1 ? '' : 's'}`,
+      'All listed members are valid recipe ingredients.']
+  };
+}
+
 interface MaterializedCatalog {
   entries: CatalogEntry[];
   goods: Map<string, PackedGoods>;
@@ -139,11 +149,6 @@ export function materializeCatalog(
 
   const goodsEntriesById = new Map(goodsEntries.map((entry) => [entry.id, entry]));
   const groupEntries = [...catalog.oreDictionaries, ...anonymousGroups].map((group): CatalogEntry => {
-    let representative: CatalogEntry | undefined;
-    for (const id of group.itemIds) {
-      representative = goodsEntriesById.get(id);
-      if (representative) break;
-    }
     const productionShards = new Set<string>();
     const usageShards = new Set<string>();
     const specialProductionShards = new Set(group.specialProductionShards ?? []);
@@ -170,14 +175,10 @@ export function materializeCatalog(
       name: namedDictionary ? `Ore dictionary: ${dictionaryName}` : 'Interchangeable ingredients',
       mod: namedDictionary ? 'Ore Dictionary' : 'Recipe Alternatives',
       kind: namedDictionary ? 'oreDict' : 'itemGroup',
-      tooltip: [
-        `${group.itemIds.length.toLocaleString('en-US')} interchangeable item${group.itemIds.length === 1 ? '' : 's'}`,
-        'All listed members are valid recipe ingredients.'
-      ],
+      ...ingredientGroupPreview(group.itemIds, goodsEntriesById),
       color: '#aeb3b8',
       glyph: '◇',
       searchable: false,
-      icon: representative?.icon,
       productionShards: [...productionShards].sort(),
       usageShards: [...usageShards].sort(),
       specialProductionShards: [...specialProductionShards].sort(),
@@ -186,7 +187,6 @@ export function materializeCatalog(
       specialUsageLookupIds: [...specialUsageLookupIds].sort(),
       specialProductionCount,
       specialUsageCount,
-      members: group.itemIds,
       machineCapabilities: capabilitiesByMachine.get(group.id)
     };
   });

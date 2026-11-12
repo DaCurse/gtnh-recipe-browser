@@ -4,14 +4,14 @@
   import { resolveCachedIconSheetUrl } from './iconCache';
   import type { RenderedIcon } from './highResolutionIcons';
   import type { CatalogBrowseEntry, CatalogEntry } from './types';
-  let { entry, size = 48, selected = false, bare = false, frame = true }: { entry: CatalogEntry; size?: number; selected?: boolean; bare?: boolean; frame?: boolean } = $props();
+  let { entry, size = 48, selected = false, bare = false, frame = true, renderScale = 1 }: { entry: CatalogEntry; size?: number; selected?: boolean; bare?: boolean; frame?: boolean; renderScale?: number } = $props();
   let rendered = $state<RenderedIcon>();
   const spriteSize = $derived(Math.max(1, size - 2 * Math.round(size * (bare ? 0.075 : 1 / 18))));
 
   $effect(() => {
     const icon = entry.icon;
-    const owner = /^[if]:/.test(entry.id) ? entry.id : (entry as Partial<CatalogBrowseEntry>).variantIds?.[0] ?? entry.id;
-    const displayedPixels = spriteSize;
+    const owner = icon?.ownerId ?? (/^[if]:/.test(entry.id) ? entry.id : (entry as Partial<CatalogBrowseEntry>).variantIds?.[0] ?? entry.id);
+    const displayedPixels = spriteSize * renderScale;
     rendered = undefined;
     if (!icon) return;
     let active = true;
@@ -62,7 +62,7 @@
   .slot.fluid-slot { background-image: url('/assets/machine-ui/slot-fluid.png'); }
   .slot.bare, .slot.frameless { background: none; }
   .bare .atlas-sprite, .bare .sprite {
-    filter: drop-shadow(0 0 1px #e1e7ed80) drop-shadow(0 3px 3px #000b);
+    filter: var(--item-icon-shadow, drop-shadow(0 0 1px #e1e7ed80) drop-shadow(0 3px 3px #000b));
   }
   .selected { filter: drop-shadow(0 0 4px #c6ccd2); transform: translateY(-1px); }
   .sprite {

@@ -1,7 +1,7 @@
 <script lang="ts">
+  import { trackEvent } from './analytics';
   import { onMount } from 'svelte';
-  import CatalogTooltip from './CatalogTooltip.svelte';
-  import TooltipSkeleton from './TooltipSkeleton.svelte';
+  import CatalogTooltipContent from './CatalogTooltipContent.svelte';
   import ItemIcon from './ItemIcon.svelte';
   import { useCatalogEntry } from './catalogEntryLoad.svelte';
   import type { CatalogEntry } from './types';
@@ -17,6 +17,7 @@
   const detail = useCatalogEntry(() => entry.id);
   onMount(() => { dialog.showModal(); return () => { if (opener?.isConnected) opener.focus(); }; });
   function choose(view: 'recipes' | 'usages') {
+    trackEvent('item_action_selected', {item_name:entry.name,view});
     const id = entry.id;
     const destination = navigate;
     close();
@@ -33,9 +34,7 @@
   <button class="close" aria-label="Close item actions" onclick={close}>×</button>
   <div class="item-action-icon"><ItemIcon {entry} size={64} /></div>
   <div class="item-action-info">
-    {#if detail.loading}<TooltipSkeleton />
-    {:else if detail.error}<p role="status">Item info could not be loaded.</p><button class="mc-button" onclick={() => detail.retry()}>Retry</button>
-    {:else}<CatalogTooltip entry={detail.entry ?? entry} />{/if}
+    <CatalogTooltipContent entry={detail.entry ?? entry} loading={detail.loading} error={detail.error} retry={() => detail.retry()} />
   </div>
   <div class="actions">
     <button class="mc-button" onclick={() => choose('recipes')}>Recipes</button>

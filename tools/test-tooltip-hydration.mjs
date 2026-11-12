@@ -27,13 +27,14 @@ try {
   await tile.focus();
   await requestStarted;
   await page.waitForTimeout(200);
-  assert.equal(await page.locator('.floating-tooltip').count(), 0, 'Do not show an unformatted tooltip during detail loading');
+  await page.locator('.floating-tooltip .tooltip-skeleton').waitFor();
+  assert.equal(await page.locator('.floating-tooltip .minecraft-tooltip:not(.tooltip-skeleton)').count(), 0, 'Show a skeleton instead of an unformatted tooltip during detail loading');
   await page.getByRole('link', { name: /Open item catalogue/ }).focus();
   release();
   await page.waitForTimeout(300);
   assert.equal(await page.locator('.floating-tooltip').count(), 0, 'An abandoned hover must not open a late tooltip');
   await tile.focus();
-  await page.locator('.floating-tooltip').waitFor({ timeout: 120000 });
+  await page.locator('.floating-tooltip .minecraft-tooltip:not(.tooltip-skeleton)').waitFor({ timeout: 120000 });
   assert((await page.locator('.floating-tooltip').innerText()).includes(await tile.getAttribute('aria-label')));
   // Moving over the same icon must not tear down the already formatted tooltip.
   for (let step = 0; step < 8; step++) {
@@ -53,7 +54,7 @@ try {
       if (point.y > viewport.height / 2) assert(rect.y + rect.height < point.y, 'Bottom-edge tooltip should flip up');
     }
   }
-  console.log('Tooltip waits for details; cancelled hover stays hidden; cached details reopen; desktop/mobile edge positioning stays in bounds');
+  console.log('Tooltip skeleton appears while loading; cancelled hover stays hidden; cached details reopen; desktop/mobile edge positioning stays in bounds');
   await context.close();
 
   const itemId = 'i:gregtech:gt.blockmachines:262';
@@ -77,7 +78,7 @@ try {
     else { url.searchParams.set('page', 'finder'); if (scenario === 'result') url.searchParams.set('output', itemId); }
     await page.goto(url.href);
     let trigger;
-    const selector = scenario === 'inline' ? '.item-head .minecraft-tooltip' : '.floating-tooltip';
+    const selector = scenario === 'inline' ? '.item-head .minecraft-tooltip:not(.tooltip-skeleton)' : '.floating-tooltip .minecraft-tooltip:not(.tooltip-skeleton)';
     if (scenario === 'picker') {
       await page.getByRole('button', { name: '+ Add input', exact: true }).click();
       const dialog = page.locator('.finder-picker');
@@ -100,7 +101,7 @@ try {
     await started;
     await page.waitForTimeout(250);
     assert.equal(await page.locator(selector).count(), 0, `${scenario}: no uncoloured intermediate tooltip`);
-    if (scenario === 'inline') await page.getByRole('status', { name: 'Loading item tooltip', exact: true }).waitFor();
+    await page.getByRole('status', { name: 'Loading item information', exact: true }).waitFor();
     release();
     await page.locator(selector).waitFor({ timeout: 120000 });
     assert(await page.locator(`${selector} span[class*="fmt-"]`).count() > 0, `${scenario}: colours present on first appearance`);
@@ -113,7 +114,7 @@ try {
       assert(await page.locator('.floating-tooltip span[class*="fmt-"]').count() > 0, 'Selected finder chips share formatted tooltips');
     }
     assert.deepEqual(errors, []);
-    console.log(`${scenario}: delayed metadata stays hidden, first render has colours, no plain-text flash`);
+    console.log(`${scenario}: loading uses the shared skeleton, first content render has colours, no plain-text flash`);
     await context.close();
   }
 } finally { await browser.close(); }

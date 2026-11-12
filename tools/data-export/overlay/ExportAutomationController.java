@@ -185,6 +185,7 @@ public final class ExportAutomationController {
         requireNonEmpty(new File(repository, "nesql-db.script"));
         requireNonEmpty(new File(repository, "image.zip"));
         requireNonEmpty(new File(repository, "browser-nei-special.json"));
+        requireNonEmpty(new File(repository, "browser-quest-items.json"));
     }
 
     private static void requireNonEmpty(File file) throws IOException {

@@ -12,11 +12,18 @@
   import ProjectLinks from './lib/ProjectLinks.svelte';
   import LandingPage from './lib/LandingPage.svelte';
   import RecipeFinder from './lib/RecipeFinder.svelte';
+  import FeatureLink from './lib/FeatureLink.svelte';
+  import QuestBrowser from './lib/questbook/QuestBrowser.svelte';
+  import QuestPreviewLayer from './lib/questbook/QuestPreviewLayer.svelte';
+  import { keyboardModifiers, updateKeyboardModifiers } from './lib/keyboardModifiers.svelte';
+  import QuestVersionPicker from './lib/questbook/QuestVersionPicker.svelte';
+  import { questbook } from './lib/questbook/state.svelte';
   import ItemTouchOverlay from './lib/ItemTouchOverlay.svelte';
   import { clearItemTouch, itemTouchState } from './lib/itemTouch.svelte';
   import type { RecipeConstraints } from './lib/recipeFinder';
   import { DatasetRepository } from './lib/dataset';
   import { provideCatalogEntrySource, useCatalogEntry } from './lib/catalogEntryLoad.svelte';
+  import BackIcon from './lib/BackIcon.svelte';
   import { clearIconSheetCache } from './lib/iconCache';
   import { createSpecialContextEntry } from './lib/specialContext';
   import {
@@ -36,10 +43,10 @@
 
   let datasetLoadSequence = 0;
   let repository = $state<DatasetRepository | null>(null);
-  provideCatalogEntrySource(() => repository);
+  provideCatalogEntrySource(() => questsOpen && questbook.repository ? questbook.repository : repository);
   $effect(() => {
     void repository;
-    void selectedId; void landingOpen; void finderOpen; void detailsOpen; void query;
+    void selectedId; void landingOpen; void finderOpen; void questsOpen; void detailsOpen; void query;
     untrack(() => { clearItemTouch(); itemTouchState.menu = undefined; });
   });
   let datasetVersion = $state('…');
@@ -56,12 +63,25 @@
   }
   let landingOpen = $state(isLanding(new URLSearchParams(location.search)));
   let finderDiscovered = $state(false);
+  let questsOpen = $state(new URLSearchParams(location.search).get('page') === 'quests');
+  let questsDiscovered = $state(false);
+  function showQuests(destination?: { id:string; version:string; chapter?:string }) {
+    const returnTo=location.href;
+    questsDiscovered = true;
+    try { localStorage.setItem('gtnh-quests-discovered', '1'); } catch { /* Optional discovery state. */ }
+    landingOpen = false; finderOpen = false; questsOpen = true; detailsOpen = false; query = ''; recipeQuery = '';
+    if(destination) { questbook.questId=destination.id;questbook.chapterId=destination.chapter ?? ''; }
+    const url=questbook.url(location.href);
+    if(destination) url.searchParams.set('quest-version',destination.version);
+    history.pushState({ route: 'quests', ...(destination ? {questReturnTo:returnTo} : {}) }, '', url);
+  }
   function acknowledgeFinder() {
     finderDiscovered = true;
     try { localStorage.setItem('gtnh-finder-discovered', '1'); } catch { /* Storage is optional. */ }
   }
   function showLanding() {
     landingOpen = true;
+    questsOpen = false;
     finderOpen = false;
     detailsOpen = false;
     query = '';
@@ -149,7 +169,7 @@
     if (!navigationUrlReady) return;
     const linkedItem = new URLSearchParams(location.search).get('item');
     const itemPage = detailsOpen || (!repository && Boolean(linkedItem));
-    const screen = landingOpen ? 'landing' : finderOpen ? finderMode === 'chain' ? 'chain' : 'finder' : itemPage ? 'item' : 'catalog';
+    const screen = landingOpen ? 'landing' : questsOpen ? 'quests' : finderOpen ? finderMode === 'chain' ? 'chain' : 'finder' : itemPage ? 'item' : 'catalog';
     const key = [screen, screen === 'item' ? selectedId || linkedItem : '', screen === 'item' ? mode : ''].join('|');
     if (key !== analyticsPage) {
       analyticsPage = key;
@@ -174,6 +194,7 @@
   });
   function select(id: string, push = true, nextMode: RecipeView = 'recipes') {
     landingOpen = false;
+    questsOpen = false;
     finderOpen = false;
     mode = nextMode;
     selectedId = id;
@@ -219,8 +240,9 @@
   }
 
   function showItemList(clearSearch = false) {
-    const wasFinder = finderOpen || landingOpen;
+    const wasFinder = finderOpen || landingOpen || questsOpen;
     landingOpen = false;
+    questsOpen = false;
     finderOpen = false;
     detailsOpen = false;
     const nextQuery = clearSearch ? '' : query;
@@ -233,6 +255,7 @@
 
   function showFinder(next = finderConstraints) {
     landingOpen = false;
+    questsOpen = false;
     acknowledgeFinder();
     finderOpen = true;
     detailsOpen = false;
@@ -365,6 +388,9 @@
   onMount(() => {
     const params = new URLSearchParams(location.search);
     try { finderDiscovered = localStorage.getItem('gtnh-finder-discovered') === '1'; } catch { /* Storage is optional. */ }
+    try { questsDiscovered = localStorage.getItem('gtnh-quests-discovered') === '1'; } catch { /* Storage is optional. */ }
+    questsOpen = params.get('page') === 'quests';
+    if (questsOpen) { questsDiscovered = true; try { localStorage.setItem('gtnh-quests-discovered', '1'); } catch { /* Optional discovery. */ } }
     landingOpen = isLanding(params);
     finderMode = params.get('finder-mode') === 'chain' ? 'chain' : 'recipes';
     const linkedFinder = finderFromUrl(params);
@@ -380,6 +406,8 @@
     const handlePopState = () => {
       const currentParams = new URLSearchParams(location.search);
       landingOpen = isLanding(currentParams);
+      questsOpen = currentParams.get('page') === 'quests';
+      if (questsOpen) { finderOpen = false; detailsOpen = false; return; }
       finderMode = currentParams.get('finder-mode') === 'chain' ? 'chain' : 'recipes';
       const currentFinder = finderFromUrl(currentParams);
       finderOpen = currentFinder !== null;
@@ -410,7 +438,7 @@
         event.preventDefault();
         const modalInput = document.querySelector<HTMLInputElement>('dialog[open] input');
         if (modalInput) { modalInput.focus(); return; }
-        if (finderOpen || landingOpen) {
+        if (finderOpen || landingOpen || questsOpen) {
           showItemList();
           void tick().then(() => searchInput?.focus());
           return;
@@ -462,9 +490,11 @@
   });
 </script>
 
-<svelte:head><title>{finderOpen ? 'Recipe finder - GT: New Horizons Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GT: New Horizons Recipe Browser` : 'GT: New Horizons Recipe Browser — Your Pocket NEI'}</title></svelte:head>
+<svelte:window onkeydown={updateKeyboardModifiers} onkeyup={updateKeyboardModifiers} onpointermove={updateKeyboardModifiers} onpointerdown={updateKeyboardModifiers} onblur={() => keyboardModifiers.shift = false} />
+<svelte:head><title>{questsOpen ? 'Questbook Browser - GT: New Horizons Recipe Browser' : finderOpen ? 'Recipe finder - GT: New Horizons Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GT: New Horizons Recipe Browser` : 'GT: New Horizons Recipe Browser — Your Pocket NEI'}</title></svelte:head>
 
 <div class="app-shell">
+  <QuestPreviewLayer />
   <AppHeader
     {datasetVersion}
     activeDataset={datasetManager.activeDataset}
@@ -477,15 +507,20 @@
 
   {#if !landingOpen}
   <nav class="primary-nav" aria-label="Main navigation">
-    <a class="mc-button" href={catalogUrl(navigationBase).href} aria-current={!finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); showItemList(); }}>Items</a>
-    <a class="mc-button" href={finderUrl(navigationBase, finderConstraints, finderMode).href} aria-current={finderOpen ? 'page' : undefined} onclick={(event) => { event.preventDefault(); acknowledgeFinder(); if (!finderOpen) showFinder(); }}>Recipe Finder{#if !finderDiscovered}<span class="finder-blip" aria-hidden="true"></span>{/if}</a>
+    <FeatureLink label="Items" icon={`${import.meta.env.BASE_URL}assets/navigation/items.png`} href={catalogUrl(navigationBase).href} active={!finderOpen && !questsOpen} onclick={() => showItemList()} />
+    <FeatureLink label="Recipe Finder" shortLabel="Finder" icon={`${import.meta.env.BASE_URL}assets/navigation/finder.png`} href={finderUrl(navigationBase, finderConstraints, finderMode).href} active={finderOpen} undiscovered={!finderDiscovered} onclick={() => { acknowledgeFinder(); if (!finderOpen) showFinder(); }} />
+    <FeatureLink label="Questbook Browser" shortLabel="Quests" icon={`${import.meta.env.BASE_URL}assets/navigation/quests.png`} href={questbook.url(navigationBase).href} active={questsOpen} undiscovered={!questsDiscovered} onclick={() => { if (!questsOpen) showQuests(); }} />
+    {#if questsOpen}<QuestVersionPicker recipeVersion={datasetVersion} />{/if}
   </nav>
 
   {/if}
 
   {#if landingOpen}
     <LandingPage exactEntries={entryById} families={repository?.browseEntries ?? []} loading={datasetStatus === 'loading'} progress={datasetProgress} itemsUrl={catalogUrl(navigationBase).href} finderHref={finderUrl(navigationBase, { inputs: [], outputs: [] }).href}
+      questHref={questbook.url(navigationBase).href} {finderDiscovered} {questsDiscovered} openQuests={showQuests}
       openItems={() => showItemList(true)} openFinder={() => showFinder({ inputs: [], outputs: [] })} navigate={(id, view) => select(id, true, view)} />
+  {:else if questsOpen}
+    <QuestBrowser recipeVersion={datasetVersion} navigate={(id, view) => { if (datasetStatus === 'ready' && !entryById.has(id)) return false; select(id, true, view); return true; }} />
   {:else if datasetStatus !== 'ready'}
     <ApplicationState
       status={datasetStatus}
@@ -518,7 +553,7 @@
 
     <section class:mobile-visible={detailsOpen} class="detail">
       <button class="mc-button back" onclick={() => showItemList()}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14 6-6 6 6 6"></path></svg>
+        <BackIcon />
         Back to items
       </button>
       <ItemOverview
@@ -543,6 +578,7 @@
         {setMode}
         setSpecialNavigation={setSpecialNavigation}
         navigate={(id, view) => select(id, true, view)}
+        openQuest={(id, version, chapter) => showQuests({id,version,chapter})}
       />
     </section>
   </main>
@@ -583,5 +619,4 @@
     .finder-mobile-footer { display:flex; flex:none; justify-content:center; padding:4px 12px; border-top:1px solid #343a42; }
   }
   .primary-nav { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; font-weight: 600; }
-  .finder-blip { width: 6px; height: 6px; margin-left: 8px; border-radius: 50%; background: #b7a672; opacity: .55; box-shadow: 0 0 7px #b7a64266; }
 </style>

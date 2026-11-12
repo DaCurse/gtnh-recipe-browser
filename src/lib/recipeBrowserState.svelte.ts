@@ -1,3 +1,4 @@
+import { trackEvent } from './analytics';
 import { onMount, untrack } from 'svelte';
 import { recipeViewCount } from './recipeCounts';
 import { loadOreDiagramIndex, oreDiagramMatches, oreSceneBounds, type OreDiagramIndex, type OreScene } from './oreDiagram';
@@ -12,7 +13,8 @@ import {
   specialSearchText,
   type SpecialLoadProgress,
   type SpecialRecord,
-  type SpecialViewType
+  type SpecialViewType,
+  type SpecialRepository
 } from './specialData';
 import type { DatasetRepository } from './dataset';
 import type { CatalogEntry, Recipe, RecipeView, SpecialScope } from './types';
@@ -27,6 +29,7 @@ interface RecipeBrowserContext {
   specialType?: () => string;
   specialScope?: () => SpecialScope;
   onSpecialNavigation?: (specialType: string, specialScope: SpecialScope) => void;
+  extraSpecial?: () => SpecialRepository | undefined;
 }
 
 export class RecipeBrowserState {
@@ -214,7 +217,7 @@ export class RecipeBrowserState {
     const repository = specialRepository(this.context.repository());
     const serviceIcons = new Map((repository.specialServiceIcons ?? []).map((icon) => [icon.id, icon]));
     const mode = this.context.mode();
-    return [...(repository.specialViewTypes ?? [])]
+    return [...(repository.specialViewTypes ?? []), ...(this.context.extraSpecial?.()?.specialViewTypes ?? [])]
       .map((viewType) => ({
         ...viewType,
         iconId: (viewType.id === 'gt-ore-processing' ? this.oreDiagramIndex?.iconId : undefined) ?? viewType.iconId
@@ -236,6 +239,11 @@ export class RecipeBrowserState {
   get specialTypeLabel(): string {
     const selected = this.specialTypes.find((viewType) => viewType.id === this.specialType);
     return selected ? specialLabel(selected) : 'special data';
+  }
+
+  specialProvider(viewType = this.specialType): SpecialRepository {
+    const extra=this.context.extraSpecial?.();
+    return extra?.specialViewTypes?.some(type=>type.id===viewType) ? extra : specialRepository(this.context.repository());
   }
 
   get visibleSpecialRecords(): SpecialRecord[] {
@@ -311,6 +319,8 @@ export class RecipeBrowserState {
   specialCount(view: RecipeView, viewType = this.specialType): number | undefined {
     if (!viewType) return undefined;
     const selected = this.context.selected();
+    const extra=this.context.extraSpecial?.();
+    if(extra?.specialViewTypes?.some(type=>type.id===viewType)) return extra.countFor?.(selected.id,view,viewType) ?? 0;
     if (viewType === 'gt-ore-processing') return oreDiagramMatches(this.oreDiagramIndex, selected, view).length;
     const counts = view === 'recipes' ? selected.specialProductionCounts : selected.specialUsageCounts;
     if (counts) return counts[viewType] ?? 0;
@@ -485,7 +495,7 @@ export class RecipeBrowserState {
         this.specialAbortController = specialController;
         const cacheEntryId = specialScope === 'all' ? 'all' : entryId;
         const cacheKey = `${repository.datasetId}:${cacheEntryId}:${view}:${specialType}`;
-        const specialRepo = specialRepository(repository);
+        const specialRepo = this.specialProvider(specialType);
         const allLoader = specialRepo.specialForAll ?? specialRepo.specialRecordsForAll;
         const itemLoader = specialRepo.specialFor ?? specialRepo.specialRecordsFor;
         const loader = specialScope === 'all' ? allLoader : itemLoader;
@@ -543,6 +553,7 @@ export class RecipeBrowserState {
           };
           this.specialTotalShards = Math.max(this.specialTotalShards, 1);
           this.specialLoadedShards = this.specialTotalShards;
+          trackEvent('special_viewed', {special_type:specialType,scope:specialScope,view,item_name:this.context.selected().name,dataset_version:repository.gtnhVersion,record_count:ordered.length});
         }
         return;
       }

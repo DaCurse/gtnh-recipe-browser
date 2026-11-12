@@ -1,5 +1,7 @@
 <script lang="ts">
   import MinecraftText from './MinecraftText.svelte';
+  import NbtTree from './NbtTree.svelte';
+  import { keyboardModifiers } from './keyboardModifiers.svelte';
   import type { CatalogEntry } from './types';
 
   let {
@@ -35,6 +37,7 @@
       {#each notes as note, index (`${index}:${note}`)}<div>{note}</div>{/each}
     </div>
   {/if}
+  {#if keyboardModifiers.shift && entry.showNbt && entry.nbt}<NbtTree source={entry.nbt} />{/if}
   {#if entry.oreDictionaryIds?.length}
     <div class="tooltip-ore-dictionaries">
       <span>Ore dictionary</span>
