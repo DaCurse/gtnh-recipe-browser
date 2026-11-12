@@ -38,6 +38,7 @@ The following event/property combinations support further saved insights:
 | --- | --- | --- |
 | How many visits and visitors? | Web Analytics using `$pageview` | Date, referrer, device; `screen` for app section |
 | What gets searched? | `catalog_search` total events | `query`; filter `search_context` to `catalog`, `finder_input`, or `finder_output` |
+| Is the search guide used? | `search_help_opened` | `search_context` |
 | Which items get inspected? | `item_viewed` | `item_name`, optionally `item_id`, `view`, `dataset_version` |
 | Which finder ingredients are popular? | `finder_ingredient_added` | `ingredient_name`, `side`, `mode` |
 | What finder queries are completed? | `recipe_search_completed` | `input_names`, `output_names`, `result_count`, `cached` |

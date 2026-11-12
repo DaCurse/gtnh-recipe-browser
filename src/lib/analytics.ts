@@ -7,7 +7,7 @@ const EVENT_NAMES = ['$pageview', 'dataset_loaded', 'dataset_load_failed', 'reci
   'questbook_loaded', 'questbook_load_failed', 'quest_version_changed', 'quest_chapter_viewed',
   'quest_viewed', 'quest_search', 'quest_link_opened', 'quest_touch_preview',
   'special_viewed', 'item_touch_interaction', 'item_action_selected',
-  'catalog_search', 'item_viewed', 'finder_ingredient_added', 'data_export_clicked', 'data_export_completed', 'data_export_failed'] as const;
+  'catalog_search', 'search_help_opened', 'item_viewed', 'finder_ingredient_added', 'data_export_clicked', 'data_export_completed', 'data_export_failed'] as const;
 type EventName = (typeof EVENT_NAMES)[number];
 const EVENTS: ReadonlySet<string> = new Set(EVENT_NAMES);
 const MAX_PENDING_EVENTS = 50;

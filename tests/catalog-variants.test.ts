@@ -244,7 +244,7 @@ describe('GregTech ore material families', () => {
     });
   });
 
-  it('matches host-stone terms and mod filters without weakening item masks', () => {
+  it('matches host-stone terms and mod filters', () => {
     const document = buildCatalogSearchDocument({
       id: 'variants:iron',
       name: oreFixture.material.name,
@@ -253,8 +253,7 @@ describe('GregTech ore material families', () => {
         id: 'i:gregtech:gt.blockores7:4032',
         name: oreFixture.material.name,
         mod: 'gregtech',
-        variantLabel: 'Deepslate',
-        searchMask: querySearchMask(oreFixture.material.name)
+        variantLabel: 'Deepslate'
       }]
     });
 

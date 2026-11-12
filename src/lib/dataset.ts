@@ -227,27 +227,46 @@ export class DatasetRepository {
   readonly browseEntries: CatalogBrowseEntry[];
   get catalogEntriesById(): ReadonlyMap<string, CatalogEntry> { return this.entriesById; }
   readonly browseEntriesById: ReadonlyMap<string, CatalogBrowseEntry>;
-  private searchDocumentsPromise?: Promise<CatalogSearchDocument[]>;
+  private readonly searchDocumentsPromises = new Map<boolean, Promise<CatalogSearchDocument[]>>();
   private readonly runtimeCacheKey: string;
   private preparedCatalog?: PreparedCatalog;
 
   /** Search text is loaded and normalized only once a search is requested. */
-  loadSearchDocuments(): Promise<CatalogSearchDocument[]> {
-    return this.searchDocumentsPromise ??= (async () => {
-      const cached = await getPreparedSearch(this.datasetId, this.runtimeCacheKey, this.browseEntries.length);
+  loadSearchDocuments(includeOreDictionary = false): Promise<CatalogSearchDocument[]> {
+    const existing = this.searchDocumentsPromises.get(includeOreDictionary);
+    if (existing) return existing;
+    const cacheKey = `${this.runtimeCacheKey}:search-syntax-v1:${includeOreDictionary ? 'ore' : 'base'}`;
+    const pending = (async () => {
+      const cached = await getPreparedSearch(this.datasetId, cacheKey, this.browseEntries.length);
       if (cached) {
         return cached;
       }
       await yieldToBrowser();
+      const oreDictionaryIds = new Map<string, string[]>();
+      if (includeOreDictionary) {
+        await mapProgressively(this.manifest.ingredientGroupShards, 3, async descriptor => {
+          for (const group of await this.groupShard(descriptor)) {
+            if (!group.id.startsWith('o:')) continue;
+            for (const itemId of group.itemIds) {
+              const names = oreDictionaryIds.get(itemId);
+              if (names) names.push(group.id);
+              else oreDictionaryIds.set(itemId, [group.id]);
+            }
+          }
+        });
+      }
       const documents: CatalogSearchDocument[] = [];
       for (let start = 0; start < this.browseEntries.length; start += 500) {
-        documents.push(...buildCatalogSearchDocuments(this.browseEntries.slice(start, start + 500), this.entries, this.entriesById));
+        documents.push(...buildCatalogSearchDocuments(this.browseEntries.slice(start, start + 500), this.entries, this.entriesById, oreDictionaryIds));
         await yieldToBrowser();
       }
-      void cachePreparedSearch(this.datasetId, this.runtimeCacheKey, documents)
+      void cachePreparedSearch(this.datasetId, cacheKey, documents)
         .catch((error: unknown) => console.warn('Unable to cache prepared search', error));
       return documents;
     })();
+    this.searchDocumentsPromises.set(includeOreDictionary, pending);
+    void pending.catch(() => this.searchDocumentsPromises.delete(includeOreDictionary));
+    return pending;
   }
   readonly datasetId: string;
   readonly gtnhVersion: string;

@@ -9,9 +9,10 @@
   import ProjectLinks from './ProjectLinks.svelte';
   import VariantPicker from './VariantPicker.svelte';
   import { resolveCatalogVariant } from './catalogVariants';
-  import type { CatalogSearchDocument } from './catalogSearch';
+  import { buildCatalogSearchDocuments, catalogDocumentMatches, parseCatalogSearchQuery, scoreCatalogDocument, type CatalogSearchDocument } from './catalogSearch';
+  import HighlightedSearchInput from './HighlightedSearchInput.svelte';
+  import SearchGuide from './SearchGuide.svelte';
   import { oreCycle } from './oreCycle';
-  import { normalize } from './search';
   import type { CatalogBrowseEntry, CatalogEntry } from './types';
 
   let {
@@ -36,7 +37,7 @@
     catalog: CatalogBrowseEntry[];
     entryById: ReadonlyMap<string, CatalogBrowseEntry>;
     exactEntryById: ReadonlyMap<string, CatalogEntry>;
-    loadSearchDocuments?: () => Promise<CatalogSearchDocument[]>;
+    loadSearchDocuments?: (includeOreDictionary: boolean) => Promise<CatalogSearchDocument[]>;
     sidebarWidth: number;
     sidebarResizing: boolean;
     select: (id: string) => void;
@@ -51,6 +52,7 @@
   let searchReady = $state(false);
   let searchInitProgress = $state(0);
   let searchWorkerError = $state('');
+  let searchLoadError = $state('');
   let fallbackIds = $state<string[]>([]);
   let searchWorker = $state<Worker | null>(null);
   let searchRequest = 0;
@@ -78,6 +80,10 @@
 
   const searchRequested = $derived(query.trim().length > 0);
   let initializedCatalog: CatalogBrowseEntry[] | undefined;
+  let initializedOreDictionary = false;
+  const needsOreDictionary = $derived(parseCatalogSearchQuery(query).needsOreDictionary);
+  let guideOpen = $state(false);
+  let guideOpener = $state<HTMLButtonElement>();
   let reportedSearch = '';
   $effect(() => {
     const term = analyticsSearch(query);
@@ -111,8 +117,10 @@
     const worker = searchWorker;
     const nextCatalog = searchableCatalog;
     const getDocuments = loadSearchDocuments;
-    if (!worker || !searchRequested || initializedCatalog === nextCatalog) return;
+    const includeOreDictionary = needsOreDictionary || (initializedCatalog === nextCatalog && initializedOreDictionary);
+    if (!worker || !searchRequested || (initializedCatalog === nextCatalog && initializedOreDictionary === includeOreDictionary)) return;
     initializedCatalog = nextCatalog;
+    initializedOreDictionary = includeOreDictionary;
     const generation = ++searchGeneration;
     searchRequest += 1;
     const nextFallbackIds = nextCatalog.map((entry) => entry.id);
@@ -131,7 +139,7 @@
       return;
     }
     const initialize = async () => {
-      const nextDocuments = await getDocuments?.();
+      const nextDocuments = await getDocuments?.(includeOreDictionary);
       for (let start = 0; start < nextCatalog.length; start += 1_000) {
         if (generation !== searchGeneration || worker !== searchWorker) return;
         const end = Math.min(start + 1_000, nextCatalog.length);
@@ -159,7 +167,7 @@
                   mod: member.mod,
                   variantLabel: entry.variantLabels?.[id],
                   rawTooltip: member.rawTooltip,
-                  searchMask: [...(member.searchMask ?? [])]
+                  oreDictionaryIds: member.oreDictionaryIds
                 };
               })
             })),
@@ -173,7 +181,9 @@
         worker.postMessage({ type: 'finish', generation });
       }
     };
-    void initialize().catch((error) => handleSearchWorkerFailure(error));
+    void initialize().catch(error => {
+      if (generation === searchGeneration && worker === searchWorker) handleSearchWorkerFailure(error);
+    });
   });
 
   $effect(() => {
@@ -198,36 +208,42 @@
   });
 
   async function fallbackSearch(nextQuery: string, request: number): Promise<void> {
-    const terms = normalize(nextQuery).split(/\s+/).filter(Boolean);
-    if (terms.length === 0) {
-      const ids = searchableCatalog.map((entry) => entry.id);
-      fallbackIds = ids;
-      searchIds = ids.slice(0, 60);
-      searchTotal = ids.length;
+    searchLoadError = '';
+    searchPending = true;
+    try {
+      await buildFallbackResults(nextQuery, request);
+    } catch (error) {
+      if (request !== searchRequest) return;
+      console.error('Catalog fallback search failed', error);
+      searchLoadError = 'Search could not load. Check your connection and try again.';
+      searchIds = [];
+      searchTotal = 0;
       searchPending = false;
       searchLoadingMore = false;
-      return;
     }
-    const matches: string[] = [];
-    for (let start = 0; start < searchableCatalog.length; start += 1_000) {
-      const end = Math.min(start + 1_000, searchableCatalog.length);
-      for (const entry of searchableCatalog.slice(start, end)) {
-        const haystack = normalize([
-          entry.id,
-          entry.name,
-          entry.mod,
-          entry.rawTooltip ?? ''
-        ].join(' '));
-        if (terms.every((term) => haystack.includes(term))) matches.push(entry.id);
-      }
-      if (end < searchableCatalog.length) {
-        await new Promise((resolve) => window.setTimeout(resolve, 0));
-        if (request !== searchRequest) return;
-      }
-    }
+  }
+
+  async function buildFallbackResults(nextQuery: string, request: number): Promise<void> {
+    const expression = parseCatalogSearchQuery(nextQuery);
+    const documents = loadSearchDocuments
+      ? await loadSearchDocuments(expression.needsOreDictionary)
+      : buildCatalogSearchDocuments(searchableCatalog, [...exactEntryById.values()], exactEntryById);
     if (request !== searchRequest) return;
-    fallbackIds = matches;
-    searchIds = matches.slice(0, 60);
+    const matches: Array<{ id: string; name: string; score: number }> = [];
+    for (let start = 0; start < documents.length; start += 1_000) {
+      for (const document of documents.slice(start, start + 1_000)) {
+        if (catalogDocumentMatches(document, expression)) {
+          matches.push({ id: document.id, name: document.name, score: scoreCatalogDocument(document, expression) });
+        }
+      }
+      await new Promise((resolve) => window.setTimeout(resolve, 0));
+      if (request !== searchRequest) return;
+    }
+    matches.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    const ids = matches.map(match => match.id);
+    if (request !== searchRequest) return;
+    fallbackIds = ids;
+    searchIds = ids.slice(0, 60);
     searchTotal = matches.length;
     searchPending = false;
     searchLoadingMore = false;
@@ -239,7 +255,6 @@
     searchReady = false;
     searchPending = false;
     searchLoadingMore = false;
-    void fallbackSearch(query, ++searchRequest);
   }
 
   $effect(() => {
@@ -415,11 +430,11 @@
       <circle cx="10.5" cy="10.5" r="6.5"></circle>
       <path d="m15.5 15.5 4 4"></path>
     </svg>
-    <input
-      bind:this={searchInput}
+    <HighlightedSearchInput
+      bind:input={searchInput}
       bind:value={query}
       placeholder="Search items, fluids, or @mod…"
-      aria-label="Search catalog"
+      label="Search catalog"
     />
     {#if query}
       <button class="clear-search" onclick={() => query = ''} aria-label="Clear search">
@@ -434,10 +449,15 @@
     <span>{searchPending && !searchReady
       ? `PREPARING ITEMS & FLUIDS${searchInitProgress ? ` · ${searchInitProgress}%` : ''}`
       : `${searchTotal.toLocaleString()} ITEMS & FLUIDS`}</span>
-    {#if searchPending}<span class="mini-spinner" aria-label="Searching"></span>{/if}
+    <span class="search-tools">
+      {#if searchPending}<span class="mini-spinner" aria-label="Searching"></span>{/if}
+      <button class="search-help" bind:this={guideOpener} onclick={() => { guideOpen = true; trackEvent('search_help_opened', { search_context: searchContext }); }}>Search syntax</button>
+    </span>
   </div>
   {#if searchWorkerError}
-    <div class="search-fallback-note">{searchWorkerError}</div>
+    <div class="search-fallback-note" role="status">{searchLoadError || searchWorkerError}
+      {#if searchLoadError}<button onclick={() => { void fallbackSearch(query, ++searchRequest); }}>Retry</button>{/if}
+    </div>
   {/if}
   <div class="item-grid">
     {#if searchPending && visibleEntries.length === 0}
@@ -549,6 +569,13 @@
 {/if}
 
 <style>
+  .search-tools { display:flex; align-items:center; gap:8px; }
+  .search-help { border:0; background:none; padding:7px 0 7px 7px; color:#959a9f; font-size:11px; font-weight:400; white-space:nowrap; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+  .search-help:hover { color:#d1d5d9; }
+  .search-fallback-note button { margin-left:6px; border:0; background:none; color:inherit; font:inherit; text-decoration:underline; cursor:pointer; }
+
   .catalog-empty { grid-column:1/-1; padding:60px 20px; text-align:center; color:#858a8f; }
   .catalog-empty b, .catalog-empty span { display:block; margin:8px; }
 </style>
+
+{#if guideOpen}<SearchGuide close={() => guideOpen = false} opener={guideOpener} />{/if}

@@ -544,7 +544,7 @@
       catalog={repository.browseEntries}
       entryById={repository.browseEntriesById}
       exactEntryById={entryById}
-      loadSearchDocuments={() => repository!.loadSearchDocuments()}
+      loadSearchDocuments={(ore) => repository!.loadSearchDocuments(ore)}
       bind:sidebarWidth
       bind:sidebarResizing
       select={(id) => select(id)}

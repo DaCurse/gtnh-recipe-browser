@@ -1,6 +1,6 @@
 import { minecraftHtmlPlainText } from './minecraftText';
-import { normalize } from './search';
-import { querySearchMask, searchMaskContains } from './searchMask';
+import { normalize } from './searchNormalization';
+import { parseSearchExpression, searchExpressionMatches, searchRankingTerms, type SearchExpression } from './searchSyntax';
 import type { CatalogBrowseEntry, CatalogEntry } from './types';
 
 interface CatalogSearchMember {
@@ -9,7 +9,7 @@ interface CatalogSearchMember {
   mod: string;
   variantLabel?: string;
   rawTooltip?: string | null;
-  searchMask?: number[];
+  oreDictionaryIds?: readonly string[];
 }
 
 export interface CatalogSearchEntry {
@@ -25,7 +25,8 @@ interface CatalogSearchMemberDocument {
   normalizedMod: string;
   normalizedVariantLabel: string;
   normalizedTooltip: string;
-  searchMask: number[];
+  normalizedTooltipBody: string;
+  normalizedOreNames: string[];
 }
 
 export interface CatalogSearchDocument {
@@ -35,17 +36,15 @@ export interface CatalogSearchDocument {
   members: CatalogSearchMemberDocument[];
 }
 
-export interface CatalogSearchQuery {
-  tokens: string[];
+export interface CatalogSearchQuery extends SearchExpression {
   terms: string[];
-  termMasks: number[][];
-  modFilters: string[];
 }
 
 function buildCatalogSearchEntries(
   catalog: readonly CatalogBrowseEntry[],
   exactCatalog: readonly CatalogEntry[],
-  exactById: ReadonlyMap<string, CatalogEntry> = new Map(exactCatalog.map((entry) => [entry.id, entry]))
+  exactById: ReadonlyMap<string, CatalogEntry> = new Map(exactCatalog.map((entry) => [entry.id, entry])),
+  oreDictionaryIds?: ReadonlyMap<string, readonly string[]>
 ): CatalogSearchEntry[] {
   return catalog
     .filter((entry) => entry.searchable !== false)
@@ -62,7 +61,7 @@ function buildCatalogSearchEntries(
           mod: member.mod,
           variantLabel: entry.variantLabels?.[member.id],
           rawTooltip: member.rawTooltip,
-          searchMask: [...(member.searchMask ?? [])]
+          oreDictionaryIds: oreDictionaryIds?.get(member.id) ?? member.oreDictionaryIds
         }))
     }));
 }
@@ -70,9 +69,10 @@ function buildCatalogSearchEntries(
 export function buildCatalogSearchDocuments(
   catalog: readonly CatalogBrowseEntry[],
   exactCatalog: readonly CatalogEntry[],
-  exactById?: ReadonlyMap<string, CatalogEntry>
+  exactById?: ReadonlyMap<string, CatalogEntry>,
+  oreDictionaryIds?: ReadonlyMap<string, readonly string[]>
 ): CatalogSearchDocument[] {
-  return buildCatalogSearchEntries(catalog, exactCatalog, exactById).map(buildCatalogSearchDocument);
+  return buildCatalogSearchEntries(catalog, exactCatalog, exactById, oreDictionaryIds).map(buildCatalogSearchDocument);
 }
 
 export function buildCatalogSearchDocument(entry: CatalogSearchEntry): CatalogSearchDocument {
@@ -80,47 +80,40 @@ export function buildCatalogSearchDocument(entry: CatalogSearchEntry): CatalogSe
     id: entry.id,
     name: entry.name,
     normalizedName: normalize(entry.name),
-    members: entry.members.map((member) => ({
-      normalizedId: normalize(member.id),
-      normalizedName: normalize(member.name),
-      normalizedMod: normalize(member.mod),
-      normalizedVariantLabel: normalize(member.variantLabel ?? ''),
-      normalizedTooltip: normalize(minecraftHtmlPlainText(member.rawTooltip)),
-      searchMask: member.searchMask ?? []
-    }))
+    members: entry.members.map((member) => {
+      const tooltip = minecraftHtmlPlainText(member.rawTooltip);
+      const lines = tooltip.split('\n');
+      const body = normalize(lines[0] ?? '') === normalize(member.name) ? lines.slice(1).join('\n') : tooltip;
+      return {
+        normalizedId: normalize(member.id),
+        normalizedName: normalize(member.name),
+        normalizedMod: normalize(member.mod),
+        normalizedVariantLabel: normalize(member.variantLabel ?? ''),
+        normalizedTooltip: normalize(tooltip),
+        normalizedTooltipBody: normalize(body),
+        normalizedOreNames: (member.oreDictionaryIds ?? []).map(id => normalize(id.replace(/^o:/, '')))
+      };
+    })
   };
 }
 
 export function parseCatalogSearchQuery(query: string): CatalogSearchQuery {
-  const tokens = normalize(query).split(/\s+/).filter(Boolean);
-  const modFilters = tokens.filter((item) => item.startsWith('@')).map((item) => item.slice(1));
-  const terms = tokens.filter((item) => !item.startsWith('@'));
-  return {
-    tokens,
-    terms,
-    termMasks: terms.map(querySearchMask),
-    modFilters
-  };
-}
-
-function memberMatches(member: CatalogSearchMemberDocument, query: CatalogSearchQuery): boolean {
-  if (!query.modFilters.every((filter) => member.normalizedMod.includes(filter))) return false;
-  return query.terms.every((term, index) => {
-    if (
-      member.normalizedId.includes(term)
-      || member.normalizedMod.includes(term)
-      || member.normalizedVariantLabel.includes(term)
-    ) return true;
-    if (member.searchMask.length > 0 && !searchMaskContains(member.searchMask, query.termMasks[index]!)) return false;
-    return member.normalizedName.includes(term) || member.normalizedTooltip.includes(term);
-  });
+  const expression = parseSearchExpression(query);
+  return { ...expression, terms: searchRankingTerms(expression) };
 }
 
 export function catalogDocumentMatches(
   entry: CatalogSearchDocument,
   query: CatalogSearchQuery
 ): boolean {
-  return query.tokens.length === 0 || entry.members.some((member) => memberMatches(member, query));
+  return entry.members.some(member => searchExpressionMatches(query, {
+    any: [member.normalizedId, member.normalizedName, member.normalizedMod,
+      member.normalizedVariantLabel, member.normalizedTooltip],
+    mod: [member.normalizedMod],
+    tooltip: [member.normalizedTooltipBody],
+    ore: member.normalizedOreNames,
+    identifier: [member.normalizedId]
+  }));
 }
 
 export function scoreCatalogDocument(

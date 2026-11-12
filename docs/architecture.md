@@ -8,7 +8,7 @@ The browser is organized around feature-owned state and a small application coor
 
 Feature views live in `src/lib/*.svelte`:
 
-- `CatalogPane.svelte` owns catalog search, incremental result paging, tooltips, and sidebar resizing.
+- `CatalogPane.svelte` owns catalog search, incremental result paging, tooltips, and sidebar resizing. Shared NEI-style syntax, native-input highlighting, help, and lazy ore-dictionary search are documented in [`search.md`](search.md).
 - `catalogEntryLoad.svelte.ts` shares complete-entry readiness and cancellation between selected item details and every floating tooltip through repository context; see [`tooltip-loading.md`](tooltip-loading.md).
 - `itemTouch.svelte.ts` coordinates one touch inspection across navigable item surfaces. The action captures a displayed entry on pointer-down, freezes its slot until dismissal, and separates first-tap preview, second-tap activation, and hold actions. `ItemTouchOverlay.svelte` owns dismissal and the shared action dialog; feature components supply their existing group/machine destinations. Finder selection controls bypass these navigation gestures.
 - `landingShowcase.ts` samples catalogue families within six randomly selected base sprite sheets per landing mount. Cycling members stay within that sheet mix; optional high-resolution companions retain their normal loading behavior.
