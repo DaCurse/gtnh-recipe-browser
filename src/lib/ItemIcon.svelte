@@ -1,31 +1,44 @@
 <script lang="ts">
+  import { untrack } from 'svelte';
   import IconSkeleton from './IconSkeleton.svelte';
-  import { resolveRenderedIcon, supportsHighResolutionIcon } from './highResolutionIcons';
-  import { resolveCachedIconSheetUrl } from './iconCache';
+  import { resolveRenderedIcon, supportsHighResolutionIcon, cachedRenderedIcon, iconIdentity, iconRenderKey } from './highResolutionIcons';
+  import { resolveCachedIconSheetUrl, decodeIconSheetUrl } from './iconCache';
   import type { RenderedIcon } from './highResolutionIcons';
   import type { CatalogBrowseEntry, CatalogEntry } from './types';
   let { entry, size = 48, selected = false, bare = false, frame = true, renderScale = 1 }: { entry: CatalogEntry; size?: number; selected?: boolean; bare?: boolean; frame?: boolean; renderScale?: number } = $props();
-  let rendered = $state<RenderedIcon>();
+  let presentation = $state.raw<{ identity:string; value:RenderedIcon }>();
   const spriteSize = $derived(Math.max(1, size - 2 * Math.round(size * (bare ? 0.075 : 1 / 18))));
+  const owner = $derived(entry.icon?.ownerId ?? (/^[if]:/.test(entry.id) ? entry.id : (entry as Partial<CatalogBrowseEntry>).variantIds?.[0] ?? entry.id));
+  const identity = $derived(entry.icon ? iconIdentity(entry.icon,owner) : '');
+  const requestKey = $derived(entry.icon ? iconRenderKey(entry.icon,owner,spriteSize * renderScale) : '');
+  const rendered = $derived(presentation?.identity === identity ? presentation.value : cachedRenderedIcon(requestKey));
 
   $effect(() => {
-    const icon = entry.icon;
-    const owner = icon?.ownerId ?? (/^[if]:/.test(entry.id) ? entry.id : (entry as Partial<CatalogBrowseEntry>).variantIds?.[0] ?? entry.id);
-    const displayedPixels = spriteSize * renderScale;
-    rendered = undefined;
+    const key = requestKey;
+    const currentIdentity = identity;
+    const [icon, ownerId, displayedPixels, previous] = untrack(() => [entry.icon,owner,spriteSize * renderScale,presentation] as const);
     if (!icon) return;
-    let active = true;
-    if (supportsHighResolutionIcon(icon,displayedPixels)) {
-      void resolveCachedIconSheetUrl(icon).then(url=>{
-        if (active && url && !rendered) rendered={url,index:icon.index,columns:icon.columns,resolution:32};
-      });
+    const ready = cachedRenderedIcon(key);
+    if (ready && (!previous || previous.identity !== currentIdentity || ready.resolution >= previous.value.resolution)) {
+      presentation = {identity:currentIdentity,value:ready};
     }
-    void resolveRenderedIcon(icon,owner,displayedPixels).then((value) => {
-      if (active) rendered = value;
-    });
-    return () => {
-      active = false;
-    };
+    if (ready?.resolution === 64 || previous?.identity === currentIdentity && previous.value.resolution === 64) return;
+    let active = true;
+    // Cached base sheets may appear once on a cold load. Never replace a
+    // displayed sprite with a skeleton or downgrade an already sharp sprite.
+    if (supportsHighResolutionIcon(icon,displayedPixels) && !ready) {
+      void resolveCachedIconSheetUrl(icon).then(async url => {
+        if (!url) return;
+        await decodeIconSheetUrl(url);
+        if (active && !untrack(() => presentation?.identity === currentIdentity)) {
+          presentation = {identity:currentIdentity,value:{url,index:icon.index,columns:icon.columns,resolution:32}};
+        }
+      }).catch(() => {});
+    }
+    void resolveRenderedIcon(icon,ownerId,displayedPixels).then(value => {
+      if (active) presentation = {identity:currentIdentity,value};
+    }).catch(() => { /* Keep a ready fallback if a sheet is temporarily unavailable. */ });
+    return () => { active = false; };
   });
 </script>
 

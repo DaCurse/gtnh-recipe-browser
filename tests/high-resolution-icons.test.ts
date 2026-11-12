@@ -1,8 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import registry from '../src/lib/generated/high-resolution-icons.json';
-const mocks = vi.hoisted(()=>({fetch:vi.fn(),sheet:vi.fn(),record:vi.fn()}));
+const mocks = vi.hoisted(()=>({fetch:vi.fn(),sheet:vi.fn(),record:vi.fn(),decode:vi.fn(),epoch:vi.fn()}));
 vi.mock('../src/lib/datasetAssets',()=>({fetchVerified:mocks.fetch,decompress:async(bytes:Uint8Array)=>bytes}));
-vi.mock('../src/lib/iconCache',()=>({resolveIconSheetUrl:mocks.sheet}));
+vi.mock('../src/lib/iconCache',()=>({resolveIconSheetUrl:mocks.sheet,decodeIconSheetUrl:mocks.decode,iconSheetCacheEpoch:mocks.epoch}));
 vi.mock('../src/lib/storage',()=>({recordDatasetAsset:mocks.record}));
 const datasetId = Object.keys(registry.releases)[0]!;
 const base = {url:'low.webp',index:7,columns:32,sha256:'c'.repeat(64),bytes:100,encoding:'identity' as const,datasetId};
@@ -11,12 +11,55 @@ let lookup:Record<string,unknown>;
 beforeEach(()=>{
   vi.resetModules();vi.clearAllMocks();vi.stubGlobal('document',{baseURI:'https://example.test/browser/'});
   lookup={schemaVersion:1,datasetId,lowSheet:base.sha256,columns:8,spriteSize:64,pages:[page],cells:{'7':[0,3]},owners:{'i:special:0':[0,4]}};
-  mocks.record.mockResolvedValue(undefined);
+  mocks.record.mockResolvedValue(undefined);mocks.decode.mockResolvedValue(undefined);mocks.epoch.mockReturnValue(0);
   mocks.sheet.mockImplementation(async(icon)=>icon.sha256===page.sha256?'high.webp':'low.webp');
   mocks.fetch.mockImplementation(async(asset)=>new TextEncoder().encode(JSON.stringify(asset.sha256==='a'.repeat(64)?lookup:
     {schemaVersion:1,datasetId,lookups:{[base.sha256]:{sha256:'a'.repeat(64),bytes:150}}})));
 });
 describe('original resolution icon companions',()=>{
+  it('shares a pending decode and exposes only a ready sprite, with stable scale keys',async()=>{
+    let release!:()=>void;
+    mocks.decode.mockReturnValue(new Promise<void>(resolve=>{release=resolve;}));
+    const icons=await import('../src/lib/highResolutionIcons');
+    const key=icons.iconRenderKey(base,'item',42);
+    expect(icons.iconRenderKey({...base},'item',86)).toBe(key);
+    const first=icons.resolveRenderedIcon(base,'item',42);
+    expect(icons.resolveRenderedIcon({...base},'item',86)).toBe(first);
+    await vi.waitFor(()=>expect(mocks.decode).toHaveBeenCalled());
+    expect(icons.cachedRenderedIcon(key)).toBeUndefined();
+    release();const ready=await first;
+    expect(icons.cachedRenderedIcon(key)).toBe(ready);
+    expect(icons.cachedRenderedIcon(icons.iconRenderKey(base,'item',24))).toBe(ready);
+    expect(await icons.resolveRenderedIcon(base,'item',24)).toBe(ready);
+    expect(await icons.resolveRenderedIcon(base,'item',86)).toBe(ready);
+    expect(mocks.sheet).toHaveBeenCalledTimes(1);
+  });
+  it('binds asynchronous results to the requested immutable sprite identity',async()=>{
+    const icons=await import('../src/lib/highResolutionIcons');
+    const mutable={...base};
+    const key=icons.iconRenderKey(mutable,'item',42);
+    const pending=icons.resolveRenderedIcon(mutable,'item',42);
+    mutable.index=8;
+    const ready=await pending;
+    expect(ready).toMatchObject({resolution:64,index:3});
+    expect(icons.cachedRenderedIcon(key)).toBe(ready);
+    expect(icons.cachedRenderedIcon(icons.iconRenderKey(mutable,'item',42))).toBeUndefined();
+  });
+  it('does not reuse decoded sprites after their object URL cache is cleared',async()=>{
+    const icons=await import('../src/lib/highResolutionIcons');
+    await icons.resolveRenderedIcon(base,'item',42);
+    mocks.epoch.mockReturnValue(1);
+    expect(icons.cachedRenderedIcon(icons.iconRenderKey(base,'item',42))).toBeUndefined();
+    await icons.resolveRenderedIcon(base,'item',42);
+    expect(mocks.sheet).toHaveBeenCalledTimes(2);
+  });
+  it('keeps a decoded base image when a verified HD image cannot decode',async()=>{
+    mocks.decode.mockImplementation(async url=>{if(url==='high.webp') throw new Error('Decode failed');});
+    const icons=await import('../src/lib/highResolutionIcons');
+    expect((await icons.resolveRenderedIcon(base,'item',42)).resolution).toBe(32);
+    expect(icons.cachedRenderedIcon(icons.iconRenderKey(base,'item',42))?.resolution).toBe(32);
+  });
+
   it('uses existing sheets for small icons and unsupported datasets without HD requests',async()=>{
     const {resolveRenderedIcon}=await import('../src/lib/highResolutionIcons');
     expect(await resolveRenderedIcon(base,'item',32)).toEqual({url:'low.webp',index:7,columns:32,resolution:32});

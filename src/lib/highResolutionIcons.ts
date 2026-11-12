@@ -1,6 +1,6 @@
 import releases from './generated/high-resolution-icons.json';
 import { decompress, fetchVerified } from './datasetAssets';
-import { resolveIconSheetUrl } from './iconCache';
+import { resolveIconSheetUrl, decodeIconSheetUrl, iconSheetCacheEpoch } from './iconCache';
 import { recordDatasetAsset } from './storage';
 import type { CatalogEntry } from './types';
 
@@ -15,6 +15,25 @@ const registry:Record<string,Descriptor> = releases.releases;
 export function supportsHighResolutionIcon(icon:NonNullable<CatalogEntry['icon']>,displayedPixels:number):boolean {
   return displayedPixels > 32 && Boolean(icon.sha256 && icon.datasetId && registry[icon.datasetId]);
 }
+type Icon = NonNullable<CatalogEntry['icon']>;
+const readyIcons = new Map<string,RenderedIcon>();
+const iconLoads = new Map<string,Promise<RenderedIcon>>();
+let renderedEpoch = -1;
+function synchronizeCache(): void {
+  const epoch = iconSheetCacheEpoch();
+  if (epoch !== renderedEpoch) { readyIcons.clear(); iconLoads.clear(); renderedEpoch = epoch; }
+}
+export function iconIdentity(icon:Icon,ownerId:string): string {
+  return JSON.stringify([icon.sha256 ?? icon.url,icon.url,icon.index,icon.columns,icon.datasetId,ownerId]);
+}
+export function iconRenderKey(icon:Icon,ownerId:string,displayedPixels:number):string {
+  return `${iconIdentity(icon,ownerId)}:${supportsHighResolutionIcon(icon,displayedPixels) ? 64 : 32}`;
+}
+export function cachedRenderedIcon(key:string):RenderedIcon|undefined {
+  synchronizeCache();
+  return readyIcons.get(key.replace(/:(32|64)$/,':64')) ?? readyIcons.get(key.replace(/:(32|64)$/,':32'));
+}
+
 const jsonLoads = new Map<string,Promise<unknown>>();
 const isDescriptor = (asset:Descriptor) => /^[a-f0-9]{64}$/.test(asset?.sha256)
   && Number.isSafeInteger(asset.bytes) && asset.bytes > 0;
@@ -39,7 +58,7 @@ async function loadJson<T>(asset:Descriptor,datasetId:string):Promise<T> {
 }
 
 /** Original 64px renders are optional, verified companions to an unchanged pack. */
-export async function resolveRenderedIcon(
+async function loadRenderedIcon(
   icon:NonNullable<CatalogEntry['icon']>, ownerId:string, displayedPixels:number
 ):Promise<RenderedIcon> {
   const release = icon.datasetId ? registry[icon.datasetId] : undefined;
@@ -59,6 +78,7 @@ export async function resolveRenderedIcon(
             || !lookup.pages[page]) throw new Error('Invalid high-resolution icon cell');
           const asset = descriptorAsset(lookup.pages[page]!,'identity');
           const url = await resolveIconSheetUrl({ ...asset,datasetId:icon.datasetId },{fallbackToUrl:false});
+          await decodeIconSheetUrl(url);
           return {url,index,columns:8,resolution:64};
         }
       }
@@ -66,5 +86,28 @@ export async function resolveRenderedIcon(
       // Offline/missing/corrupt optional data must never blank an existing icon.
     }
   }
-  return {url:await resolveIconSheetUrl(icon),index:icon.index,columns:icon.columns,resolution:32};
+  const url = await resolveIconSheetUrl(icon);
+  await decodeIconSheetUrl(url);
+  return {url,index:icon.index,columns:icon.columns,resolution:32};
+}
+
+/** Ready sprites are synchronous on remount; concurrent consumers share one upgrade. */
+export function resolveRenderedIcon(source:Icon,ownerId:string,displayedPixels:number):Promise<RenderedIcon> {
+  const icon = {...source};
+  synchronizeCache();
+  const key=iconRenderKey(icon,ownerId,displayedPixels);
+  const ready=cachedRenderedIcon(key);
+  if (ready && (ready.resolution === 64 || !supportsHighResolutionIcon(icon,displayedPixels))) return Promise.resolve(ready);
+  let pending=iconLoads.get(key);
+  if (!pending) {
+    const epoch=renderedEpoch;
+    pending=loadRenderedIcon(icon,ownerId,displayedPixels).then(value=>{
+      if (iconSheetCacheEpoch()===epoch) readyIcons.set(`${iconIdentity(icon,ownerId)}:${value.resolution}`,value);
+      return value;
+    });
+    iconLoads.set(key,pending);
+    const finished=()=>{if(iconLoads.get(key)===pending) iconLoads.delete(key);};
+    void pending.then(finished,finished);
+  }
+  return pending;
 }

@@ -48,6 +48,7 @@
     "test:loot-grids": "node tools/test-loot-grids.mjs",
     "test:special-ui": "node tools/test-special-ui.mjs",
     "test:ore-diagrams": "node tools/test-ore-diagrams.mjs",
+    "test:icon-stability": "node tools/test-icon-stability.mjs",
     "test:landing": "node tools/test-landing.mjs",
     "test:questbook": "node tools/test-questbook.mjs",
     "test:quest-links": "node tools/test-quest-links.mjs",

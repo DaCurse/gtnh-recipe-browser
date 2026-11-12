@@ -11,8 +11,20 @@ beforeEach(()=>{
   vi.spyOn(URL,'createObjectURL').mockReturnValue('blob:icon');
   vi.spyOn(URL,'revokeObjectURL').mockImplementation(()=>{});
 });
-afterEach(()=>vi.restoreAllMocks());
+afterEach(()=>{vi.restoreAllMocks();vi.unstubAllGlobals();});
 describe('optional icon sheet lifecycle',()=>{
+  it('decodes a sheet once for concurrent cells, then drops decode state when cleared',async()=>{
+    const decode=vi.fn().mockResolvedValue(undefined);
+    vi.stubGlobal('Image',class {src='';decode=decode;});
+    const cache=await import('../src/lib/iconCache');
+    const first=cache.decodeIconSheetUrl('blob:decoded');
+    expect(cache.decodeIconSheetUrl('blob:decoded')).toBe(first);
+    await first;expect(decode).toHaveBeenCalledTimes(1);
+    const epoch=cache.iconSheetCacheEpoch();cache.clearIconSheetCache();
+    expect(cache.iconSheetCacheEpoch()).toBeGreaterThan(epoch);
+    await cache.decodeIconSheetUrl('blob:decoded');expect(decode).toHaveBeenCalledTimes(2);
+  });
+
   it('keeps active dataset companions alive even when the base manifest does not list them',async()=>{
     const cache=await import('../src/lib/iconCache');
     await cache.resolveIconSheetUrl(icon,{fallbackToUrl:false});

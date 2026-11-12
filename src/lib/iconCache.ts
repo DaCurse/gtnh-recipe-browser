@@ -6,6 +6,19 @@ const resolvedSheets = new Map<string, Promise<string>>();
 const cachedSheets = new Map<string, Promise<string | undefined>>();
 const sheetOwners = new Map<string,Set<string>>();
 let cacheEpoch = 0;
+const decodedSheets = new Map<string, Promise<void>>();
+export function iconSheetCacheEpoch(): number { return cacheEpoch; }
+/** Share decoding across every cell using a sheet, before exposing it to CSS. */
+export function decodeIconSheetUrl(url: string): Promise<void> {
+  let pending = decodedSheets.get(url);
+  if (!pending) {
+    pending = (async () => { const image = new Image(); image.src = url; await image.decode(); })();
+    decodedSheets.set(url,pending);
+    void pending.catch(() => { if (decodedSheets.get(url) === pending) decodedSheets.delete(url); });
+  }
+  return pending;
+}
+
 function registerOwner(hash:string,datasetId:string|undefined):void {
   if (!datasetId) return;
   const owners=sheetOwners.get(hash)??new Set<string>();owners.add(datasetId);sheetOwners.set(hash,owners);
@@ -91,6 +104,7 @@ export function resolveIconSheetUrl(icon: {
  */
 export function clearIconSheetCache(retainHashes: ReadonlySet<string> = new Set(),retainDatasetId?:string): void {
   cacheEpoch++;
+  decodedSheets.clear();
   cachedSheets.clear();
   for (const [sha256, pending] of resolvedSheets) {
     if (retainHashes.has(sha256) || (retainDatasetId && sheetOwners.get(sha256)?.has(retainDatasetId))) continue;
