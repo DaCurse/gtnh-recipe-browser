@@ -1,5 +1,6 @@
 <script lang="ts">
   import { trackEvent } from '../analytics';
+  import { questAnalyticsProperties } from './analytics';
   import { onDestroy } from 'svelte';
   import QuestIcon from './QuestIcon.svelte';
   import QuestText from './QuestText.svelte';
@@ -9,7 +10,7 @@
   import type { QuestPreviewRepository } from './linksTypes';
   let {quest,repository,openQuest,text=false,source='quest_link'}: {quest:Quest;repository:QuestPreviewRepository;openQuest:(id:string)=>void;text?:boolean;source?:string}=$props();
   let element:HTMLButtonElement;
-  function open() { trackEvent('quest_link_opened', {quest_id:quest.id,quest_name:plainQuestText(quest.name),source}); openQuest(quest.id); }
+  function open() { trackEvent('quest_link_opened', {...questAnalyticsProperties(quest, repository),source}); openQuest(quest.id); }
   onDestroy(()=>{if(questPreview.current?.node===element) questPreview.clear();});
 </script>
 <button bind:this={element} class:quest-linked-icon={!text} class:quest-name-link={text} class:main={!text && quest.main} aria-label={plainQuestText(quest.name)}

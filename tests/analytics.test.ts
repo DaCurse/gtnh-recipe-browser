@@ -23,6 +23,26 @@ describe('focused analytics', () => {
     expect(analyticsSearch('  IRON   Dust  ')).toBe('iron dust');
     expect(analyticsSearch('x'.repeat(200))).toHaveLength(120);
   });
+  it('keeps quest titles, chapter context and version readable across book and link events', async () => {
+    const { questAnalyticsProperties } = await import('../src/lib/questbook/analytics');
+    const { trackEvent } = await import('../src/lib/analytics');
+    const quest = { id: 'q1', name: '§b[bold]Iron Hammer[/bold]', secret: false, tasks: [] } as unknown as import('../src/lib/questbook/types').Quest;
+    const repository = {
+      version: '2.9.0', quests: new Map([[quest.id, quest]]), items: new Map(),
+      chaptersForQuest: () => [{ id: 'chapter1', name: '§aStone Age' }, { id: 'chapter2', name: '[bold]Steam Age[/bold]' }]
+    };
+    for (const event of ['quest_viewed', 'quest_touch_preview', 'quest_link_opened'] as const) {
+      trackEvent(event, questAnalyticsProperties(quest, repository));
+    }
+    await vi.runAllTimersAsync(); await vi.dynamicImportSettled();
+    for (const [event, properties] of sdk.capture.mock.calls) {
+      expect(event).toMatch(/^quest_/);
+      expect(properties).toMatchObject({ quest_id: 'q1', quest_name: 'Iron Hammer', chapter_id: 'chapter1', chapter_name: 'Stone Age', quest_version: '2.9.0' });
+    }
+    expect(sdk.capture).toHaveBeenCalledTimes(3);
+    expect(questAnalyticsProperties(quest, repository, 'chapter2')).toMatchObject({ chapter_id: 'chapter2', chapter_name: 'Steam Age' });
+    expect(questAnalyticsProperties(quest, { ...repository, chaptersForQuest: () => [] })).not.toHaveProperty('chapter_name');
+  });
   it('captures on the Pages project but excludes other projects on the same origin', async () => {
     const { trackEvent } = await import('../src/lib/analytics');
     vi.stubGlobal('location', new URL('https://dacurse.github.io/other/'));

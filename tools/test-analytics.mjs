@@ -104,7 +104,7 @@ try {
   await page.goto(`${production}/?page=quests&chapter=q0&quest=q0`);
   await page.locator('.quest-description').waitFor({timeout:120000});
   await waitEvent('questbook_loaded');
-  await waitEvent('quest_viewed',properties=>properties.quest_name==='Your First Night');
+  await waitEvent('quest_viewed',properties=>properties.quest_name==='Your First Night' && properties.chapter_name && properties.quest_version==='2.9.0');
   await page.getByRole('button',{name:'Back to quests',exact:true}).click();
   await waitEvent('quest_chapter_viewed');
   await page.locator('.quest-node').first().waitFor();
@@ -121,8 +121,9 @@ try {
   const questTab=page.locator('.special-tab[aria-label="Quests"]');await questTab.waitFor({timeout:120000});await questTab.click();
   await waitEvent('special_viewed',properties=>properties.special_type==='quests');
   const questName=page.locator('.quest-name-link').first();await questName.waitFor();
-  await questName.tap();await waitEvent('quest_touch_preview');
-  await questName.tap();await waitEvent('quest_link_opened',properties=>properties.source==='item_recipes');
+  const questLabel = await questName.innerText();
+  await questName.tap();await waitEvent('quest_touch_preview', properties=>properties.quest_name===questLabel && properties.chapter_name && properties.quest_version==='2.9.0');
+  await questName.tap();await waitEvent('quest_link_opened',properties=>properties.source==='item_recipes' && properties.quest_name===questLabel && properties.chapter_name && properties.quest_version==='2.9.0');
   await page.goto(`${production}/?item=i:minecraft:apple:0&view=recipes&special=quests`);
   const reward=page.locator('.quest-linked-goods .special-good').first();await reward.waitFor({timeout:120000});
   await reward.tap();await waitEvent('item_touch_interaction',properties=>properties.action==='preview');

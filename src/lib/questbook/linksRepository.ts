@@ -18,6 +18,8 @@ export class QuestLinksRepository implements SpecialRepository, QuestPreviewRepo
     this.items=new Map(data.items.map(entry=>[entry.id,{...entry,icon:entry.icon ? {...entry.icon,url:new URL(entry.icon.url,new URL('../',indexUrl)).href} : undefined}]));
     this.specialViewTypes=[{id:'quests',label:'Quests',category:'quest',iconId:data.bookId,order:110}];
   }
+  get version(): string { return this.data.version; }
+  chaptersForQuest(id: string): readonly { id: string; name: string }[] { return this.data.chapters[id] ?? []; }
   async prepare(id: string):Promise<void> {
     const prefix=assetDigest(new TextEncoder().encode(id))[0]!;
     const descriptor=this.data.buckets[prefix];if(!descriptor) return;

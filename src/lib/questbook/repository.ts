@@ -44,6 +44,8 @@ export class QuestRepository {
     if (repository.quests.size !== pack.quests.length || repository.chapters.size !== pack.chapters.length) throw new Error('Duplicate questbook IDs');
     return repository;
   }
+  get version(): string { return this.pack.version; }
+  chaptersForQuest(id: string): readonly QuestChapter[] { return this.memberships.get(id) ?? []; }
   async entryFor(id: string): Promise<CatalogEntry | undefined> { return this.items.get(id); }
   destination(id: string): string { return this.pack.navigationTargets[id] ?? id; }
   search(query: string): Quest[] {

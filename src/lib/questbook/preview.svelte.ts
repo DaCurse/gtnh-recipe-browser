@@ -1,4 +1,5 @@
 import { trackEvent } from '../analytics';
+import { questAnalyticsProperties } from './analytics';
 import { completeTouchGesture } from '../itemTouch.svelte';
 import type { QuestPreviewRepository } from './linksTypes';
 
@@ -22,7 +23,9 @@ class QuestPreviewState {
       if(this.current?.id!==id||!this.current.touch||this.current.node!==event.currentTarget) {
         const node=event.currentTarget as HTMLElement,anchor=node.getBoundingClientRect();
         this.current={id,repository,node,anchor,x:anchor.right,y:anchor.bottom,touch:true};
-        trackEvent('quest_touch_preview', {quest_id:id});return;
+        const quest = repository.quests.get(id);
+        if (quest) trackEvent('quest_touch_preview', questAnalyticsProperties(quest, repository));
+        return;
       }
       completeTouchGesture('opened');
     }

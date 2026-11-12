@@ -1,8 +1,10 @@
 import type { AssetDescriptor, CatalogEntry } from '../types';
 import type { SpecialGoods } from '../specialData';
-import type { Quest } from './types';
+import type { Quest, QuestChapter } from './types';
 
 export interface QuestPreviewRepository {
+  readonly version: string;
+  chaptersForQuest(id: string): readonly Pick<QuestChapter, 'id' | 'name'>[];
   readonly quests: ReadonlyMap<string, Quest>;
   readonly items: ReadonlyMap<string, CatalogEntry>;
 }

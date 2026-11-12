@@ -1,5 +1,6 @@
 <script lang="ts">
   import { trackEvent, analyticsSearch } from '../analytics';
+  import { questAnalyticsProperties } from './analytics';
   import { onMount } from 'svelte';
   import { questPreview } from './preview.svelte';
   import type { RecipeView } from '../types';
@@ -24,7 +25,7 @@
     const key = `${questbook.version}:${quest?.id ?? chapter?.id ?? ''}:${Boolean(quest)}`;
     if (viewed === key) return;
     viewed = key;
-    if (quest) trackEvent('quest_viewed', {quest_id:quest.id,quest_name:plainQuestText(quest.name),quest_version:questbook.version,secret:quest.secret});
+    if (quest) trackEvent('quest_viewed', questAnalyticsProperties(quest, repository, chapter?.id));
     else if (chapter) trackEvent('quest_chapter_viewed', {chapter_id:chapter.id,chapter_name:plainQuestText(chapter.name),quest_version:questbook.version,quest_count:chapter.quests.length});
   });
   $effect(() => {

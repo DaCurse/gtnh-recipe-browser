@@ -7,9 +7,32 @@ Blocked SDK or ingestion requests cannot prevent browsing or exports.
 
 ## Reports to use
 
-Open [PostHog US](https://us.posthog.com/) and select the project associated with the installed token.
-The public ingestion token cannot create dashboards through the management API; these are the
-event/property combinations for creating saved insights in the project's UI.
+Project [701696 on PostHog US](https://us.posthog.com/project/701696) has three
+pinned dashboards, each defaulting to the last 30 days:
+
+- [GTNH Feature Usage](https://us.posthog.com/project/701696/dashboard/2345627):
+  daily visitors, device/section adoption, finder and chain users, weekly retention,
+  and touch previews/opens/holds. Traffic and retention reuse the existing insights.
+- [GTNH Content Discovery](https://us.posthog.com/project/701696/dashboard/2345628):
+  named items, quests and chapters, popular catalogue searches, zero-result searches,
+  and special-tab usage.
+- [GTNH Loading Health](https://us.posthog.com/project/701696/dashboard/2345629):
+  median/p95 successful catalogue, questbook and search durations, plus recorded
+  catalogue-load failures. Duration properties are milliseconds. Cached and cold
+  loads are currently combined; these charts do not measure time spent reading.
+
+These native insights can be edited in PostHog. The starter dashboard is retained.
+Reports use captured anonymous-browser activity, not player progress or quest
+completion. Zero-result searches count settled search events, not unique people
+or necessarily failed intent. Explicit failures count only events delivered to
+analytics; they do not establish a full failure rate. Empty latency buckets do
+not mean real requests completed instantly. These event reports have not been
+approved as governed Data Catalog metrics.
+
+The frontend has only a public ingestion token. Dashboard management uses the
+connected PostHog integration; never add a management credential to client code.
+
+The following event/property combinations support further saved insights:
 
 | Question | Event / metric | Breakdown |
 | --- | --- | --- |
@@ -79,6 +102,14 @@ intercepted ingestion: pageviews, normalized searches, item/finder/chain interac
 success/failure, sanitized URL properties, blocked-network behavior and DNT. It enables bot capture
 only in the test's intercepted script response because production intentionally excludes Playwright.
 The test does not send its synthetic usage to PostHog.
+
+Quest opens, touch previews and item/vending quest links share
+`questAnalyticsProperties`: plain `quest_name`, stable `quest_id`, `quest_version`,
+`chapter_name`/`chapter_id` when membership exists, `secret`, and `task_count`.
+Minecraft codes and quest formatting tags are stripped from names. The quest
+view uses its selected chapter when a quest appears in several chapters; lazy
+links and previews use the first known chapter. Existing ID-only preview events
+remain unchanged historically; new captures receive the readable context.
 
 Quest searches use the same 1.2-second settled-query and 120-character
 normalization policy as catalogue searches. Quest/chapter views are deduplicated
