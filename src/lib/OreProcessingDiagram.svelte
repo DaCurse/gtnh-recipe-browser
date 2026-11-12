@@ -102,7 +102,8 @@
   .diagram-background { position:absolute; inset:0; width:100%; height:100%; image-rendering:pixelated; pointer-events:none; }
   .diagram-background rect { fill:#bfbfbf; shape-rendering:crispEdges; }
   .diagram-item { position:absolute; isolation:isolate; padding:0; border:0; background:none; cursor:pointer; }
-  .diagram-item:hover,.diagram-item:focus-visible { background:#ffffff15; outline:1px solid #bfbfbf; }
+  .diagram-item:hover,.diagram-item:focus-visible { background:#ffffff15; }
+  .diagram-item:focus-visible { outline:1px solid #bfbfbf; }
   .diagram-amount,.diagram-info { position:absolute; z-index:1; pointer-events:none; font-family:Minecraft,monospace; line-height:1; color:white; text-shadow:1px 1px #222; white-space:nowrap; }
   .diagram-amount { right:1px; bottom:1px; }
   .diagram-amount.fluid { right:auto; left:1px; }

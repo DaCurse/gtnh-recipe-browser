@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { gunzipSync } from 'node:zlib';
-/* global document, location, history, dispatchEvent, PopStateEvent, window */
+/* global document, location, history, dispatchEvent, PopStateEvent, window, getComputedStyle, Image */
 
 const [appUrl, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-analytics.mjs <app-url> <playwright-module>');
@@ -107,6 +107,14 @@ try {
   await waitEvent('quest_viewed',properties=>properties.quest_name==='Your First Night');
   await page.getByRole('button',{name:'Back to quests',exact:true}).click();
   await waitEvent('quest_chapter_viewed');
+  await page.locator('.quest-node').first().waitFor();
+  await page.locator('.quest-node').evaluateAll(async nodes=>{
+    for(const node of nodes) {
+      const css=getComputedStyle(node,'::before').backgroundImage;
+      const image=new Image();image.src=css.slice(5,-2);await image.decode();
+      if(!image.naturalWidth) throw new Error('Production quest frame failed to decode');
+    }
+  });
   await page.locator('.desktop-search input').fill('hammer');
   await waitEvent('quest_search',properties=>properties.query==='hammer'&&properties.result_count>0);
   await page.goto(`${production}/?item=i:minecraft:apple:0&view=recipes`);

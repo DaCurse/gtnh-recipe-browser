@@ -107,7 +107,7 @@
           <button class="quest-node" class:main-quest={quest.main} class:secret={quest.secret} data-quest={quest.id}
             aria-label={`${plainQuestText(quest.name)}${quest.secret ? ' (Secret quest)' : ''}`} style:left={`${placement.x}px`} style:top={`${placement.y}px`}
             style:width={`${placement.width}px`} style:height={`${placement.height}px`}
-            style:--quest-frame={`url('${import.meta.env.BASE_URL}quests/assets/quest-${quest.main ? 'main' : 'normal'}-${placement.width}x${placement.height}.png')`}
+            style:--quest-frame={`url('${new URL(`${import.meta.env.BASE_URL}quests/assets/quest-${quest.main ? 'main' : 'normal'}-${placement.width}x${placement.height}.png`, location.href).href}')`}
             onpointerenter={event => { if (!dragging) preview(quest.id, event); }} onpointermove={event => { if (!dragging) preview(quest.id, event); }}
             onpointerleave={event => { if (event.pointerType !== 'touch') clearPreview(); }}
             onfocus={event => focusQuest(quest.id, event)} onblur={clearPreview}

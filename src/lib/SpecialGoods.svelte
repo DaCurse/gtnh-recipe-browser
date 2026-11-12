@@ -339,7 +339,8 @@
   .special-slot { position:relative; isolation:isolate; width:48px; height:48px; flex:0 0 48px; }
   .special-slot-content { position:relative; z-index:1; }
   .special-good.ore-dictionary { border-color:#7565a2; box-shadow:0 0 0 1px #7565a255,0 0 8px #8b78ce66; animation:ore-dictionary-pulse 1.8s ease-in-out infinite; }
-  .special-good:hover,.special-good:focus-visible { border-color:#5b6167; background:#303338; filter:brightness(1.08); outline:0; }
+  .special-good:hover,.special-good:focus-visible { background:#303338; filter:brightness(1.08); outline:0; }
+  .special-good:focus-visible { border-color:#5b6167; }
   .special-good-label,.unresolved small { width:max-content; max-width:100%; overflow:hidden; color:var(--recipe-text); font-size:9px; text-overflow:ellipsis; white-space:nowrap; }
   .special-good-cell .special-fortune { width:max-content; max-width:100%; overflow:hidden; color:#d8ca75; font-size:8px; text-overflow:ellipsis; white-space:nowrap; }
   .special-amount,.special-chance,.special-weight { position:absolute; z-index:2; padding:0; color:#fff; font:18px/18px Minecraft,monospace; text-shadow:2px 2px #342c34; pointer-events:none; }

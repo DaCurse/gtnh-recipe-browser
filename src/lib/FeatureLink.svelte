@@ -1,9 +1,9 @@
 <script lang="ts">
-  let { href, label, shortLabel, icon, undiscovered = false, active = false, onclick }: {
-    href: string; label: string; shortLabel?: string; icon?: string; undiscovered?: boolean; active?: boolean; onclick: () => void;
+  let { href, label, shortLabel, icon, primary = false, undiscovered = false, active = false, onclick }: {
+    href: string; label: string; shortLabel?: string; icon?: string; primary?: boolean; undiscovered?: boolean; active?: boolean; onclick: () => void;
   } = $props();
 </script>
-<a class="mc-button feature-link" {href} aria-label={label} aria-current={active ? 'page' : undefined} title={undiscovered ? 'New feature' : undefined}
+<a class="mc-button feature-link" class:primary {href} aria-label={label} aria-current={active ? 'page' : undefined} title={undiscovered ? 'New feature' : undefined}
   onclick={event => { event.preventDefault(); onclick(); }}>
   {#if icon}<img src={icon} alt="" width="24" height="24" />{/if}<span class:full-label={Boolean(shortLabel)}>{label}</span>{#if shortLabel}<span class="short-label" aria-hidden="true">{shortLabel}</span>{/if}{#if undiscovered}<span class="feature-blip" aria-hidden="true" title="New"></span>{/if}
 </a>

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { mkdir } from 'node:fs/promises';
-/* global document, getComputedStyle, innerWidth, innerHeight */
+/* global document, getComputedStyle, innerWidth, innerHeight, Image */
 const [base, playwrightModule, screenshots] = process.argv.slice(2);
 if (!playwrightModule) throw new Error('Usage: node tools/test-questbook.mjs <app-url> <playwright-module> [screenshots]');
 const { chromium } = await import(playwrightModule);
@@ -34,6 +34,15 @@ try {
   await page.getByRole('progressbar', { name: 'Questbook loading' }).waitFor();
   release();
   await page.locator('.quest-node').first().waitFor({ timeout: 60000 });
+  await page.locator('.quest-node').evaluateAll(async nodes => {
+    for (const node of nodes) {
+      const css=getComputedStyle(node,'::before').backgroundImage;
+      const image=new Image();image.src=css.slice(5,-2);
+      await image.decode();
+      if(!image.naturalWidth) throw new Error('Quest frame failed to decode');
+    }
+  });
+
   assert.equal((await questLink.boundingBox()).width, questWidth, 'Acknowledging the questbook blip preserves button width');
   assert.equal(questRequests.filter(url => url.endsWith('.mpk')).length, 1, 'Navigating away does not restart a quest download');
   assert.deepEqual(failures, []);

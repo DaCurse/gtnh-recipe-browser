@@ -52,9 +52,9 @@
     <h1 id="landing-title">Your Pocket NEI</h1>
     <p class="intro">A quick, out-of-game recipe browser for GregTech: New Horizons. Browse items and machine recipes, find recipes by their ingredients, follow a production chain, or explore the questbook.</p>
     <div class="actions">
-      <a class="mc-button primary" href={itemsUrl} onclick={(event) => { event.preventDefault(); openItems(); }}>Open item catalogue</a>
-      <FeatureLink label="Recipe Finder" href={finderHref} undiscovered={!finderDiscovered} onclick={openFinder} />
-      <FeatureLink label="Questbook Browser" href={questHref} undiscovered={!questsDiscovered} onclick={openQuests} />
+      <FeatureLink label="Open item catalogue" icon={`${import.meta.env.BASE_URL}assets/navigation/items.png`} href={itemsUrl} primary onclick={openItems} />
+      <FeatureLink label="Recipe Finder" icon={`${import.meta.env.BASE_URL}assets/navigation/finder.png`} href={finderHref} undiscovered={!finderDiscovered} onclick={openFinder} />
+      <FeatureLink label="Questbook Browser" icon={`${import.meta.env.BASE_URL}assets/navigation/quests.png`} href={questHref} undiscovered={!questsDiscovered} onclick={openQuests} />
     </div>
     <p class="details">GTNH 2.9.0 &amp; earlier versions · Offline browsing · JSON data exports</p>
   </section>
@@ -132,7 +132,6 @@
   .intro { max-width:630px; margin:auto; color:#a5abb3; font-size:clamp(15px,2vw,18px); line-height:1.7; }
   .actions { display:flex; justify-content:center; flex-wrap:wrap; gap:12px; margin:28px 0 20px; }
   .actions :global(a) { padding:14px 22px; border:1px solid #66604f; border-radius:8px; text-decoration:none; color:#e9e6df; font-weight:650; font-size:14px; background:#242422; }
-  .actions .primary { background:#d3ba83; color:#201d16; border-color:#d3ba83; }
   .actions :global(a:hover) { filter:brightness(1.12); }
   .details { font-size:12px; color:#8b9095; line-height:1.6; }
   .landing-load { width:min(440px,calc(100% - 48px)); margin:10px auto 4px; color:#858b92; font-size:11px; line-height:1.5; }

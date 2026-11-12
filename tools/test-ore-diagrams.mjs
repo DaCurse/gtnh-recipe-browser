@@ -72,6 +72,8 @@ try {
   }
   const chart = page.locator('.native-ore-diagram').first();
   const ingredient = chart.locator('.diagram-item:not(.diagram-machine)').first();
+  await ingredient.hover();
+  assert.equal(await ingredient.evaluate(element=>getComputedStyle(element).outlineStyle),'none','Ore processing hover does not add an outline');
   const itemId = await ingredient.getAttribute('data-goods-id');
   await ingredient.click();
   await page.waitForURL(url => url.searchParams.get('item') === itemId && url.searchParams.get('view') === 'recipes');
