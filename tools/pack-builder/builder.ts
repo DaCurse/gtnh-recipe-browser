@@ -1,3 +1,4 @@
+import { specialGroupMatchesItem } from '../../src/lib/specialMatching';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, stat, writeFile, readdir, unlink } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -253,12 +254,6 @@ function applyIngredientGroupAliases(
   goods: readonly DecodedGoodsBase[]
 ): void {
   const goodsById = new Map(goods.map((entry) => [entry.id, entry]));
-  const isGtHostOre = (goodsId: string): boolean => {
-    const entry = goodsById.get(goodsId) as DecodedItem | undefined;
-    return entry?.kind === 'item'
-      && entry.mod.toLocaleLowerCase() === 'gregtech'
-      && entry.internalName.toLocaleLowerCase().startsWith('gt.blockores');
-  };
 
   for (const group of groups) {
     const projection = index.get(group.id);
@@ -268,9 +263,10 @@ function applyIngredientGroupAliases(
     // contain vanilla/Galacticraft/TConstruct blocks that GTNEI does not
     // resolve as GT vein inputs.  Exact GT host blocks are already retained
     // separately by the runtime adapter; only those receive the vein index.
-    const memberIds = group.id.startsWith('o:ore')
-      ? group.itemIds.filter(isGtHostOre)
-      : group.itemIds;
+    const memberIds = group.itemIds.filter(id => {
+      const entry = goodsById.get(id) as DecodedItem | undefined;
+      return entry && specialGroupMatchesItem(group.id, entry);
+    });
     for (const itemId of memberIds) {
       const existing = index.get(itemId);
       index.set(itemId, existing ? mergeSpecialGoodsIndexEntry(existing, projection) : projection);

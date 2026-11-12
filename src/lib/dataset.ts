@@ -1,3 +1,4 @@
+import { specialGoodsForDirection, specialGroupMatchesItem } from './specialMatching';
 import { physicalDescriptorsFor, sharedPrefixIsPublished } from './datasetLayout';
 import { ingredientGroupPreview } from './catalogMaterialization';
 import { matchesRecipeConstraints, type RecipeConstraints } from './recipeFinder';
@@ -97,34 +98,6 @@ function specialRecordGoodsIds(record: Pick<SpecialRecord, 'goodsIds' | 'product
   };
   visit(record.payload);
   return [...result].sort();
-}
-
-function specialRecordGoodsForDirection(
-  record: PackedSpecialRecord,
-  view: RecipeView
-): string[] {
-  const extension = view === 'recipes' ? record.productionGoodsIds : record.usageGoodsIds;
-  const result = new Set<string>(
-    Array.isArray(extension) ? extension : record.goodsIds
-  );
-  const visit = (value: unknown): void => {
-    if (Array.isArray(value)) {
-      value.forEach(visit);
-      return;
-    }
-    if (value === null || typeof value !== 'object') return;
-    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
-      const normalizedKey = key.toLowerCase();
-      if (normalizedKey.endsWith('goodsid') && typeof child === 'string') result.add(child);
-      if (normalizedKey.endsWith('goodsids') && Array.isArray(child)) {
-        child.filter((candidate): candidate is string => typeof candidate === 'string')
-          .forEach((candidate) => result.add(candidate));
-      }
-      visit(child);
-    }
-  };
-  visit(record.payload);
-  return [...result];
 }
 
 function isStringArray(value: unknown): value is string[] {
@@ -1097,7 +1070,15 @@ export class DatasetRepository {
       const ids = view === 'recipes'
         ? detail?.specialProductionMatchIds ?? group?.specialProductionMatchIds
         : detail?.specialUsageMatchIds ?? group?.specialUsageMatchIds;
-      return ids ? new Set(ids) : null;
+      if (!ids) return null;
+      const matches = new Set(ids);
+      // Counts project explicit group references onto their registered members.
+      // Use the same aliases here when filtering records from those shards.
+      const item = this.entriesById.get(entryId);
+      if (item) for (const id of detail?.oreDictionaryIds ?? []) {
+        if (specialGroupMatchesItem(id, item)) matches.add(id);
+      }
+      return matches;
     }
     return null;
   }
@@ -1192,6 +1173,7 @@ export class DatasetRepository {
     }) => void,
     signal?: AbortSignal
   ): Promise<SpecialRecord[]> {
+    if (view === 'machineUsages') return [];
     await this.entryFor(entryId, signal);
     if (viewType === 'gt-ore-processing' && hasNativeOreDiagrams(this.datasetId)) {
       const entry = this.entriesById.get(entryId);
@@ -1223,7 +1205,7 @@ export class DatasetRepository {
       view,
       viewType,
       (record) => {
-        const goodsIds = specialRecordGoodsForDirection(record, view);
+        const goodsIds = specialGoodsForDirection(record, view);
         return goodsIds.some((goodsId) => entryIds.has(goodsId));
       },
       onProgress,

@@ -455,10 +455,10 @@
     </div>
   {:else if browserState.showingSpecial && visibleSpecialRecords.length === 0}
     <div class="no-recipes">
-      <b>{browserState.specialFilter ? `No matching ${browserState.specialTypeLabel}` : `No ${browserState.specialTypeLabel} found`}</b>
+      <b>{browserState.specialFilter ? `No ${modeLabel} for ${browserState.specialTypeLabel} match your search.` : `No ${modeLabel} for ${browserState.specialTypeLabel} found.`}</b>
       <p>{browserState.specialFilter
-        ? 'Try fewer terms or clear the special-data filter.'
-        : 'This item has no known NEI special data in the active dataset.'}</p>
+        ? 'Try fewer terms or clear the filter.'
+        : 'No entries in this tab match this item.'}</p>
     </div>
   {:else if browserState.showingSpecial}
     {#if browserState.specialLoading}
@@ -534,10 +534,10 @@
     </div>
   {:else if !browserState.recipeLoading && visibleRecipes.length === 0}
     <div class="no-recipes">
-      <b>{browserState.recipeFilter ? `No matching ${modeLabel}` : `No ${modeLabel} found`}</b>
+      <b>{browserState.recipeFilter ? `No ${modeLabel} match your search.` : `No ${modeLabel} found.`}</b>
       <p>{browserState.recipeFilter
-        ? 'Try fewer terms or clear the recipe filter.'
-        : `This item has no known ${modeLabel} in the active dataset.`}</p>
+        ? 'Try fewer terms or clear the filter.'
+        : 'No entries match this item.'}</p>
     </div>
   {:else}
     {#if browserState.recipeLoading}

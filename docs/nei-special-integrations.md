@@ -120,3 +120,15 @@ Reproduction and licensing are in
 When adding another category, first record the handler class, its icon field,
 its slot order, and the denominator used for any displayed chance. Then add a
 focused fixture and a source-level anchor test before publishing a dataset.
+
+## Registered ingredient-group matching
+
+Special counts and runtime record selection share `specialMatching.ts`.
+Explicit group references apply to their registered members, including soils,
+under-blocks and catalysts. Runtime matching includes the item's exported
+`oreDictionaryIds`; it does not infer aliases from names or expand arbitrary
+wildcard metadata. GT host-ore groups retain their narrower GT-block restriction.
+The browser and pack builder also share direction/payload reference extraction.
+Final loaded counts override estimates per dataset, item, direction and tab;
+partial batches and text filters never erase an otherwise valid tab. A confirmed
+empty item tab is removed and the pane returns to its ordinary recipe direction.

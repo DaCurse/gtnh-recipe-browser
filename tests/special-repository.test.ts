@@ -123,7 +123,8 @@ describe('canonical DatasetRepository special shards', () => {
         specialProductionCount: 1,
         specialUsageCount: 1,
         productionMatchIds: [goodsId], usageMatchIds: [goodsId],
-        specialProductionMatchIds: [goodsId], specialUsageMatchIds: [goodsId]
+        specialProductionMatchIds: [goodsId], specialUsageMatchIds: [goodsId],
+        oreDictionaryIds: ['o:fixture']
       }]
     });
     const special = await asset('special-meteor-ritual-root', {
@@ -137,11 +138,11 @@ describe('canonical DatasetRepository special shards', () => {
         category: 'meteor-ritual',
         title: 'Shared Meteor',
         searchText: 'shared meteor',
-        goodsIds: [goodsId],
+        goodsIds: ['o:fixture'],
         recipesLookupId: 'shared:recipes',
         usagesLookupId: 'shared:usages',
         serviceIconId: 'service:meteor',
-        payload: { goodsId }
+        payload: { focus: { goodsId: 'o:fixture' } }
       }]
     });
     const group = await asset('ingredient-groups-root', {
@@ -285,6 +286,8 @@ describe('canonical DatasetRepository special shards', () => {
     const progress: Array<{ loadedShards: number; totalShards: number }> = [];
     await expect(repository.specialFor(goodsId, 'recipes', 'meteor-ritual', (value) => progress.push(value))).resolves.toHaveLength(1);
     expect(progress.at(-1)).toEqual({ loadedShards: 1, totalShards: 1, batch: expect.any(Array) });
+    // Registered group members must resolve the records already counted for them.
+    await expect(repository.specialFor(goodsId, 'usages', 'meteor-ritual')).resolves.toHaveLength(1);
     await expect(repository.specialForAll('usages', 'meteor-ritual')).resolves.toHaveLength(1);
     await expect(repository.specialForAll('recipes', 'meteor-ritual')).resolves.toHaveLength(1);
     const controller = new AbortController();

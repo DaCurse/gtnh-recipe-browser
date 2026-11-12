@@ -319,6 +319,8 @@ export class RecipeBrowserState {
   specialCount(view: RecipeView, viewType = this.specialType): number | undefined {
     if (!viewType) return undefined;
     const selected = this.context.selected();
+    const loadedCount = this.loadedSpecialCounts[`${this.context.repository().datasetId}:${selected.id}:${view}:${viewType}`];
+    if (loadedCount !== undefined) return loadedCount;
     const extra=this.context.extraSpecial?.();
     if(extra?.specialViewTypes?.some(type=>type.id===viewType)) return extra.countFor?.(selected.id,view,viewType) ?? 0;
     if (viewType === 'gt-ore-processing') return oreDiagramMatches(this.oreDiagramIndex, selected, view).length;
@@ -343,7 +345,7 @@ export class RecipeBrowserState {
       : view === 'usages'
         ? declared.specialUsageCount
         : undefined;
-    return this.loadedSpecialCounts[`${selected.id}:${view}:${viewType}`] ?? declaredCount;
+    return declaredCount;
   }
 
   setPage(nextPage: number) {
@@ -503,7 +505,7 @@ export class RecipeBrowserState {
           this.specialRecords = [];
           this.loadedSpecialCounts = {
             ...this.loadedSpecialCounts,
-            [`${cacheEntryId}:${view}:${specialType}`]: 0
+            [cacheKey]: 0
           };
         } else {
           const cached = this.specialCache.get(cacheKey);
@@ -519,10 +521,7 @@ export class RecipeBrowserState {
               specialType,
               (progress) => this.applySpecialProgress(
                 progress,
-                specialRequest,
-                cacheEntryId,
-                view,
-                specialType
+                specialRequest
               ),
               specialController.signal
             );
@@ -534,10 +533,7 @@ export class RecipeBrowserState {
               specialType,
               (progress) => this.applySpecialProgress(
                 progress,
-                specialRequest,
-                cacheEntryId,
-                view,
-                specialType
+                specialRequest
               ),
               specialController.signal
             );
@@ -549,11 +545,17 @@ export class RecipeBrowserState {
           this.specialRecords = ordered;
           this.loadedSpecialCounts = {
             ...this.loadedSpecialCounts,
-            [`${cacheEntryId}:${view}:${specialType}`]: ordered.length
+            [cacheKey]: ordered.length
           };
           this.specialTotalShards = Math.max(this.specialTotalShards, 1);
           this.specialLoadedShards = this.specialTotalShards;
           trackEvent('special_viewed', {special_type:specialType,scope:specialScope,view,item_name:this.context.selected().name,dataset_version:repository.gtnhVersion,record_count:ordered.length});
+        }
+        if (specialScope === 'item' && this.specialRecords.length === 0) {
+          this.specialType = '';
+          this.specialScope = 'item';
+          this.notifySpecialNavigation();
+          await this.refresh();
         }
         return;
       }
@@ -616,10 +618,7 @@ export class RecipeBrowserState {
 
   private applySpecialProgress(
     progress: SpecialLoadProgress,
-    request: number,
-    cacheEntryId: string,
-    view: RecipeView,
-    viewType: string
+    request: number
   ) {
     if (request !== this.specialRequest) return;
     this.specialLoadedShards = progress.loadedShards;
@@ -628,10 +627,6 @@ export class RecipeBrowserState {
     const next = [...this.specialRecords, ...progress.batch]
       .sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
     this.specialRecords = next;
-    this.loadedSpecialCounts = {
-      ...this.loadedSpecialCounts,
-      [`${cacheEntryId}:${view}:${viewType}`]: next.length
-    };
   }
 
   private initializeRecipeSearch() {
