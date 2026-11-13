@@ -9,8 +9,8 @@ its prepared caches as well as its source-object references.
 
 Metadata and shell-update checks yield to cached startup after 150 ms. A shell
 announces readiness before catalogue work so worker takeover can distinguish a
-busy client from a legacy window. Preserve the frozen v6 returning-client bridge
-and keep immutable asset URLs unchanged.
+busy client from a legacy window. Preserve takeover and semantic cache migration
+when retiring old datasets, and keep remaining immutable asset URLs unchanged.
 
 Measure cold startup, prepared-cache startup and immediate navigation separately.
 Prepared startup should read no compressed bootstrap pages; cached item details

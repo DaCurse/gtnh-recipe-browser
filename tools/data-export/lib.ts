@@ -69,7 +69,7 @@ interface SharedObjectCompanion {
 
 const FULL_SHA256 = /^[a-f0-9]{64}$/;
 
-/** Collect physical objects referenced by the frozen v6 bridge and current v7 packs. */
+/** Collect physical objects referenced by published manifests and their companions. */
 export function referencedSharedObjectHashes(
   manifests: readonly SharedObjectManifest[],
   companions: readonly SharedObjectCompanion[] = []

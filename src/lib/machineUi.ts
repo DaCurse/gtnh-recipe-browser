@@ -10,10 +10,12 @@ export interface UiTexture { file: string; size: UiPoint; uv: [number, number, n
 export interface UiSlot { pos: UiPoint; overlay?: UiTexture }
 export type ProgressDirection = 'RIGHT' | 'LEFT' | 'UP' | 'DOWN' | 'CIRCULAR_CW';
 export interface UiWidget {
+  opacity?: number;
   pos: UiPoint; size: UiPoint; texture: UiTexture; kind: string;
   filled?: UiTexture; direction?: ProgressDirection; progress?: Array<[number, number]>; imageSize?: number;
 }
 export interface MachineUiProfile {
+  slotFrames?: boolean;
   id: string; name: string; frontend: string; size: UiPoint;
   itemInputs: UiSlot[]; itemOutputs: UiSlot[]; fluidInputs: UiSlot[]; fluidOutputs: UiSlot[];
   widgets: UiWidget[]; specialPos?: UiPoint;

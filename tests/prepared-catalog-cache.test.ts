@@ -6,7 +6,7 @@ import type { DatasetManifest } from '../src/lib/datasetSchema';
 import type { DatasetState } from '../src/lib/types';
 
 const datasetId = 'prepared-fixture';
-const key = 'prepared-v5:fixture';
+const key = 'prepared-v6:fixture';
 const state: DatasetState = { datasetId, gtnhVersion: 'fixture', revision: '1', displayName: 'Fixture',
   manifestUrl: 'https://example.test/manifest.json', status: 'catalog', storedBytes: 0, totalBytes: 1,
   active: false, assetHashes: [], updatedAt: 1 };
@@ -27,7 +27,7 @@ describe('prepared catalog projections', () => {
     await cacheRuntimeData(datasetId, `${key}:entries:1`, 'invalid JSON');
     expect(await getPreparedCatalog(datasetId, key)).toBeNull();
     await cachePreparedCatalog(datasetId, key, prepared);
-    const documents = prepared.resolved.entries.map((entry) => ({ id: entry.id, name: entry.name, normalizedName: entry.name, members: [] }));
+    const documents = prepared.resolved.entries.map((entry) => ({ id: entry.id, name: entry.name, kind: entry.kind, normalizedName: entry.name, members: [] }));
     await cachePreparedSearch(datasetId, key, documents);
     expect(await getPreparedSearch(datasetId, key, documents.length)).toEqual(documents);
     expect(await getPreparedSearch(datasetId, key, documents.length + 1)).toBeNull();

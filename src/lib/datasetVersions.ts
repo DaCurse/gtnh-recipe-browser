@@ -38,7 +38,7 @@ export function replacementDatasetActive(
   );
 }
 
-// Frozen bridge IDs are metadata only; their manifests must never enter the v7 loader.
+// Retired dataset IDs are metadata only; their manifests must never enter the v7 loader.
 const legacyVersions: Readonly<Record<string, string>> = {
   '2.9.0-beta-3-v6-rd5d4ec826817': '2.9.0-beta-3',
   '2.9.0-beta-2-v6-rfd81b2eed8b0': '2.9.0-beta-2',

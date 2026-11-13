@@ -1,3 +1,4 @@
+import { catalogOrderAsset } from './catalogOrderIndex';
 import type { CatalogSearchDocument } from './catalogSearch';
 import type { materializeCatalog } from './catalogMaterialization';
 import type { DatasetManifest, PackedCatalog, PackedRecipeType, PackedOreDictionary, PackedIngredientGroup } from './datasetSchema';
@@ -37,7 +38,7 @@ function decodeJson<T>(value: ArrayBuffer): T {
 
 // Bump when materialization, variant grouping, or search normalization changes.
 export function preparedCatalogKey(manifest: DatasetManifest, manifestUrl: string): string {
-  return `prepared-v5:${assetDigest(new TextEncoder().encode(JSON.stringify([manifestUrl, manifest])))}`;
+  return `prepared-v6:${assetDigest(new TextEncoder().encode(JSON.stringify([manifestUrl, manifest, catalogOrderAsset(manifest, manifestUrl)?.sha256])))}`;
 }
 
 /** Small JSON records avoid huge, blocking native structured-clone operations on slow devices. */

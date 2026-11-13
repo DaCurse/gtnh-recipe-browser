@@ -1,0 +1,11 @@
+{
+  "gtnhVersion": "2.9.0",
+  "thaumcraftVersion": "4.2.3.5",
+  "jarSha256": "3dba9786966974701578a658d1bb369bf35bdf5f363079f5ac9c4910a39113be",
+  "resource": "assets/thaumcraft/textures/gui/gui_researchbook_overlay.png",
+  "textureSha256": "40b5aeea15fd2003f579dc717accebb0348dafa6837789f51e80e80bfbf22c58",
+  "renderer": "GTNewHorizons/AspectRecipeIndex",
+  "rendererVersion": "1.1.6",
+  "copyright": "Original Thaumcraft artwork by Azanor; not part of Shadow UI.",
+  "processing": "Unchanged source pixels; renderer uses the original 256-unit UV coordinates."
+}

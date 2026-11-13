@@ -18,7 +18,8 @@
     positions,
     fluid = false,
     compactAmounts = false,
-    showLabel = true
+    showLabel = true,
+    showSlots = true
   }: {
     dimensions: GridDimensions;
     ingredients: Ingredient[];
@@ -30,6 +31,7 @@
     fluid?: boolean;
     compactAmounts?: boolean;
     showLabel?: boolean;
+    showSlots?: boolean;
   } = $props();
 
   const cellCount = $derived(positions?.length ?? dimensions.columns * dimensions.rows);
@@ -117,7 +119,7 @@
       style:grid-template-columns={`repeat(${dimensions.columns}, var(--slot-size))`}
       aria-label={label}
     >
-      <SlotSurface width={gridWidth} height={gridHeight} slots={positions} {fluid} />
+      {#if showSlots}<SlotSurface width={gridWidth} height={gridHeight} slots={positions} {fluid} />{/if}
       {#each slots as slot (slot)}
         {@const ingredient = slotIngredients.get(slot)}
         {@const alternatives = ingredient?.alternatives ?? []}

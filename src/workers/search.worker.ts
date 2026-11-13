@@ -1,8 +1,8 @@
+import { compareCatalogOrder } from '../lib/catalogOrder';
 import {
   buildCatalogSearchDocument,
   catalogDocumentMatches,
   parseCatalogSearchQuery,
-  scoreCatalogDocument,
   type CatalogSearchDocument,
   type CatalogSearchEntry
 } from '../lib/catalogSearch';
@@ -42,10 +42,7 @@ async function search(
         if (token !== searchToken || request.generation !== generation) return;
       }
     }
-    matches.sort((left, right) =>
-      scoreCatalogDocument(right, query) - scoreCatalogDocument(left, query)
-      || left.name.localeCompare(right.name)
-    );
+    matches.sort(compareCatalogOrder);
     if (token !== searchToken || request.generation !== generation) return;
     lastQuery = request.query;
     lastMatches = matches;

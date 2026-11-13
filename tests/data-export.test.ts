@@ -1,4 +1,4 @@
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -15,12 +15,12 @@ import {
 } from '../tools/data-export/lib';
 
 describe('data export tooling', () => {
-  it('retains only physical objects owned by format-6 manifests', () => {
+  it('retains only physical objects owned by supported published manifests', () => {
     const first = 'a'.repeat(64);
     const second = 'b'.repeat(64);
     const orphan = 'c'.repeat(64);
     const manifests = [{
-      formatVersion: 6,
+      formatVersion: 7,
       recordPages: [{ sha256: first }],
       iconSheets: [{ sha256: second }]
     }, {
@@ -258,16 +258,17 @@ describe('data export tooling', () => {
   });
 
   it('keeps the current format index on format-safe immutable dataset URLs', async () => {
-    const index = JSON.parse(await readFile(join(process.cwd(), 'public/versions.json'), 'utf8')) as VersionsIndex;
+    const index = JSON.parse(await readFile(join(process.cwd(), 'public/versions-v7.json'), 'utf8')) as VersionsIndex;
     expect(index.versions.length).toBeGreaterThan(0);
+    expect((await readdir(join(process.cwd(), 'public/data'))).some(name => name.includes('-v6-'))).toBe(false);
     for (const version of index.versions) {
-      expect(version.datasetId).toContain('-v6-');
+      expect(version.datasetId).toContain('-v7-');
       expect(version.packManifestUrl).toBe(`./data/${version.datasetId}/pack-manifest.json`);
       const manifest = JSON.parse(await readFile(
         join(process.cwd(), 'public', version.packManifestUrl.slice(2)),
         'utf8'
       )) as { datasetId?: string; formatVersion?: number };
-      expect(manifest).toMatchObject({ datasetId: version.datasetId, formatVersion: 6 });
+      expect(manifest).toMatchObject({ datasetId: version.datasetId, formatVersion: 7 });
     }
 
   });

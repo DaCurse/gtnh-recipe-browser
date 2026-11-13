@@ -1,3 +1,4 @@
+import { compareCatalogOrder } from './catalogOrder';
 import { describeGtOreVariant } from './gtOreVariants';
 import type { CatalogBrowseEntry, CatalogEntry } from './types';
 
@@ -241,7 +242,7 @@ export function buildCatalogBrowseEntries(entries: CatalogEntry[]): CatalogBrows
     });
   }
 
-  return result.sort((left, right) => left.name.localeCompare(right.name) || left.id.localeCompare(right.id));
+  return result.sort(compareCatalogOrder);
 }
 
 export function resolveCatalogVariant(

@@ -1,3 +1,4 @@
+import { applyCatalogOrder } from './catalogOrderIndex';
 import { decode } from '@msgpack/msgpack';
 import { decompress, decodePhysicalRecordPage, fetchVerified } from './datasetAssets';
 import { goodsIdentityFromId } from './goodsIdentity';
@@ -38,6 +39,7 @@ export async function prepareBootstrapCatalog(
   const { catalog } = await loadCatalogBootstrap(manifest, manifestUrl, report, readAsset);
   report(92, 'Preparing items');
   const resolved = materializeCatalog(manifest, manifestUrl, catalog, false);
+  await applyCatalogOrder(resolved.entries, manifest, manifestUrl);
   clearBootstrapRelations(resolved.entries);
   const browse = buildCatalogBrowseEntries(resolved.entries);
   return {

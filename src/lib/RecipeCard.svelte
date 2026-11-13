@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { thaumcraftUiFor } from './thaumcraftUi';
   import { ItemTouch } from './itemTouch.svelte';
   import type { CatalogEntry, Recipe, RecipeView } from './types';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
@@ -10,7 +11,9 @@
   import { defaultProgressWidget, machineUiBounds, machineUiFor, machineUiTheme, RECIPE_UI_SCALE } from './machineUi';
   import { recipeItemInputLabel } from './recipePresentation';
   let { recipe, navigate, resolve }: { recipe: Recipe; navigate: (id: string, view: RecipeView) => void; resolve: (id: string) => CatalogEntry | undefined } = $props();
-  const machineUi = $derived(machineUiFor(recipe));
+  const thaumcraftUi = $derived(thaumcraftUiFor(recipe));
+  const displayRecipe = $derived(thaumcraftUi?.recipe ?? recipe);
+  const machineUi = $derived(thaumcraftUi?.profile ?? machineUiFor(recipe));
   const layoutWidth = $derived(machineUi ? machineUiBounds(machineUi).width * RECIPE_UI_SCALE + 40
     : (Math.max(recipe.layout.itemInputs.columns, recipe.layout.fluidInputs.columns)
       + Math.max(recipe.layout.itemOutputs.columns, recipe.layout.fluidOutputs.columns)) * 18 * RECIPE_UI_SCALE + 78);
@@ -113,7 +116,7 @@
   </div>
   <div class="recipe-stage">
     {#if machineUi}
-      <MachineRecipeStage {recipe} profile={machineUi} {navigate} {resolve} />
+      <MachineRecipeStage recipe={displayRecipe} profile={machineUi} {navigate} {resolve} />
     {:else}
     <div class="recipe-flow">
       <div class="io-side">

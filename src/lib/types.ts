@@ -228,7 +228,7 @@ export interface DatasetVersion {
 export interface ManagedDataset {
   version: DatasetVersion;
   state?: DatasetState;
-  /** The dataset is stored locally but is no longer listed in versions.json. */
+  /** The dataset is stored locally but is no longer listed in the current version index. */
   stale: boolean;
   /** This is the published replacement for the active dataset revision. */
   newRevisionAvailable: boolean;

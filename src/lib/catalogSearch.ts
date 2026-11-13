@@ -1,6 +1,6 @@
 import { minecraftHtmlPlainText } from './minecraftText';
 import { normalize } from './searchNormalization';
-import { parseSearchExpression, searchExpressionMatches, searchRankingTerms, type SearchExpression } from './searchSyntax';
+import { parseSearchExpression, searchExpressionMatches, type SearchExpression } from './searchSyntax';
 import type { CatalogBrowseEntry, CatalogEntry } from './types';
 
 interface CatalogSearchMember {
@@ -16,6 +16,9 @@ export interface CatalogSearchEntry {
   id: string;
   name: string;
   mod: string;
+  kind?: CatalogEntry['kind'];
+  numericId?: number;
+  damage?: number;
   members: CatalogSearchMember[];
 }
 
@@ -33,12 +36,13 @@ export interface CatalogSearchDocument {
   id: string;
   name: string;
   normalizedName: string;
+  kind: CatalogEntry['kind'];
+  numericId?: number;
+  damage?: number;
   members: CatalogSearchMemberDocument[];
 }
 
-export interface CatalogSearchQuery extends SearchExpression {
-  terms: string[];
-}
+export type CatalogSearchQuery = SearchExpression;
 
 function buildCatalogSearchEntries(
   catalog: readonly CatalogBrowseEntry[],
@@ -52,6 +56,7 @@ function buildCatalogSearchEntries(
       id: entry.id,
       name: entry.name,
       mod: entry.mod,
+      kind: entry.kind, numericId: entry.numericId, damage: entry.damage,
       members: entry.variantIds
         .map((id) => exactById.get(id))
         .filter((member): member is CatalogEntry => member !== undefined)
@@ -80,6 +85,7 @@ export function buildCatalogSearchDocument(entry: CatalogSearchEntry): CatalogSe
     id: entry.id,
     name: entry.name,
     normalizedName: normalize(entry.name),
+    kind: entry.kind ?? 'item', numericId: entry.numericId, damage: entry.damage,
     members: entry.members.map((member) => {
       const tooltip = minecraftHtmlPlainText(member.rawTooltip);
       const lines = tooltip.split('\n');
@@ -98,8 +104,7 @@ export function buildCatalogSearchDocument(entry: CatalogSearchEntry): CatalogSe
 }
 
 export function parseCatalogSearchQuery(query: string): CatalogSearchQuery {
-  const expression = parseSearchExpression(query);
-  return { ...expression, terms: searchRankingTerms(expression) };
+  return parseSearchExpression(query);
 }
 
 export function catalogDocumentMatches(
@@ -114,32 +119,4 @@ export function catalogDocumentMatches(
     ore: member.normalizedOreNames,
     identifier: [member.normalizedId]
   }));
-}
-
-export function scoreCatalogDocument(
-  entry: CatalogSearchDocument,
-  query: CatalogSearchQuery
-): number {
-  if (!query.terms.length) return 0;
-  const phrase = query.terms.join(' ');
-  let best = entry.normalizedName === phrase ? 300 : entry.normalizedName.startsWith(phrase) ? 200 : 0;
-  for (const member of entry.members) {
-    if (member.normalizedName === phrase) best = Math.max(best, 300);
-    else if (member.normalizedName.startsWith(phrase)) best = Math.max(best, 200);
-    else {
-      best = Math.max(
-        best,
-        query.terms.reduce(
-          (total, term) => total + (
-            member.normalizedName.startsWith(term)
-            || member.normalizedVariantLabel.startsWith(term)
-              ? 20
-              : 5
-          ),
-          0
-        )
-      );
-    }
-  }
-  return best;
 }

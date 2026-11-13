@@ -1,0 +1,11 @@
+{
+  "datasetId": "2.9.0-v7-r9ec25114d4a7",
+  "baseManifestSha256": "8bb22f4fb39ed7850b908e6c5e39ea31e9b5ecdff7690d29740bf4f209957ea1",
+  "sourceDataSha256": "fd81a264e8dcd27d2294a6f0a299b3f4095363a041b6871dea57cd42b2f5c01e",
+  "assets": [
+    {
+      "sha256": "c498f9248cabea999e7bae5b40be36f7ef988f127b50053118b34656da96798f",
+      "bytes": 90043
+    }
+  ]
+}

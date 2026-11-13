@@ -22,7 +22,7 @@
 <div class="machine-stage-wrap" data-machine-map={profile.id}>
   <div class="machine-canvas" style:width={`${bounds.width * RECIPE_UI_SCALE}px`} style:height={`${bounds.height * RECIPE_UI_SCALE}px`} aria-label={`${recipe.type} recipe layout`}>
     {#each profile.widgets as widget, index (index)}
-      <div class="widget" data-ui-kind={widget.kind} style:left={`${(widget.pos[0]-bounds.x)*RECIPE_UI_SCALE}px`} style:top={`${(widget.pos[1]-bounds.y)*RECIPE_UI_SCALE}px`} style:width={`${widget.size[0]*RECIPE_UI_SCALE}px`} style:height={`${widget.size[1]*RECIPE_UI_SCALE}px`}>
+      <div class="widget" data-ui-kind={widget.kind} style:opacity={widget.opacity ?? 1} style:left={`${(widget.pos[0]-bounds.x)*RECIPE_UI_SCALE}px`} style:top={`${(widget.pos[1]-bounds.y)*RECIPE_UI_SCALE}px`} style:width={`${widget.size[0]*RECIPE_UI_SCALE}px`} style:height={`${widget.size[1]*RECIPE_UI_SCALE}px`}>
         {#if widget.filled}<RecipeProgress {widget} />{:else}<UiTexture texture={widget.texture} />{/if}
       </div>
     {/each}
@@ -34,7 +34,7 @@
     {#each groups as group (group.group)}
       <div class="group" style:left={`${(group.x-bounds.x)*RECIPE_UI_SCALE}px`} style:top={`${(group.y-bounds.y)*RECIPE_UI_SCALE}px`}>
         <RecipeGrid dimensions={recipe.layout[group.group]} ingredients={ingredients[group.group]} positions={group.slots}
-          label={group.group.replace('item', 'Item ').replace('fluid', 'Fluid ')} showLabel={false} fluid={group.group.startsWith('fluid')} showChances={group.group.endsWith('Outputs')}
+          label={group.group.replace('item', 'Item ').replace('fluid', 'Fluid ')} showLabel={false} showSlots={profile.slotFrames !== false} fluid={group.group.startsWith('fluid')} showChances={group.group.endsWith('Outputs')}
           compactAmounts={group.group.endsWith('Outputs') && recipe.compactOutputAmounts} {navigate} {resolve} />
       </div>
     {/each}

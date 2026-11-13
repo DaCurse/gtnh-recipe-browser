@@ -174,3 +174,42 @@ npm run test:machine-ui -- <base-url> <playwright-module> [screenshots]
 
 Existing catalogue-based browser checks should start at `?page=items`, since the
 root URL now opens the landing page.
+
+## Thaumcraft infusion and Magical Crafting
+
+`thaumcraftUi.ts` adapts the GTNH 2.9.0 export to the actual **Aspect Recipe Index
+1.1.6** layouts. It uses the shared `MachineRecipeStage` and `RecipeGrid`; an
+optional frame switch leaves the original Thaumcraft artwork visible instead of
+painting generic slots over it. Item interactions, alternatives, counts, tooltips
+and touch gestures remain shared with every other recipe card.
+
+Infusion reverses the exporter's `componentFillOrder` to recover surrounding
+component order, places the central input at (75,63), and uses ARI's clockwise
+40px-radius ring starting at the top. Positions reproduce Minecraft's float
+sine-table arithmetic. Aspects are sorted by descending amount and distributed
+over rows of up to seven, using ARI's spacing. Arcane crafting uses the native
+(47,75,103) × (38,65,92) grid, output above it, and vis below. All UV coordinates,
+scales and the wand's opacity come from the release handlers. Projections retain
+every original ingredient and never mutate packed recipes. Version/category and
+shape mismatches keep the standard fallback renderer.
+
+Sources:
+
+- [TemplateThaumHandler](https://github.com/GTNewHorizons/AspectRecipeIndex/blob/1.1.6/src/main/java/com/gtnewhorizons/aspectrecipeindex/nei/TemplateThaumHandler.java)
+- [InfusionRecipeHandler](https://github.com/GTNewHorizons/AspectRecipeIndex/blob/1.1.6/src/main/java/com/gtnewhorizons/aspectrecipeindex/nei/InfusionRecipeHandler.java)
+- [ShapedArcaneRecipeHandler](https://github.com/GTNewHorizons/AspectRecipeIndex/blob/1.1.6/src/main/java/com/gtnewhorizons/aspectrecipeindex/nei/arcaneworkbench/ShapedArcaneRecipeHandler.java)
+- Read-only exporter: `ThaumcraftRecipeProcessor.componentFillOrder` and
+  `PrintAspects` in `nesql-exporter@ShadowTheAge`.
+
+The source texture is **original Thaumcraft artwork**, not a Shadow UI override.
+Extract the pinned client texture without recoloring or resampling:
+
+```sh
+npm run ui:thaumcraft -- --jar <mods/Thaumcraft-1.7.10-4.2.3.5.jar>
+```
+
+The tool checks the jar digest and records the resource path, texture checksum,
+renderer version and extraction method under `assets/source/machine-ui/thaumcraft`.
+The same unchanged PNG is shell-cached for offline use. Research unlocks and
+infusion instability are not invented: the current recipe export does not carry
+their full runtime state.

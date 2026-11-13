@@ -116,9 +116,11 @@ recipe-parity tests. The current format-7 release is indexed by
 available as a benchmark and historical version.
 
 Dataset URLs include the pack format, and the publisher never replaces an immutable dataset URL with bytes from
-another pack format. `public/versions.json` and its v6 manifests are frozen as a returning-PWA bridge.
-Old shells continue using v6 until the service worker updates them. New shells read only `versions-v7.json`
-and migrate same-version cache rows after v7 bootstrap loads successfully.
+another pack format. Only format-7 packs are published. The temporary v6 bridge and old `versions.json`
+were retired after the service-worker takeover was established. Returning shells are refreshed by that hook;
+old URLs and same-version cache rows still resolve to v7 replacements before obsolete state is cleaned up.
+`npm run prune:legacy-data` retires unindexed v6 copies and uses the publisher's shared-object collector,
+retaining every object referenced by remaining manifests or their registered companions.
 
 ## Assets and attribution
 

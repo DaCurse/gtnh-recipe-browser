@@ -1,3 +1,4 @@
+import { buildCatalogOrder } from '../catalog-order';
 import { specialGroupMatchesItem } from '../../src/lib/specialMatching';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, stat, writeFile, readdir, unlink } from 'node:fs/promises';
@@ -1199,6 +1200,7 @@ export async function buildPack(options: BuildPackOptions): Promise<BuildPackRes
   // dataset and would not be read by the runtime.
   const manifestPath = join(staging, 'pack-manifest.json');
   await writeFile(manifestPath, `${JSON.stringify(manifest)}\n`, { flag: 'wx' });
+  await writeFile(join(staging, 'catalog-order.json'), buildCatalogOrder(repository, manifest));
   await rename(staging, outputDirectory);
   return { manifest, manifestPath: join(outputDirectory, 'pack-manifest.json') };
 }

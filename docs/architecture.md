@@ -163,11 +163,11 @@ of duplicating its membership in every goods row; that group loads when recipes 
 Matching scopes, shard relationships, and machine capabilities are computed at build time. Special tabs
 use precomputed per-category lookup counts; full handler lookup IDs remain in lazy special records.
 Tooltip text is stored once in bootstrap, with lazy formatting spans restoring the selected tooltip losslessly.
-Unused exporter numeric IDs and unlocalized names are not published. Ordinary NBT is represented by a stable
+Unlocalized names are not published; numeric registry IDs are supplied by the verified catalogue-order companion. Ordinary NBT is represented by a stable
 variant fingerprint; CropsNH state remains in browse records because seed variants require it before selection.
 
-The new shell reads only `versions-v7.json`. The existing `versions.json` and v6 public manifests are
-frozen for old PWA shells. The generated worker imports a takeover hook that navigates legacy windows
+The shell reads only `versions-v7.json`. The temporary v6 public packs and old version index are retired.
+The generated worker imports a takeover hook that navigates legacy windows
 after successful shell activation, preserving their URLs even when catalog loading is stalled. Current shells
 answer its probe and reload once on controller replacement. Startup registers and checks the worker before
 loading data, with a 150-millisecond startup budget for unavailable update servers. Canonical build, verification,
@@ -219,7 +219,7 @@ The optional v7 index `rollout` policy carries a positive integer `epoch` and a 
 Startup treats a URL repeating the saved active dataset as saved state and applies an unacknowledged epoch once.
 Other explicit supported links and manager selections remain deliberate choices. Successful activation records
 its epoch in IndexedDB metadata; a failed target load leaves it pending. If a usable active v7 dataset exists,
-startup falls back to it while the rollout target is unavailable. Legacy cache rows and frozen bridge links are
+startup falls back to it while the rollout target is unavailable. Legacy cache rows and retired dataset links are
 resolved to published semantic-version replacements before any manifest fetch. No v6 manifest is selectable.
 
 

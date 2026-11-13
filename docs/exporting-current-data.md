@@ -194,7 +194,7 @@ releases and RC1 use the persistent shared layout; the 2.8.0 pack remains as a s
 historical/benchmark dataset.
 
 Staging and activation garbage-collect global SHA objects not referenced by
-any published format-7 or frozen v6 bridge manifest, so replaced or abandoned builds do not remain
+any published format-7 manifest or registered companion, so replaced or abandoned builds do not remain
 in the deployed object pool.
 
 The former interactive/launcher-assisted export procedure is retired; its implementation history is preserved in

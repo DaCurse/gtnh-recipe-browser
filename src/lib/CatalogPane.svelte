@@ -9,7 +9,8 @@
   import ProjectLinks from './ProjectLinks.svelte';
   import VariantPicker from './VariantPicker.svelte';
   import { resolveCatalogVariant } from './catalogVariants';
-  import { buildCatalogSearchDocuments, catalogDocumentMatches, parseCatalogSearchQuery, scoreCatalogDocument, type CatalogSearchDocument } from './catalogSearch';
+  import { buildCatalogSearchDocuments, catalogDocumentMatches, parseCatalogSearchQuery, type CatalogSearchDocument } from './catalogSearch';
+  import { compareCatalogOrder } from './catalogOrder';
   import HighlightedSearchInput from './HighlightedSearchInput.svelte';
   import SearchGuide from './SearchGuide.svelte';
   import { oreCycle } from './oreCycle';
@@ -159,6 +160,7 @@
               id: entry.id,
               name: entry.name,
               mod: entry.mod,
+              kind: entry.kind, numericId: entry.numericId, damage: entry.damage,
               members: entry.variantIds.map((id) => {
                 const member = exactEntryById.get(id)!;
                 return {
@@ -229,17 +231,17 @@
       ? await loadSearchDocuments(expression.needsOreDictionary)
       : buildCatalogSearchDocuments(searchableCatalog, [...exactEntryById.values()], exactEntryById);
     if (request !== searchRequest) return;
-    const matches: Array<{ id: string; name: string; score: number }> = [];
+    const matches: CatalogSearchDocument[] = [];
     for (let start = 0; start < documents.length; start += 1_000) {
       for (const document of documents.slice(start, start + 1_000)) {
         if (catalogDocumentMatches(document, expression)) {
-          matches.push({ id: document.id, name: document.name, score: scoreCatalogDocument(document, expression) });
+          matches.push(document);
         }
       }
       await new Promise((resolve) => window.setTimeout(resolve, 0));
       if (request !== searchRequest) return;
     }
-    matches.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+    matches.sort(compareCatalogOrder);
     const ids = matches.map(match => match.id);
     if (request !== searchRequest) return;
     fallbackIds = ids;

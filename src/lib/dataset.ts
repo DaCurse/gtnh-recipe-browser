@@ -1,3 +1,4 @@
+import { catalogOrderAsset } from './catalogOrderIndex';
 import { specialGoodsForDirection, specialGroupMatchesItem } from './specialMatching';
 import { physicalDescriptorsFor, sharedPrefixIsPublished } from './datasetLayout';
 import { ingredientGroupPreview } from './catalogMaterialization';
@@ -303,7 +304,8 @@ export class DatasetRepository {
   private get assets(): DatasetAsset[] {
     return [
       ...this.manifest.recordPages,
-      ...this.manifest.iconSheets
+      ...this.manifest.iconSheets,
+      ...[catalogOrderAsset(this.manifest, this.manifestUrl)].filter((asset): asset is DatasetAsset => asset !== undefined)
     ];
   }
 

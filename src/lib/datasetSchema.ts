@@ -72,6 +72,7 @@ interface SpecialDataShardAsset extends DatasetAsset {
 }
 
 export interface DatasetManifest {
+  source?: { dataSha256: string };
   formatVersion: 7;
   datasetId: string;
   gtnhVersion: string;

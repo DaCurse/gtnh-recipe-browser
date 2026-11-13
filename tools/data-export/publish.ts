@@ -1,4 +1,6 @@
 #!/usr/bin/env node
+import { prunePublishedObjects } from './prune';
+import { publishCatalogOrder } from '../catalog-order';
 import { ensureChainIndex, pruneChainIndexes } from '../chain-index';
 import { access, copyFile, cp, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -15,7 +17,6 @@ import {
   argumentsMap,
   assertPathMissing,
   assertImmutableManifestBytes,
-  unreferencedSharedObjectNames,
   requiredArgument,
   withPublishedVersion,
   type VersionsIndex
@@ -181,52 +182,6 @@ async function verifyPublishedManifest(destinationDirectory: string): Promise<vo
   await verifyPack({ packDirectory: destinationDirectory, assetDirectory: globalAssets });
 }
 
-async function pruneUnreferencedSharedObjects(): Promise<number> {
-  const manifests: GeneratedPackManifest[] = [];
-  const manifestDigests = new Map<string, string>();
-  for (const directory of await readdir(publicData, { withFileTypes: true })) {
-    if (!directory.isDirectory() || directory.name.startsWith('.')) continue;
-    const manifestPath = join(publicData, directory.name, 'pack-manifest.json');
-    try {
-      const bytes = await readFile(manifestPath);
-      const manifest = JSON.parse(bytes.toString()) as GeneratedPackManifest;
-      manifests.push(manifest);
-      manifestDigests.set(manifest.datasetId, createHash('sha256').update(bytes).digest('hex'));
-    } catch (error) {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-    }
-  }
-  const companions: Array<{ datasetId: string; assets: Array<{ sha256: string }> }> = [];
-  const archivedCompanions: string[] = [];
-  for (const directory of ['assets/source/high-resolution-icons/releases', 'assets/source/ore-diagrams/releases']) {
-    const files = await readdir(join(repositoryRoot, directory)).catch(error => {
-      if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
-      return [] as string[];
-    });
-    archivedCompanions.push(...files.filter(file => file.endsWith('.json')).map(file => join(directory, file)));
-  }
-  for (const path of ['assets/source/high-resolution-icons/provenance.json', 'assets/source/ore-diagrams/provenance.json',
-    ...archivedCompanions]) {
-    const companion = JSON.parse(await readFile(join(repositoryRoot, path), 'utf8')) as {
-      datasetId: string; baseManifestSha256: string; assets: Array<{ sha256: string }>;
-    };
-    const digest = manifestDigests.get(companion.datasetId);
-    if (!digest) continue;
-    if (digest !== companion.baseManifestSha256) throw new Error(`Companion does not match its immutable dataset: ${path}`);
-    companions.push(companion);
-  }
-  const objectEntries = await readdir(globalAssets, { withFileTypes: true });
-  if (objectEntries.some((entry) => !entry.isFile())) {
-    throw new Error('Global SHA-256 object store must contain files only');
-  }
-  const unreferenced = unreferencedSharedObjectNames(
-    objectEntries.map((entry) => entry.name),
-    manifests,
-    companions
-  );
-  for (const name of unreferenced) await rm(join(globalAssets, name));
-  return unreferenced.length;
-}
 
 let previousDirectory: string | undefined;
 if (mode === 'stage' || mode === 'publish') {
@@ -267,9 +222,13 @@ if (mode === 'stage' || mode === 'publish') {
 
 // Chain graphs must be available before a version can become active.
 await ensureChainIndex(resolve(publicData, '..'), manifest);
+const catalogOrderPath = join(packDirectory, 'catalog-order.json');
+if (await pathExists(catalogOrderPath)) {
+  await publishCatalogOrder(repositoryRoot, manifest, await readFile(catalogOrderPath, 'utf8'));
+}
 
 if (mode === 'stage') {
-  const prunedSharedObjects = await pruneUnreferencedSharedObjects();
+  const { count: prunedSharedObjects } = await prunePublishedObjects(repositoryRoot);
   console.log(JSON.stringify({
     datasetId: manifest.datasetId,
     destination,
@@ -310,11 +269,11 @@ for (const datasetId of replacedDatasetIds) {
   if (dirname(retiredDirectory) !== resolve(publicData)) throw new Error(`Retired dataset escapes public/data: ${datasetId}`);
   await rm(retiredDirectory, { recursive: true, force: true });
 }
-for (const file of ['high-resolution-icons.json', 'ore-diagrams.json']) {
+for (const file of ['high-resolution-icons.json', 'ore-diagrams.json', 'catalog-order.json']) {
   await retireCompanionReleases(join(repositoryRoot, 'src/lib/generated', file), replacedDatasetIds,
     join(repositoryRoot, 'assets/source', file.replace(/\.json$/, '')));
 }
-const prunedSharedObjects = await pruneUnreferencedSharedObjects();
+const { count: prunedSharedObjects } = await prunePublishedObjects(repositoryRoot);
 console.log(JSON.stringify({
   datasetId: manifest.datasetId,
   destination,

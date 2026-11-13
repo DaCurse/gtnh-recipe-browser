@@ -34,3 +34,7 @@ recolouring them. Original source and texture history:
 
 Prism RC2 sprites were inspected as a reference; published files use the final
 2.9.0 release. See `docs/machine-recipe-ui.md` for reproduction instructions.
+
+`thaumcraft/` preserves the original Thaumcraft 4.2.3.5 research-book overlay used
+by Aspect Recipe Index 1.1.6. It is not a Shadow UI texture. Its provenance and
+reproducible extraction are documented in `docs/machine-recipe-ui.md`.

@@ -152,10 +152,10 @@ beta2/beta3 measurements therefore favor the persistent trie. See [`architecture
 Compare intrinsic item identity separately from generated search/relation metadata;
 numeric NEI indexes and tooltip changes are not changes to item identity.
 
-New shells read `public/versions-v7.json` and accept only format 7. Keep the existing
-`public/versions.json` and v6 manifests byte-for-byte frozen as a returning-PWA bridge.
-Old shells continue loading v6 until a service-worker update reloads them. Do not pass frozen v6 packs
-as reuse inputs to the v7 builder. First successful v7 bootstrap load migrates obsolete same-version cache
+Shells read `public/versions-v7.json` and accept only format 7. The temporary v6 bridge
+and old `versions.json` were retired after worker takeover was established. Keep the takeover hook
+and semantic-version migration so returning clients reach v7 without fetching retired manifests.
+Do not pass v6 packs as reuse inputs to the v7 builder. First successful v7 bootstrap load migrates obsolete same-version cache
 rows using the generic cache marker; only their unreferenced blobs are pruning candidates.
 
 Run `npm run analyze:storage -- <beta-2-pack> <beta-3-pack>` for bootstrap physical bytes/pages, detail
@@ -172,7 +172,7 @@ Stage the verified pack, deploy it, run `smoke:deploy --all-assets` against the 
 and copies each immutable object once into `public/assets/sha256/`; it does not duplicate an `assets/` tree per
 dataset. Existing global objects are accepted only when their bytes match the requested SHA. The version index keeps
 one revision per GTNH version and retains the 2.8.0 benchmark. After staging or activation, the publisher removes
-global objects that are not referenced by any published v7 or frozen v6 bridge manifest. Do not call a revision released until the
+global objects that are not referenced by any published v7 manifest or registered companion. Do not call a revision released until the
 deployed-origin fetch succeeds.
 
 The retired interactive export procedure is intentionally documented only as history in Git.

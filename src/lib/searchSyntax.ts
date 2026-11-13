@@ -1,5 +1,3 @@
-import { normalize } from './searchNormalization';
-
 type SearchField = 'any' | 'mod' | 'tooltip' | 'ore' | 'identifier';
 interface SearchTerm {
   field: SearchField;
@@ -110,9 +108,4 @@ export function searchExpressionMatches(
     const matches = fields[term.field].some(text => patternMatches(text, term.pattern));
     return term.negated ? !matches : matches;
   }));
-}
-
-export function searchRankingTerms(expression: Pick<SearchExpression, 'clauses'>): string[] {
-  return expression.clauses.flat().filter(term => term.field === 'any' && !term.negated)
-    .map(term => normalize(term.value)).filter(Boolean);
 }
