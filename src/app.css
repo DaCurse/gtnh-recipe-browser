@@ -30,7 +30,7 @@ aside { min-height:0; position:relative; display:flex; flex-direction:column; ba
 .sidebar-resizer:hover span,.sidebar-resizer:focus-visible span,.resizing .sidebar-resizer span { background:#858b91; }
 .sidebar-resizer:focus-visible { outline:2px solid #aeb3b8; outline-offset:-3px; }
 .resizing,.resizing * { cursor:col-resize!important; user-select:none!important; }
-.search-wrap { margin:16px 14px 10px; height:44px; display:flex; align-items:center; gap:9px; padding:0 10px; border:1px solid #45494e; border-radius:8px; background:#121315; box-shadow:inset 0 1px 5px #0005; }
+.search-wrap { margin:16px 14px 10px; height:44px; flex:none; display:flex; align-items:center; gap:9px; padding:0 10px; border:1px solid #45494e; border-radius:8px; background:#121315; box-shadow:inset 0 1px 5px #0005; }
 .search-wrap:focus-within { border-color:#8c9298; box-shadow:0 0 0 2px #aab0b622; }
 .search-icon { width:19px; height:19px; flex:0 0 19px; fill:none; stroke:#90959a; stroke-width:1.8; stroke-linecap:round; }
 .search-wrap input { min-width:0; flex:1; align-self:stretch; border:0; outline:0; color:#eef0f2; background:transparent; font-size:14px; line-height:44px; }
@@ -156,7 +156,7 @@ h1 { margin:0 0 9px; font:36px/46px Minecraft; color:#f0f1f2; letter-spacing:0; 
 @media (max-width:800px) {
   .header-links { display:none; }
   main { display:block;overflow:hidden; }.app-shell { height:100dvh; } aside { height:100%;border:0; }.sidebar-resizer { display:none; }.detail { display:none;height:100%;padding:12px 14px 60px; }.detail.mobile-visible { display:block; }.mobile-hidden { display:none; }
-  .search-wrap { margin:12px; height:48px; flex:none; }
+  .search-wrap { margin:12px; height:48px; }
   .result-bar { min-height:38px; padding:0 14px; }
   .item-grid { display:flex; flex-direction:column; padding:0; gap:0; }
   .item-more { width:calc(100% - 24px); margin:12px; flex:none; }
