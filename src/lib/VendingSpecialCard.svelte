@@ -6,9 +6,30 @@
   import { vendingQuestId } from './questbook/vending';
   import type { QuestLinksRepository } from './questbook/linksRepository';
   import type { RecipeView } from './types';
-  import { toSpecialGoods, toSpecialGoodsList, type SpecialGoods as SpecialGoodsValue, type SpecialRecord, type SpecialResolver, type VendingSpecialPayload } from './specialData';
+  import {
+    toSpecialGoods,
+    toSpecialGoodsList,
+    type SpecialGoods as SpecialGoodsValue,
+    type SpecialRecord,
+    type SpecialResolver,
+    type VendingSpecialPayload,
+  } from './specialData';
 
-  let { record, resolve, navigate, questLinks, openQuest, questLinksLoading = false }: { record: SpecialRecord; resolve: SpecialResolver; navigate: (id: string, view: RecipeView) => void; questLinks?:QuestLinksRepository; openQuest?:(id:string)=>void; questLinksLoading?:boolean } = $props();
+  let {
+    record,
+    resolve,
+    navigate,
+    questLinks,
+    openQuest,
+    questLinksLoading = false,
+  }: {
+    record: SpecialRecord;
+    resolve: SpecialResolver;
+    navigate: (id: string, view: RecipeView) => void;
+    questLinks?: QuestLinksRepository;
+    openQuest?: (id: string) => void;
+    questLinksLoading?: boolean;
+  } = $props();
 
   let availableWidth = $state(434);
   let layoutHeight = $state(144);
@@ -49,19 +70,19 @@
         ? candidate.goodsIds.filter((id): id is string => typeof id === 'string')
         : [];
       const fallback = ids.length > 0 ? ids : [candidate];
-      const amount = currency
-        ? numberValue(candidate.value)
-        : numberValue(candidate.amount);
+      const amount = currency ? numberValue(candidate.value) : numberValue(candidate.amount);
       const oreDictionary = stringValue(candidate.oreDictionary);
       return fallback.flatMap((id) => {
         const goods = toSpecialGoods(id);
         if (!goods) return [];
-        return [{
-          ...goods,
-          amount,
-          role,
-          oreDictionaryId: oreDictionary ? `o:${oreDictionary}` : goods.oreDictionaryId
-        }];
+        return [
+          {
+            ...goods,
+            amount,
+            role,
+            oreDictionaryId: oreDictionary ? `o:${oreDictionary}` : goods.oreDictionaryId,
+          },
+        ];
       });
     });
   }
@@ -74,22 +95,22 @@
     rawPayload.fromCurrency !== undefined || rawPayload.fromItems !== undefined
       ? [
           ...expandStacks(rawPayload.fromCurrency, 'currency', true),
-          ...expandStacks(rawPayload.fromItems, 'input')
+          ...expandStacks(rawPayload.fromItems, 'input'),
         ]
       : [
           ...fallbackStacks(payload.currencies, 'currency'),
-          ...fallbackStacks(payload.inputs ?? rawPayload.inputs, 'input')
-        ]
+          ...fallbackStacks(payload.inputs ?? rawPayload.inputs, 'input'),
+        ],
   );
   const nonConsumed = $derived(
     rawPayload.nonConsumedItems !== undefined
       ? expandStacks(rawPayload.nonConsumedItems, 'tool')
-      : fallbackStacks(payload.nonConsumedInputs ?? rawPayload.nonConsumedInputs, 'tool')
+      : fallbackStacks(payload.nonConsumedInputs ?? rawPayload.nonConsumedInputs, 'tool'),
   );
   const outputs = $derived(
     rawPayload.toItems !== undefined
       ? expandStacks(rawPayload.toItems, 'output')
-      : fallbackStacks(payload.outputs ?? rawPayload.outputs ?? record.outputs, 'output')
+      : fallbackStacks(payload.outputs ?? rawPayload.outputs ?? record.outputs, 'output'),
   );
 
   const inputGoods = $derived([...inputs, ...nonConsumed]);
@@ -110,26 +131,53 @@
     return nbt || 'Static requirement';
   }
 
-  const questRequirements=$derived((Array.isArray(rawPayload.requirements) ? rawPayload.requirements : payload.requirements ?? [])
-    .map(vendingQuestId).filter((id):id is string=>Boolean(id)));
+  const questRequirements = $derived(
+    (Array.isArray(rawPayload.requirements)
+      ? rawPayload.requirements
+      : (payload.requirements ?? [])
+    )
+      .map(vendingQuestId)
+      .filter((id): id is string => Boolean(id)),
+  );
   const requirements = $derived(
-    (Array.isArray(rawPayload.requirements) ? rawPayload.requirements : payload.requirements ?? [])
-      .filter(value=>!vendingQuestId(value))
+    (Array.isArray(rawPayload.requirements)
+      ? rawPayload.requirements
+      : (payload.requirements ?? [])
+    )
+      .filter((value) => !vendingQuestId(value))
       .map(requirementLabel)
       .filter((value) => value.length > 0)
-      .concat(payload.staticRequirement ? [payload.staticRequirement] : [])
+      .concat(payload.staticRequirement ? [payload.staticRequirement] : []),
   );
 </script>
 
 <div class="vending-card">
-  <div class="trade-viewport" bind:clientWidth={availableWidth} style:height={`${layoutHeight * scale}px`}>
+  <div
+    class="trade-viewport"
+    bind:clientWidth={availableWidth}
+    style:height={`${layoutHeight * scale}px`}
+  >
     <div class="trade-layout" bind:clientHeight={layoutHeight} style:transform={`scale(${scale})`}>
       <section class="trade-side" aria-label="Vending inputs">
-        <SpecialGoods goods={inputGoods} {resolve} {navigate} hideLabels grid={{columns:4,rows:3}} pageSize={12} />
+        <SpecialGoods
+          goods={inputGoods}
+          {resolve}
+          {navigate}
+          hideLabels
+          grid={{ columns: 4, rows: 3 }}
+          pageSize={12}
+        />
       </section>
       <div class="trade-arrow"><RecipeProgress widget={defaultProgressWidget} /></div>
       <section class="trade-side" aria-label="Vending results">
-        <SpecialGoods goods={outputs} {resolve} {navigate} hideLabels grid={{columns:4,rows:3}} pageSize={12} />
+        <SpecialGoods
+          goods={outputs}
+          {resolve}
+          {navigate}
+          hideLabels
+          grid={{ columns: 4, rows: 3 }}
+          pageSize={12}
+        />
       </section>
     </div>
   </div>
@@ -141,25 +189,91 @@
         <div class="quest-requirement-ruler" aria-label="Required quests">
           {#each questRequirements as id (id)}
             {#if questLinks?.quests.has(id) && openQuest}
-              <QuestIconButton quest={questLinks.quests.get(id)!} repository={questLinks} {openQuest} source="vending" />
-            {:else}<small>{questLinksLoading ? 'Loading quest info…' : 'Quest info unavailable for this version'}</small>{/if}
+              <QuestIconButton
+                quest={questLinks.quests.get(id)!}
+                repository={questLinks}
+                {openQuest}
+                source="vending"
+              />
+            {:else}<small
+                >{questLinksLoading
+                  ? 'Loading quest info…'
+                  : 'Quest info unavailable for this version'}</small
+              >{/if}
           {/each}
         </div>
       {/if}
-      {#if requirements.length}<ul>{#each requirements as requirement, index (`${index}:${requirement}`)}<li>{requirement}</li>{/each}</ul>{/if}
+      {#if requirements.length}<ul>
+          {#each requirements as requirement, index (`${index}:${requirement}`)}<li>
+              {requirement}
+            </li>{/each}
+        </ul>{/if}
     </section>
   {/if}
 </div>
 
 <style>
-  .vending-card { display:flex; flex-direction:column; gap:13px; min-width:0; }
-  .trade-viewport { width:100%; }
-  .trade-layout { display:grid; width:434px; grid-template-columns:192px 38px 192px; align-items:center; gap:6px; transform-origin:top left; }
-  .trade-side { min-width:0; }
-  .vending-requirements h3 { margin:0 0 7px; color:var(--recipe-text); font:12px/16px Minecraft,ui-sans-serif,system-ui,sans-serif; text-transform:uppercase; }
-  .trade-arrow { width:38px; height:34px; }
-  .vending-requirements { padding:9px; border:0; border-radius:0; background:transparent; }
-  .vending-requirements ul { display:flex; flex-wrap:wrap; gap:5px 14px; margin:0; padding-left:17px; color:var(--recipe-text); font-size:11px; }
-  .vending-requirements small { display:block; margin-top:7px; color:var(--recipe-text); font:9px/13px Minecraft,monospace; }
-  .quest-requirement-ruler { display:flex;flex-wrap:wrap;align-items:center;gap:10px; }
+  .vending-card {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    min-width: 0;
+  }
+  .trade-viewport {
+    width: 100%;
+  }
+  .trade-layout {
+    display: grid;
+    width: 434px;
+    grid-template-columns: 192px 38px 192px;
+    align-items: center;
+    gap: 6px;
+    transform-origin: top left;
+  }
+  .trade-side {
+    min-width: 0;
+  }
+  .vending-requirements h3 {
+    margin: 0 0 7px;
+    color: var(--recipe-text);
+    font:
+      12px/16px Minecraft,
+      ui-sans-serif,
+      system-ui,
+      sans-serif;
+    text-transform: uppercase;
+  }
+  .trade-arrow {
+    width: 38px;
+    height: 34px;
+  }
+  .vending-requirements {
+    padding: 9px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .vending-requirements ul {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px 14px;
+    margin: 0;
+    padding-left: 17px;
+    color: var(--recipe-text);
+    font-size: 11px;
+  }
+  .vending-requirements small {
+    display: block;
+    margin-top: 7px;
+    color: var(--recipe-text);
+    font:
+      9px/13px Minecraft,
+      monospace;
+  }
+  .quest-requirement-ruler {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+  }
 </style>

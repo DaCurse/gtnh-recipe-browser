@@ -1,0 +1,67 @@
+.detail {
+  min-width: 0;
+  overflow: auto;
+  padding: 30px clamp(24px, 5vw, 74px) 60px;
+  background: transparent;
+}
+.back {
+  display: none;
+  margin-block-end: 12px;
+  min-height: 44px;
+  align-items: center;
+  gap: 4px;
+  border: 0;
+  background: none;
+  color: #c0c4c8;
+  padding: 0;
+  cursor: pointer;
+}
+.item-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 20px;
+  max-width: 1020px;
+  margin: auto;
+}
+.item-overview {
+  width: min(720px, calc(100% - 108px));
+  min-width: 0;
+}
+.item-head.compact .minecraft-tooltip {
+  padding-top: 4px;
+  padding-bottom: 5px;
+}
+.item-head.compact .tooltip-header {
+  line-height: 1.15;
+}
+.item-head.compact .tooltip-debug {
+  line-height: 12px;
+}
+.item-head.compact .tooltip-text {
+  margin-top: 0;
+}
+.item-head.compact .tooltip-text .minecraft-line {
+  min-height: 1.15em;
+}
+.item-head.compact .tooltip-mod {
+  margin-top: 1px;
+  line-height: 1.1;
+}
+.eyebrow {
+  margin: 0 0 8px;
+  color: #a5aaaf;
+  font:
+    18px/24px Minecraft,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  letter-spacing: 0;
+  text-shadow: 2px 2px #342c34;
+}
+h1 {
+  margin: 0 0 9px;
+  font: 36px/46px Minecraft;
+  color: #f0f1f2;
+  letter-spacing: 0;
+  text-shadow: 2px 2px #342c34;
+}

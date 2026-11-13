@@ -4,12 +4,26 @@ import { recipes } from './support/demo';
 describe('NEI recipe layouts', () => {
   it('preserves the complete format-v5 dimension contract', () => {
     for (const recipe of recipes) {
-      expect(recipe.layout).toEqual(expect.objectContaining({
-        itemInputs: expect.objectContaining({ columns: expect.any(Number), rows: expect.any(Number) }),
-        fluidInputs: expect.objectContaining({ columns: expect.any(Number), rows: expect.any(Number) }),
-        itemOutputs: expect.objectContaining({ columns: expect.any(Number), rows: expect.any(Number) }),
-        fluidOutputs: expect.objectContaining({ columns: expect.any(Number), rows: expect.any(Number) })
-      }));
+      expect(recipe.layout).toEqual(
+        expect.objectContaining({
+          itemInputs: expect.objectContaining({
+            columns: expect.any(Number),
+            rows: expect.any(Number),
+          }),
+          fluidInputs: expect.objectContaining({
+            columns: expect.any(Number),
+            rows: expect.any(Number),
+          }),
+          itemOutputs: expect.objectContaining({
+            columns: expect.any(Number),
+            rows: expect.any(Number),
+          }),
+          fluidOutputs: expect.objectContaining({
+            columns: expect.any(Number),
+            rows: expect.any(Number),
+          }),
+        }),
+      );
     }
   });
 

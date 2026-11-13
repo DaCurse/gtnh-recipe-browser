@@ -1,7 +1,25 @@
 type MinecraftFormatCode =
-  | '0' | '1' | '2' | '3' | '4' | '5' | '6' | '7'
-  | '8' | '9' | 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
-  | 'k' | 'l' | 'm' | 'n' | 'o';
+  | '0'
+  | '1'
+  | '2'
+  | '3'
+  | '4'
+  | '5'
+  | '6'
+  | '7'
+  | '8'
+  | '9'
+  | 'a'
+  | 'b'
+  | 'c'
+  | 'd'
+  | 'e'
+  | 'f'
+  | 'k'
+  | 'l'
+  | 'm'
+  | 'n'
+  | 'o';
 
 interface MinecraftTextSegment {
   text: string;
@@ -20,14 +38,18 @@ export interface MinecraftText {
 export type MinecraftFormattingSpan = [start: number, end: number, codes: string];
 
 /** Text is already in bootstrap; lazy details retain only its formatting spans. */
-export function minecraftFormattingSpans(html: string | null | undefined): MinecraftFormattingSpan[] {
+export function minecraftFormattingSpans(
+  html: string | null | undefined,
+): MinecraftFormattingSpan[] {
   const parsed = parseMinecraftHtml(html);
-  if (parsed.plainText !== minecraftHtmlPlainText(html)) throw new Error('Tooltip text/formatting mismatch');
+  if (parsed.plainText !== minecraftHtmlPlainText(html))
+    throw new Error('Tooltip text/formatting mismatch');
   const spans: MinecraftFormattingSpan[] = [];
   let offset = 0;
   for (const line of parsed.lines) {
     for (const segment of line.segments) {
-      if (segment.formats.length) spans.push([offset, offset + segment.text.length, segment.formats.join('')]);
+      if (segment.formats.length)
+        spans.push([offset, offset + segment.text.length, segment.formats.join('')]);
       offset += segment.text.length;
     }
     offset++;
@@ -35,24 +57,43 @@ export function minecraftFormattingSpans(html: string | null | undefined): Minec
   return spans;
 }
 
-export function restoreMinecraftFormatting(text: string, spans: readonly MinecraftFormattingSpan[]): MinecraftTextLine[] {
+export function restoreMinecraftFormatting(
+  text: string,
+  spans: readonly MinecraftFormattingSpan[],
+): MinecraftTextLine[] {
   for (const [start, end, codes] of spans) {
-    if (!Number.isSafeInteger(start) || !Number.isSafeInteger(end) || start < 0 || end < start
-      || end > text.length || !/^[0-9a-fklmno]+$/.test(codes)) throw new Error('Invalid tooltip formatting span');
+    if (
+      !Number.isSafeInteger(start) ||
+      !Number.isSafeInteger(end) ||
+      start < 0 ||
+      end < start ||
+      end > text.length ||
+      !/^[0-9a-fklmno]+$/.test(codes)
+    )
+      throw new Error('Invalid tooltip formatting span');
   }
   let offset = 0;
   return text.split('\n').map((line) => {
     const start = offset;
     const end = start + line.length;
     const relevant = spans.filter(([a, b]) => a < end && b > start);
-    const boundaries = [...new Set([start, end, ...relevant.flatMap(([a, b]) => [Math.max(start, a), Math.min(end, b)])])].sort((a, b) => a - b);
+    const boundaries = [
+      ...new Set([
+        start,
+        end,
+        ...relevant.flatMap(([a, b]) => [Math.max(start, a), Math.min(end, b)]),
+      ]),
+    ].sort((a, b) => a - b);
     const segments: MinecraftTextSegment[] = [];
     for (let index = 1; index < boundaries.length; index++) {
       const a = boundaries[index - 1]!;
       const b = boundaries[index]!;
       if (a === b) continue;
       const formats = relevant.find(([from, to]) => from <= a && to >= b)?.[2] ?? '';
-      segments.push({ text: text.slice(a, b), formats: formats.split('') as MinecraftFormatCode[] });
+      segments.push({
+        text: text.slice(a, b),
+        formats: formats.split('') as MinecraftFormatCode[],
+      });
     }
     offset = end + 1;
     return { segments };
@@ -92,9 +133,12 @@ function sameFormats(left: MinecraftFormatCode[], right: MinecraftFormatCode[]):
 }
 
 export function plainMinecraftText(text: string): MinecraftText {
-  const lines = text.replace(/\r\n?/g, '\n').split('\n').map((line) => ({
-    segments: line ? [{ text: line, formats: [] }] : []
-  }));
+  const lines = text
+    .replace(/\r\n?/g, '\n')
+    .split('\n')
+    .map((line) => ({
+      segments: line ? [{ text: line, formats: [] }] : [],
+    }));
   return { lines, plainText: text.replace(/\r\n?/g, '\n') };
 }
 
@@ -102,14 +146,20 @@ export function plainMinecraftText(text: string): MinecraftText {
 export function parseMinecraftCodes(text: string): MinecraftText {
   const lines: MinecraftTextLine[] = [{ segments: [] }];
   let formats: MinecraftFormatCode[] = [];
-  for (const match of text.replace(/\r\n?/g, '\n').matchAll(/\\&|[§&][0-9a-fklmnor]|\n|[^§&\n\\]+|./gi)) {
+  for (const match of text
+    .replace(/\r\n?/g, '\n')
+    .matchAll(/\\&|[§&][0-9a-fklmnor]|\n|[^§&\n\\]+|./gi)) {
     const token = match[0];
-    if (token === '\n') { lines.push({ segments: [] }); continue; }
+    if (token === '\n') {
+      lines.push({ segments: [] });
+      continue;
+    }
     if (/^[§&][0-9a-fklmnor]$/i.test(token)) {
       const code = token[1].toLowerCase();
       if (code === 'r') formats = [];
       else if (/^[0-9a-f]$/.test(code)) formats = [code as MinecraftFormatCode];
-      else if (!formats.includes(code as MinecraftFormatCode)) formats = [...formats, code as MinecraftFormatCode];
+      else if (!formats.includes(code as MinecraftFormatCode))
+        formats = [...formats, code as MinecraftFormatCode];
       continue;
     }
     const value = token === '\\&' ? '&' : token;
@@ -118,7 +168,12 @@ export function parseMinecraftCodes(text: string): MinecraftText {
     if (previous && sameFormats(previous.formats, formats)) previous.text += value;
     else segments.push({ text: value, formats: [...formats] });
   }
-  return { lines, plainText: lines.map(line => line.segments.map(segment => segment.text).join('')).join('\n') };
+  return {
+    lines,
+    plainText: lines
+      .map((line) => line.segments.map((segment) => segment.text).join(''))
+      .join('\n'),
+  };
 }
 
 /**
@@ -162,13 +217,17 @@ export function parseMinecraftHtml(html: string | null | undefined): MinecraftTe
       formats = span[2]
         .split(/\s+/)
         .map((className) => className.match(/^fmt-([0-9a-fklmno])$/i)?.[1].toLowerCase())
-        .filter((code): code is MinecraftFormatCode => code !== undefined && validFormat.test(code));
+        .filter(
+          (code): code is MinecraftFormatCode => code !== undefined && validFormat.test(code),
+        );
     }
   }
 
   while (lines.length > 1 && lines[lines.length - 1].segments.length === 0) lines.pop();
   return {
     lines,
-    plainText: lines.map((line) => line.segments.map((segment) => segment.text).join('')).join('\n')
+    plainText: lines
+      .map((line) => line.segments.map((segment) => segment.text).join(''))
+      .join('\n'),
   };
 }

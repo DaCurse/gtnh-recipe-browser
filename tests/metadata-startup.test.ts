@@ -7,7 +7,7 @@ vi.mock('../src/lib/storage', () => ({
   getCachedMetadata: vi.fn(),
   cacheAsset: vi.fn(),
   getCachedAsset: vi.fn(),
-  removeCachedAsset: vi.fn()
+  removeCachedAsset: vi.fn(),
 }));
 
 afterEach(() => {
@@ -22,7 +22,15 @@ describe('cached startup metadata', () => {
     const saved = { url: 'https://example.test/versions.json', value: { epoch: 1 } };
     vi.mocked(getCachedMetadata).mockResolvedValue(saved);
     let finish!: (response: Response) => void;
-    vi.stubGlobal('fetch', vi.fn(() => new Promise<Response>((resolve) => { finish = resolve; })));
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(
+        () =>
+          new Promise<Response>((resolve) => {
+            finish = resolve;
+          }),
+      ),
+    );
     const loading = fetchJsonNetworkFirst(saved.url, 'versions', 150);
     await vi.advanceTimersByTimeAsync(150);
     expect(await loading).toEqual(saved);
@@ -34,8 +42,10 @@ describe('cached startup metadata', () => {
   it('waits for a fresh network result when there is no saved metadata', async () => {
     vi.mocked(getCachedMetadata).mockResolvedValue(null);
     vi.stubGlobal('fetch', vi.fn().mockResolvedValue(new Response(JSON.stringify({ epoch: 3 }))));
-    expect(await fetchJsonNetworkFirst('https://example.test/new.json', 'new', 0))
-      .toEqual({ url: 'https://example.test/new.json', value: { epoch: 3 } });
+    expect(await fetchJsonNetworkFirst('https://example.test/new.json', 'new', 0)).toEqual({
+      url: 'https://example.test/new.json',
+      value: { epoch: 3 },
+    });
   });
 
   it('retains cached metadata when revalidation fails', async () => {

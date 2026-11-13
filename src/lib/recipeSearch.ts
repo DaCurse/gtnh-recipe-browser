@@ -36,7 +36,7 @@ export function toRecipeSearchCatalogEntry(entry: CatalogEntry): RecipeSearchCat
     name: entry.name,
     mod: entry.mod,
     tooltip: [...entry.tooltip],
-    rawTooltip: entry.rawTooltip
+    rawTooltip: entry.rawTooltip,
   };
 }
 
@@ -45,11 +45,14 @@ export function toRecipeSearchRecord(recipe: Recipe): RecipeSearchRecord {
     id: recipe.id,
     type: recipe.type,
     order: recipe.order ?? 0,
-    ingredientIds: [...new Set(
-      [...recipe.inputs, ...recipe.outputs].flatMap(
-        (ingredient) => [ingredient.id, ...(ingredient.alternatives ?? [])]
-      )
-    )],
+    ingredientIds: [
+      ...new Set(
+        [...recipe.inputs, ...recipe.outputs].flatMap((ingredient) => [
+          ingredient.id,
+          ...(ingredient.alternatives ?? []),
+        ]),
+      ),
+    ],
     details: [
       recipe.id,
       recipe.type,
@@ -62,14 +65,14 @@ export function toRecipeSearchRecord(recipe: Recipe): RecipeSearchRecord {
       recipe.euPerTick ?? '',
       recipe.euPerTickExact ?? '',
       ...(recipe.metadata ?? []),
-      recipe.specialValue ?? ''
-    ]
+      recipe.specialValue ?? '',
+    ],
   };
 }
 
 export function buildRecipeSearchDocument(
   recipe: RecipeSearchRecord,
-  catalog: ReadonlyMap<string, RecipeSearchCatalogEntry>
+  catalog: ReadonlyMap<string, RecipeSearchCatalogEntry>,
 ): RecipeSearchDocument {
   const ingredients = recipe.ingredientIds.flatMap((id) => {
     const entry = catalog.get(id);
@@ -81,7 +84,7 @@ export function buildRecipeSearchDocument(
     id: recipe.id,
     type: recipe.type,
     order: recipe.order,
-    haystack: normalize([...recipe.details, ...ingredients].join(' '))
+    haystack: normalize([...recipe.details, ...ingredients].join(' ')),
   };
 }
 
@@ -92,7 +95,7 @@ export function recipeSearchTerms(rawQuery: string): string[] {
 export function matchesRecipeSearch(
   document: RecipeSearchDocument,
   recipeType: string,
-  terms: readonly string[]
+  terms: readonly string[],
 ): boolean {
   return document.type === recipeType && terms.every((term) => document.haystack.includes(term));
 }
@@ -102,7 +105,7 @@ export function searchRecipeDocuments(
   recipeType: string,
   rawQuery: string,
   offset: number,
-  limit: number
+  limit: number,
 ): RecipeSearchResult {
   const terms = recipeSearchTerms(rawQuery);
   const safeOffset = Math.max(0, offset);

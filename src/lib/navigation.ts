@@ -6,19 +6,13 @@ export interface SpecialNavigation {
   specialScope: SpecialScope;
 }
 
-export function catalogSearchFromUrl(
-  currentUrl: string | URL | URLSearchParams
-): string {
-  const params = currentUrl instanceof URLSearchParams
-    ? currentUrl
-    : new URL(currentUrl).searchParams;
+export function catalogSearchFromUrl(currentUrl: string | URL | URLSearchParams): string {
+  const params =
+    currentUrl instanceof URLSearchParams ? currentUrl : new URL(currentUrl).searchParams;
   return params.get('search') ?? '';
 }
 
-export function catalogSearchUrl(
-  currentUrl: string | URL,
-  query: string
-): URL {
+export function catalogSearchUrl(currentUrl: string | URL, query: string): URL {
   const url = new URL(currentUrl);
   const normalizedQuery = query.trim();
   if (normalizedQuery) url.searchParams.set('search', normalizedQuery);
@@ -26,19 +20,13 @@ export function catalogSearchUrl(
   return url;
 }
 
-export function recipeFilterFromUrl(
-  currentUrl: string | URL | URLSearchParams
-): string {
-  const params = currentUrl instanceof URLSearchParams
-    ? currentUrl
-    : new URL(currentUrl).searchParams;
+export function recipeFilterFromUrl(currentUrl: string | URL | URLSearchParams): string {
+  const params =
+    currentUrl instanceof URLSearchParams ? currentUrl : new URL(currentUrl).searchParams;
   return params.get('recipe-filter') ?? '';
 }
 
-export function recipeFilterUrl(
-  currentUrl: string | URL,
-  query: string
-): URL {
+export function recipeFilterUrl(currentUrl: string | URL, query: string): URL {
   const url = new URL(currentUrl);
   const normalizedQuery = query.trim();
   if (normalizedQuery) url.searchParams.set('recipe-filter', normalizedQuery);
@@ -48,7 +36,8 @@ export function recipeFilterUrl(
 
 export function itemListUrl(currentUrl: string | URL): URL {
   const url = new URL(currentUrl);
-  for (const key of ['quest', 'chapter', 'quest-version', 'quest-search']) url.searchParams.delete(key);
+  for (const key of ['quest', 'chapter', 'quest-version', 'quest-search'])
+    url.searchParams.delete(key);
   url.searchParams.delete('page');
   url.searchParams.delete('finder-mode');
   url.searchParams.delete('input');
@@ -88,22 +77,21 @@ function specialScopeUrlValue(value: SpecialScope): string | undefined {
 }
 
 export function specialNavigationFromUrl(
-  currentUrl: string | URL | URLSearchParams
+  currentUrl: string | URL | URLSearchParams,
 ): SpecialNavigation {
-  const params = currentUrl instanceof URLSearchParams
-    ? currentUrl
-    : new URL(currentUrl).searchParams;
+  const params =
+    currentUrl instanceof URLSearchParams ? currentUrl : new URL(currentUrl).searchParams;
   const specialType = specialTypeFromUrl(params.get('special'));
   return {
     specialType,
-    specialScope: specialType ? specialScopeFromUrl(params.get('special-scope')) : 'item'
+    specialScope: specialType ? specialScopeFromUrl(params.get('special-scope')) : 'item',
   };
 }
 
 export function specialNavigationUrl(
   currentUrl: string | URL,
   specialType: string,
-  specialScope: SpecialScope = 'item'
+  specialScope: SpecialScope = 'item',
 ): URL {
   const url = new URL(currentUrl);
   const normalizedType = specialTypeUrlValue(specialType);
@@ -119,16 +107,23 @@ export function specialNavigationUrl(
   return url;
 }
 
-export function finderFromUrl(currentUrl: string | URL | URLSearchParams): RecipeConstraints | null {
-  const params = currentUrl instanceof URLSearchParams ? currentUrl : new URL(currentUrl).searchParams;
+export function finderFromUrl(
+  currentUrl: string | URL | URLSearchParams,
+): RecipeConstraints | null {
+  const params =
+    currentUrl instanceof URLSearchParams ? currentUrl : new URL(currentUrl).searchParams;
   if (params.get('page') !== 'finder') return null;
   return {
     inputs: [...new Set(params.getAll('input').filter(Boolean))],
-    outputs: [...new Set(params.getAll('output').filter(Boolean))]
+    outputs: [...new Set(params.getAll('output').filter(Boolean))],
   };
 }
 
-export function finderUrl(currentUrl: string | URL, constraints: RecipeConstraints, mode: 'recipes' | 'chain' = 'recipes'): URL {
+export function finderUrl(
+  currentUrl: string | URL,
+  constraints: RecipeConstraints,
+  mode: 'recipes' | 'chain' = 'recipes',
+): URL {
   const url = itemListUrl(currentUrl);
   url.searchParams.set('page', 'finder');
   if (mode === 'chain') url.searchParams.set('finder-mode', 'chain');

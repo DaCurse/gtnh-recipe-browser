@@ -7,7 +7,7 @@ const assets: AssetDescriptor[] = Array.from({ length: 5 }, (_, index) => ({
   url: `./asset-${index}`,
   bytes: 10 + index,
   sha256: `hash-${index}`,
-  encoding: 'identity'
+  encoding: 'identity',
 }));
 
 describe('offline asset installation', () => {
@@ -32,7 +32,7 @@ describe('offline asset installation', () => {
       },
       persist: async (hashes) => {
         persisted.push(hashes.size);
-      }
+      },
     });
 
     expect(maximum).toBe(3);
@@ -49,7 +49,7 @@ describe('offline asset installation', () => {
       load: async (asset) => {
         loaded.push(asset.id);
       },
-      persist: async () => {}
+      persist: async () => {},
     });
 
     expect(loaded).toEqual(expect.arrayContaining(['asset-1', 'asset-2', 'asset-4']));
@@ -66,20 +66,22 @@ describe('offline asset installation', () => {
         if (calls < 3) throw new Error('temporary failure');
       },
       persist: async () => {},
-      retryDelay: async () => {}
+      retryDelay: async () => {},
     });
     expect(calls).toBe(3);
 
     calls = 0;
-    await expect(installOfflineAssets({
-      assets: [assets[0]],
-      load: async () => {
-        calls++;
-        throw new Error('permanent failure');
-      },
-      persist: async () => {},
-      retryDelay: async () => {}
-    })).rejects.toThrow('permanent failure');
+    await expect(
+      installOfflineAssets({
+        assets: [assets[0]],
+        load: async () => {
+          calls++;
+          throw new Error('permanent failure');
+        },
+        persist: async () => {},
+        retryDelay: async () => {},
+      }),
+    ).rejects.toThrow('permanent failure');
     expect(calls).toBe(3);
   });
 
@@ -96,7 +98,7 @@ describe('offline asset installation', () => {
       persist: async (hashes) => {
         saved = new Set(hashes);
       },
-      retryDelay: async () => {}
+      retryDelay: async () => {},
     });
 
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });
@@ -112,7 +114,7 @@ describe('offline asset installation', () => {
         progress(asset.bytes);
       },
       persist: async () => {},
-      onProgress: (progress) => loadedBytes.push(progress.loadedBytes)
+      onProgress: (progress) => loadedBytes.push(progress.loadedBytes),
     });
 
     expect(Math.max(...loadedBytes)).toBe(assets[0].bytes + assets[1].bytes);
@@ -133,7 +135,7 @@ describe('offline asset installation', () => {
       },
       persist: async () => {},
       retryDelay: async () => {},
-      onProgress: (progress) => loadedBytes.push(progress.loadedBytes)
+      onProgress: (progress) => loadedBytes.push(progress.loadedBytes),
     });
     expect(loadedBytes).toEqual([...loadedBytes].sort((left, right) => left - right));
     expect(loadedBytes.at(-1)).toBe(assets[0]!.bytes);
@@ -150,7 +152,7 @@ describe('offline asset installation', () => {
         onProgress(asset.bytes);
       },
       persist: async () => {},
-      onProgress: (value) => progress.push(value.totalBytes)
+      onProgress: (value) => progress.push(value.totalBytes),
     });
 
     expect(loaded).toEqual(['asset-0', 'asset-1']);

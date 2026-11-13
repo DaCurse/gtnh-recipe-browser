@@ -10,21 +10,26 @@ import {
   recipeItemInputLabel,
   recipeTypeCrafters,
   recipeTypeIconId,
-  recipeTypeMachineCapabilities
+  recipeTypeMachineCapabilities,
 } from '../src/lib/recipePresentation';
 
 const type = {
   singleblocks: [{ id: 'machine:lv' }, { id: 'machine:mv' }, { id: 'machine:hv' }],
   multiblocks: [{ id: 'machine:large' }],
-  defaultCrafter: { id: 'machine:lv' }
+  defaultCrafter: { id: 'machine:lv' },
 };
 
 describe('recipe presentation parity', () => {
   it('exposes exact quantities and chances in recipe tooltips', () => {
-    expect(ingredientTooltipNotes({ id: 'dust', amount: 1_150_554_420 }, false, true)).toEqual(['Count: 1,150,554,420']);
-    expect(ingredientTooltipNotes({ id: 'fluid', amount: 32_000_000, chance: 0.125 }, true, true))
-      .toEqual(['Amount: 32,000,000 L', 'Chance: 12.5%']);
-    expect(ingredientTooltipNotes({ id: 'tool', amount: 0 }, false, false)).toEqual(['Not consumed']);
+    expect(ingredientTooltipNotes({ id: 'dust', amount: 1_150_554_420 }, false, true)).toEqual([
+      'Count: 1,150,554,420',
+    ]);
+    expect(
+      ingredientTooltipNotes({ id: 'fluid', amount: 32_000_000, chance: 0.125 }, true, true),
+    ).toEqual(['Amount: 32,000,000 L', 'Chance: 12.5%']);
+    expect(ingredientTooltipNotes({ id: 'tool', amount: 0 }, false, false)).toEqual([
+      'Not consumed',
+    ]);
   });
   it('uses tiered singleblocks for cards and the default crafter for tabs', () => {
     expect(recipeCrafterId(type, 2)).toBe('machine:hv');
@@ -37,13 +42,15 @@ describe('recipe presentation parity', () => {
       { id: 'machine:lv', role: 'singleblock' },
       { id: 'machine:mv', role: 'singleblock' },
       { id: 'machine:hv', role: 'singleblock' },
-      { id: 'machine:large', role: 'multiblock' }
+      { id: 'machine:large', role: 'multiblock' },
     ]);
-    expect(recipeTypeCrafters({
-      singleblocks: [],
-      multiblocks: [],
-      defaultCrafter: { id: 'machine:fallback' }
-    })).toEqual([{ id: 'machine:fallback', role: 'default' }]);
+    expect(
+      recipeTypeCrafters({
+        singleblocks: [],
+        multiblocks: [],
+        defaultCrafter: { id: 'machine:fallback' },
+      }),
+    ).toEqual([{ id: 'machine:fallback', role: 'default' }]);
   });
 
   it('maps machine tiers to their recipe voltage ceilings', () => {
@@ -51,7 +58,7 @@ describe('recipe presentation parity', () => {
       { id: 'machine:lv', maxVoltageTier: 0 },
       { id: 'machine:mv', maxVoltageTier: 1 },
       { id: 'machine:hv', maxVoltageTier: 2 },
-      { id: 'machine:large' }
+      { id: 'machine:large' },
     ]);
     expect(machineCanProcessVoltage({ maxVoltageTier: 2 }, 1)).toBe(true);
     expect(machineCanProcessVoltage({ maxVoltageTier: 2 }, 3)).toBe(false);
@@ -59,16 +66,24 @@ describe('recipe presentation parity', () => {
   });
 
   it('propagates machine categories through overlapping ore dictionaries', () => {
-    const capabilities = propagateOreMachineCapabilities(new Map([
-      ['machine:canonical', [{
-        recipeTypeId: 'crafting',
-        recipeTypeName: 'Crafting',
-        recipeShards: ['crafting-0']
-      }]]
-    ]), [
-      { id: 'o:craftingTable', itemIds: ['machine:canonical', 'machine:alternate'] },
-      { id: 'o:workbench', itemIds: ['machine:alternate', 'machine:third'] }
-    ]);
+    const capabilities = propagateOreMachineCapabilities(
+      new Map([
+        [
+          'machine:canonical',
+          [
+            {
+              recipeTypeId: 'crafting',
+              recipeTypeName: 'Crafting',
+              recipeShards: ['crafting-0'],
+            },
+          ],
+        ],
+      ]),
+      [
+        { id: 'o:craftingTable', itemIds: ['machine:canonical', 'machine:alternate'] },
+        { id: 'o:workbench', itemIds: ['machine:alternate', 'machine:third'] },
+      ],
+    );
 
     expect(capabilities.get('machine:alternate')?.[0].recipeTypeId).toBe('crafting');
     expect(capabilities.get('machine:third')?.[0].recipeTypeId).toBe('crafting');
@@ -81,30 +96,58 @@ describe('recipe presentation parity', () => {
     expect(machineCanProcessVoltage(capability, 0)).toBe(true);
     expect(machineCanProcessVoltage(capability, 12)).toBe(true);
     expect(machineCanProcessVoltage({ maxVoltageTier: 0 }, 1)).toBe(false);
-    const propagated = propagateOreMachineCapabilities(new Map([
-      ['machine:limited', [{ recipeTypeId: 'tower', recipeTypeName: 'Tower', recipeShards: ['tower'], maxVoltageTier: 0 }]],
-      ['machine:unlimited', [{ recipeTypeId: 'tower', recipeTypeName: 'Tower', recipeShards: ['tower'], maxVoltageTier: null }]]
-    ]), [{ id: 'o:tower', itemIds: ['machine:limited', 'machine:unlimited'] }]);
+    const propagated = propagateOreMachineCapabilities(
+      new Map([
+        [
+          'machine:limited',
+          [
+            {
+              recipeTypeId: 'tower',
+              recipeTypeName: 'Tower',
+              recipeShards: ['tower'],
+              maxVoltageTier: 0,
+            },
+          ],
+        ],
+        [
+          'machine:unlimited',
+          [
+            {
+              recipeTypeId: 'tower',
+              recipeTypeName: 'Tower',
+              recipeShards: ['tower'],
+              maxVoltageTier: null,
+            },
+          ],
+        ],
+      ]),
+      [{ id: 'o:tower', itemIds: ['machine:limited', 'machine:unlimited'] }],
+    );
     expect(machineCanProcessVoltage(propagated.get('machine:limited')![0]!, 12)).toBe(true);
   });
 
   it('only labels actual crafting types as shaped or shapeless', () => {
-    expect(recipeItemInputLabel('Crafting (Shaped)', false, { columns: 3, rows: 3 }))
-      .toBe('3 × 3 shaped');
-    expect(recipeItemInputLabel('Crafting (Shapeless)', true, { columns: 3, rows: 3 }))
-      .toBe('Shapeless');
-    expect(recipeItemInputLabel('Assembler', true, { columns: 3, rows: 3 }))
-      .toBe('Items');
+    expect(recipeItemInputLabel('Crafting (Shaped)', false, { columns: 3, rows: 3 })).toBe(
+      '3 × 3 shaped',
+    );
+    expect(recipeItemInputLabel('Crafting (Shapeless)', true, { columns: 3, rows: 3 })).toBe(
+      'Shapeless',
+    );
+    expect(recipeItemInputLabel('Assembler', true, { columns: 3, rows: 3 })).toBe('Items');
   });
 
   it('preserves gaps and omits service slots outside the declared NEI grid', () => {
     const visible = ingredientsByGridSlot(
-      [{ id: 'first', slot: 0 }, { id: 'gap-after', slot: 2 }, { id: 'service', slot: 6 }],
-      { columns: 3, rows: 2 }
+      [
+        { id: 'first', slot: 0 },
+        { id: 'gap-after', slot: 2 },
+        { id: 'service', slot: 6 },
+      ],
+      { columns: 3, rows: 2 },
     );
     expect([...visible.entries()]).toEqual([
       [0, { id: 'first', slot: 0 }],
-      [2, { id: 'gap-after', slot: 2 }]
+      [2, { id: 'gap-after', slot: 2 }],
     ]);
   });
 

@@ -19,7 +19,7 @@ function catalogEntry(item: DecodedItem): CatalogEntry {
     tooltip: [],
     color: '#aaa',
     glyph: '□',
-    searchable: item.searchable
+    searchable: item.searchable,
   };
 }
 
@@ -38,13 +38,13 @@ describe('pinned browser catalog policy parity', () => {
     expect(fixture.spriteAudit.searchableGtTools).toEqual({
       total: 19_010,
       visible: 19_010,
-      transparent: 0
+      transparent: 0,
     });
     for (const name of ['Wrench (LV)', 'Wrench (MV)', 'Wrench (HV)'] as const) {
       expect(fixture.spriteAudit.wrenches[name]).toEqual({
         total: 651,
         visible: 651,
-        transparent: 0
+        transparent: 0,
       });
     }
   });
@@ -66,19 +66,22 @@ describe('pinned browser catalog policy parity', () => {
       [170, 4],
       [172, 8],
       [174, 12],
-      [176, 16]
+      [176, 16],
     ]);
     for (const turbine of fixture.turbines) {
       const recipe = fixture.recipes.find((candidate) =>
-        candidate.outputs.some((output) => output.goodsId === turbine.id)
+        candidate.outputs.some((output) => output.goodsId === turbine.id),
       );
       expect(recipe?.recipeTypeId).toContain(':gregtech:Assembler');
-      expect(recipe?.inputs.find((input) => input.goodsId === bladeId)?.amount)
-        .toBe(expectedBladeAmounts.get(turbine.damage));
-      expect(recipe?.outputs).toContainEqual(expect.objectContaining({
-        goodsId: turbine.id,
-        amount: 1
-      }));
+      expect(recipe?.inputs.find((input) => input.goodsId === bladeId)?.amount).toBe(
+        expectedBladeAmounts.get(turbine.damage),
+      );
+      expect(recipe?.outputs).toContainEqual(
+        expect.objectContaining({
+          goodsId: turbine.id,
+          amount: 1,
+        }),
+      );
       expect(recipe?.gt?.voltage).toBeGreaterThan(0);
       expect(recipe?.gt?.durationTicks).toBeGreaterThan(0);
     }
@@ -87,7 +90,7 @@ describe('pinned browser catalog policy parity', () => {
   it('groups real exact variants for browsing without merging tool sizes', () => {
     const entries = [
       ...fixture.turbines.map((item) => catalogEntry(item as DecodedItem)),
-      catalogEntry(fixture.comparisonTurbine as DecodedItem)
+      catalogEntry(fixture.comparisonTurbine as DecodedItem),
     ];
     const groups = buildCatalogBrowseEntries(entries);
     const small = groups.find((entry) => entry.damage === 170);
@@ -103,9 +106,7 @@ describe('pinned browser catalog policy parity', () => {
 
     expect(fixture.effectTooltipItem.nbt).toContain('CustomFlaskEffects');
     expect(parsed.plainText).toBe('Swigs Left: 8/8\nFlight (7:06)');
-    expect(parsed.lines[1]?.segments).toEqual([
-      { text: 'Flight (7:06)', formats: ['7'] }
-    ]);
+    expect(parsed.lines[1]?.segments).toEqual([{ text: 'Flight (7:06)', formats: ['7'] }]);
   });
 });
 
@@ -115,31 +116,36 @@ describe('pinned named ore-dictionary parity', () => {
     expect(oreDictionaryFixture.source).toEqual({
       formatVersion: 5,
       dataSha256: '2d31ab7b15912938f3c8c0a8ddca30f5fcf0021194f7c941bb6d72795e58e264',
-      atlasSha256: '29e950c2bc78a944f2aa75173940037ade8e16caad8af93a271be78e364a3a06'
+      atlasSha256: '29e950c2bc78a944f2aa75173940037ade8e16caad8af93a271be78e364a3a06',
     });
   });
 
   it('preserves every named Iron Ore alias with its complete membership', () => {
     expect(oreDictionaryFixture.ironOre.id).toBe('i:gregtech:gt.blockores2:32');
-    expect(oreDictionaryFixture.ironOreDictionaries.map((dictionary) => dictionary.id))
-      .toEqual(['o:oreIron', 'o:oreAnyIron']);
+    expect(oreDictionaryFixture.ironOreDictionaries.map((dictionary) => dictionary.id)).toEqual([
+      'o:oreIron',
+      'o:oreAnyIron',
+    ]);
     expect(oreDictionaryFixture.ironOreDictionaries[0]?.itemIds).toHaveLength(11);
     expect(oreDictionaryFixture.ironOreDictionaries[1]?.itemIds).toHaveLength(12);
-    expect(oreDictionaryFixture.ironOreDictionaries[1]?.itemIds)
-      .toContain('i:gregtech:gt.blockores2:307');
+    expect(oreDictionaryFixture.ironOreDictionaries[1]?.itemIds).toContain(
+      'i:gregtech:gt.blockores2:307',
+    );
   });
 
   it('keeps recipe alternatives outside the named ore-dictionary namespace', () => {
-    expect(oreDictionaryFixture.anonymousIronGroup).toEqual(expect.objectContaining({
-      id: 'g:ig~_TYRaar_O3e-NoaTUgTtEw==',
-      kind: 'itemGroup'
-    }));
+    expect(oreDictionaryFixture.anonymousIronGroup).toEqual(
+      expect.objectContaining({
+        id: 'g:ig~_TYRaar_O3e-NoaTUgTtEw==',
+        kind: 'itemGroup',
+      }),
+    );
     expect(oreDictionaryFixture.anonymousIronGroup.itemIds).toHaveLength(10);
     expect(oreDictionaryFixture.anonymousIronRecipe.inputs).toContainEqual(
       expect.objectContaining({
         kind: 'itemGroup',
-        goodsId: oreDictionaryFixture.anonymousIronGroup.id
-      })
+        goodsId: oreDictionaryFixture.anonymousIronGroup.id,
+      }),
     );
   });
 });

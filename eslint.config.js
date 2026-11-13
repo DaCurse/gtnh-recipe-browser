@@ -11,7 +11,7 @@ export default defineConfig(
     '.export-work/**',
     'public/data/**',
     'tests/fixtures/**',
-    'gtnh@ShadowTheAge/**'
+    'gtnh@ShadowTheAge/**',
   ]),
   js.configs.recommended,
   ts.configs.recommended,
@@ -21,31 +21,31 @@ export default defineConfig(
     languageOptions: {
       globals: {
         ...globals.browser,
-        ...globals.worker
-      }
-    }
+        ...globals.worker,
+      },
+    },
   },
   {
     files: ['tools/**/*.{ts,mjs}', 'tests/**/*.ts', '*.{ts,js}'],
     languageOptions: {
-      globals: globals.node
-    }
+      globals: globals.node,
+    },
   },
   {
     files: ['**/*.svelte', '**/*.svelte.ts'],
     languageOptions: {
       parserOptions: {
         extraFileExtensions: ['.svelte'],
-        parser: ts.parser
-      }
+        parser: ts.parser,
+      },
     },
     rules: {
-      'svelte/prefer-svelte-reactivity': 'off'
-    }
+      'svelte/prefer-svelte-reactivity': 'off',
+    },
   },
   {
     rules: {
-      '@typescript-eslint/no-explicit-any': 'off'
-    }
-  }
+      '@typescript-eslint/no-explicit-any': 'off',
+    },
+  },
 );

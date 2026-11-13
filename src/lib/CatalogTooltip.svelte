@@ -7,7 +7,7 @@
   let {
     entry,
     action,
-    notes
+    notes,
   }: {
     entry: CatalogEntry;
     action?: string | string[];
@@ -29,7 +29,11 @@
   {#if entry.formula || entry.rawTooltip || entry.formattedTooltip?.length || entry.tooltip.length}
     <div class="tooltip-text">
       {#if entry.formula}<span class="tooltip-formula">{entry.formula}</span>{/if}
-      <MinecraftText lines={entry.formattedTooltip} raw={entry.rawTooltip} fallback={entry.tooltip} />
+      <MinecraftText
+        lines={entry.formattedTooltip}
+        raw={entry.rawTooltip}
+        fallback={entry.tooltip}
+      />
     </div>
   {/if}
   {#if notes?.length}
@@ -41,7 +45,7 @@
   {#if entry.oreDictionaryIds?.length}
     <div class="tooltip-ore-dictionaries">
       <span>Ore dictionary</span>
-      {entry.oreDictionaryIds.map((id) => id.startsWith('o:') ? id.slice(2) : id).join(', ')}
+      {entry.oreDictionaryIds.map((id) => (id.startsWith('o:') ? id.slice(2) : id)).join(', ')}
     </div>
   {/if}
   <div class="tooltip-mod">{entry.mod}</div>
@@ -56,23 +60,30 @@
   .tooltip-notes {
     margin-top: 4px;
     color: #ffff55;
-    font:18px/24px Minecraft, monospace;
+    font:
+      18px/24px Minecraft,
+      monospace;
     text-shadow: 2px 2px #342c34;
     overflow-wrap: anywhere;
   }
   .tooltip-ore-dictionaries {
     margin-top: 4px;
     color: #aca1ab;
-    font:18px/24px Minecraft, monospace;
+    font:
+      18px/24px Minecraft,
+      monospace;
     text-shadow: 2px 2px #342c34;
     overflow-wrap: anywhere;
   }
   .tooltip-ore-dictionaries span {
     display: block;
     color: #777c82;
-    font: 10px/1.4 ui-sans-serif, system-ui, sans-serif;
+    font:
+      10px/1.4 ui-sans-serif,
+      system-ui,
+      sans-serif;
     text-transform: uppercase;
-    letter-spacing: .08em;
+    letter-spacing: 0.08em;
     text-shadow: none;
   }
   .minecraft-tooltip.compact .tooltip-debug,

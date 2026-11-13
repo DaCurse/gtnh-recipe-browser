@@ -1,0 +1,136 @@
+.minecraft-tooltip {
+  width: 100%;
+  max-height: min(52vh, 560px);
+  overflow-y: auto;
+  padding: 6px 12px 8px;
+  border: 2px solid #100010;
+  border-radius: 2px;
+  background: #100010;
+  box-shadow:
+    inset 0 0 0 2px #4300d650,
+    0 7px 20px #0005;
+  font:
+    400 18px/24px Minecraft,
+    ui-monospace,
+    monospace;
+  text-shadow: 2px 2px #342c34;
+  scrollbar-color: #51455b #100010;
+}
+.tooltip-header {
+  color: #fff;
+  font-size: 18px;
+}
+.tooltip-debug {
+  margin-top: 1px;
+  color: #ffffff80;
+  font:
+    11px/16px ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    'Liberation Mono',
+    monospace;
+  overflow-wrap: anywhere;
+  word-spacing: 1px;
+  text-shadow: none;
+  user-select: text;
+}
+.tooltip-text {
+  margin-top: 1px;
+  color: #aca1ab;
+}
+.tooltip-formula {
+  display: inline-block;
+  margin-right: 7px;
+  color: #fff;
+}
+.tooltip-mod {
+  margin-top: 2px;
+  color: #5457fa;
+  line-height: 1.2;
+}
+.tooltip-action {
+  margin-top: 8px;
+  color: #b5aa74;
+  font:
+    400 12px/18px Minecraft,
+    ui-monospace,
+    monospace;
+  text-shadow: 1px 1px #342c34;
+}
+.minecraft-text,
+.minecraft-line {
+  display: block;
+  font-kerning: none;
+  font-variant-ligatures: none;
+  letter-spacing: 0;
+}
+.minecraft-line {
+  min-height: 1lh;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.tooltip-preview .minecraft-line.empty {
+  display: none;
+}
+.fmt-0 {
+  color: #000;
+}
+.fmt-1 {
+  color: #0000aa;
+}
+.fmt-2 {
+  color: #00aa00;
+}
+.fmt-3 {
+  color: #00aaaa;
+}
+.fmt-4 {
+  color: #aa0000;
+}
+.fmt-5 {
+  color: #aa00aa;
+}
+.fmt-6 {
+  color: #ffaa00;
+}
+.fmt-7 {
+  color: #aaa;
+}
+.fmt-8 {
+  color: #555;
+}
+.fmt-9 {
+  color: #5555ff;
+}
+.fmt-a {
+  color: #55ff55;
+}
+.fmt-b {
+  color: #55ffff;
+}
+.fmt-c {
+  color: #ff5555;
+}
+.fmt-d {
+  color: #ff55ff;
+}
+.fmt-e {
+  color: #ffff55;
+}
+.fmt-f {
+  color: #fff;
+}
+.fmt-l {
+  font-weight: 700;
+}
+.fmt-m {
+  text-decoration: line-through;
+  text-decoration-thickness: 2px;
+}
+.fmt-n {
+  text-decoration: underline;
+  text-decoration-thickness: 2px;
+}
+.fmt-o {
+  font-style: italic;
+}

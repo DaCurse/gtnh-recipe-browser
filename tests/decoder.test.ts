@@ -45,7 +45,8 @@ function repositoryWithNullableUnlocalizedName(withSparseType = false): Buffer {
   values[itemPointer + 16] = 0;
   values[itemPointer + 17] = -1;
   if (withSparseType) {
-    const name = pushString('Bio Lab'), category = pushString('gregtech');
+    const name = pushString('Bio Lab'),
+      category = pushString('gregtech');
     const dimensions = values.length;
     values.push(8, 1, 1, 0, 0, 1, 1, 0, 0);
     const singleblocks = values.length;
@@ -74,7 +75,7 @@ describe('format-v5 decoder rejection', () => {
 
   it('rejects unsupported versions before following pointers', () => {
     expect(() => decodeFormat5(gzipSync(words(4, 0, 0, 0, 0, 0, 0, 0)))).toThrow(
-      new PackDecodeError('Unsupported data format 4; required 5')
+      new PackDecodeError('Unsupported data format 4; required 5'),
     );
   });
 
@@ -83,7 +84,9 @@ describe('format-v5 decoder rejection', () => {
   });
 
   it('rejects invalid root pointers', () => {
-    expect(() => decodeFormat5(gzipSync(words(5, 99, 99, 99, 99, 99, 99, 99)))).toThrow(/invalid pointer/i);
+    expect(() => decodeFormat5(gzipSync(words(5, 99, 99, 99, 99, 99, 99, 99)))).toThrow(
+      /invalid pointer/i,
+    );
   });
 
   it('normalizes a null optional unlocalized name to an empty string', () => {
@@ -95,7 +98,9 @@ describe('format-v5 decoder rejection', () => {
     const type = decodeFormat5(repositoryWithNullableUnlocalizedName(true)).recipeTypes[0]!;
     expect(type.singleblocks).toHaveLength(1);
     expect(type.singleblocks[0]?.maxVoltageTier).toBe(2);
-    expect(recipeTypeMachineCapabilities(type)).toEqual([{ id: 'i:test:nullable:0', maxVoltageTier: 2 }]);
+    expect(recipeTypeMachineCapabilities(type)).toEqual([
+      { id: 'i:test:nullable:0', maxVoltageTier: 2 },
+    ]);
     expect(recipeCrafterId(type, 2)).toBe('i:test:nullable:0');
   });
 });
@@ -117,8 +122,12 @@ describe.skipIf(!existsSync(realDataPath))('pinned real format-v5 dataset', () =
 
   it('matches the recorded immutable source hashes', () => {
     const digest = (path: string) => createHash('sha256').update(readFileSync(path)).digest('hex');
-    expect(digest(realDataPath)).toBe('b0ff8d63f3104e979628c64e650cab17bf0b442e01bdb00c1d8f54c458a3eccc');
-    expect(digest(realAtlasPath)).toBe('fa05550ce9657ce49d4512b4aab7fe76d684b70745b0bc7b744c9ae0d6eb6ef5');
+    expect(digest(realDataPath)).toBe(
+      'b0ff8d63f3104e979628c64e650cab17bf0b442e01bdb00c1d8f54c458a3eccc',
+    );
+    expect(digest(realAtlasPath)).toBe(
+      'fa05550ce9657ce49d4512b4aab7fe76d684b70745b0bc7b744c9ae0d6eb6ef5',
+    );
   });
 
   it('preserves the actual shaped and shapeless crafting dimensions', () => {
@@ -133,26 +142,32 @@ describe.skipIf(!existsSync(realDataPath))('pinned real format-v5 dataset', () =
   it('retains non-searchable crafter goods needed by recipe tabs', () => {
     const hidden = repository.items.filter((item) => !item.searchable);
     expect(hidden.length).toBeGreaterThan(0);
-    expect(repository.recipeTypes.some((type) => type.defaultCrafter && hidden.some((item) => item.id === type.defaultCrafter?.id))).toBe(true);
+    expect(
+      repository.recipeTypes.some(
+        (type) => type.defaultCrafter && hidden.some((item) => item.id === type.defaultCrafter?.id),
+      ),
+    ).toBe(true);
   });
 
   it('preserves Creosote Oil semi-fluid fuel metadata', () => {
     const creosote = repository.fluids.find((fluid) => fluid.name === 'Creosote Oil');
-    const semiFluidType = repository.recipeTypes.find((type) => type.name === 'Semifluid Generator Fuels');
-    const fuelRecipe = repository.recipes.find((recipe) =>
-      recipe.recipeTypeId === semiFluidType?.id &&
-      recipe.inputs.some((input) => input.goodsId === creosote?.id));
+    const semiFluidType = repository.recipeTypes.find(
+      (type) => type.name === 'Semifluid Generator Fuels',
+    );
+    const fuelRecipe = repository.recipes.find(
+      (recipe) =>
+        recipe.recipeTypeId === semiFluidType?.id &&
+        recipe.inputs.some((input) => input.goodsId === creosote?.id),
+    );
     expect(fuelRecipe?.gt?.metadata).toContainEqual({ key: 'fuel_value', value: 48 });
   });
 
   it('preserves fluid containers and their shared recipe directions', () => {
     const creosote = repository.fluids.find((fluid) => fluid.id === 'f:Railcraft:creosote')!;
-    const cell = repository.items.find(
-      (item) => item.id === 'i:Railcraft:fluid.creosote.cell:0'
-    )!;
+    const cell = repository.items.find((item) => item.id === 'i:Railcraft:fluid.creosote.cell:0')!;
     const emptyCellId = 'i:IC2:itemCellEmpty:0';
     const goods = new Map(
-      [...repository.items, ...repository.fluids].map((entry) => [entry.id, entry])
+      [...repository.items, ...repository.fluids].map((entry) => [entry.id, entry]),
     );
     const fluidScope = fluidRecipeScope(creosote.id, goods)!;
     const containerScope = fluidRecipeScope(cell.id, goods)!;
@@ -160,7 +175,7 @@ describe.skipIf(!existsSync(realDataPath))('pinned real format-v5 dataset', () =
     expect(cell.container).toEqual({
       fluidId: creosote.id,
       amount: 1_000,
-      emptyItemId: emptyCellId
+      emptyItemId: emptyCellId,
     });
     expect(containerScope.memberIds).toEqual(fluidScope.memberIds);
     expect(fluidScope.memberIds.has(emptyCellId)).toBe(false);
@@ -177,38 +192,43 @@ describe.skipIf(!existsSync(realDataPath))('pinned real format-v5 dataset', () =
   it('retains ore-dictionary members and indexes their interchangeable usages', () => {
     const dustIron = repository.oreDictionaries.find((ore) => ore.id === 'o:dustIron');
     const oreRecipe = repository.recipes.find((recipe) =>
-      recipe.inputs.some((input) => input.kind === 'oreDict' && input.goodsId === dustIron?.id));
+      recipe.inputs.some((input) => input.kind === 'oreDict' && input.goodsId === dustIron?.id),
+    );
     expect(dustIron?.itemIds.length).toBeGreaterThan(1);
     expect(oreRecipe).toBeDefined();
     for (const memberId of dustIron!.itemIds) {
-      expect(repository.items.find((item) => item.id === memberId)?.usageRecipeIds).toContain(oreRecipe!.id);
+      expect(repository.items.find((item) => item.id === memberId)?.usageRecipeIds).toContain(
+        oreRecipe!.id,
+      );
     }
   });
 
   it('preserves the Ichorium ore alias needed to recover indirect production', () => {
     const thaumicIchorium = repository.items.find(
-      (item) => item.id === 'i:ThaumicTinkerer:kamiResource:2'
+      (item) => item.id === 'i:ThaumicTinkerer:kamiResource:2',
     );
     const gregTechIchorium = repository.items.find(
-      (item) => item.id === 'i:gregtech:gt.metaitem.01:11978'
+      (item) => item.id === 'i:gregtech:gt.metaitem.01:11978',
     );
     const dictionary = repository.oreDictionaries.find((ore) => ore.id === 'o:ingotIchorium');
 
     expect(thaumicIchorium?.productionRecipeIds).toHaveLength(0);
-    expect(dictionary?.itemIds).toEqual(expect.arrayContaining([
-      thaumicIchorium!.id,
-      gregTechIchorium!.id
-    ]));
+    expect(dictionary?.itemIds).toEqual(
+      expect.arrayContaining([thaumicIchorium!.id, gregTechIchorium!.id]),
+    );
     expect(gregTechIchorium?.productionRecipeIds.length).toBeGreaterThan(0);
 
     const fallback = productionFallbackDictionary(
       thaumicIchorium!.id,
       repository.oreDictionaries,
       (itemId) =>
-        (repository.items.find((item) => item.id === itemId)?.productionRecipeIds.length ?? 0) > 0
+        (repository.items.find((item) => item.id === itemId)?.productionRecipeIds.length ?? 0) > 0,
     );
-    const recoveredRecipes = new Set(fallback?.itemIds.flatMap((itemId) =>
-      repository.items.find((item) => item.id === itemId)?.productionRecipeIds ?? []));
+    const recoveredRecipes = new Set(
+      fallback?.itemIds.flatMap(
+        (itemId) => repository.items.find((item) => item.id === itemId)?.productionRecipeIds ?? [],
+      ),
+    );
     expect(fallback?.id).toBe('o:ingotIchorium');
     expect(recoveredRecipes.size).toBe(35);
   });

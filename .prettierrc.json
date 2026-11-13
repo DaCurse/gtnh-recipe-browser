@@ -1,0 +1,8 @@
+{
+  "singleQuote": true,
+  "semi": true,
+  "tabWidth": 2,
+  "printWidth": 100,
+  "plugins": ["prettier-plugin-svelte", "prettier-plugin-java"],
+  "overrides": [{ "files": "*.svelte", "options": { "parser": "svelte" } }]
+}

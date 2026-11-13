@@ -20,22 +20,22 @@ export class WordReader {
       this.bytes = gunzipSync(compressed);
     } catch (error) {
       throw new PackDecodeError(
-        `Unable to decompress data.bin: ${error instanceof Error ? error.message : String(error)}`
+        `Unable to decompress data.bin: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
     if (this.bytes.byteLength % 4 !== 0) {
       throw new PackDecodeError(
-        `Decoded data length ${this.bytes.byteLength} is not aligned to 32-bit words`
+        `Decoded data length ${this.bytes.byteLength} is not aligned to 32-bit words`,
       );
     }
     this.words = new Int32Array(
       this.bytes.buffer,
       this.bytes.byteOffset,
-      this.bytes.byteLength / 4
+      this.bytes.byteLength / 4,
     );
     if (this.words.length < ROOT_WORDS) {
       throw new PackDecodeError(
-        `Decoded repository is truncated: expected at least ${ROOT_WORDS} words`
+        `Decoded repository is truncated: expected at least ${ROOT_WORDS} words`,
       );
     }
   }
@@ -43,7 +43,7 @@ export class WordReader {
   int(offset: number, context: string): number {
     if (!Number.isInteger(offset) || offset < 0 || offset >= this.words.length) {
       throw new PackDecodeError(
-        `${context}: word offset ${offset} is outside 0..${this.words.length - 1}`
+        `${context}: word offset ${offset} is outside 0..${this.words.length - 1}`,
       );
     }
     return this.words[offset];
@@ -68,7 +68,7 @@ export class WordReader {
     const end = pointer + 1 + length;
     if (end > this.words.length) {
       throw new PackDecodeError(
-        `${context}: slice ending at ${end} exceeds ${this.words.length} words`
+        `${context}: slice ending at ${end} exceeds ${this.words.length} words`,
       );
     }
     return this.words.subarray(pointer + 1, end);
@@ -100,7 +100,7 @@ export class WordReader {
     const end = begin + byteLength;
     if (end > this.bytes.byteLength) {
       throw new PackDecodeError(
-        `${context}: string ending at byte ${end} exceeds ${this.bytes.byteLength}`
+        `${context}: string ending at byte ${end} exceeds ${this.bytes.byteLength}`,
       );
     }
     let decoded: string;
@@ -108,7 +108,7 @@ export class WordReader {
       decoded = textDecoder.decode(this.bytes.subarray(begin, end));
     } catch (error) {
       throw new PackDecodeError(
-        `${context}: invalid UTF-8 (${error instanceof Error ? error.message : String(error)})`
+        `${context}: invalid UTF-8 (${error instanceof Error ? error.message : String(error)})`,
       );
     }
     this.stringCache.set(pointer, decoded);

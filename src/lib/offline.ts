@@ -9,7 +9,7 @@ export interface OfflineInstallOptions {
   load: (
     asset: AssetDescriptor,
     onProgress: (loaded: number) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ) => Promise<void>;
   persist: (completedHashes: ReadonlySet<string>, complete: boolean) => Promise<void>;
   onProgress?: (progress: OfflineInstallProgress) => void;
@@ -27,7 +27,7 @@ function assertActive(signal?: AbortSignal): void {
 export function storageShortfall(
   requiredBytes: number,
   usage?: number,
-  quota?: number
+  quota?: number,
 ): number | undefined {
   if (usage === undefined || quota === undefined) return undefined;
   return Math.max(0, requiredBytes - Math.max(0, quota - usage));
@@ -42,7 +42,7 @@ export async function installOfflineAssets({
   load,
   persist,
   onProgress,
-  retryDelay = (attempt) => new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1)))
+  retryDelay = (attempt) => new Promise((resolve) => setTimeout(resolve, 250 * 2 ** (attempt - 1))),
 }: OfflineInstallOptions): Promise<Set<string>> {
   if (!Number.isInteger(concurrency) || concurrency < 1) {
     throw new RangeError('Concurrency must be a positive integer');
@@ -65,10 +65,11 @@ export async function installOfflineAssets({
   const completed = new Set(completedHashes);
   const remaining = uniqueAssets.filter((asset) => !completed.has(asset.sha256));
   const totalBytes = uniqueAssets.reduce((total, asset) => total + asset.bytes, 0);
-  const completedBytes = () => uniqueAssets.reduce(
-    (total, asset) => total + (completed.has(asset.sha256) ? asset.bytes : 0),
-    0
-  );
+  const completedBytes = () =>
+    uniqueAssets.reduce(
+      (total, asset) => total + (completed.has(asset.sha256) ? asset.bytes : 0),
+      0,
+    );
   const liveBytes = new Map<string, number>();
   let lastReportedBytes = 0;
   let next = 0;
@@ -76,14 +77,17 @@ export async function installOfflineAssets({
 
   const report = (asset?: AssetDescriptor, retry?: number) => {
     const inFlight = [...liveBytes.values()].reduce((total, loaded) => total + loaded, 0);
-    lastReportedBytes = Math.max(lastReportedBytes, Math.min(totalBytes, completedBytes() + inFlight));
+    lastReportedBytes = Math.max(
+      lastReportedBytes,
+      Math.min(totalBytes, completedBytes() + inFlight),
+    );
     onProgress?.({
       loadedBytes: lastReportedBytes,
       totalBytes,
       completedAssets: uniqueAssets.filter((candidate) => completed.has(candidate.sha256)).length,
       totalAssets: uniqueAssets.length,
       currentAsset: asset?.id,
-      retry
+      retry,
     });
   };
 
@@ -100,10 +104,14 @@ export async function installOfflineAssets({
         liveBytes.set(asset.sha256, 0);
         report(asset, attempt > 1 ? attempt : undefined);
         try {
-          await load(asset, (loaded) => {
-            liveBytes.set(asset.sha256, Math.max(0, Math.min(asset.bytes, loaded)));
-            report(asset, attempt > 1 ? attempt : undefined);
-          }, signal);
+          await load(
+            asset,
+            (loaded) => {
+              liveBytes.set(asset.sha256, Math.max(0, Math.min(asset.bytes, loaded)));
+              report(asset, attempt > 1 ? attempt : undefined);
+            },
+            signal,
+          );
           assertActive(signal);
           liveBytes.delete(asset.sha256);
           completed.add(asset.sha256);

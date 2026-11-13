@@ -1,7 +1,8 @@
 import type { RecordPageSelection } from '../../src/lib/recordPages';
 
 type AssetEncoding = 'gzip' | 'identity';
-export type RecordPageFamily = 'bootstrap' | 'goods-details' | 'ingredient-groups' | 'recipes' | 'special';
+export type RecordPageFamily =
+  'bootstrap' | 'goods-details' | 'ingredient-groups' | 'recipes' | 'special';
 
 interface SharedPrefixLayoutManifest {
   recipeTypes: Record<string, string[]>;

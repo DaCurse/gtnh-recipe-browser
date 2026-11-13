@@ -20,14 +20,14 @@ const SPECIAL_CATEGORY_ORDER = [
   'lootBag',
   'vending',
   'worldgenLoot',
-  'oreProcessing'
+  'oreProcessing',
 ] as const;
 
 // Legacy inferred ore graphs remain disabled. RecipeBrowserState enables the
 // native replacement only after loading an index bound to the exact dataset.
 const DISABLED_SPECIAL_VIEW_TYPES = new Set(['gt-ore-processing']);
 
-export type SpecialCategory = typeof SPECIAL_CATEGORY_ORDER[number];
+export type SpecialCategory = (typeof SPECIAL_CATEGORY_ORDER)[number];
 
 export interface SpecialViewType {
   id: string;
@@ -231,7 +231,8 @@ interface SpecialProcessingEdge {
   branch?: string;
 }
 
-type SpecialPayload = CropSpecialPayload
+type SpecialPayload =
+  | CropSpecialPayload
   | VeinSpecialPayload
   | MeteorSpecialPayload
   | LootBagSpecialPayload
@@ -280,13 +281,13 @@ export interface SpecialRepository {
     view: RecipeView,
     viewType: string,
     onProgress?: (progress: SpecialLoadProgress) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ) => Promise<SpecialRecord[]>;
   specialForAll?: (
     view: RecipeView,
     viewType: string,
     onProgress?: (progress: SpecialLoadProgress) => void,
-    signal?: AbortSignal
+    signal?: AbortSignal,
   ) => Promise<SpecialRecord[]>;
   /** Alias accepted while the repository is being migrated. */
   specialRecordsFor?: SpecialRepository['specialFor'];
@@ -336,7 +337,7 @@ export function specialCategory(value: string): SpecialCategory | undefined {
     vendingMachine: 'vending',
     worldGenLoot: 'worldgenLoot',
     oreProcess: 'oreProcessing',
-    oreProcessingGraph: 'oreProcessing'
+    oreProcessingGraph: 'oreProcessing',
   };
   return aliases[value];
 }
@@ -358,14 +359,14 @@ const SPECIAL_LOOKUP_PREFIXES: Record<SpecialCategory, readonly string[]> = {
   lootBag: ['lootbag'],
   vending: ['vending'],
   worldgenLoot: ['worldgen'],
-  oreProcessing: ['ore-processing']
+  oreProcessing: ['ore-processing'],
 };
 
 export function specialLookupMatchesView(lookupId: string, viewTypeId: string): boolean {
   const category = specialCategory(viewTypeId);
   if (!category) return false;
   return SPECIAL_LOOKUP_PREFIXES[category].some((prefix) =>
-    lookupId.startsWith(`special:${prefix}:`)
+    lookupId.startsWith(`special:${prefix}:`),
   );
 }
 
@@ -379,14 +380,18 @@ const NEI_SPECIAL_PRIORITIES: Partial<Record<SpecialCategory, number>> = {
   oreProcessing: -1000,
   lootBag: 99,
   worldgenLoot: 100,
-  vending: 101
+  vending: 101,
 };
 export function compareSpecialViewTypes(left: SpecialViewType, right: SpecialViewType): number {
   const priority = (view: SpecialViewType) => {
     const category = specialCategory(view.id) ?? specialCategory(view.category ?? '');
-    return category ? NEI_SPECIAL_PRIORITIES[category] ?? 0 : 0;
+    return category ? (NEI_SPECIAL_PRIORITIES[category] ?? 0) : 0;
   };
-  return priority(left) - priority(right) || (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id);
+  return (
+    priority(left) - priority(right) ||
+    (left.order ?? 0) - (right.order ?? 0) ||
+    left.id.localeCompare(right.id)
+  );
 }
 
 export function isSpecialViewEnabled(viewTypeId: string): boolean {
@@ -399,7 +404,8 @@ export function isSpecialViewEnabled(viewTypeId: string): boolean {
  * keeping this deterministic fallback makes the published pack self-healing.
  */
 export function humanizeSpecialName(value: string): string {
-  const candidate = value.trim()
+  const candidate = value
+    .trim()
     .replace(/^Mutation Pool:\s*/i, '')
     .replace(/^cropsnh_(?:crops|mutationPool)\./i, '')
     .replace(/^cropsnh:/i, '')
@@ -408,7 +414,10 @@ export function humanizeSpecialName(value: string): string {
     .replace(/\s+/g, ' ')
     .trim();
   if (!candidate) return value;
-  return candidate.replace(/(^|\s)([a-z])/g, (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`);
+  return candidate.replace(
+    /(^|\s)([a-z])/g,
+    (_match, prefix: string, letter: string) => `${prefix}${letter.toUpperCase()}`,
+  );
 }
 
 /**
@@ -419,7 +428,8 @@ export function humanizeSpecialName(value: string): string {
  * emitted by the exporter.
  */
 export function humanizeGtOreName(value: string): string {
-  const candidate = value.trim()
+  const candidate = value
+    .trim()
     .replace(/^GT\s+(?:Small\s+)?Ore(?:\s+Vein)?\s*:\s*/i, '')
     .replace(/^ore\.(?:mix|small)\./i, '')
     .replace(/^ore(?:Mix|Small)[._-]/i, '')
@@ -498,7 +508,7 @@ const GT_DIMENSION_DISPLAY_ABBREVIATIONS: Record<string, string> = {
   triton: 'Tr',
   vegab: 'VB',
   vega1: 'VB',
-  venus: 'Ve'
+  venus: 'Ve',
 };
 
 function normalizedDimensionKey(value: string): string {
@@ -506,17 +516,60 @@ function normalizedDimensionKey(value: string): string {
 }
 
 const GT_DIMENSION_DISPLAY_ORDER = [
-  'Ow', 'Ne', 'TF', 'ED', 'EA', 'Eg', 'Mo', 'De', 'Ma', 'Ph', 'As', 'Ca', 'Ce', 'Eu', 'Ga',
-  'Rb', 'Io', 'Me', 'Ve', 'En', 'Mi', 'Ob', 'Ti', 'Ra', 'Pr', 'Tr', 'Ha', 'KB', 'MM', 'Pl',
-  'BC', 'BE', 'BF', 'CB', 'TE', 'VB', 'An', 'Ho', 'Mh', 'MB', 'Np', 'Se', 'DD'
+  'Ow',
+  'Ne',
+  'TF',
+  'ED',
+  'EA',
+  'Eg',
+  'Mo',
+  'De',
+  'Ma',
+  'Ph',
+  'As',
+  'Ca',
+  'Ce',
+  'Eu',
+  'Ga',
+  'Rb',
+  'Io',
+  'Me',
+  'Ve',
+  'En',
+  'Mi',
+  'Ob',
+  'Ti',
+  'Ra',
+  'Pr',
+  'Tr',
+  'Ha',
+  'KB',
+  'MM',
+  'Pl',
+  'BC',
+  'BE',
+  'BF',
+  'CB',
+  'TE',
+  'VB',
+  'An',
+  'Ho',
+  'Mh',
+  'MB',
+  'Np',
+  'Se',
+  'DD',
 ] as const;
 
 export function gtDimensionDisplayOrder(dimension: string): number {
   const rawKey = dimension.trim().toLocaleLowerCase();
-  const abbreviation = GT_DIMENSION_DISPLAY_ABBREVIATIONS[rawKey]
-    ?? GT_DIMENSION_DISPLAY_ABBREVIATIONS[normalizedDimensionKey(dimension)];
+  const abbreviation =
+    GT_DIMENSION_DISPLAY_ABBREVIATIONS[rawKey] ??
+    GT_DIMENSION_DISPLAY_ABBREVIATIONS[normalizedDimensionKey(dimension)];
   const index = abbreviation
-    ? GT_DIMENSION_DISPLAY_ORDER.indexOf(abbreviation as typeof GT_DIMENSION_DISPLAY_ORDER[number])
+    ? GT_DIMENSION_DISPLAY_ORDER.indexOf(
+        abbreviation as (typeof GT_DIMENSION_DISPLAY_ORDER)[number],
+      )
     : -1;
   return index < 0 ? Number.MAX_SAFE_INTEGER : index;
 }
@@ -524,16 +577,17 @@ export function gtDimensionDisplayOrder(dimension: string): number {
 export function gtDimensionDisplayGoodsId(
   dimension: string,
   resolve: SpecialResolver,
-  explicitId?: string
+  explicitId?: string,
 ): string | undefined {
   const rawDimensionKey = dimension.trim().toLocaleLowerCase();
-  const abbreviation = GT_DIMENSION_DISPLAY_ABBREVIATIONS[rawDimensionKey]
-    ?? GT_DIMENSION_DISPLAY_ABBREVIATIONS[normalizedDimensionKey(dimension)];
+  const abbreviation =
+    GT_DIMENSION_DISPLAY_ABBREVIATIONS[rawDimensionKey] ??
+    GT_DIMENSION_DISPLAY_ABBREVIATIONS[normalizedDimensionKey(dimension)];
   const candidates = [
     explicitId,
     dimension.startsWith('i:') ? dimension : undefined,
     `i:gtneioreplugin:blockDimensionDisplay_${dimension}:0`,
-    `i:gtneioreplugin:blockDimensionDisplay_${abbreviation ?? ''}:0`
+    `i:gtneioreplugin:blockDimensionDisplay_${abbreviation ?? ''}:0`,
   ].filter((candidate): candidate is string => Boolean(candidate));
   return candidates.find((candidate) => resolve(candidate)?.kind === 'item');
 }
@@ -559,7 +613,7 @@ export function specialSearchText(record: SpecialRecord): string {
     record.recipesLookupId,
     record.usagesLookupId,
     ...(record.goodsIds ?? []),
-    flatten(payload)
+    flatten(payload),
   ]
     .filter(Boolean)
     .join(' ')
@@ -577,7 +631,7 @@ export function displaySpecialAmount(value: number | undefined, fluid = false): 
 
 function objectValue(value: unknown): Record<string, unknown> | undefined {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
-    ? value as Record<string, unknown>
+    ? (value as Record<string, unknown>)
     : undefined;
 }
 
@@ -599,44 +653,52 @@ export function toSpecialGoods(value: unknown): SpecialGoods | undefined {
   if (!object) return undefined;
   const rawId = object.goodsId ?? object.id;
   const oreDictionary = object.oreDictionary;
-  const goodsId = typeof rawId === 'string'
-    ? canonicalSpecialGoodsId(rawId)
-    : typeof oreDictionary === 'string'
-      ? `o:${oreDictionary}`
-      : undefined;
+  const goodsId =
+    typeof rawId === 'string'
+      ? canonicalSpecialGoodsId(rawId)
+      : typeof oreDictionary === 'string'
+        ? `o:${oreDictionary}`
+        : undefined;
   if (!goodsId) return undefined;
   return {
     goodsId,
     amount: typeof object.amount === 'number' ? object.amount : undefined,
-    chance: typeof object.chance === 'number'
-      ? object.chance
-      : typeof object.probability === 'number'
-        ? object.probability
-        : undefined,
-    estimatedAmount: typeof object.estimatedAmount === 'number' ? object.estimatedAmount : undefined,
+    chance:
+      typeof object.chance === 'number'
+        ? object.chance
+        : typeof object.probability === 'number'
+          ? object.probability
+          : undefined,
+    estimatedAmount:
+      typeof object.estimatedAmount === 'number' ? object.estimatedAmount : undefined,
     tooltipNotes: Array.isArray(object.tooltipNotes)
-      ? object.tooltipNotes.filter((note): note is string => typeof note === 'string' && note.length > 0)
+      ? object.tooltipNotes.filter(
+          (note): note is string => typeof note === 'string' && note.length > 0,
+        )
       : typeof object.tooltipNote === 'string' && object.tooltipNote.length > 0
         ? [object.tooltipNote]
         : undefined,
-    label: typeof object.label === 'string'
-      ? object.label
-      : typeof oreDictionary === 'string'
-        ? oreDictionary
-        : undefined,
-    role: typeof object.role === 'string'
-      ? object.role
-      : object.consumed === false
-        ? 'tool'
-        : undefined,
+    label:
+      typeof object.label === 'string'
+        ? object.label
+        : typeof oreDictionary === 'string'
+          ? oreDictionary
+          : undefined,
+    role:
+      typeof object.role === 'string'
+        ? object.role
+        : object.consumed === false
+          ? 'tool'
+          : undefined,
     alternatives: Array.isArray(object.alternatives)
       ? object.alternatives.filter((id): id is string => typeof id === 'string')
       : undefined,
-    oreDictionaryId: typeof oreDictionary === 'string'
-      ? `o:${oreDictionary}`
-      : goodsId.startsWith('o:')
-        ? goodsId
-        : undefined
+    oreDictionaryId:
+      typeof oreDictionary === 'string'
+        ? `o:${oreDictionary}`
+        : goodsId.startsWith('o:')
+          ? goodsId
+          : undefined,
   };
 }
 
@@ -652,28 +714,33 @@ function toSpecialDrop(value: unknown): SpecialDrop | undefined {
   if (!object) return goods;
   return {
     ...goods,
-    minAmount: typeof object.minAmount === 'number'
-      ? object.minAmount
-      : typeof object.min === 'number'
-        ? object.min
-        : undefined,
-    maxAmount: typeof object.maxAmount === 'number'
-      ? object.maxAmount
-      : typeof object.max === 'number'
-        ? object.max
-        : undefined,
+    minAmount:
+      typeof object.minAmount === 'number'
+        ? object.minAmount
+        : typeof object.min === 'number'
+          ? object.min
+          : undefined,
+    maxAmount:
+      typeof object.maxAmount === 'number'
+        ? object.maxAmount
+        : typeof object.max === 'number'
+          ? object.max
+          : undefined,
     weight: typeof object.weight === 'number' ? object.weight : undefined,
-    limit: typeof object.limit === 'number'
-      ? object.limit
-      : typeof object.limitedDropCount === 'number'
-        ? object.limitedDropCount
-        : undefined,
+    limit:
+      typeof object.limit === 'number'
+        ? object.limit
+        : typeof object.limitedDropCount === 'number'
+          ? object.limitedDropCount
+          : undefined,
     groupId: typeof object.group === 'string' && object.group.length > 0 ? object.group : undefined,
     groupLabel: typeof object.groupLabel === 'string' ? object.groupLabel : undefined,
     randomAmount: object.randomAmount === true,
     fortune: Array.isArray(object.fortune)
-      ? object.fortune.filter((entry): entry is number => typeof entry === 'number').slice(0, 4) as [number, number, number, number]
-      : undefined
+      ? (object.fortune
+          .filter((entry): entry is number => typeof entry === 'number')
+          .slice(0, 4) as [number, number, number, number])
+      : undefined,
   };
 }
 

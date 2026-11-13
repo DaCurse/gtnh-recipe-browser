@@ -9,7 +9,7 @@ export const entries: CatalogEntry[] = [
     formula: 'Nq⁺',
     tooltip: ['Tier 7 material', 'gregtech:gt.metaitem.01:32606'],
     color: '#566e5d',
-    glyph: '▰'
+    glyph: '▰',
   },
   {
     id: 'gregtech:gt.blockmachines:1180',
@@ -18,7 +18,7 @@ export const entries: CatalogEntry[] = [
     kind: 'item',
     tooltip: ['Processes complex chemical reactions', 'gregtech:gt.blockmachines:1180'],
     color: '#7b858b',
-    glyph: '⚙'
+    glyph: '⚙',
   },
   {
     id: 'gregtech:gt.metaitem.01:17303',
@@ -27,7 +27,7 @@ export const entries: CatalogEntry[] = [
     kind: 'item',
     tooltip: ['Radioactive material'],
     color: '#35453b',
-    glyph: '✦'
+    glyph: '✦',
   },
   {
     id: 'gregtech:gt.metaitem.01:11303',
@@ -36,7 +36,7 @@ export const entries: CatalogEntry[] = [
     kind: 'item',
     tooltip: ['Hot to the touch'],
     color: '#46624d',
-    glyph: '▰'
+    glyph: '▰',
   },
   {
     id: 'gregtech:gt.metaitem.01:28303',
@@ -45,7 +45,7 @@ export const entries: CatalogEntry[] = [
     kind: 'fluid',
     tooltip: ['Temperature: 4500 K'],
     color: '#528a62',
-    glyph: '≈'
+    glyph: '≈',
   },
   {
     id: 'gregtech:gt.metaitem.01:32605',
@@ -54,7 +54,7 @@ export const entries: CatalogEntry[] = [
     kind: 'item',
     tooltip: ['A bright, lightweight metal'],
     color: '#d5e9e8',
-    glyph: '▰'
+    glyph: '▰',
   },
   {
     id: 'bartworks:gt.bwMetaGeneratedingots:30',
@@ -63,7 +63,7 @@ export const entries: CatalogEntry[] = [
     kind: 'item',
     tooltip: ['Charged with draconic energy'],
     color: '#ed6b1e',
-    glyph: '▰'
+    glyph: '▰',
   },
   {
     id: 'minecraft:diamond',
@@ -72,7 +72,7 @@ export const entries: CatalogEntry[] = [
     kind: 'item',
     tooltip: ['A brilliant gemstone'],
     color: '#55d9d2',
-    glyph: '◆'
+    glyph: '◆',
   },
   {
     id: 'gregtech:gt.metaitem.03:32074',
@@ -81,7 +81,7 @@ export const entries: CatalogEntry[] = [
     kind: 'item',
     tooltip: ['An UHV-tier circuit'],
     color: '#b85be0',
-    glyph: '▦'
+    glyph: '▦',
   },
   {
     id: 'minecraft:planks:0',
@@ -90,7 +90,7 @@ export const entries: CatalogEntry[] = [
     kind: 'item',
     tooltip: ['Building material'],
     color: '#b58a54',
-    glyph: '▤'
+    glyph: '▤',
   },
   {
     id: 'minecraft:crafting_table',
@@ -99,8 +99,8 @@ export const entries: CatalogEntry[] = [
     kind: 'item',
     tooltip: ['A workbench for shaped and shapeless crafting'],
     color: '#8c633d',
-    glyph: '▦'
-  }
+    glyph: '▦',
+  },
 ];
 
 export const recipes: Recipe[] = [
@@ -111,10 +111,10 @@ export const recipes: Recipe[] = [
       itemInputs: { columns: 1, rows: 1 },
       fluidInputs: { columns: 0, rows: 0 },
       itemOutputs: { columns: 1, rows: 1 },
-      fluidOutputs: { columns: 0, rows: 0 }
+      fluidOutputs: { columns: 0, rows: 0 },
     },
     inputs: [{ id: 'gregtech:gt.metaitem.01:11303', amount: 1, slot: 0 }],
-    outputs: [{ id: 'gregtech:gt.metaitem.01:32606', amount: 1, slot: 0 }]
+    outputs: [{ id: 'gregtech:gt.metaitem.01:32606', amount: 1, slot: 0 }],
   },
   {
     id: 'r2',
@@ -123,13 +123,13 @@ export const recipes: Recipe[] = [
       itemInputs: { columns: 1, rows: 1 },
       fluidInputs: { columns: 1, rows: 1 },
       itemOutputs: { columns: 1, rows: 1 },
-      fluidOutputs: { columns: 0, rows: 0 }
+      fluidOutputs: { columns: 0, rows: 0 },
     },
     inputs: [
       { id: 'gregtech:gt.metaitem.01:32605', amount: 1, slot: 0 },
-      { id: 'gregtech:gt.metaitem.01:28303', amount: 144, slot: 0, kind: 'fluid' }
+      { id: 'gregtech:gt.metaitem.01:28303', amount: 144, slot: 0, kind: 'fluid' },
     ],
-    outputs: [{ id: 'gregtech:gt.metaitem.01:32606', amount: 1, slot: 0 }]
+    outputs: [{ id: 'gregtech:gt.metaitem.01:32606', amount: 1, slot: 0 }],
   },
   {
     id: 'craft-1',
@@ -139,14 +139,14 @@ export const recipes: Recipe[] = [
       fluidInputs: { columns: 0, rows: 0 },
       itemOutputs: { columns: 1, rows: 1 },
       fluidOutputs: { columns: 0, rows: 0 },
-      shapeless: false
+      shapeless: false,
     },
     inputs: [
       { id: 'minecraft:planks:0', amount: 1, slot: 0 },
       { id: 'minecraft:planks:0', amount: 1, slot: 1 },
       { id: 'minecraft:planks:0', amount: 1, slot: 3 },
-      { id: 'minecraft:planks:0', amount: 1, slot: 4 }
+      { id: 'minecraft:planks:0', amount: 1, slot: 4 },
     ],
-    outputs: [{ id: 'minecraft:crafting_table', amount: 1, slot: 0 }]
-  }
+    outputs: [{ id: 'minecraft:crafting_table', amount: 1, slot: 0 }],
+  },
 ];

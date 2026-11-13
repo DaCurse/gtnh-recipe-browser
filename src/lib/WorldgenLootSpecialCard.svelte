@@ -1,9 +1,24 @@
 <script lang="ts">
   import SpecialGoods from './SpecialGoods.svelte';
   import type { RecipeView } from './types';
-  import { boundedSpecialPage, toSpecialDrops, type SpecialDrop, type SpecialRecord, type SpecialResolver, type WorldgenSpecialPayload } from './specialData';
+  import {
+    boundedSpecialPage,
+    toSpecialDrops,
+    type SpecialDrop,
+    type SpecialRecord,
+    type SpecialResolver,
+    type WorldgenSpecialPayload,
+  } from './specialData';
 
-  let { record, resolve, navigate }: { record: SpecialRecord; resolve: SpecialResolver; navigate: (id: string, view: RecipeView) => void } = $props();
+  let {
+    record,
+    resolve,
+    navigate,
+  }: {
+    record: SpecialRecord;
+    resolve: SpecialResolver;
+    navigate: (id: string, view: RecipeView) => void;
+  } = $props();
 
   type RawValue = Record<string, unknown>;
   type LootGroup = {
@@ -40,44 +55,65 @@
    * browser must normalize the number before rendering the yellow chance
    * badge instead of treating the raw weight as a percentage.
    */
-  function makeGroup(id: string, label: string, entries: RawValue[], declaredTotal?: number): LootGroup {
+  function makeGroup(
+    id: string,
+    label: string,
+    entries: RawValue[],
+    declaredTotal?: number,
+  ): LootGroup {
     const weights = entries.map((entry) => numberValue(entry.weight ?? entry.rarity));
-    const calculatedTotal = weights.reduce((sum: number, value) => sum + Math.max(0, value ?? 0), 0);
-    const totalWeight = declaredTotal !== undefined && declaredTotal > 0
-      ? declaredTotal
-      : calculatedTotal > 0
-        ? calculatedTotal
-        : undefined;
-    const drops = toSpecialDrops(entries.map((entry, index) => {
-      const weight = weights[index];
-      const chance = weight !== undefined && totalWeight !== undefined
-        ? Math.max(0, weight) / totalWeight
-        : numberValue(entry.chance ?? entry.probability);
-      // Weight is used to calculate the chance, but the worldgen card is a
-      // chance grid. Do not show a second, unexplained raw-weight badge.
-      const withoutWeight: RawValue = {};
-      for (const [key, value] of Object.entries(entry)) {
-        if (key !== 'weight' && key !== 'rarity') withoutWeight[key] = value;
-      }
-      return { ...withoutWeight, chance };
-    }));
+    const calculatedTotal = weights.reduce(
+      (sum: number, value) => sum + Math.max(0, value ?? 0),
+      0,
+    );
+    const totalWeight =
+      declaredTotal !== undefined && declaredTotal > 0
+        ? declaredTotal
+        : calculatedTotal > 0
+          ? calculatedTotal
+          : undefined;
+    const drops = toSpecialDrops(
+      entries.map((entry, index) => {
+        const weight = weights[index];
+        const chance =
+          weight !== undefined && totalWeight !== undefined
+            ? Math.max(0, weight) / totalWeight
+            : numberValue(entry.chance ?? entry.probability);
+        // Weight is used to calculate the chance, but the worldgen card is a
+        // chance grid. Do not show a second, unexplained raw-weight badge.
+        const withoutWeight: RawValue = {};
+        for (const [key, value] of Object.entries(entry)) {
+          if (key !== 'weight' && key !== 'rarity') withoutWeight[key] = value;
+        }
+        return { ...withoutWeight, chance };
+      }),
+    );
     return { id, label, totalWeight, drops };
   }
 
   function buildGroups(): LootGroup[] {
     const tables = rawEntries(rawPayload.tables);
     if (tables.length > 0) {
-      return tables.map((table, index) => {
-        const entries = rawEntries(table.entries ?? table.items ?? table.drops);
-        const label = stringValue(table.name ?? table.id) ?? `Loot table ${index + 1}`;
-        return makeGroup(`table:${index}:${label}`, label, entries, numberValue(table.totalWeight));
-      }).filter((group) => group.drops.length > 0);
+      return tables
+        .map((table, index) => {
+          const entries = rawEntries(table.entries ?? table.items ?? table.drops);
+          const label = stringValue(table.name ?? table.id) ?? `Loot table ${index + 1}`;
+          return makeGroup(
+            `table:${index}:${label}`,
+            label,
+            entries,
+            numberValue(table.totalWeight),
+          );
+        })
+        .filter((group) => group.drops.length > 0);
     }
     const entries = rawEntries(rawPayload.entries);
     if (entries.length > 0) {
-      const label = stringValue(rawPayload.name ?? rawPayload.table ?? rawPayload.tableId) ?? 'Possible loot';
-      return [makeGroup('entries', label, entries, numberValue(rawPayload.totalWeight))]
-        .filter((group) => group.drops.length > 0);
+      const label =
+        stringValue(rawPayload.name ?? rawPayload.table ?? rawPayload.tableId) ?? 'Possible loot';
+      return [makeGroup('entries', label, entries, numberValue(rawPayload.totalWeight))].filter(
+        (group) => group.drops.length > 0,
+      );
     }
     const fallback = toSpecialDrops(payload.drops ?? rawPayload.drops ?? record.outputs ?? []);
     return fallback.length > 0 ? [{ id: 'drops', label: 'Possible loot', drops: fallback }] : [];
@@ -100,39 +136,128 @@
 <div class="worldgen-card">
   <div class="special-stat-grid">
     {#if payload.source}<span><b>Source</b>{payload.source}</span>{/if}
-    {#if payload.table || rawPayload.tableId}<span><b>Table</b>{payload.table ?? String(rawPayload.tableId)}</span>{/if}
-    {#if payload.minAmount !== undefined}<span><b>Amount</b>{payload.minAmount}–{payload.maxAmount ?? payload.minAmount}</span>{/if}
+    {#if payload.table || rawPayload.tableId}<span
+        ><b>Table</b>{payload.table ?? String(rawPayload.tableId)}</span
+      >{/if}
+    {#if payload.minAmount !== undefined}<span
+        ><b>Amount</b>{payload.minAmount}–{payload.maxAmount ?? payload.minAmount}</span
+      >{/if}
     {#if payload.weight !== undefined}<span><b>Weight</b>{payload.weight}</span>{/if}
     {#if payload.chance !== undefined}<span><b>Chance</b>{percentLabel(payload.chance)}</span>{/if}
-    {#if payload.dimensions?.length}<span><b>Dimensions</b>{payload.dimensions.join(', ')}</span>{/if}
+    {#if payload.dimensions?.length}<span><b>Dimensions</b>{payload.dimensions.join(', ')}</span
+      >{/if}
   </div>
 
   {#each visibleGroups as group (`${group.id}`)}
     <section class="loot-group">
-      <header><b>{group.label}</b>{#if group.totalWeight !== undefined}<span>Total weight {group.totalWeight}</span>{/if}</header>
-      <SpecialGoods goods={group.drops} resolve={resolve} {navigate} joined pageSize={12} label="Possible loot" />
+      <header>
+        <b>{group.label}</b>{#if group.totalWeight !== undefined}<span
+            >Total weight {group.totalWeight}</span
+          >{/if}
+      </header>
+      <SpecialGoods
+        goods={group.drops}
+        {resolve}
+        {navigate}
+        joined
+        pageSize={12}
+        label="Possible loot"
+      />
     </section>
   {/each}
 
   {#if groupPageCount > 1}
     <nav class="loot-group-pages" aria-label="World-generation loot tables">
-      <button class="mc-button" disabled={groupPage === 0} onclick={() => groupPage -= 1} aria-label="Previous tables">Previous</button>
+      <button
+        class="mc-button"
+        disabled={groupPage === 0}
+        onclick={() => (groupPage -= 1)}
+        aria-label="Previous tables">Previous</button
+      >
       <span>{groupPage + 1} / {groupPageCount}</span>
-      <button class="mc-button" disabled={groupPage >= groupPageCount - 1} onclick={() => groupPage += 1} aria-label="Next tables">Next</button>
+      <button
+        class="mc-button"
+        disabled={groupPage >= groupPageCount - 1}
+        onclick={() => (groupPage += 1)}
+        aria-label="Next tables">Next</button
+      >
     </nav>
   {/if}
   {#if groups.length === 0}<p class="special-empty">No world-generation loot was recorded.</p>{/if}
 </div>
 
 <style>
-  .worldgen-card { display:flex; flex-direction:column; gap:10px; min-width:0; }
-  .special-stat-grid { display:flex; flex-wrap:wrap; gap:7px; }
-  .special-stat-grid span { display:flex; flex-direction:column; gap:2px; min-width:92px; padding:7px 9px; border:0; border-radius:0; background:transparent; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
-  .special-stat-grid b { color:var(--recipe-text); font:9px/13px Minecraft,monospace; letter-spacing:.05em; text-transform:uppercase; }
-  .loot-group { min-width:0; padding:9px; border:0; border-radius:0; background:transparent; }
-  .loot-group header { display:flex; align-items:center; gap:9px; margin-bottom:7px; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
-  .loot-group header span { color:var(--recipe-text); font:9px/13px Minecraft,monospace; }
-  .loot-group-pages { display:flex; align-items:center; justify-content:center; gap:9px; }
-  .loot-group-pages span { color:var(--recipe-text); font-size:11px; }
-  .special-empty { margin:0; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
+  .worldgen-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
+  .special-stat-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+  }
+  .special-stat-grid span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 92px;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--recipe-text);
+    font:
+      18px/24px Minecraft,
+      monospace;
+  }
+  .special-stat-grid b {
+    color: var(--recipe-text);
+    font:
+      9px/13px Minecraft,
+      monospace;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .loot-group {
+    min-width: 0;
+    padding: 9px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .loot-group header {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    margin-bottom: 7px;
+    color: var(--recipe-text);
+    font:
+      18px/24px Minecraft,
+      monospace;
+  }
+  .loot-group header span {
+    color: var(--recipe-text);
+    font:
+      9px/13px Minecraft,
+      monospace;
+  }
+  .loot-group-pages {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 9px;
+  }
+  .loot-group-pages span {
+    color: var(--recipe-text);
+    font-size: 11px;
+  }
+  .special-empty {
+    margin: 0;
+    color: var(--recipe-text);
+    font:
+      18px/24px Minecraft,
+      monospace;
+  }
 </style>

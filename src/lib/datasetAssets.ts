@@ -2,7 +2,7 @@ import {
   assembleRecordPages,
   decodeRecordPage,
   RECORD_PAGE_TARGET_BYTES,
-  recordPageSelections
+  recordPageSelections,
 } from './recordPages';
 import { verifyAssetBytesAsync } from './integrity';
 import {
@@ -10,7 +10,7 @@ import {
   cacheMetadata,
   getCachedAsset,
   getCachedMetadata,
-  removeCachedAsset
+  removeCachedAsset,
 } from './storage';
 import type { DatasetAsset, DatasetManifest } from './datasetSchema';
 
@@ -62,8 +62,8 @@ function cacheDecodedRecordPage(hash: string, page: DecodedRecordPage): void {
   if (existing) decodedRecordPageBytes -= existing.bytes;
   decodedRecordPages.delete(hash);
   while (
-    decodedRecordPages.size >= RECORD_PAGE_CACHE_MAX_ENTRIES
-    || decodedRecordPageBytes + page.bytes > RECORD_PAGE_CACHE_MAX_BYTES
+    decodedRecordPages.size >= RECORD_PAGE_CACHE_MAX_ENTRIES ||
+    decodedRecordPageBytes + page.bytes > RECORD_PAGE_CACHE_MAX_BYTES
   ) {
     const oldest = decodedRecordPages.keys().next().value as string | undefined;
     if (oldest === undefined) break;
@@ -83,7 +83,7 @@ async function readResponseBytes(
   response: Response,
   asset: DatasetAsset,
   onProgress: AssetProgressHandler | undefined,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<Uint8Array> {
   if (!response.body) {
     abortIfNeeded(signal);
@@ -122,7 +122,7 @@ async function fetchPhysicalVerified(
   asset: DatasetAsset,
   manifestUrl: string,
   onProgress?: AssetProgressHandler,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<Uint8Array> {
   if (asset.segments !== undefined) {
     throw new Error(`${asset.id}: a physical asset must not contain record-page segments`);
@@ -158,7 +158,7 @@ function loadPhysicalVerified(
   asset: DatasetAsset,
   manifestUrl: string,
   onProgress?: AssetProgressHandler,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<Uint8Array> {
   let pending = physicalAssetLoads.get(asset.sha256);
   if (!pending) {
@@ -166,7 +166,7 @@ function loadPhysicalVerified(
     physicalAssetLoads.set(asset.sha256, pending);
     void pending.then(
       () => physicalAssetLoads.delete(asset.sha256),
-      () => physicalAssetLoads.delete(asset.sha256)
+      () => physicalAssetLoads.delete(asset.sha256),
     );
   }
   return pending;
@@ -180,14 +180,14 @@ function recordPageMap(manifest: RecordPageManifest): Map<number, DatasetAsset> 
   const hashes = new Set<string>();
   for (const [pageIndex, page] of manifest.recordPages.entries()) {
     if (
-      !page
-      || typeof page.sha256 !== 'string'
-      || page.sha256.length === 0
-      || !Number.isSafeInteger(page.bytes)
-      || page.bytes < 0
-      || page.encoding !== 'gzip'
-      || page.url.length === 0
-      || page.segments !== undefined
+      !page ||
+      typeof page.sha256 !== 'string' ||
+      page.sha256.length === 0 ||
+      !Number.isSafeInteger(page.bytes) ||
+      page.bytes < 0 ||
+      page.encoding !== 'gzip' ||
+      page.url.length === 0 ||
+      page.segments !== undefined
     ) {
       throw new Error('Manifest contains an invalid physical record page');
     }
@@ -204,7 +204,7 @@ export async function decodePhysicalRecordPage(
   page: DatasetAsset,
   manifestUrl: string,
   onProgress: AssetProgressHandler | undefined,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<DecodedRecordPage> {
   const cached = cachedDecodedRecordPage(page.sha256);
   if (cached) {
@@ -228,9 +228,9 @@ export async function decodePhysicalRecordPage(
     const records = decodeRecordPage(decodedBytes);
     const decoded: DecodedRecordPage = {
       records,
-      bytes: decodedRecordBytes(records)
+      bytes: decodedRecordBytes(records),
     };
-    if ((decoded.bytes > RECORD_PAGE_TARGET_BYTES) !== (page.oversizedSingleton === true)) {
+    if (decoded.bytes > RECORD_PAGE_TARGET_BYTES !== (page.oversizedSingleton === true)) {
       throw new Error(`${page.id}: invalid oversized record-page marker`);
     }
     cacheDecodedRecordPage(page.sha256, decoded);
@@ -239,7 +239,7 @@ export async function decodePhysicalRecordPage(
   decodedRecordPageLoads.set(page.sha256, pending);
   void pending.then(
     () => decodedRecordPageLoads.delete(page.sha256),
-    () => decodedRecordPageLoads.delete(page.sha256)
+    () => decodedRecordPageLoads.delete(page.sha256),
   );
   return pending;
 }
@@ -249,22 +249,29 @@ async function fetchLogicalVerified(
   manifest: RecordPageManifest,
   manifestUrl: string,
   onProgress?: AssetProgressHandler,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<Uint8Array> {
   if (asset.encoding !== 'identity' || asset.url !== '') {
-    throw new Error(`${asset.id}: logical record-page assets must use identity encoding and an empty URL`);
+    throw new Error(
+      `${asset.id}: logical record-page assets must use identity encoding and an empty URL`,
+    );
   }
   if (asset.segments === undefined) {
     throw new Error(`${asset.id}: logical asset has no record-page segments`);
   }
 
   const pagesByHash = recordPageMap(manifest);
-  const selectedPageIndices = [...new Set(recordPageSelections(asset).map((selection) => selection[0]))];
+  const selectedPageIndices = [
+    ...new Set(recordPageSelections(asset).map((selection) => selection[0])),
+  ];
   const selectedPages: DatasetAsset[] = [];
   const selectedPageIndexByHash = new Map<string, number>();
   for (const pageIndex of selectedPageIndices) {
     const page = pagesByHash.get(pageIndex);
-    if (!page) throw new Error(`${asset.id}: record page index ${String(pageIndex)} is absent from the manifest`);
+    if (!page)
+      throw new Error(
+        `${asset.id}: record page index ${String(pageIndex)} is absent from the manifest`,
+      );
     selectedPages.push(page);
     selectedPageIndexByHash.set(page.sha256, pageIndex);
   }
@@ -282,10 +289,10 @@ async function fetchLogicalVerified(
         onProgress?.({
           loaded: Math.min(total, completed + pageLoaded),
           total,
-          cached
+          cached,
         });
       },
-      signal
+      signal,
     );
     const pageIndex = selectedPageIndexByHash.get(page.sha256);
     if (pageIndex === undefined) throw new Error(`${asset.id}: record page index lookup failed`);
@@ -314,7 +321,7 @@ export async function fetchVerified(
   manifestUrl: string,
   onProgress?: AssetProgressHandler,
   signal?: AbortSignal,
-  manifest?: RecordPageManifest
+  manifest?: RecordPageManifest,
 ): Promise<Uint8Array> {
   if (asset.segments !== undefined) {
     if (!manifest) throw new Error(`${asset.id}: record-page manifest is required`);
@@ -326,19 +333,19 @@ export async function fetchVerified(
 export async function fetchJsonNetworkFirst<T>(
   url: string,
   cacheKey: string,
-  cachedWaitMs?: number
+  cachedWaitMs?: number,
 ): Promise<{ url: string; value: T }> {
   const cached = cachedWaitMs === undefined ? null : await getCachedMetadata<T>(cacheKey);
   const network = (async () => {
     try {
       const response = await fetch(url, { cache: 'no-cache' });
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const value = await response.json() as T;
+      const value = (await response.json()) as T;
       const result = { url: response.url || url, value };
       await cacheMetadata(cacheKey, result.url, value);
       return result;
     } catch (networkError) {
-      const fallback = cached ?? await getCachedMetadata<T>(cacheKey);
+      const fallback = cached ?? (await getCachedMetadata<T>(cacheKey));
       if (fallback) return fallback;
       throw networkError;
     }
@@ -347,9 +354,12 @@ export async function fetchJsonNetworkFirst<T>(
   // Continue revalidation in the background; a stalled server cannot delay a cached startup.
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
-    return await Promise.race([network, new Promise<typeof cached>((resolve) => {
-      timer = setTimeout(() => resolve(cached), cachedWaitMs);
-    })]);
+    return await Promise.race([
+      network,
+      new Promise<typeof cached>((resolve) => {
+        timer = setTimeout(() => resolve(cached), cachedWaitMs);
+      }),
+    ]);
   } finally {
     clearTimeout(timer);
   }

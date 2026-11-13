@@ -3,18 +3,24 @@ import { readFile } from 'node:fs/promises';
 /* global document */
 const [base, playwrightModule] = process.argv.slice(2);
 const versions = JSON.parse(await readFile('public/versions-v7.json', 'utf8'));
-const datasetId = versions.versions.find(version => version.gtnhVersion === '2.9.0').datasetId;
-if (!playwrightModule) throw new Error('Usage: node tools/test-machine-crafters.mjs <app-url> <playwright-module>');
+const datasetId = versions.versions.find((version) => version.gtnhVersion === '2.9.0').datasetId;
+if (!playwrightModule)
+  throw new Error('Usage: node tools/test-machine-crafters.mjs <app-url> <playwright-module>');
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch();
 try {
   const context = await browser.newContext({ viewport: { width: 1440, height: 1000 } });
   const page = await context.newPage();
-  await page.route('**/*', route => new URL(route.request().url()).hostname.includes('posthog') ? route.abort() : route.continue());
-  const errors = []; page.on('pageerror', error => errors.push(error.message));
+  await page.route('**/*', (route) =>
+    new URL(route.request().url()).hostname.includes('posthog') ? route.abort() : route.continue(),
+  );
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
   for (const [id, currentName, category] of [
-    [262, 'Advanced Electric Furnace', 'Furnace'], [672, 'Advanced Electric Oven', 'Furnace'],
-    [12699, 'Basic Bio Lab', 'Bio Lab'], [31033, 'Cold Trap I', 'Cold Trap']
+    [262, 'Advanced Electric Furnace', 'Furnace'],
+    [672, 'Advanced Electric Oven', 'Furnace'],
+    [12699, 'Basic Bio Lab', 'Bio Lab'],
+    [31033, 'Cold Trap I', 'Cold Trap'],
   ]) {
     const url = new URL(base);
     url.searchParams.set('version', datasetId);
@@ -25,15 +31,22 @@ try {
     await card.waitFor({ timeout: 120000 });
     await page.waitForFunction(() => !document.querySelector('.recipe-loading.recipe-progress'));
     assert.match(await page.locator('.view-tabs').innerText(), /Machine Usages\s+[1-9][0-9]*/);
-    assert.equal(await page.locator('.export-actions button').count(), 1, 'One contextual export action, without a duplicate machine download');
+    assert.equal(
+      await page.locator('.export-actions button').count(),
+      1,
+      'One contextual export action, without a duplicate machine download',
+    );
     if (id === 262) {
       const pending = page.waitForEvent('download');
       await page.locator('.export-actions button').click();
       const full = JSON.parse(await readFile(await (await pending).path(), 'utf8'));
       assert.equal(full.view, 'machineUsages');
       assert.equal(full.recipeType, category);
-      assert(full.records.length > 20, 'Export all matching machine recipes, beyond the visible page');
-      assert(full.records.every(recipe => recipe.type === category));
+      assert(
+        full.records.length > 20,
+        'Export all matching machine recipes, beyond the visible page',
+      );
+      assert(full.records.every((recipe) => recipe.type === category));
       await page.getByRole('textbox', { name: 'Filter machine usages', exact: true }).fill('glass');
       const filteredDownload = page.waitForEvent('download');
       await page.locator('.export-actions button').click();
@@ -41,8 +54,8 @@ try {
       const filtered = JSON.parse(await readFile(await (await filteredDownload).path(), 'utf8'));
       assert.equal(filtered.filter.applied, true);
       assert(filtered.records.length > 0 && filtered.records.length < full.records.length);
-      const ids = new Set(full.records.map(recipe => recipe.id));
-      assert(filtered.records.every(recipe => ids.has(recipe.id)));
+      const ids = new Set(full.records.map((recipe) => recipe.id));
+      assert(filtered.records.every((recipe) => ids.has(recipe.id)));
       await page.getByRole('textbox', { name: 'Filter machine usages', exact: true }).fill('');
     }
     const crafter = card.locator('.machine-mark.interactive');
@@ -65,7 +78,11 @@ try {
     await page.locator('.recipe-list article.card').first().waitFor({ timeout: 120000 });
     assert.match(await page.locator('.view-tabs').innerText(), /Machine Usages\s+[1-9][0-9]*/);
     await context.setOffline(false);
-    console.log(`${currentName}: machine usages, complete tiered crafter list and offline reload passed.`);
+    console.log(
+      `${currentName}: machine usages, complete tiered crafter list and offline reload passed.`,
+    );
   }
   assert.deepEqual(errors, []);
-} finally { await browser.close(); }
+} finally {
+  await browser.close();
+}

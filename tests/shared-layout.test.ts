@@ -11,9 +11,13 @@ import {
   sharedPartitionPrefix,
   sharedRepository,
   sharedPrefixLayout,
-  type SharedRecord
+  type SharedRecord,
 } from '../tools/pack-builder/sharedLayout';
-import type { DecodedRepository, DecodedRecipe, DecodedRecipeType } from '../tools/pack-builder/model';
+import type {
+  DecodedRepository,
+  DecodedRecipe,
+  DecodedRecipeType,
+} from '../tools/pack-builder/model';
 
 function recipe(id: string): DecodedRecipe {
   return {
@@ -22,7 +26,7 @@ function recipe(id: string): DecodedRecipe {
     recipeTypeId: 'recipeType:0:fixture:Test',
     inputs: [],
     outputs: [],
-    gt: null
+    gt: null,
   };
 }
 
@@ -35,12 +39,12 @@ const type: DecodedRecipeType = {
     itemInputs: { columns: 1, rows: 1 },
     fluidInputs: { columns: 1, rows: 1 },
     itemOutputs: { columns: 1, rows: 1 },
-    fluidOutputs: { columns: 1, rows: 1 }
+    fluidOutputs: { columns: 1, rows: 1 },
   },
   shapeless: false,
   singleblocks: [],
   multiblocks: [],
-  defaultCrafter: null
+  defaultCrafter: null,
 };
 
 function repository(recipes: DecodedRecipe[]): DecodedRepository {
@@ -53,7 +57,7 @@ function repository(recipes: DecodedRecipe[]): DecodedRepository {
     recipeTypes: [type],
     recipes,
     serviceItemIds: [],
-    obsoleteRecipeRemaps: {}
+    obsoleteRecipeRemaps: {},
   };
 }
 
@@ -62,28 +66,42 @@ function record(id: string, value: unknown): SharedRecord {
 }
 
 function blobHash(records: readonly SharedRecord[], prefix: string): string {
-  const bytes = gzipSync(encode({
-    schemaVersion: 5,
-    kind: 'records',
-    logicalId: sharedLogicalId('fixture', 'fixture', prefix),
-    records: records.slice().sort((left, right) => left.id.localeCompare(right.id)).map((entry) => entry.value)
-  }), { level: 9 });
+  const bytes = gzipSync(
+    encode({
+      schemaVersion: 5,
+      kind: 'records',
+      logicalId: sharedLogicalId('fixture', 'fixture', prefix),
+      records: records
+        .slice()
+        .sort((left, right) => left.id.localeCompare(right.id))
+        .map((entry) => entry.value),
+    }),
+    { level: 9 },
+  );
   return createHash('sha256').update(bytes).digest('hex');
 }
 
 describe('shared format partition layout', () => {
   it('keeps unrelated prefix blobs stable across insertion, deletion, modification, and reorder', () => {
     const prefixes = Array.from({ length: 16 }, (_, index) => index.toString(16));
-    const original = [record('a', { value: 'a' }), record('b', { value: 'b' }), record('c', { value: 'c' })];
+    const original = [
+      record('a', { value: 'a' }),
+      record('b', { value: 'b' }),
+      record('c', { value: 'c' }),
+    ];
     const reordered = [original[2]!, original[0]!, original[1]!];
     const inserted = [...original, record('inserted', { value: 'new' })];
-    const modified = original.map((entry) => entry.id === 'b'
-      ? record(entry.id, { value: 'changed' })
-      : entry);
-    const removed = original.filter((entry) => entry.id !== 'b');
-    const hashByPrefix = (values: readonly SharedRecord[]) => new Map(
-      [...groupSharedRecords(values, prefixes)].map(([prefix, bucket]) => [prefix, blobHash(bucket, prefix)])
+    const modified = original.map((entry) =>
+      entry.id === 'b' ? record(entry.id, { value: 'changed' }) : entry,
     );
+    const removed = original.filter((entry) => entry.id !== 'b');
+    const hashByPrefix = (values: readonly SharedRecord[]) =>
+      new Map(
+        [...groupSharedRecords(values, prefixes)].map(([prefix, bucket]) => [
+          prefix,
+          blobHash(bucket, prefix),
+        ]),
+      );
     const prefixOf = (id: string) => sharedPartitionPrefix('fixture', id, 1);
     const before = hashByPrefix(original);
     const afterReorder = hashByPrefix(reordered);
@@ -129,7 +147,7 @@ describe('shared format partition layout', () => {
       goods: 1024,
       goodsMetadata: 1024,
       special: 1024,
-      oreDictionaries: 1024
+      oreDictionaries: 1024,
     });
     const extended = extendSharedLayout(initial, [second], [undefined]);
     for (const prefix of initial.recipeTypes['recipeType:fixture:Test'] ?? []) {
@@ -146,20 +164,25 @@ describe('shared format partition layout', () => {
       goods: 1024,
       goodsMetadata: 1024,
       special: 1024,
-      oreDictionaries: 1024
+      oreDictionaries: 1024,
     });
     const typeId = 'recipeType:fixture:Test';
     expect(layout.recipeTypes[typeId]).toEqual(['']);
     expect(layout.oversizedSingletons).toEqual([
-      expect.objectContaining({ namespace: typeId, prefix: '', estimatedBytes: expect.any(Number) })
+      expect.objectContaining({
+        namespace: typeId,
+        prefix: '',
+        estimatedBytes: expect.any(Number),
+      }),
     ]);
   });
 
   it('retains a published parent when a later dataset forces descendant splits', () => {
     const padded = (id: string, offset: number): DecodedRecipe => {
       const value = recipe(id);
-      value.searchMask = Array.from({ length: 2_000 }, (_, index) =>
-        (index * 2_654_435_761 + offset) >>> 0
+      value.searchMask = Array.from(
+        { length: 2_000 },
+        (_, index) => (index * 2_654_435_761 + offset) >>> 0,
       );
       return value;
     };
@@ -168,24 +191,28 @@ describe('shared format partition layout', () => {
       goods: 1024,
       goodsMetadata: 1024,
       special: 1024,
-      oreDictionaries: 1024
+      oreDictionaries: 1024,
     });
     expect(first.recipeTypes['recipeType:fixture:Test']).toEqual(['']);
 
     const extended = extendSharedLayout(
       first,
       [repository([padded('r-1', 1), padded('r-2', 2)])],
-      [undefined]
+      [undefined],
     );
     const prefixes = extended.recipeTypes['recipeType:fixture:Test']!;
     expect(prefixes).toContain('');
     expect(prefixes.some((prefix) => prefix.length > 0)).toBe(true);
-    expect(extended.oversizedSingletons).toEqual(expect.arrayContaining([
-      expect.objectContaining({ namespace: 'recipeType:fixture:Test', prefix: '' })
-    ]));
+    expect(extended.oversizedSingletons).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ namespace: 'recipeType:fixture:Test', prefix: '' }),
+      ]),
+    );
 
     const shrunk = extendSharedLayout(first, [repository([])], [undefined]);
-    expect(shrunk.recipeTypes['recipeType:fixture:Test']).toEqual(first.recipeTypes['recipeType:fixture:Test']);
+    expect(shrunk.recipeTypes['recipeType:fixture:Test']).toEqual(
+      first.recipeTypes['recipeType:fixture:Test'],
+    );
   });
 
   it('rejects published-prefix removal or target changes while allowing descendants', () => {
@@ -194,7 +221,7 @@ describe('shared format partition layout', () => {
       goods: 1024,
       goodsMetadata: 1024,
       special: 1024,
-      oreDictionaries: 1024
+      oreDictionaries: 1024,
     });
     const previous = sharedPrefixLayout(full);
     const extended = {
@@ -202,38 +229,43 @@ describe('shared format partition layout', () => {
       goods: [...previous.goods, 'a'],
       recipeTypes: {
         ...previous.recipeTypes,
-        'recipeType:fixture:Test': [...previous.recipeTypes['recipeType:fixture:Test']!, 'a']
-      }
+        'recipeType:fixture:Test': [...previous.recipeTypes['recipeType:fixture:Test']!, 'a'],
+      },
     };
     expect(() => assertSharedLayoutExtension(previous, extended)).not.toThrow();
     expect(() => assertSharedLayoutExtension(extended, extended)).not.toThrow();
-    expect(() => assertSharedLayoutExtension(
-      previous,
-      { ...extended, goods: extended.goods.slice(1) }
-    )).toThrow(/removed goods prefix/);
-    expect(() => assertSharedLayoutExtension(
-      previous,
-      { ...extended, targets: { ...extended.targets, goods: 2048 } }
-    )).toThrow(/target goods changed/);
-    expect(() => assertSharedLayoutExtension(
-      {
-        ...previous,
-        goods: ['a', 'b']
-      },
-      {
-        ...previous,
-        goods: ['', 'a', 'b']
-      }
-    )).toThrow(/introduced goods ancestor root/);
-    expect(() => assertSharedLayoutExtension(
-      {
-        ...previous,
-        recipeTypes: { fixture: ['a', 'b'] }
-      },
-      {
-        ...previous,
-        recipeTypes: { fixture: ['', 'a', 'b'] }
-      }
-    )).toThrow(/introduced recipeTypes\.fixture ancestor root/);
+    expect(() =>
+      assertSharedLayoutExtension(previous, { ...extended, goods: extended.goods.slice(1) }),
+    ).toThrow(/removed goods prefix/);
+    expect(() =>
+      assertSharedLayoutExtension(previous, {
+        ...extended,
+        targets: { ...extended.targets, goods: 2048 },
+      }),
+    ).toThrow(/target goods changed/);
+    expect(() =>
+      assertSharedLayoutExtension(
+        {
+          ...previous,
+          goods: ['a', 'b'],
+        },
+        {
+          ...previous,
+          goods: ['', 'a', 'b'],
+        },
+      ),
+    ).toThrow(/introduced goods ancestor root/);
+    expect(() =>
+      assertSharedLayoutExtension(
+        {
+          ...previous,
+          recipeTypes: { fixture: ['a', 'b'] },
+        },
+        {
+          ...previous,
+          recipeTypes: { fixture: ['', 'a', 'b'] },
+        },
+      ),
+    ).toThrow(/introduced recipeTypes\.fixture ancestor root/);
   });
 });

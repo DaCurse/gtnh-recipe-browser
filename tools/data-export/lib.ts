@@ -72,7 +72,7 @@ const FULL_SHA256 = /^[a-f0-9]{64}$/;
 /** Collect physical objects referenced by published manifests and their companions. */
 export function referencedSharedObjectHashes(
   manifests: readonly SharedObjectManifest[],
-  companions: readonly SharedObjectCompanion[] = []
+  companions: readonly SharedObjectCompanion[] = [],
 ): Set<string> {
   const hashes = new Set<string>();
   const datasets = new Set<string>();
@@ -92,7 +92,8 @@ export function referencedSharedObjectHashes(
   for (const companion of companions) {
     if (!datasets.has(companion.datasetId)) continue;
     for (const asset of companion.assets) {
-      if (!FULL_SHA256.test(asset.sha256)) throw new Error(`Invalid companion SHA-256 ${String(asset.sha256)}`);
+      if (!FULL_SHA256.test(asset.sha256))
+        throw new Error(`Invalid companion SHA-256 ${String(asset.sha256)}`);
       hashes.add(asset.sha256);
     }
   }
@@ -103,13 +104,15 @@ export function referencedSharedObjectHashes(
 export function unreferencedSharedObjectNames(
   objectNames: readonly string[],
   manifests: readonly SharedObjectManifest[],
-  companions: readonly SharedObjectCompanion[] = []
+  companions: readonly SharedObjectCompanion[] = [],
 ): string[] {
   const referenced = referencedSharedObjectHashes(manifests, companions);
-  return objectNames.filter((name) => {
-    if (!FULL_SHA256.test(name)) throw new Error(`Invalid shared object filename ${name}`);
-    return !referenced.has(name);
-  }).sort();
+  return objectNames
+    .filter((name) => {
+      if (!FULL_SHA256.test(name)) throw new Error(`Invalid shared object filename ${name}`);
+      return !referenced.has(name);
+    })
+    .sort();
 }
 
 export function argumentsMap(args: string[]): Map<string, string> {
@@ -167,28 +170,32 @@ export async function assertPathMissing(path: string, label: string): Promise<vo
 export function assertImmutableManifestBytes(
   existing: Uint8Array,
   incoming: Uint8Array,
-  datasetId: string
+  datasetId: string,
 ): void {
-  if (existing.length !== incoming.length || existing.some((byte, index) => byte !== incoming[index])) {
+  if (
+    existing.length !== incoming.length ||
+    existing.some((byte, index) => byte !== incoming[index])
+  ) {
     throw new Error(
-      `Dataset ${datasetId} already has different immutable manifest bytes; publish a new dataset ID`
+      `Dataset ${datasetId} already has different immutable manifest bytes; publish a new dataset ID`,
     );
   }
 }
 
 export async function readExportSession(path: string): Promise<ExportSession> {
   const session = JSON.parse(await readFile(path, 'utf8')) as ExportSession;
-  if (session.schemaVersion !== 1) throw new Error(`Unsupported export session ${session.schemaVersion}`);
+  if (session.schemaVersion !== 1)
+    throw new Error(`Unsupported export session ${session.schemaVersion}`);
   return session;
 }
 
 export async function validateCombinedTooltipSchema(
   scriptPath: string,
-  requiredPlugins: string[] = []
+  requiredPlugins: string[] = [],
 ): Promise<void> {
   const lines = createInterface({
     input: createReadStream(scriptPath, { encoding: 'utf8' }),
-    crlfDelay: Infinity
+    crlfDelay: Infinity,
   });
   let itemSchema = '';
   let collectionSchema = false;
@@ -202,11 +209,15 @@ export async function validateCombinedTooltipSchema(
   lines.close();
   if (!itemSchema) throw new Error('NESQL export has no PUBLIC.ITEM table');
   if (!/\bTOOLTIP\b/.test(itemSchema) || collectionSchema) {
-    throw new Error('NESQL tooltip compatibility patch was not applied: expected one TOOLTIP column');
+    throw new Error(
+      'NESQL tooltip compatibility patch was not applied: expected one TOOLTIP column',
+    );
   }
   const missingPlugins = requiredPlugins.filter((plugin) => !activePlugins.has(plugin));
   if (missingPlugins.length > 0) {
-    throw new Error(`NESQL export is missing required active plugins: ${missingPlugins.join(', ')}`);
+    throw new Error(
+      `NESQL export is missing required active plugins: ${missingPlugins.join(', ')}`,
+    );
   }
 }
 
@@ -227,15 +238,15 @@ function itemVariantPrefix(path: string): string | undefined {
 
 export async function auditRenderedItemPaths(
   scriptPath: string,
-  archiveEntries: readonly string[]
+  archiveEntries: readonly string[],
 ): Promise<RenderedImageAudit> {
   const exactPaths = new Set(archiveEntries);
   const renderedVariantPrefixes = new Set(
-    archiveEntries.map(itemVariantPrefix).filter((path): path is string => path !== undefined)
+    archiveEntries.map(itemVariantPrefix).filter((path): path is string => path !== undefined),
   );
   const lines = createInterface({
     input: createReadStream(scriptPath, { encoding: 'utf8' }),
-    crlfDelay: Infinity
+    crlfDelay: Infinity,
   });
   let totalItemPaths = 0;
   let missingVariantPaths = 0;
@@ -259,24 +270,34 @@ export function withPublishedVersion(
   index: VersionsIndex,
   version: VersionsIndexEntry,
   generatedAt: string,
-  rolloutEpoch?: number
+  rolloutEpoch?: number,
 ): VersionsIndex {
-  if (index.schemaVersion !== 1) throw new Error(`Unsupported versions index ${index.schemaVersion}`);
-  if (rolloutEpoch !== undefined && (!Number.isSafeInteger(rolloutEpoch)
-    || rolloutEpoch <= (index.rollout?.epoch ?? 0))) {
+  if (index.schemaVersion !== 1)
+    throw new Error(`Unsupported versions index ${index.schemaVersion}`);
+  if (
+    rolloutEpoch !== undefined &&
+    (!Number.isSafeInteger(rolloutEpoch) || rolloutEpoch <= (index.rollout?.epoch ?? 0))
+  ) {
     throw new Error('Rollout epoch must be a positive integer greater than the published epoch');
   }
   return {
     schemaVersion: 1,
-    ...(rolloutEpoch !== undefined ? { rollout: { epoch: rolloutEpoch, targetDatasetId: version.datasetId } }
-      : index.rollout ? { rollout: index.rollout } : {}),
+    ...(rolloutEpoch !== undefined
+      ? { rollout: { epoch: rolloutEpoch, targetDatasetId: version.datasetId } }
+      : index.rollout
+        ? { rollout: index.rollout }
+        : {}),
     generatedAt,
     // Keep one immutable release per GTNH version. A replacement revision must
     // become the first entry without leaving the previous release selectable.
-    versions: [version, ...index.versions.filter((candidate) => (
-      candidate.datasetId !== version.datasetId
-      && candidate.gtnhVersion !== version.gtnhVersion
-    ))]
+    versions: [
+      version,
+      ...index.versions.filter(
+        (candidate) =>
+          candidate.datasetId !== version.datasetId &&
+          candidate.gtnhVersion !== version.gtnhVersion,
+      ),
+    ],
   };
 }
 

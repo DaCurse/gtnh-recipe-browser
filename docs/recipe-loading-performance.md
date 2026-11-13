@@ -2,11 +2,11 @@
 
 Measured against commit `0da87e6` using the production build, Chromium, a 390 × 844 mobile viewport, and 4× CPU throttling. Assets were served from localhost without network throttling; each run started with a fresh browser context. These are controlled comparisons, not predictions for every phone or connection.
 
-| Iron ingot view | Before: first cards | After: first cards | Before: complete | After: complete |
-| --- | ---: | ---: | ---: | ---: |
-| Recipes | 8.52 s | 2.03 s | 8.57 s | 4.94 s |
-| Usages | 15.64 s | 1.94 s | 15.64 s | 7.12 s |
-| Return to recipes | 0.36 s | 0.23 s | 0.36 s | 0.23 s |
+| Iron ingot view   | Before: first cards | After: first cards | Before: complete | After: complete |
+| ----------------- | ------------------: | -----------------: | ---------------: | --------------: |
+| Recipes           |              8.52 s |             2.03 s |           8.57 s |          4.94 s |
+| Usages            |             15.64 s |             1.94 s |          15.64 s |          7.12 s |
+| Return to recipes |              0.36 s |             0.23 s |           0.36 s |          0.23 s |
 
 The first two views fetched exactly the same 50 and 56 physical pages before and after. Main-thread long-task time fell from 3.92 to 1.84 seconds for recipes and from 7.51 to 2.26 seconds for usages.
 

@@ -2,14 +2,10 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "entry": [
     "src/main.ts",
+    "tools/startup-shell.ts",
     "src/workers/*.worker.ts",
     "tests/**/*.test.ts",
     "tools/data-export/prepare.ts"
   ],
-  "project": [
-    "src/**/*.{ts,svelte}",
-    "tools/**/*.{ts,mjs}",
-    "tests/**/*.ts",
-    "*.{ts,js}"
-  ]
+  "project": ["src/**/*.{ts,svelte}", "tools/**/*.{ts,mjs}", "tests/**/*.ts", "*.{ts,js}"]
 }

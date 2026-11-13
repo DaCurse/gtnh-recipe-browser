@@ -5,15 +5,25 @@ import type { Recipe } from '../src/lib/types';
 
 const profiles = machineUiProfiles;
 function recipeFor(name: string): Recipe {
-  const profile = profiles.find(profile => profile.name === name)!;
-  const dimensions = (group: typeof UI_GROUPS[number]) => ({
-    columns: new Set(profile[group].map(slot => slot.pos[0])).size,
-    rows: new Set(profile[group].map(slot => slot.pos[1])).size
+  const profile = profiles.find((profile) => profile.name === name)!;
+  const dimensions = (group: (typeof UI_GROUPS)[number]) => ({
+    columns: new Set(profile[group].map((slot) => slot.pos[0])).size,
+    rows: new Set(profile[group].map((slot) => slot.pos[1])).size,
   });
-  return { id: 'test', type: name, typeId: `recipeType:1:gregtech:${name}`,
-    gtnhVersion: '2.9.0', inputs: [], outputs: [],
-    layout: { itemInputs: dimensions('itemInputs'), itemOutputs: dimensions('itemOutputs'),
-      fluidInputs: dimensions('fluidInputs'), fluidOutputs: dimensions('fluidOutputs') } };
+  return {
+    id: 'test',
+    type: name,
+    typeId: `recipeType:1:gregtech:${name}`,
+    gtnhVersion: '2.9.0',
+    inputs: [],
+    outputs: [],
+    layout: {
+      itemInputs: dimensions('itemInputs'),
+      itemOutputs: dimensions('itemOutputs'),
+      fluidInputs: dimensions('fluidInputs'),
+      fluidOutputs: dimensions('fluidOutputs'),
+    },
+  };
 }
 describe('runtime-derived machine layouts', () => {
   it('preserves GTNH voltage colours without text decorations', () => {
@@ -25,24 +35,37 @@ describe('runtime-derived machine layouts', () => {
     expect(voltageTierDescription('UV')).toBe('Tier: Ultimate Voltage');
   });
   it('contains decorative logos within the diagram without shifting functional widgets', () => {
-    const profile = profiles.find(profile => profile.id === 'kubatech.htgrrecipes')!;
-    expect(profile.widgets.find(widget => widget.kind === 'Logo')!.pos).toEqual([145,230]);
-    expect(profile.widgets.find(widget => widget.kind === 'ProgressBar')!.pos).toEqual([3,3]);
-    for (const profile of profiles) for (const widget of profile.widgets.filter(widget => widget.kind === 'Logo')) {
-      expect(widget.pos[0] + widget.size[0]).toBeLessThanOrEqual(profile.size[0]);
-      expect(widget.pos[1] + widget.size[1]).toBeLessThanOrEqual(profile.size[1]);
-    }
+    const profile = profiles.find((profile) => profile.id === 'kubatech.htgrrecipes')!;
+    expect(profile.widgets.find((widget) => widget.kind === 'Logo')!.pos).toEqual([145, 230]);
+    expect(profile.widgets.find((widget) => widget.kind === 'ProgressBar')!.pos).toEqual([3, 3]);
+    for (const profile of profiles)
+      for (const widget of profile.widgets.filter((widget) => widget.kind === 'Logo')) {
+        expect(widget.pos[0] + widget.size[0]).toBeLessThanOrEqual(profile.size[0]);
+        expect(widget.pos[1] + widget.size[1]).toBeLessThanOrEqual(profile.size[1]);
+      }
   });
   it('retains the distillation tower output order instead of flattening it row-major', () => {
     const profile = machineUiFor(recipeFor('Distillation Tower'))!;
-    expect(profile.itemOutputs[0]!.pos).toEqual([106,62]);
-    expect(profile.fluidOutputs.slice(0,4).map(slot => slot.pos)).toEqual([[124,62],[142,62],[106,44],[124,44]]);
+    expect(profile.itemOutputs[0]!.pos).toEqual([106, 62]);
+    expect(profile.fluidOutputs.slice(0, 4).map((slot) => slot.pos)).toEqual([
+      [124, 62],
+      [142, 62],
+      [106, 44],
+      [124, 44],
+    ]);
   });
   it('retains the assembly line custom progress path', () => {
     const profile = machineUiFor(recipeFor('Assemblyline Process'))!;
     expect(profile.itemInputs).toHaveLength(16);
-    expect(profile.widgets.filter(widget => widget.kind === 'ProgressBar').map(widget => widget.size))
-      .toEqual([[17,72],[18,72],[10,18]]);
+    expect(
+      profile.widgets
+        .filter((widget) => widget.kind === 'ProgressBar')
+        .map((widget) => widget.size),
+    ).toEqual([
+      [17, 72],
+      [18, 72],
+      [10, 18],
+    ]);
   });
   it('uses identical geometry safely when upstream categories share a display name', () => {
     expect(machineUiFor(recipeFor('Furnace'))?.id).toBe('gt.recipe.furnace');
@@ -52,14 +75,24 @@ describe('runtime-derived machine layouts', () => {
     const recipe = recipeFor('Mixer');
     expect(machineUiFor({ ...recipe, gtnhVersion: '2.8.0' })).toBeUndefined();
     expect(machineUiFor({ ...recipe, typeId: 'recipeType:ic2:Mixer' })).toBeUndefined();
-    expect(machineUiFor({ ...recipe, layout: { ...recipe.layout, fluidInputs: { columns: 99, rows: 1 } } })).toBeUndefined();
+    expect(
+      machineUiFor({
+        ...recipe,
+        layout: { ...recipe.layout, fluidInputs: { columns: 99, rows: 1 } },
+      }),
+    ).toBeUndefined();
   });
   it('falls back when a custom frontend stacks slots for recipe-specific rotation', () => {
     expect(machineUiFor(recipeFor('Baryonic Perfection'))).toBeUndefined();
   });
   it('never drops extra recipe slots to make them fit a native frontend', () => {
     const recipe = recipeFor('Mixer');
-    expect(machineUiFor({ ...recipe, inputs: [{ id: 'item:extra', slot: 100, kind: 'item', amount: 1 }] })).toBeUndefined();
+    expect(
+      machineUiFor({
+        ...recipe,
+        inputs: [{ id: 'item:extra', slot: 100, kind: 'item', amount: 1 }],
+      }),
+    ).toBeUndefined();
   });
   it('has finite slot positions and an atlas viewport containing every sprite crop', () => {
     expect(profiles).toHaveLength(172);
@@ -68,15 +101,23 @@ describe('runtime-derived machine layouts', () => {
       expect(bounds.width).toBeGreaterThan(0);
       expect(bounds.height).toBeGreaterThan(0);
       for (const group of UI_GROUPS) {
-        for (const slot of profile[group]) for (const coordinate of slot.pos) expect(Number.isFinite(coordinate)).toBe(true);
+        for (const slot of profile[group])
+          for (const coordinate of slot.pos) expect(Number.isFinite(coordinate)).toBe(true);
       }
-      for (const texture of [...profile.widgets.map(widget => widget.texture),
-        ...UI_GROUPS.flatMap(group => profile[group].flatMap(slot => slot.overlay ? [slot.overlay] : []))]) {
+      for (const texture of [
+        ...profile.widgets.map((widget) => widget.texture),
+        ...UI_GROUPS.flatMap((group) =>
+          profile[group].flatMap((slot) => (slot.overlay ? [slot.overlay] : [])),
+        ),
+      ]) {
         expect(texture.file).toMatch(/^atlas-[a-f0-9]{20}\.png$/);
-        const [u0,v0,u1,v1] = texture.uv;
-        expect(u0).toBeGreaterThanOrEqual(0); expect(v0).toBeGreaterThanOrEqual(0);
-        expect(u1).toBeLessThanOrEqual(1); expect(v1).toBeLessThanOrEqual(1);
-        expect(u1).toBeGreaterThan(u0); expect(v1).toBeGreaterThan(v0);
+        const [u0, v0, u1, v1] = texture.uv;
+        expect(u0).toBeGreaterThanOrEqual(0);
+        expect(v0).toBeGreaterThanOrEqual(0);
+        expect(u1).toBeLessThanOrEqual(1);
+        expect(v1).toBeLessThanOrEqual(1);
+        expect(u1).toBeGreaterThan(u0);
+        expect(v1).toBeGreaterThan(v0);
       }
     }
   });

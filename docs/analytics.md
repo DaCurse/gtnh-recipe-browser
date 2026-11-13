@@ -34,24 +34,24 @@ connected PostHog integration; never add a management credential to client code.
 
 The following event/property combinations support further saved insights:
 
-| Question | Event / metric | Breakdown |
-| --- | --- | --- |
-| How many visits and visitors? | Web Analytics using `$pageview` | Date, referrer, device; `screen` for app section |
-| What gets searched? | `catalog_search` total events | `query`; filter `search_context` to `catalog`, `finder_input`, or `finder_output` |
-| Is the search guide used? | `search_help_opened` | `search_context` |
-| Which items get inspected? | `item_viewed` | `item_name`, optionally `item_id`, `view`, `dataset_version` |
-| Which finder ingredients are popular? | `finder_ingredient_added` | `ingredient_name`, `side`, `mode` |
-| What finder queries are completed? | `recipe_search_completed` | `input_names`, `output_names`, `result_count`, `cached` |
-| What chains are searched? | `chain_search_completed` | `input_names`, `output_names`, `route_count`, `limited`, `expanded` |
-| Which features are used most? | `$pageview` and the explicit feature events | `screen`: `landing`, `catalog`, `item`, `finder`, `chain`, `quests` |
-| Do people explore alternatives? | `chain_more_requested`, `chain_more_stopped`, `chain_route_viewed` | Requested count, route number, cached status |
-| Are exports used? | `data_export_clicked`, `data_export_completed`, `data_export_failed` | `target`, `kind`, `choice`, `record_count` |
-| Are quests being explored? | `quest_chapter_viewed`, `quest_viewed`, `quest_search` | Public chapter/quest IDs and names, `quest_version`, settled query and result count |
-| Do item and vending links help discovery? | `quest_link_opened` | `source`: `item_recipes`, `item_usages`, `vending` |
-| Which special tabs get used? | `special_viewed` | `special_type`, `scope`, direction, item name and record count |
-| Are touch previews and holds used? | `item_touch_interaction`, `item_action_selected`, `quest_touch_preview` | Preview/activate/hold action, public item name/kind, selected direction |
-| Does questbook loading work? | `questbook_loaded`, `questbook_load_failed`, `quest_version_changed` | Duration, version and quest/chapter counts |
-| Is loading slow or failing? | `dataset_loaded`, `dataset_load_failed` | `duration_ms`, dataset version where available |
+| Question                                  | Event / metric                                                          | Breakdown                                                                           |
+| ----------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| How many visits and visitors?             | Web Analytics using `$pageview`                                         | Date, referrer, device; `screen` for app section                                    |
+| What gets searched?                       | `catalog_search` total events                                           | `query`; filter `search_context` to `catalog`, `finder_input`, or `finder_output`   |
+| Is the search guide used?                 | `search_help_opened`                                                    | `search_context`                                                                    |
+| Which items get inspected?                | `item_viewed`                                                           | `item_name`, optionally `item_id`, `view`, `dataset_version`                        |
+| Which finder ingredients are popular?     | `finder_ingredient_added`                                               | `ingredient_name`, `side`, `mode`                                                   |
+| What finder queries are completed?        | `recipe_search_completed`                                               | `input_names`, `output_names`, `result_count`, `cached`                             |
+| What chains are searched?                 | `chain_search_completed`                                                | `input_names`, `output_names`, `route_count`, `limited`, `expanded`                 |
+| Which features are used most?             | `$pageview` and the explicit feature events                             | `screen`: `landing`, `catalog`, `item`, `finder`, `chain`, `quests`                 |
+| Do people explore alternatives?           | `chain_more_requested`, `chain_more_stopped`, `chain_route_viewed`      | Requested count, route number, cached status                                        |
+| Are exports used?                         | `data_export_clicked`, `data_export_completed`, `data_export_failed`    | `target`, `kind`, `choice`, `record_count`                                          |
+| Are quests being explored?                | `quest_chapter_viewed`, `quest_viewed`, `quest_search`                  | Public chapter/quest IDs and names, `quest_version`, settled query and result count |
+| Do item and vending links help discovery? | `quest_link_opened`                                                     | `source`: `item_recipes`, `item_usages`, `vending`                                  |
+| Which special tabs get used?              | `special_viewed`                                                        | `special_type`, `scope`, direction, item name and record count                      |
+| Are touch previews and holds used?        | `item_touch_interaction`, `item_action_selected`, `quest_touch_preview` | Preview/activate/hold action, public item name/kind, selected direction             |
+| Does questbook loading work?              | `questbook_loaded`, `questbook_load_failed`, `quest_version_changed`    | Duration, version and quest/chapter counts                                          |
+| Is loading slow or failing?               | `dataset_loaded`, `dataset_load_failed`                                 | `duration_ms`, dataset version where available                                      |
 
 The contextual **Export data** action uses `target: pane` for Recipes, Usages,
 Machine Usages and special views, including the current category and filter.

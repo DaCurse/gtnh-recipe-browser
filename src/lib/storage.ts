@@ -1,9 +1,5 @@
 import { openDB, type IDBPTransaction } from 'idb';
-import type {
-  DatasetState,
-  DatasetStorageReport,
-  DatasetStorageUsage
-} from './types';
+import type { DatasetState, DatasetStorageReport, DatasetStorageUsage } from './types';
 import { CURRENT_DATASET_CACHE_VERSION } from './datasetVersions';
 
 const DB_NAME = 'gtnh-recipe-browser';
@@ -39,30 +35,32 @@ let databasePromise: ReturnType<typeof openDB> | undefined;
 export function activeDatasetSnapshot(
   datasets: readonly DatasetState[],
   datasetId: string,
-  updatedAt = Date.now()
+  updatedAt = Date.now(),
 ): DatasetState[] {
   return datasets.map((dataset) => ({
     ...dataset,
     active: dataset.datasetId === datasetId,
-    updatedAt: dataset.active === (dataset.datasetId === datasetId) ? dataset.updatedAt : updatedAt
+    updatedAt: dataset.active === (dataset.datasetId === datasetId) ? dataset.updatedAt : updatedAt,
   }));
 }
 
 export function unreferencedDatasetAssets(
   datasets: readonly DatasetState[],
-  datasetId: string
+  datasetId: string,
 ): string[] {
   const target = datasets.find((dataset) => dataset.datasetId === datasetId);
   if (!target) return [];
-  const retainedHashes = new Set(datasets
-    .filter((dataset) => dataset.datasetId !== datasetId)
-    .flatMap((dataset) => dataset.assetHashes ?? []));
+  const retainedHashes = new Set(
+    datasets
+      .filter((dataset) => dataset.datasetId !== datasetId)
+      .flatMap((dataset) => dataset.assetHashes ?? []),
+  );
   return (target.assetHashes ?? []).filter((hash) => !retainedHashes.has(hash));
 }
 
 export function calculateDatasetStorageReport(
   datasets: readonly Pick<DatasetState, 'datasetId' | 'assetHashes'>[],
-  assetSizes: ReadonlyMap<string, number>
+  assetSizes: ReadonlyMap<string, number>,
 ): DatasetStorageReport {
   const references = new Map<string, Set<string>>();
   const hashesByDataset = new Map<string, Set<string>>();
@@ -103,7 +101,7 @@ export function calculateDatasetStorageReport(
       exclusiveBytes,
       exclusiveAssets,
       sharedBytes,
-      sharedAssets
+      sharedAssets,
     };
   };
 
@@ -144,7 +142,7 @@ export function calculateDatasetStorageReport(
     untrackedBytes,
     sharedAssets,
     untrackedAssets,
-    byDataset
+    byDataset,
   };
 }
 
@@ -152,9 +150,8 @@ function assetByteLength(record: unknown): number | undefined {
   if (record === null || typeof record !== 'object') return undefined;
   const value = record as { bytes?: unknown; byteLength?: unknown };
   const bytes = value.bytes;
-  const actualLength = bytes instanceof ArrayBuffer || ArrayBuffer.isView(bytes)
-    ? bytes.byteLength
-    : undefined;
+  const actualLength =
+    bytes instanceof ArrayBuffer || ArrayBuffer.isView(bytes) ? bytes.byteLength : undefined;
   if (actualLength === undefined) return undefined;
   if (Number.isSafeInteger(value.byteLength) && value.byteLength === actualLength) {
     return value.byteLength;
@@ -166,14 +163,13 @@ function assetIndexEntry(record: unknown): CachedAssetIndexEntry | undefined {
   if (record === null || typeof record !== 'object') return undefined;
   const value = record as { sha256?: unknown };
   const byteLength = assetByteLength(record);
-  return typeof value.sha256 === 'string'
-    && byteLength !== undefined
+  return typeof value.sha256 === 'string' && byteLength !== undefined
     ? { sha256: value.sha256, byteLength }
     : undefined;
 }
 
 async function migrateAssetIndex(
-  transaction: IDBPTransaction<unknown, string[], 'versionchange'>
+  transaction: IDBPTransaction<unknown, string[], 'versionchange'>,
 ): Promise<void> {
   const assets = transaction.objectStore(ASSET_STORE);
   const index = transaction.objectStore(ASSET_INDEX_STORE);
@@ -201,8 +197,10 @@ function database() {
         db.createObjectStore(ASSET_INDEX_STORE, { keyPath: 'sha256' });
       }
       if (!db.objectStoreNames.contains(RUNTIME_STORE)) {
-        db.createObjectStore(RUNTIME_STORE, { keyPath: ['datasetId', 'key'] })
-          .createIndex('datasetId', 'datasetId');
+        db.createObjectStore(RUNTIME_STORE, { keyPath: ['datasetId', 'key'] }).createIndex(
+          'datasetId',
+          'datasetId',
+        );
       }
       if (db.objectStoreNames.contains(LEGACY_CATALOG_STORE)) {
         db.deleteObjectStore(LEGACY_CATALOG_STORE);
@@ -215,7 +213,7 @@ function database() {
     },
     terminated() {
       databasePromise = undefined;
-    }
+    },
   });
   return databasePromise;
 }
@@ -227,7 +225,7 @@ export async function listDatasets(): Promise<DatasetState[]> {
 
 export async function getDataset(datasetId: string): Promise<DatasetState | null> {
   if (!('indexedDB' in globalThis)) return null;
-  return await (await database()).get(DATASET_STORE, datasetId) ?? null;
+  return (await (await database()).get(DATASET_STORE, datasetId)) ?? null;
 }
 
 export async function saveDataset(dataset: DatasetState): Promise<void> {
@@ -238,21 +236,25 @@ export async function activateDataset(datasetId: string): Promise<void> {
   const db = await database();
   const transaction = db.transaction(DATASET_STORE, 'readwrite');
   const store = transaction.objectStore(DATASET_STORE);
-  const datasets = await store.getAll() as DatasetState[];
+  const datasets = (await store.getAll()) as DatasetState[];
   for (const dataset of activeDatasetSnapshot(datasets, datasetId)) await store.put(dataset);
   await transaction.done;
 }
 
 export async function removeDataset(datasetId: string): Promise<void> {
   const db = await database();
-  const transaction = db.transaction([DATASET_STORE, ASSET_STORE, ASSET_INDEX_STORE, RUNTIME_STORE], 'readwrite');
-  const datasets = await transaction.objectStore(DATASET_STORE).getAll() as DatasetState[];
+  const transaction = db.transaction(
+    [DATASET_STORE, ASSET_STORE, ASSET_INDEX_STORE, RUNTIME_STORE],
+    'readwrite',
+  );
+  const datasets = (await transaction.objectStore(DATASET_STORE).getAll()) as DatasetState[];
   for (const hash of unreferencedDatasetAssets(datasets, datasetId)) {
     await transaction.objectStore(ASSET_STORE).delete(hash);
     await transaction.objectStore(ASSET_INDEX_STORE).delete(hash);
   }
   const runtime = transaction.objectStore(RUNTIME_STORE);
-  for (const key of await runtime.index('datasetId').getAllKeys(datasetId)) await runtime.delete(key);
+  for (const key of await runtime.index('datasetId').getAllKeys(datasetId))
+    await runtime.delete(key);
   await transaction.objectStore(DATASET_STORE).delete(datasetId);
   await transaction.done;
 }
@@ -269,10 +271,13 @@ async function removeUnreferencedAssets(candidateHashes?: readonly string[]): Pr
   if (!('indexedDB' in globalThis)) return;
   const db = await database();
   const transaction = db.transaction([DATASET_STORE, ASSET_STORE, ASSET_INDEX_STORE], 'readwrite');
-  const datasets = await transaction.objectStore(DATASET_STORE).getAll() as DatasetState[];
+  const datasets = (await transaction.objectStore(DATASET_STORE).getAll()) as DatasetState[];
   const referenced = new Set(datasets.flatMap((dataset) => dataset.assetHashes ?? []));
-  const candidates = candidateHashes ?? (await transaction.objectStore(ASSET_STORE).getAllKeys())
-    .filter((key): key is string => typeof key === 'string');
+  const candidates =
+    candidateHashes ??
+    (await transaction.objectStore(ASSET_STORE).getAllKeys()).filter(
+      (key): key is string => typeof key === 'string',
+    );
   for (const hash of new Set(candidates)) {
     if (!referenced.has(hash)) {
       await transaction.objectStore(ASSET_STORE).delete(hash);
@@ -290,7 +295,7 @@ async function removeUnreferencedAssets(candidateHashes?: readonly string[]): Pr
  */
 export async function migrateObsoleteDatasetStates(
   replacementDatasetId: string,
-  obsoleteStates: readonly Pick<DatasetState, 'datasetId' | 'assetHashes'>[]
+  obsoleteStates: readonly Pick<DatasetState, 'datasetId' | 'assetHashes'>[],
 ): Promise<void> {
   if (obsoleteStates.length === 0) return;
   for (const obsolete of obsoleteStates) {
@@ -304,17 +309,23 @@ export async function migrateObsoleteDatasetStates(
 /** Record verified cached pages together, without cloning already-owned blobs. */
 export async function recordDatasetAssets(
   datasetId: string,
-  assets: readonly { sha256: string; bytes: number }[]
+  assets: readonly { sha256: string; bytes: number }[],
 ): Promise<void> {
   if (!('indexedDB' in globalThis)) return;
-  const pending = new Map(assets.filter((asset) => Number.isSafeInteger(asset.bytes) && asset.bytes >= 0)
-    .map((asset) => [asset.sha256, asset.bytes]));
+  const pending = new Map(
+    assets
+      .filter((asset) => Number.isSafeInteger(asset.bytes) && asset.bytes >= 0)
+      .map((asset) => [asset.sha256, asset.bytes]),
+  );
   if (pending.size === 0) return;
   const db = await database();
   const transaction = db.transaction([DATASET_STORE, ASSET_STORE, ASSET_INDEX_STORE], 'readwrite');
   const datasets = transaction.objectStore(DATASET_STORE);
-  const dataset = await datasets.get(datasetId) as DatasetState | undefined;
-  if (!dataset) { await transaction.done; return; }
+  const dataset = (await datasets.get(datasetId)) as DatasetState | undefined;
+  if (!dataset) {
+    await transaction.done;
+    return;
+  }
   const hashes = new Set(dataset.assetHashes ?? []);
   let addedBytes = 0;
   let added = false;
@@ -322,27 +333,35 @@ export async function recordDatasetAssets(
     // Ownership has already been recorded atomically. Content verification is
     // still performed by the asset loader before any bytes are used.
     if (hashes.has(sha256)) continue;
-    const asset = await transaction.objectStore(ASSET_STORE).get(sha256) as CachedAsset | undefined;
+    const asset = (await transaction.objectStore(ASSET_STORE).get(sha256)) as
+      CachedAsset | undefined;
     const actualByteLength = assetByteLength(asset);
     if (!asset || actualByteLength !== byteLength || asset.sha256 !== sha256) continue;
-    await transaction.objectStore(ASSET_INDEX_STORE).put({ sha256, byteLength: actualByteLength } satisfies CachedAssetIndexEntry);
+    await transaction
+      .objectStore(ASSET_INDEX_STORE)
+      .put({ sha256, byteLength: actualByteLength } satisfies CachedAssetIndexEntry);
     hashes.add(sha256);
     addedBytes += actualByteLength;
     added = true;
   }
-  if (added) await datasets.put({
-    ...dataset,
-    cacheVersion: CURRENT_DATASET_CACHE_VERSION,
-    status: dataset.status === 'catalog' ? 'partial' : dataset.status,
-    storedBytes: dataset.storedBytes + addedBytes,
-    assetHashes: [...hashes],
-    updatedAt: Date.now()
-  });
+  if (added)
+    await datasets.put({
+      ...dataset,
+      cacheVersion: CURRENT_DATASET_CACHE_VERSION,
+      status: dataset.status === 'catalog' ? 'partial' : dataset.status,
+      storedBytes: dataset.storedBytes + addedBytes,
+      assetHashes: [...hashes],
+      updatedAt: Date.now(),
+    });
   await transaction.done;
 }
 
 /** Record an on-demand asset in the owning dataset for accounting and cleanup. */
-export async function recordDatasetAsset(datasetId: string, sha256: string, byteLength: number): Promise<void> {
+export async function recordDatasetAsset(
+  datasetId: string,
+  sha256: string,
+  byteLength: number,
+): Promise<void> {
   await recordDatasetAssets(datasetId, [{ sha256, bytes: byteLength }]);
 }
 
@@ -361,7 +380,7 @@ export async function storageIsPersistent(): Promise<boolean | undefined> {
 export async function getCachedAsset(sha256: string): Promise<Uint8Array | null> {
   if (!('indexedDB' in globalThis)) return null;
   try {
-    const record = await (await database()).get(ASSET_STORE, sha256) as CachedAsset | undefined;
+    const record = (await (await database()).get(ASSET_STORE, sha256)) as CachedAsset | undefined;
     return record ? new Uint8Array(record.bytes) : null;
   } catch {
     return null;
@@ -377,11 +396,11 @@ export async function cacheAsset(sha256: string, bytes: Uint8Array): Promise<voi
     sha256,
     bytes: stored,
     byteLength: stored.byteLength,
-    cachedAt: Date.now()
+    cachedAt: Date.now(),
   } satisfies CachedAsset);
   await transaction.objectStore(ASSET_INDEX_STORE).put({
     sha256,
-    byteLength: stored.byteLength
+    byteLength: stored.byteLength,
   } satisfies CachedAssetIndexEntry);
   await transaction.done;
 }
@@ -401,15 +420,20 @@ export async function cachedAssetSizes(): Promise<Map<string, number>> {
     const transaction = db.transaction([ASSET_INDEX_STORE, ASSET_STORE], 'readonly');
     const [records, physicalKeys] = await Promise.all([
       transaction.objectStore(ASSET_INDEX_STORE).getAll() as Promise<CachedAssetIndexEntry[]>,
-      transaction.objectStore(ASSET_STORE).getAllKeys() as Promise<IDBValidKey[]>
+      transaction.objectStore(ASSET_STORE).getAllKeys() as Promise<IDBValidKey[]>,
     ]);
     await transaction.done;
     const physical = new Set(physicalKeys.filter((key): key is string => typeof key === 'string'));
-    return new Map(records
-      .filter((record) => physical.has(record.sha256)
-        && Number.isSafeInteger(record.byteLength)
-        && record.byteLength >= 0)
-      .map((record) => [record.sha256, record.byteLength]));
+    return new Map(
+      records
+        .filter(
+          (record) =>
+            physical.has(record.sha256) &&
+            Number.isSafeInteger(record.byteLength) &&
+            record.byteLength >= 0,
+        )
+        .map((record) => [record.sha256, record.byteLength]),
+    );
   } catch {
     return new Map();
   }
@@ -431,7 +455,8 @@ export async function removeCachedAsset(sha256: string): Promise<void> {
 export async function getCachedMetadata<T>(key: string): Promise<{ url: string; value: T } | null> {
   if (!('indexedDB' in globalThis)) return null;
   try {
-    const record = await (await database()).get(METADATA_STORE, key) as CachedMetadata | undefined;
+    const record = (await (await database()).get(METADATA_STORE, key)) as
+      CachedMetadata | undefined;
     return record ? { url: record.url, value: record.value as T } : null;
   } catch {
     return null;
@@ -441,11 +466,13 @@ export async function getCachedMetadata<T>(key: string): Promise<{ url: string; 
 export async function cacheMetadata(key: string, url: string, value: unknown): Promise<void> {
   if (!('indexedDB' in globalThis)) return;
   try {
-    await (await database()).put(METADATA_STORE, {
+    await (
+      await database()
+    ).put(METADATA_STORE, {
       key,
       url,
       value,
-      cachedAt: Date.now()
+      cachedAt: Date.now(),
     } satisfies CachedMetadata);
   } catch (error) {
     console.warn('Unable to persist dataset metadata', error);
@@ -457,13 +484,17 @@ export async function getRuntimeCache<T>(datasetId: string, key: string): Promis
   if (!('indexedDB' in globalThis)) return null;
   try {
     const record = await (await database()).get(RUNTIME_STORE, [datasetId, key]);
-    return record?.value as T ?? null;
+    return (record?.value as T) ?? null;
   } catch {
     return null;
   }
 }
 
-export async function cacheRuntimeData(datasetId: string, key: string, value: unknown): Promise<boolean> {
+export async function cacheRuntimeData(
+  datasetId: string,
+  key: string,
+  value: unknown,
+): Promise<boolean> {
   if (!('indexedDB' in globalThis)) return false;
   try {
     const db = await database();

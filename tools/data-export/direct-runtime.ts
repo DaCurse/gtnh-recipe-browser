@@ -1,6 +1,16 @@
 import { createHash } from 'node:crypto';
 import { execFile as execFileCallback } from 'node:child_process';
-import { copyFile, chmod, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
+import {
+  copyFile,
+  chmod,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { createReadStream, createWriteStream } from 'node:fs';
 import { basename, dirname, extname, isAbsolute, join, resolve, sep } from 'node:path';
 import { Readable } from 'node:stream';
@@ -25,7 +35,7 @@ export interface RuntimePlatform {
 export const LINUX_X86_64: RuntimePlatform = {
   name: 'linux',
   arch: 'x86_64',
-  features: {}
+  features: {},
 };
 export const WINDOWS_X86_64: RuntimePlatform = { name: 'windows', arch: 'x86_64', features: {} };
 
@@ -256,7 +266,8 @@ function asObject(value: unknown, label: string): Record<string, unknown> {
 }
 
 function asString(value: unknown, label: string): string {
-  if (typeof value !== 'string' || value.length === 0) throw new Error(`${label} must be a non-empty string`);
+  if (typeof value !== 'string' || value.length === 0)
+    throw new Error(`${label} must be a non-empty string`);
   return value;
 }
 
@@ -295,7 +306,10 @@ function matchesPattern(value: string | undefined, pattern: string | undefined):
 }
 
 /** Evaluate MultiMC/Minecraft launcher rules for the selected export target. */
-export function matchesRuntimeRule(rule: RuntimeRule, platform: RuntimePlatform = LINUX_X86_64): boolean {
+export function matchesRuntimeRule(
+  rule: RuntimeRule,
+  platform: RuntimePlatform = LINUX_X86_64,
+): boolean {
   if (rule.os) {
     if (!matchesPattern(platform.name, rule.os.name)) return false;
     if (!matchesPattern(platform.arch, rule.os.arch)) return false;
@@ -313,7 +327,7 @@ export function matchesRuntimeRule(rule: RuntimeRule, platform: RuntimePlatform 
 /** Apply launcher rules in order; the last matching rule wins. */
 export function isAllowedByRuntimeRules(
   rules: readonly RuntimeRule[] | undefined,
-  platform: RuntimePlatform = LINUX_X86_64
+  platform: RuntimePlatform = LINUX_X86_64,
 ): boolean {
   if (!rules || rules.length === 0) return true;
   let allowed = false;
@@ -372,7 +386,9 @@ async function extractRuntimeArchive(archive: string, cacheDirectory: string): P
     if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
   }
   if (entries.length > 0) {
-    throw new Error(`Refusing to overwrite incomplete runtime archive cache ${extractionDirectory}`);
+    throw new Error(
+      `Refusing to overwrite incomplete runtime archive cache ${extractionDirectory}`,
+    );
   }
   const temporaryDirectory = `${extractionDirectory}.tmp-${process.pid}`;
   await mkdir(temporaryDirectory, { recursive: true });
@@ -387,7 +403,10 @@ async function extractRuntimeArchive(archive: string, cacheDirectory: string): P
   return findPackRoot(extractionDirectory);
 }
 
-async function resolvePackRootInput(rootOrArchive: string, cacheDirectory: string): Promise<string> {
+async function resolvePackRootInput(
+  rootOrArchive: string,
+  cacheDirectory: string,
+): Promise<string> {
   const input = resolve(rootOrArchive);
   const inputStat = await stat(input);
   if (inputStat.isDirectory()) return findPackRoot(input);
@@ -405,7 +424,7 @@ export async function readRuntimePackMetadata(packRoot: string): Promise<Runtime
     const component = asObject(value, `components[${index}]`);
     return {
       ...component,
-      uid: asString(component.uid, `components[${index}].uid`)
+      uid: asString(component.uid, `components[${index}].uid`),
     } as RuntimeComponent;
   });
   const patchesDirectory = join(packRoot, 'patches');
@@ -413,7 +432,8 @@ export async function readRuntimePackMetadata(packRoot: string): Promise<Runtime
     .filter((entry) => entry.isFile() && extname(entry.name).toLowerCase() === '.json')
     .map((entry) => entry.name)
     .sort();
-  if (patchEntries.length === 0) throw new Error(`No component patches found under ${patchesDirectory}`);
+  if (patchEntries.length === 0)
+    throw new Error(`No component patches found under ${patchesDirectory}`);
   const patches: RuntimePatchFile[] = [];
   for (const file of patchEntries) {
     const value = await readJson<RuntimePatch>(join(patchesDirectory, file));
@@ -447,7 +467,7 @@ function mavenCoordinateParts(name: string): {
     artifact: parts[1]!,
     version: parts[2]!,
     classifier: parts[3],
-    extension: extensionPart || 'jar'
+    extension: extensionPart || 'jar',
   };
 }
 
@@ -499,15 +519,19 @@ async function findFileByName(root: string, fileName: string): Promise<string | 
 async function localArtifactPath(
   packRoot: string,
   name: string,
-  explicitPath?: string
+  explicitPath?: string,
 ): Promise<string | undefined> {
   const fileName = mavenFileName(name);
   const candidates = [
-    explicitPath ? (isAbsolute(explicitPath) ? explicitPath : join(packRoot, explicitPath)) : undefined,
+    explicitPath
+      ? isAbsolute(explicitPath)
+        ? explicitPath
+        : join(packRoot, explicitPath)
+      : undefined,
     join(packRoot, 'libraries', mavenRelativePath(name)),
     join(packRoot, mavenRelativePath(name)),
     join(packRoot, 'libraries', fileName),
-    join(packRoot, fileName)
+    join(packRoot, fileName),
   ].filter((value): value is string => value !== undefined);
   for (const candidate of candidates) {
     try {
@@ -529,23 +553,29 @@ function artifactSource(artifact: RuntimeLibraryArtifact | undefined): ArtifactS
     url: optionalString(artifact?.url),
     sha1: normalizeSha1(optionalString(artifact?.sha1)),
     size: optionalNumber(artifact?.size),
-    localPath: optionalString(artifact?.path)
+    localPath: optionalString(artifact?.path),
   };
 }
 
 function isNativeArtifact(name: string, classifier?: string, url?: string): boolean {
-  return /(?:^|:)natives-(?:linux|windows)(?:-\w+)?/.test(name)
-    || classifier?.startsWith('natives-') === true
-    || /(?:^|[-/])natives-(?:linux|windows)(?:[-/.]|$)/.test(url ?? '');
+  return (
+    /(?:^|:)natives-(?:linux|windows)(?:-\w+)?/.test(name) ||
+    classifier?.startsWith('natives-') === true ||
+    /(?:^|[-/])natives-(?:linux|windows)(?:[-/.]|$)/.test(url ?? '')
+  );
 }
 
 function nativeClassifierForPlatform(
   natives: Record<string, string> | undefined,
-  platform: RuntimePlatform
+  platform: RuntimePlatform,
 ): string | undefined {
   if (!natives) return undefined;
   const archToken = platform.arch === 'x86_64' ? '64' : platform.arch;
-  const keys = [platform.name, `${platform.name}-${platform.arch}`, `${platform.name}-${archToken}`];
+  const keys = [
+    platform.name,
+    `${platform.name}-${platform.arch}`,
+    `${platform.name}-${archToken}`,
+  ];
   for (const key of keys) {
     const classifier = natives[key];
     if (typeof classifier === 'string' && classifier.length > 0) {
@@ -561,7 +591,7 @@ async function collectArtifactRequest(
   classifier: string | undefined,
   patchUid: string | undefined,
   packRoot: string,
-  platform: RuntimePlatform
+  platform: RuntimePlatform,
 ): Promise<RuntimeArtifactRequest> {
   const source = artifactSource(artifact);
   const localHint = library['MMC-hint'] === 'local' || library['mmc-hint'] === 'local';
@@ -571,7 +601,11 @@ async function collectArtifactRequest(
   if (localHint && !localPath) {
     throw new Error(`Local runtime library ${library.name} is missing from ${packRoot}/libraries`);
   }
-  if (source.url && !localHint && !isAllowedByRuntimeRules(normalizedRules(artifact?.rules), platform)) {
+  if (
+    source.url &&
+    !localHint &&
+    !isAllowedByRuntimeRules(normalizedRules(artifact?.rules), platform)
+  ) {
     throw new Error(`Artifact rules unexpectedly rejected selected library ${library.name}`);
   }
   const url = source.url ?? (localHint ? undefined : fallbackMavenUrl(library.name));
@@ -585,15 +619,19 @@ async function collectArtifactRequest(
     source: localPath ? 'local' : 'download',
     isNative: isNativeArtifact(library.name, classifier, url),
     patchUid,
-    classifier
+    classifier,
   };
 }
 
 async function collectArtifactRequests(
   metadata: RuntimePackMetadata,
   packRoot: string,
-  platform: RuntimePlatform
-): Promise<{ requests: RuntimeArtifactRequest[]; mainJar?: RuntimeArtifactRequest; assetIndex?: RuntimePatch['assetIndex'] }> {
+  platform: RuntimePlatform,
+): Promise<{
+  requests: RuntimeArtifactRequest[];
+  mainJar?: RuntimeArtifactRequest;
+  assetIndex?: RuntimePatch['assetIndex'];
+}> {
   const requests: RuntimeArtifactRequest[] = [];
   const librariesByIdentity = new Map<string, { library: RuntimeLibrary; patchUid?: string }>();
   let mainJar: RuntimeArtifactRequest | undefined;
@@ -614,7 +652,7 @@ async function collectArtifactRequests(
         localPath,
         source: localPath ? 'local' : 'download',
         isNative: false,
-        patchUid
+        patchUid,
       };
       mainJar = request;
     }
@@ -634,13 +672,22 @@ async function collectArtifactRequests(
     const artifact = library.downloads?.artifact;
     const localHint = library['MMC-hint'] === 'local' || library['mmc-hint'] === 'local';
     if (artifact || localHint) {
-      const request = await collectArtifactRequest(library, artifact, undefined, patchUid, packRoot, platform);
+      const request = await collectArtifactRequest(
+        library,
+        artifact,
+        undefined,
+        patchUid,
+        packRoot,
+        platform,
+      );
       requests.push(request);
     }
     // Launcher classifiers are native variants. Select only the classifier
     // named by natives[platform], never every OS payload in the map.
     const classifier = nativeClassifierForPlatform(library.natives, platform);
-    const classifierArtifact = classifier ? library.downloads?.classifiers?.[classifier] : undefined;
+    const classifierArtifact = classifier
+      ? library.downloads?.classifiers?.[classifier]
+      : undefined;
     if (classifier && classifierArtifact) {
       if (!isAllowedByRuntimeRules(normalizedRules(classifierArtifact.rules), platform)) continue;
       const classifierName = library.name.includes(':')
@@ -653,7 +700,7 @@ async function collectArtifactRequests(
         classifier,
         patchUid,
         packRoot,
-        platform
+        platform,
       );
       requests.push(request);
     }
@@ -675,7 +722,7 @@ async function verifyArtifactFile(
   path: string,
   expectedSha1: string | undefined,
   expectedSize: number | undefined,
-  label: string
+  label: string,
 ): Promise<{ bytes: number; sha1: string }> {
   const bytes = await fileBytes(path);
   if (expectedSize !== undefined && expectedSize > 0 && bytes !== expectedSize) {
@@ -721,13 +768,18 @@ class ImmutableArtifactCache {
     sha1: string | undefined,
     name: string,
     expectedSize: number | undefined,
-    url: string | undefined
+    url: string | undefined,
   ): Promise<ResolvedRuntimeArtifact | undefined> {
     if (!sha1) return undefined;
     const path = this.destination(sha1, name, url);
     try {
       const checked = await verifyArtifactFile(path, sha1, expectedSize, `Cached artifact ${name}`);
-      return { path, cachePath: path, bytes: checked.bytes, actualSha1: checked.sha1 } as ResolvedRuntimeArtifact;
+      return {
+        path,
+        cachePath: path,
+        bytes: checked.bytes,
+        actualSha1: checked.sha1,
+      } as ResolvedRuntimeArtifact;
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code === 'ENOENT') return undefined;
       await rm(path, { force: true });
@@ -755,7 +807,10 @@ class ImmutableArtifactCache {
     }
   }
 
-  async resolve(request: RuntimeArtifactRequest, download = true): Promise<ResolvedRuntimeArtifact> {
+  async resolve(
+    request: RuntimeArtifactRequest,
+    download = true,
+  ): Promise<ResolvedRuntimeArtifact> {
     await mkdir(this.root, { recursive: true });
     const cached = await this.tryCached(request.sha1, request.name, request.size, request.url);
     if (cached) return { ...request, ...cached };
@@ -767,23 +822,49 @@ class ImmutableArtifactCache {
     }
     const temporaryDirectory = join(this.root, 'tmp');
     await mkdir(temporaryDirectory, { recursive: true });
-    const temporaryPath = join(temporaryDirectory, `.artifact-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+    const temporaryPath = join(
+      temporaryDirectory,
+      `.artifact-${process.pid}-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+    );
     try {
       if (request.source === 'local') await copyFile(request.localPath!, temporaryPath);
       else await this.downloadTo(request.url!, temporaryPath);
-      const checked = await verifyArtifactFile(temporaryPath, request.sha1, request.size, request.name);
+      const checked = await verifyArtifactFile(
+        temporaryPath,
+        request.sha1,
+        request.size,
+        request.name,
+      );
       const destination = this.destination(checked.sha1, request.name, request.url);
       await mkdir(dirname(destination), { recursive: true });
       try {
-        const existing = await verifyArtifactFile(destination, checked.sha1, checked.bytes, `Cached artifact ${request.name}`);
+        const existing = await verifyArtifactFile(
+          destination,
+          checked.sha1,
+          checked.bytes,
+          `Cached artifact ${request.name}`,
+        );
         await rm(temporaryPath, { force: true });
-        return { ...request, path: destination, cachePath: destination, bytes: existing.bytes, actualSha1: existing.sha1 };
+        return {
+          ...request,
+          path: destination,
+          cachePath: destination,
+          bytes: existing.bytes,
+          actualSha1: existing.sha1,
+        };
       } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') await rm(destination, { force: true });
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT')
+          await rm(destination, { force: true });
       }
       await chmod(temporaryPath, 0o444);
       await rename(temporaryPath, destination);
-      return { ...request, path: destination, cachePath: destination, bytes: checked.bytes, actualSha1: checked.sha1 };
+      return {
+        ...request,
+        path: destination,
+        cachePath: destination,
+        bytes: checked.bytes,
+        actualSha1: checked.sha1,
+      };
     } finally {
       await rm(temporaryPath, { force: true });
     }
@@ -793,7 +874,9 @@ class ImmutableArtifactCache {
 function defaultIdentity(identity: ResolveRuntimeOptions['identity']): RuntimeIdentity {
   const username = identity?.username ?? process.env.GTNH_OFFLINE_USERNAME ?? 'GTNH';
   if (!/^[A-Za-z0-9_]{1,16}$/.test(username)) {
-    throw new Error(`Offline username must contain 1-16 ASCII letters, digits, or underscores: ${username}`);
+    throw new Error(
+      `Offline username must contain 1-16 ASCII letters, digits, or underscores: ${username}`,
+    );
   }
   const uuid = identity?.uuid ?? offlineUuid(username);
   if (!/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/i.test(uuid)) {
@@ -804,7 +887,7 @@ function defaultIdentity(identity: ResolveRuntimeOptions['identity']): RuntimeId
     uuid: uuid.toLowerCase(),
     accessToken: identity?.accessToken ?? '0',
     userProperties: identity?.userProperties ?? '{}',
-    userType: identity?.userType ?? 'legacy'
+    userType: identity?.userType ?? 'legacy',
   };
 }
 
@@ -855,12 +938,16 @@ function argumentValues(argument: RuntimeArgument, platform: RuntimePlatform): s
   return Array.isArray(argument.value) ? argument.value : [argument.value];
 }
 
-function substituteRuntimeArgument(value: string, identity: RuntimeIdentity, resolution: {
-  version: string;
-  gameDirectory: string;
-  assetsDirectory: string;
-  assetIndex: string;
-}): string {
+function substituteRuntimeArgument(
+  value: string,
+  identity: RuntimeIdentity,
+  resolution: {
+    version: string;
+    gameDirectory: string;
+    assetsDirectory: string;
+    assetIndex: string;
+  },
+): string {
   const substitutions: Record<string, string> = {
     auth_player_name: identity.username,
     auth_uuid: identity.uuid,
@@ -872,7 +959,7 @@ function substituteRuntimeArgument(value: string, identity: RuntimeIdentity, res
     assets_root: resolution.assetsDirectory,
     assets_index_name: resolution.assetIndex,
     user_property_map: identity.userProperties,
-    auth_session: identity.accessToken
+    auth_session: identity.accessToken,
   };
   return value.replace(/\$\{([^}]+)\}/g, (match, key: string) => substitutions[key] ?? match);
 }
@@ -884,7 +971,7 @@ function buildRuntimeArguments(
   gameDirectory: string,
   assetsDirectory: string,
   assetIndex: string,
-  version: string
+  version: string,
 ): { jvmArgs: string[]; gameArgs: string[] } {
   const jvmArgs: string[] = [];
   const gameArgs: string[] = [];
@@ -892,43 +979,55 @@ function buildRuntimeArguments(
   for (const { patch } of metadata.patches) {
     if (typeof patch.minecraftArguments === 'string') minecraftArguments = patch.minecraftArguments;
     const modernArguments = patch.arguments;
-    for (const argument of modernArguments?.jvm ?? []) jvmArgs.push(...argumentValues(argument, platform));
-    for (const argument of modernArguments?.game ?? []) gameArgs.push(...argumentValues(argument, platform));
+    for (const argument of modernArguments?.jvm ?? [])
+      jvmArgs.push(...argumentValues(argument, platform));
+    for (const argument of modernArguments?.game ?? [])
+      gameArgs.push(...argumentValues(argument, platform));
     const patchJvmArgs = patch['+jvmArgs'];
-    if (Array.isArray(patchJvmArgs)) jvmArgs.push(...patchJvmArgs.filter((value): value is string => typeof value === 'string'));
+    if (Array.isArray(patchJvmArgs))
+      jvmArgs.push(...patchJvmArgs.filter((value): value is string => typeof value === 'string'));
     const patchGameArgs = patch['+gameArgs'];
-    if (Array.isArray(patchGameArgs)) gameArgs.push(...patchGameArgs.filter((value): value is string => typeof value === 'string'));
+    if (Array.isArray(patchGameArgs))
+      gameArgs.push(...patchGameArgs.filter((value): value is string => typeof value === 'string'));
     const patchMinecraftArgs = patch['+minecraftArguments'];
-    if (typeof patchMinecraftArgs === 'string') gameArgs.push(...splitRuntimeArguments(patchMinecraftArgs));
-    else if (Array.isArray(patchMinecraftArgs)) gameArgs.push(...patchMinecraftArgs.filter((value): value is string => typeof value === 'string'));
+    if (typeof patchMinecraftArgs === 'string')
+      gameArgs.push(...splitRuntimeArguments(patchMinecraftArgs));
+    else if (Array.isArray(patchMinecraftArgs))
+      gameArgs.push(
+        ...patchMinecraftArgs.filter((value): value is string => typeof value === 'string'),
+      );
     for (const tweaker of patch['+tweakers'] ?? []) {
       if (typeof tweaker === 'string') gameArgs.push('--tweakClass', tweaker);
     }
   }
   if (minecraftArguments) {
-    const legacy = splitRuntimeArguments(minecraftArguments).map((value) => substituteRuntimeArgument(value, identity, {
-      version,
-      gameDirectory,
-      assetsDirectory,
-      assetIndex
-    }));
+    const legacy = splitRuntimeArguments(minecraftArguments).map((value) =>
+      substituteRuntimeArgument(value, identity, {
+        version,
+        gameDirectory,
+        assetsDirectory,
+        assetIndex,
+      }),
+    );
     gameArgs.unshift(...legacy);
   }
   return {
     jvmArgs,
-    gameArgs: gameArgs.map((value) => substituteRuntimeArgument(value, identity, {
-      version,
-      gameDirectory,
-      assetsDirectory,
-      assetIndex
-    }))
+    gameArgs: gameArgs.map((value) =>
+      substituteRuntimeArgument(value, identity, {
+        version,
+        gameDirectory,
+        assetsDirectory,
+        assetIndex,
+      }),
+    ),
   };
 }
 
 async function extractNatives(
   artifacts: readonly ResolvedRuntimeArtifact[],
   nativesDirectory: string,
-  unzipCommand: string
+  unzipCommand: string,
 ): Promise<void> {
   await mkdir(nativesDirectory, { recursive: true });
   for (const artifact of artifacts) {
@@ -940,7 +1039,7 @@ async function extractNatives(
 async function mapWithConcurrency<T, R>(
   values: readonly T[],
   concurrency: number,
-  mapper: (value: T) => Promise<R>
+  mapper: (value: T) => Promise<R>,
 ): Promise<R[]> {
   const result: R[] = new Array(values.length);
   let next = 0;
@@ -951,7 +1050,9 @@ async function mapWithConcurrency<T, R>(
       result[index] = await mapper(values[index]!);
     }
   };
-  await Promise.all(Array.from({ length: Math.max(1, Math.min(concurrency, values.length || 1)) }, worker));
+  await Promise.all(
+    Array.from({ length: Math.max(1, Math.min(concurrency, values.length || 1)) }, worker),
+  );
   return result;
 }
 
@@ -969,7 +1070,7 @@ async function materializeAsset(
   target: string,
   sha1: string,
   size: number,
-  label: string
+  label: string,
 ): Promise<void> {
   await mkdir(dirname(target), { recursive: true });
   try {
@@ -986,7 +1087,7 @@ async function resolveAssetIndex(
   cache: ImmutableArtifactCache,
   gameDirectory: string,
   download: boolean,
-  concurrency: number
+  concurrency: number,
 ): Promise<RuntimeAssetIndex> {
   if (!descriptor) throw new Error('No assetIndex metadata found in component patches');
   const id = asString(descriptor.id, 'assetIndex.id');
@@ -997,35 +1098,39 @@ async function resolveAssetIndex(
     sha1: descriptorArtifact.sha1 ?? normalizeSha1(optionalString(descriptor.sha1)),
     size: descriptorArtifact.size ?? optionalNumber(descriptor.size),
     source: 'download',
-    isNative: false
+    isNative: false,
   };
   if (!source.url) throw new Error(`Asset index ${id} has no download URL`);
   const resolved = await cache.resolve(source, download);
   const document = await readJson<AssetIndexDocument>(resolved.path);
-  if (!document.objects || typeof document.objects !== 'object') throw new Error(`Asset index ${id} has no objects map`);
+  if (!document.objects || typeof document.objects !== 'object')
+    throw new Error(`Asset index ${id} has no objects map`);
   const assetsDirectory = join(gameDirectory, 'assets');
   const objectsDirectory = join(assetsDirectory, 'objects');
-  const virtualName = document.virtual === true
-    ? 'legacy'
-    : typeof document.virtual === 'string' && document.virtual.length > 0
-      ? document.virtual
-      : undefined;
+  const virtualName =
+    document.virtual === true
+      ? 'legacy'
+      : typeof document.virtual === 'string' && document.virtual.length > 0
+        ? document.virtual
+        : undefined;
   const virtualDirectory = virtualName ? join(assetsDirectory, 'virtual', virtualName) : undefined;
-  const resourcesDirectory = document.map_to_resources === true
-    ? join(assetsDirectory, 'resources')
-    : undefined;
-  const entries = Object.entries(document.objects).sort(([left], [right]) => left.localeCompare(right));
+  const resourcesDirectory =
+    document.map_to_resources === true ? join(assetsDirectory, 'resources') : undefined;
+  const entries = Object.entries(document.objects).sort(([left], [right]) =>
+    left.localeCompare(right),
+  );
   const objectResults = await mapWithConcurrency(entries, concurrency, async ([name, object]) => {
     const hash = normalizeSha1(optionalString(object?.hash));
     const size = optionalNumber(object?.size);
-    if (!hash || size === undefined || size < 0) throw new Error(`Invalid asset object ${name} in index ${id}`);
+    if (!hash || size === undefined || size < 0)
+      throw new Error(`Invalid asset object ${name} in index ${id}`);
     const objectRequest: RuntimeArtifactRequest = {
       name: `asset-object-${hash}`,
       url: `https://resources.download.minecraft.net/${hash.slice(0, 2)}/${hash}`,
       sha1: hash,
       size,
       source: 'download',
-      isNative: false
+      isNative: false,
     };
     const cachedObject = await cache.resolve(objectRequest, download);
     const target = join(objectsDirectory, hash.slice(0, 2), hash);
@@ -1039,7 +1144,13 @@ async function resolveAssetIndex(
     }
     if (resourcesDirectory) {
       const resourcesTarget = safeAssetPath(resourcesDirectory, name);
-      await materializeAsset(cachedObject.path, resourcesTarget, hash, size, `Resource asset ${name}`);
+      await materializeAsset(
+        cachedObject.path,
+        resourcesTarget,
+        hash,
+        size,
+        `Resource asset ${name}`,
+      );
       materializedPaths.push(resourcesTarget);
     }
     return {
@@ -1048,7 +1159,7 @@ async function resolveAssetIndex(
       size,
       path: target,
       cachePath: cachedObject.path,
-      materializedPaths
+      materializedPaths,
     } satisfies RuntimeAssetObject;
   });
   return {
@@ -1059,7 +1170,7 @@ async function resolveAssetIndex(
     objects: objectResults,
     assetsDirectory,
     virtualDirectory,
-    resourcesDirectory
+    resourcesDirectory,
   };
 }
 
@@ -1073,22 +1184,28 @@ export async function resolveRuntime(options: ResolveRuntimeOptions): Promise<Ru
   const cacheDirectory = resolve(options.cacheDirectory ?? DEFAULT_CACHE_DIRECTORY);
   const packRoot = await resolvePackRootInput(options.root, cacheDirectory);
   const metadata = await readRuntimePackMetadata(packRoot);
-  const platform = options.platform ?? (process.platform === 'win32' ? WINDOWS_X86_64 : LINUX_X86_64);
+  const platform =
+    options.platform ?? (process.platform === 'win32' ? WINDOWS_X86_64 : LINUX_X86_64);
   if (!['linux', 'windows'].includes(platform.name) || platform.arch !== 'x86_64') {
     throw new Error(`Unsupported runtime platform ${platform.name}/${platform.arch}`);
   }
   const minecraftDirectory = join(packRoot, '.minecraft');
   const minecraftDirectoryStat = await stat(minecraftDirectory).catch(() => undefined);
-  const gameDirectory = resolve(options.gameDirectory ?? (minecraftDirectoryStat?.isDirectory() ? minecraftDirectory : packRoot));
+  const gameDirectory = resolve(
+    options.gameDirectory ??
+      (minecraftDirectoryStat?.isDirectory() ? minecraftDirectory : packRoot),
+  );
   const nativesDirectory = resolve(options.nativesDirectory ?? join(gameDirectory, 'natives'));
   const cache = new ImmutableArtifactCache(cacheDirectory, {
     downloadTimeoutMs: options.downloadTimeoutMs,
-    fetch: options.fetch
+    fetch: options.fetch,
   });
   const collected = await collectArtifactRequests(metadata, packRoot, platform);
   if (!collected.mainJar) throw new Error('No mainJar metadata found in component patches');
   const download = options.download ?? true;
-  const artifacts = await mapWithConcurrency(collected.requests, 4, (request) => cache.resolve(request, download));
+  const artifacts = await mapWithConcurrency(collected.requests, 4, (request) =>
+    cache.resolve(request, download),
+  );
   const mainJar = await cache.resolve(collected.mainJar, download);
   artifacts.push(mainJar);
   const assetIndex = await resolveAssetIndex(
@@ -1096,9 +1213,10 @@ export async function resolveRuntime(options: ResolveRuntimeOptions): Promise<Ru
     cache,
     gameDirectory,
     download,
-    options.assetConcurrency ?? DEFAULT_ASSET_CONCURRENCY
+    options.assetConcurrency ?? DEFAULT_ASSET_CONCURRENCY,
   );
-  if (options.extractNatives ?? true) await extractNatives(artifacts, nativesDirectory, options.unzipCommand ?? 'unzip');
+  if (options.extractNatives ?? true)
+    await extractNatives(artifacts, nativesDirectory, options.unzipCommand ?? 'unzip');
   const mainClass = [...metadata.patches]
     .map(({ patch }) => optionalString(patch.mainClass))
     .filter((value): value is string => value !== undefined)
@@ -1112,15 +1230,17 @@ export async function resolveRuntime(options: ResolveRuntimeOptions): Promise<Ru
     gameDirectory,
     assetIndex.assetsDirectory,
     assetIndex.id,
-    patchVersion(metadata)
+    patchVersion(metadata),
   );
-  const classpath = artifacts.filter((artifact) => !artifact.isNative).map((artifact) => artifact.path);
+  const classpath = artifacts
+    .filter((artifact) => !artifact.isNative)
+    .map((artifact) => artifact.path);
   argumentsResult.jvmArgs.push(
     `-Djava.library.path=${nativesDirectory}`,
     `-Dorg.lwjgl.librarypath=${nativesDirectory}`,
     // Forge 1.7.10's legacy security-manager bootstrap is rejected by Java 18+
     // unless this compatibility switch is explicitly enabled.
-    '-Djava.security.manager=allow'
+    '-Djava.security.manager=allow',
   );
   return {
     schemaVersion: 1,
@@ -1134,7 +1254,7 @@ export async function resolveRuntime(options: ResolveRuntimeOptions): Promise<Ru
       file,
       uid: optionalString(patch.uid),
       version: optionalString(patch.version),
-      order: Number.isFinite(patch.order) ? Number(patch.order) : 0
+      order: Number.isFinite(patch.order) ? Number(patch.order) : 0,
     })),
     artifacts,
     classpath,
@@ -1142,32 +1262,60 @@ export async function resolveRuntime(options: ResolveRuntimeOptions): Promise<Ru
     jvmArgs: argumentsResult.jvmArgs,
     gameArgs: argumentsResult.gameArgs,
     identity,
-    assetIndex
+    assetIndex,
   };
 }
 
-export function createLaunchPlan(resolution: RuntimeResolution, options: LaunchPlanOptions = {}): RuntimeLaunchPlan {
+export function createLaunchPlan(
+  resolution: RuntimeResolution,
+  options: LaunchPlanOptions = {},
+): RuntimeLaunchPlan {
   const java = options.java ?? process.env.JAVA ?? 'java';
   const useXvfb = options.useXvfb ?? resolution.platform.name !== 'windows';
   const xvfbRun = options.xvfbRun ?? process.env.GTNH_XVFB_RUN ?? 'xvfb-run';
   const xvfbArgs = options.xvfbArgs ?? ['-a'];
-  const javaCommand = [java, ...resolution.jvmArgs, '-cp', resolution.classpath.join(resolution.platform.name === 'windows' ? ';' : ':'), resolution.mainClass, ...resolution.gameArgs];
+  const javaCommand = [
+    java,
+    ...resolution.jvmArgs,
+    '-cp',
+    resolution.classpath.join(resolution.platform.name === 'windows' ? ';' : ':'),
+    resolution.mainClass,
+    ...resolution.gameArgs,
+  ];
   const windowless = options.windowless ?? resolution.platform.name === 'windows';
   const argumentFile = join(resolution.gameDirectory, `.nesql-launch-args-${process.pid}.json`);
-  const command = resolution.platform.name === 'windows' && windowless
-    ? [join(process.env.SystemRoot ?? 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe'),
-      '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', fileURLToPath(new URL('./launch-hidden.ps1', import.meta.url)),
-      '-Java', java, '-ArgumentFile', argumentFile]
-    : useXvfb ? [xvfbRun, ...xvfbArgs, ...javaCommand] : javaCommand;
+  const command =
+    resolution.platform.name === 'windows' && windowless
+      ? [
+          join(
+            process.env.SystemRoot ?? 'C:\\Windows',
+            'System32/WindowsPowerShell/v1.0/powershell.exe',
+          ),
+          '-NoProfile',
+          '-NonInteractive',
+          '-ExecutionPolicy',
+          'Bypass',
+          '-File',
+          fileURLToPath(new URL('./launch-hidden.ps1', import.meta.url)),
+          '-Java',
+          java,
+          '-ArgumentFile',
+          argumentFile,
+        ]
+      : useXvfb
+        ? [xvfbRun, ...xvfbArgs, ...javaCommand]
+        : javaCommand;
   return {
     ...resolution,
     java,
-    ...(resolution.platform.name === 'windows' && windowless ? { hiddenArguments: { file: argumentFile, values: javaCommand.slice(1) } } : {}),
+    ...(resolution.platform.name === 'windows' && windowless
+      ? { hiddenArguments: { file: argumentFile, values: javaCommand.slice(1) } }
+      : {}),
     xvfbRun: useXvfb ? xvfbRun : undefined,
     xvfbArgs: useXvfb ? xvfbArgs : [],
     command,
     timeoutMs: options.timeoutMs,
-    statusFile: options.statusFile
+    statusFile: options.statusFile,
   };
 }
 
@@ -1178,9 +1326,13 @@ async function writeLaunchStatus(path: string, status: RuntimeLaunchStatus): Pro
   await rename(temporaryPath, path);
 }
 
-export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOptions = {}): Promise<RuntimeLaunchStatus> {
+export async function launchRuntime(
+  plan: RuntimeLaunchPlan,
+  options: LaunchOptions = {},
+): Promise<RuntimeLaunchStatus> {
   await configureUnattendedClient(plan.gameDirectory);
-  if (plan.hiddenArguments) await writeFile(plan.hiddenArguments.file, JSON.stringify(plan.hiddenArguments.values), 'utf8');
+  if (plan.hiddenArguments)
+    await writeFile(plan.hiddenArguments.file, JSON.stringify(plan.hiddenArguments.values), 'utf8');
   const statusFile = options.statusFile ?? plan.statusFile;
   const update = async (status: RuntimeLaunchStatus): Promise<void> => {
     if (statusFile) await writeLaunchStatus(statusFile, status);
@@ -1189,7 +1341,7 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
   const started: RuntimeLaunchStatus = {
     schemaVersion: 1,
     state: 'starting',
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
   await update(started);
   const { spawn } = await import('node:child_process');
@@ -1197,11 +1349,13 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
     cwd: plan.gameDirectory,
     env: { ...process.env, ...options.env },
     stdio: 'inherit',
-    windowsHide: true
+    windowsHide: true,
   });
   const abortChild = () => {
     if (process.platform === 'win32' && plan.hiddenArguments && child.pid) {
-      void execFile('taskkill.exe', ['/PID', String(child.pid), '/T', '/F']).catch(() => child.kill('SIGTERM'));
+      void execFile('taskkill.exe', ['/PID', String(child.pid), '/T', '/F']).catch(() =>
+        child.kill('SIGTERM'),
+      );
     } else child.kill('SIGTERM');
   };
   if (options.signal?.aborted) abortChild();
@@ -1210,13 +1364,16 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
     schemaVersion: 1,
     state: 'running',
     pid: child.pid,
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   };
   await update(running);
   return new Promise<RuntimeLaunchStatus>((resolveLaunch, rejectLaunch) => {
     let timedOut = false;
     let timeout: NodeJS.Timeout | undefined;
-    if ((options.timeoutMs ?? plan.timeoutMs) !== undefined && (options.timeoutMs ?? plan.timeoutMs)! > 0) {
+    if (
+      (options.timeoutMs ?? plan.timeoutMs) !== undefined &&
+      (options.timeoutMs ?? plan.timeoutMs)! > 0
+    ) {
       timeout = setTimeout(() => {
         timedOut = true;
         abortChild();
@@ -1224,7 +1381,7 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
           schemaVersion: 1,
           state: 'timeout',
           pid: child.pid,
-          updatedAt: new Date().toISOString()
+          updatedAt: new Date().toISOString(),
         });
         setTimeout(() => child.kill('SIGKILL'), 5_000).unref();
       }, options.timeoutMs ?? plan.timeoutMs);
@@ -1236,7 +1393,7 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
         state: 'failed',
         pid: child.pid,
         updatedAt: new Date().toISOString(),
-        error: error.message
+        error: error.message,
       }).finally(() => rejectLaunch(error));
     });
     child.once('exit', (exitCode, signal) => {
@@ -1249,7 +1406,7 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
         exitCode,
         signal,
         updatedAt: new Date().toISOString(),
-        ...(timedOut ? { error: 'Runtime launch timed out' } : {})
+        ...(timedOut ? { error: 'Runtime launch timed out' } : {}),
       };
       void update(finalStatus).finally(() => resolveLaunch(finalStatus));
     });
@@ -1258,7 +1415,7 @@ export async function launchRuntime(plan: RuntimeLaunchPlan, options: LaunchOpti
 
 export async function waitForRuntimeStatus(
   statusFile: string,
-  options: { timeoutMs?: number; intervalMs?: number } = {}
+  options: { timeoutMs?: number; intervalMs?: number } = {},
 ): Promise<RuntimeLaunchStatus> {
   const timeoutMs = options.timeoutMs ?? 30_000;
   const intervalMs = options.intervalMs ?? 250;

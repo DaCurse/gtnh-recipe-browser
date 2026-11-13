@@ -28,8 +28,8 @@ export function querySearchMask(term: string): number[] {
       setBit((previous * characterCount + current) % characterOffset);
       if (secondPrevious >= 0) {
         setBit(
-          ((secondPrevious * characterCount + previous) * characterCount + current)
-          % characterOffset
+          ((secondPrevious * characterCount + previous) * characterCount + current) %
+            characterOffset,
         );
       }
     }
@@ -41,7 +41,5 @@ export function querySearchMask(term: string): number[] {
 
 export function searchMaskContains(source: readonly number[], query: readonly number[]): boolean {
   if (source.length < 4 || query.length < 4) return true;
-  return query.every(
-    (word, index) => (((source[index]! >>> 0) & (word >>> 0)) >>> 0) === (word >>> 0)
-  );
+  return query.every((word, index) => ((source[index]! >>> 0) & (word >>> 0)) >>> 0 === word >>> 0);
 }

@@ -3,8 +3,8 @@ import { createHash } from 'node:crypto';
 const baseUrl = process.argv[2];
 if (!baseUrl) {
   throw new Error(
-    'Usage: node tools/deployment-smoke.mjs <deployed-base-url> '
-    + '[--manifest <relative-manifest-url>] [--all-assets] [--require-special]'
+    'Usage: node tools/deployment-smoke.mjs <deployed-base-url> ' +
+      '[--manifest <relative-manifest-url>] [--all-assets] [--require-special]',
   );
 }
 const manifestArgument = process.argv.indexOf('--manifest');
@@ -28,7 +28,9 @@ async function fetchJson(url, label) {
 
 async function verifyAsset(asset, manifestUrl, label) {
   const url = new URL(asset.url, manifestUrl);
-  const bytes = new Uint8Array(await fetchOk(url, label).then((response) => response.arrayBuffer()));
+  const bytes = new Uint8Array(
+    await fetchOk(url, label).then((response) => response.arrayBuffer()),
+  );
   if (bytes.byteLength !== asset.bytes) {
     throw new Error(`${label}: expected ${asset.bytes} bytes, received ${bytes.byteLength}`);
   }
@@ -41,15 +43,15 @@ async function verifyAsset(asset, manifestUrl, label) {
 
 function assertPhysicalDescriptor(asset, label) {
   if (
-    !asset
-    || typeof asset !== 'object'
-    || typeof asset.url !== 'string'
-    || asset.url.length === 0
-    || asset.segments !== undefined
-    || !Number.isSafeInteger(asset.bytes)
-    || asset.bytes < 0
-    || typeof asset.sha256 !== 'string'
-    || !SHA256_PATTERN.test(asset.sha256)
+    !asset ||
+    typeof asset !== 'object' ||
+    typeof asset.url !== 'string' ||
+    asset.url.length === 0 ||
+    asset.segments !== undefined ||
+    !Number.isSafeInteger(asset.bytes) ||
+    asset.bytes < 0 ||
+    typeof asset.sha256 !== 'string' ||
+    !SHA256_PATTERN.test(asset.sha256)
   ) {
     throw new Error(`${label}: invalid physical asset descriptor`);
   }
@@ -64,40 +66,44 @@ function assertVirtualDescriptor(asset, label, recordPageCount) {
     for (const byte of Buffer.from(segments, 'base64')) {
       value += (byte & 127) * 2 ** shift;
       if (shift > 28 || value > 0xffffffff) throw new Error(`${label}: invalid packed selector`);
-      if (byte & 128) { shift += 7; continue; }
+      if (byte & 128) {
+        shift += 7;
+        continue;
+      }
       numbers.push(value);
       value = 0;
       shift = 0;
     }
     if (shift || numbers.length % 3) throw new Error(`${label}: truncated packed selector`);
     segments = [];
-    for (let index = 0; index < numbers.length; index += 3) segments.push(numbers.slice(index, index + 3));
+    for (let index = 0; index < numbers.length; index += 3)
+      segments.push(numbers.slice(index, index + 3));
   }
   if (
-    !asset
-    || typeof asset !== 'object'
-    || asset.url !== ''
-    || asset.encoding !== 'identity'
-    || !Number.isSafeInteger(asset.bytes)
-    || asset.bytes < 0
-    || typeof asset.sha256 !== 'string'
-    || !SHA256_PATTERN.test(asset.sha256)
-    || !Array.isArray(segments)
-    || segments.length === 0
+    !asset ||
+    typeof asset !== 'object' ||
+    asset.url !== '' ||
+    asset.encoding !== 'identity' ||
+    !Number.isSafeInteger(asset.bytes) ||
+    asset.bytes < 0 ||
+    typeof asset.sha256 !== 'string' ||
+    !SHA256_PATTERN.test(asset.sha256) ||
+    !Array.isArray(segments) ||
+    segments.length === 0
   ) {
     throw new Error(`${label}: invalid virtual asset descriptor`);
   }
   for (const [index, segment] of segments.entries()) {
     if (
-      !Array.isArray(segment)
-      || segment.length !== 3
-      || !Number.isSafeInteger(segment[0])
-      || segment[0] < 0
-      || segment[0] >= recordPageCount
-      || !Number.isSafeInteger(segment[1])
-      || segment[1] < 0
-      || !Number.isSafeInteger(segment[2])
-      || segment[2] < 1
+      !Array.isArray(segment) ||
+      segment.length !== 3 ||
+      !Number.isSafeInteger(segment[0]) ||
+      segment[0] < 0 ||
+      segment[0] >= recordPageCount ||
+      !Number.isSafeInteger(segment[1]) ||
+      segment[1] < 0 ||
+      !Number.isSafeInteger(segment[2]) ||
+      segment[2] < 1
     ) {
       throw new Error(`${label}: invalid record-page segment ${index}`);
     }
@@ -106,17 +112,17 @@ function assertVirtualDescriptor(asset, label, recordPageCount) {
 
 function validateFormat7Manifest(manifest) {
   if (
-    manifest.formatVersion !== 7
-    || typeof manifest.datasetId !== 'string'
-    || !Array.isArray(manifest.catalogAssets)
-    || !Array.isArray(manifest.goodsDetailShards)
-    || !Array.isArray(manifest.ingredientGroupShards)
-    || !Array.isArray(manifest.recipeShards)
-    || !Array.isArray(manifest.specialDataShards)
-    || !Array.isArray(manifest.recordPages)
-    || !Array.isArray(manifest.iconSheets)
-    || manifest.recordPages.length === 0
-    || manifest.iconSheets.length === 0
+    manifest.formatVersion !== 7 ||
+    typeof manifest.datasetId !== 'string' ||
+    !Array.isArray(manifest.catalogAssets) ||
+    !Array.isArray(manifest.goodsDetailShards) ||
+    !Array.isArray(manifest.ingredientGroupShards) ||
+    !Array.isArray(manifest.recipeShards) ||
+    !Array.isArray(manifest.specialDataShards) ||
+    !Array.isArray(manifest.recordPages) ||
+    !Array.isArray(manifest.iconSheets) ||
+    manifest.recordPages.length === 0 ||
+    manifest.iconSheets.length === 0
   ) {
     throw new Error('pack manifest: identity or format mismatch');
   }
@@ -158,9 +164,9 @@ if (directManifest) {
   const versionsUrl = new URL('versions-v7.json', appUrl);
   const versionIndex = await fetchJson(versionsUrl, 'version index');
   if (
-    versionIndex.schemaVersion !== 1
-    || !Array.isArray(versionIndex.versions)
-    || !versionIndex.versions[0]
+    versionIndex.schemaVersion !== 1 ||
+    !Array.isArray(versionIndex.versions) ||
+    !versionIndex.versions[0]
   ) {
     throw new Error('version index: no supported dataset is published');
   }
@@ -170,19 +176,20 @@ if (directManifest) {
 }
 const manifest = await fetchJson(manifestUrl, 'pack manifest');
 if (
-  manifest.formatVersion !== 7
-  || typeof manifest.datasetId !== 'string'
-  || (expectedDatasetId && manifest.datasetId !== expectedDatasetId)
+  manifest.formatVersion !== 7 ||
+  typeof manifest.datasetId !== 'string' ||
+  (expectedDatasetId && manifest.datasetId !== expectedDatasetId)
 ) {
   throw new Error('pack manifest: identity or format mismatch');
 }
 const physicalAssets = validateFormat7Manifest(manifest);
-if (requireSpecial && (
-  manifest.formatVersion !== 7
-  || !Array.isArray(manifest.specialDataShards)
-  || manifest.specialDataShards.length === 0
-  || (manifest.totals?.specialRecords ?? 0) <= 0
-)) {
+if (
+  requireSpecial &&
+  (manifest.formatVersion !== 7 ||
+    !Array.isArray(manifest.specialDataShards) ||
+    manifest.specialDataShards.length === 0 ||
+    (manifest.totals?.specialRecords ?? 0) <= 0)
+) {
   throw new Error('pack manifest: deployed default is not a verified special-data release');
 }
 
@@ -190,7 +197,7 @@ const assets = verifyAllAssets
   ? physicalAssets.map((asset) => [asset, asset.id])
   : [
       [manifest.recordPages[0], 'record page'],
-      [manifest.iconSheets[0], 'icon sheet']
+      [manifest.iconSheets[0], 'icon sheet'],
     ];
 let nextAsset = 0;
 async function verifyNextAsset() {
@@ -200,11 +207,6 @@ async function verifyNextAsset() {
     await verifyAsset(asset, manifestUrl, label);
   }
 }
-await Promise.all(Array.from(
-  { length: Math.min(6, assets.length) },
-  () => verifyNextAsset()
-));
+await Promise.all(Array.from({ length: Math.min(6, assets.length) }, () => verifyNextAsset()));
 
-console.log(
-  `Deployment smoke test passed: ${appUrl} (${assets.length} assets)`
-);
+console.log(`Deployment smoke test passed: ${appUrl} (${assets.length} assets)`);

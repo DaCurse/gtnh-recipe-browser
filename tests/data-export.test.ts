@@ -11,7 +11,7 @@ import {
   unreferencedSharedObjectNames,
   validateCombinedTooltipSchema,
   withPublishedVersion,
-  type VersionsIndex
+  type VersionsIndex,
 } from '../tools/data-export/lib';
 
 describe('data export tooling', () => {
@@ -19,15 +19,18 @@ describe('data export tooling', () => {
     const first = 'a'.repeat(64);
     const second = 'b'.repeat(64);
     const orphan = 'c'.repeat(64);
-    const manifests = [{
-      formatVersion: 7,
-      recordPages: [{ sha256: first }],
-      iconSheets: [{ sha256: second }]
-    }, {
-      formatVersion: 4,
-      recordPages: [{ sha256: orphan }],
-      iconSheets: []
-    }];
+    const manifests = [
+      {
+        formatVersion: 7,
+        recordPages: [{ sha256: first }],
+        iconSheets: [{ sha256: second }],
+      },
+      {
+        formatVersion: 4,
+        recordPages: [{ sha256: orphan }],
+        iconSheets: [],
+      },
+    ];
 
     expect(referencedSharedObjectHashes(manifests)).toEqual(new Set([first, second]));
     expect(unreferencedSharedObjectNames([orphan, second, first], manifests)).toEqual([orphan]);
@@ -39,12 +42,21 @@ describe('data export tooling', () => {
     expect(() => argumentsMap(['--version'])).toThrow(/Invalid argument/);
   });
   it('retains registered companion objects only while their owning dataset is published', () => {
-    const asset = 'd'.repeat(64), orphan = 'e'.repeat(64);
+    const asset = 'd'.repeat(64),
+      orphan = 'e'.repeat(64);
     const manifests = [{ formatVersion: 7, datasetId: 'current', recordPages: [], iconSheets: [] }];
     const companions = [{ datasetId: 'current', assets: [{ sha256: asset }] }];
     expect(unreferencedSharedObjectNames([asset, orphan], manifests, companions)).toEqual([orphan]);
-    expect(unreferencedSharedObjectNames([asset, orphan], manifests, [{ ...companions[0]!, datasetId: 'retired' }])).toEqual([asset, orphan]);
-    expect(() => referencedSharedObjectHashes(manifests, [{ datasetId: 'current', assets: [{ sha256: 'invalid' }] }])).toThrow(/companion SHA/);
+    expect(
+      unreferencedSharedObjectNames([asset, orphan], manifests, [
+        { ...companions[0]!, datasetId: 'retired' },
+      ]),
+    ).toEqual([asset, orphan]);
+    expect(() =>
+      referencedSharedObjectHashes(manifests, [
+        { datasetId: 'current', assets: [{ sha256: 'invalid' }] },
+      ]),
+    ).toThrow(/companion SHA/);
   });
 
   it('rejects changing bytes behind an immutable dataset URL', () => {
@@ -53,8 +65,9 @@ describe('data export tooling', () => {
     const changed = new TextEncoder().encode('{"formatVersion":6}');
 
     expect(() => assertImmutableManifestBytes(original, identical, 'dataset')).not.toThrow();
-    expect(() => assertImmutableManifestBytes(original, changed, 'dataset'))
-      .toThrow(/publish a new dataset ID/);
+    expect(() => assertImmutableManifestBytes(original, changed, 'dataset')).toThrow(
+      /publish a new dataset ID/,
+    );
   });
 
   it('derives a stable revision from both processed source assets', () => {
@@ -74,27 +87,29 @@ describe('data export tooling', () => {
         compatible,
         [
           'CREATE MEMORY TABLE PUBLIC.ITEM(ID VARCHAR,TOOLTIP VARCHAR)',
-          "INSERT INTO METADATA_ACTIVE_PLUGINS VALUES(0,'THAUMCRAFT')"
+          "INSERT INTO METADATA_ACTIVE_PLUGINS VALUES(0,'THAUMCRAFT')",
         ].join('\n'),
-        'utf8'
+        'utf8',
       );
-      await expect(validateCombinedTooltipSchema(compatible, ['THAUMCRAFT'])).resolves.toBeUndefined();
+      await expect(
+        validateCombinedTooltipSchema(compatible, ['THAUMCRAFT']),
+      ).resolves.toBeUndefined();
 
       const incompatible = join(directory, 'incompatible.script');
       await writeFile(
         incompatible,
         [
           'CREATE MEMORY TABLE PUBLIC.ITEM(ID VARCHAR)',
-          'CREATE MEMORY TABLE PUBLIC.ITEM_TOOLTIP(ITEM_ID VARCHAR,TOOLTIP VARCHAR)'
+          'CREATE MEMORY TABLE PUBLIC.ITEM_TOOLTIP(ITEM_ID VARCHAR,TOOLTIP VARCHAR)',
         ].join('\n'),
-        'utf8'
+        'utf8',
       );
       await expect(validateCombinedTooltipSchema(incompatible)).rejects.toThrow(
-        /compatibility patch was not applied/
+        /compatibility patch was not applied/,
       );
 
       await expect(validateCombinedTooltipSchema(compatible, ['QUEST'])).rejects.toThrow(
-        /missing required active plugins: QUEST/
+        /missing required active plugins: QUEST/,
       );
     } finally {
       await rm(directory, { recursive: true, force: true });
@@ -104,7 +119,7 @@ describe('data export tooling', () => {
   it('retains the final gameplay tooltip line in the browser processor policy', async () => {
     const patch = await readFile(
       join(process.cwd(), 'tools/data-export/patches/browser-catalog-policy.patch'),
-      'utf8'
+      'utf8',
     );
 
     expect(patch).toContain('for (var i = 1; i < parts.Length; i++)');
@@ -121,20 +136,20 @@ describe('data export tooling', () => {
         [
           "INSERT INTO ITEM VALUES('generic','item/gregtech/tool~120.png')",
           "INSERT INTO ITEM VALUES('matched','item/gregtech/tool~120~matched.png')",
-          "INSERT INTO ITEM VALUES('missing','item/gregtech/tool~120~missing.png')"
+          "INSERT INTO ITEM VALUES('missing','item/gregtech/tool~120~missing.png')",
         ].join('\n'),
-        'utf8'
+        'utf8',
       );
 
       const audit = await auditRenderedItemPaths(script, [
         'item/gregtech/tool~120~first-sibling.png',
-        'item/gregtech/tool~120~matched.png'
+        'item/gregtech/tool~120~matched.png',
       ]);
 
       expect(audit).toEqual({
         totalItemPaths: 3,
         missingVariantPaths: 1,
-        examples: ['item/gregtech/tool~120~missing.png']
+        examples: ['item/gregtech/tool~120~missing.png'],
       });
     } finally {
       await rm(directory, { recursive: true, force: true });
@@ -144,7 +159,7 @@ describe('data export tooling', () => {
   it('handles dangling quest prerequisites without pinning an individual quest ID', async () => {
     const patch = await readFile(
       join(process.cwd(), 'tools/data-export/patches/combined-tooltips.patch'),
-      'utf8'
+      'utf8',
     );
 
     expect(patch).toContain('Skipping missing required quest {} referenced by quest {}');
@@ -160,7 +175,7 @@ describe('data export tooling', () => {
   it('supports both upstream aspect icon providers without pinning an item ID', async () => {
     const patch = await readFile(
       join(process.cwd(), 'tools/data-export/patches/processor-2.9.patch'),
-      'utf8'
+      'utf8',
     );
 
     expect(patch).toContain('x.mod == "thaumcraftneiplugin"');
@@ -174,14 +189,16 @@ describe('data export tooling', () => {
     expect(patch).toContain('Indexed {indexedRecipeCount} current recipes');
     expect(patch).toContain('Matched {matchedRecipeCount} historical recipes');
     expect(patch).toContain('+                var idFrom = ReadString(dataBin, intBuffer, remap)');
-    expect(patch).toContain('-                var idFrom = ReadString(dataBin, intBuffer, intBuffer[remap])');
+    expect(patch).toContain(
+      '-                var idFrom = ReadString(dataBin, intBuffer, intBuffer[remap])',
+    );
     expect(patch).not.toMatch(/\bi:[A-Za-z0-9:_-]+/);
   });
 
   it('retains recipe-connected browser items without editing the upstream banlist', async () => {
     const patch = await readFile(
       join(process.cwd(), 'tools/data-export/patches/browser-catalog-policy.patch'),
-      'utf8'
+      'utf8',
     );
 
     expect(patch).toContain('BrowserCatalogPolicy.RetainRecipeConnectedItems');
@@ -200,7 +217,7 @@ describe('data export tooling', () => {
   it('preserves named ore aliases and gives anonymous ingredient groups their own namespace', async () => {
     const patch = await readFile(
       join(process.cwd(), 'tools/data-export/patches/named-ore-dictionaries.patch'),
-      'utf8'
+      'utf8',
     );
 
     expect(patch).toContain('oreDictNames');
@@ -214,7 +231,7 @@ describe('data export tooling', () => {
   it('bounds processor GC heap growth during full recipe remapping', async () => {
     const processSource = await readFile(
       join(process.cwd(), 'tools/data-export/process.ts'),
-      'utf8'
+      'utf8',
     );
 
     expect(processSource).toContain("DOTNET_GCHeapHardLimitPercent: '0x32'");
@@ -228,15 +245,17 @@ describe('data export tooling', () => {
     const existing: VersionsIndex = {
       schemaVersion: 1,
       generatedAt: 'old',
-      versions: [{
-        datasetId: '2.8.0-r1',
-        gtnhVersion: '2.8.0',
-        revision: '1',
-        publishedAt: 'old',
-        packManifestUrl: './data/2.8.0-r1/pack-manifest.json',
-        catalogBytes: 10,
-        offlineBytes: 20
-      }]
+      versions: [
+        {
+          datasetId: '2.8.0-r1',
+          gtnhVersion: '2.8.0',
+          revision: '1',
+          publishedAt: 'old',
+          packManifestUrl: './data/2.8.0-r1/pack-manifest.json',
+          catalogBytes: 10,
+          offlineBytes: 20,
+        },
+      ],
     };
     const latest = {
       datasetId: '2.9.0-beta-2-r2',
@@ -245,11 +264,12 @@ describe('data export tooling', () => {
       publishedAt: 'now',
       packManifestUrl: './data/2.9.0-beta-2-r2/pack-manifest.json',
       catalogBytes: 30,
-      offlineBytes: 40
+      offlineBytes: 40,
     };
 
-    expect(withPublishedVersion(existing, latest, 'now').versions.map((entry) => entry.datasetId))
-      .toEqual(['2.9.0-beta-2-r2', '2.8.0-r1']);
+    expect(
+      withPublishedVersion(existing, latest, 'now').versions.map((entry) => entry.datasetId),
+    ).toEqual(['2.9.0-beta-2-r2', '2.8.0-r1']);
     const rollout = withPublishedVersion(existing, latest, 'now', 2);
     expect(rollout.rollout).toEqual({ epoch: 2, targetDatasetId: latest.datasetId });
     expect(withPublishedVersion(rollout, latest, 'later').rollout).toEqual(rollout.rollout);
@@ -258,42 +278,47 @@ describe('data export tooling', () => {
   });
 
   it('keeps the current format index on format-safe immutable dataset URLs', async () => {
-    const index = JSON.parse(await readFile(join(process.cwd(), 'public/versions-v7.json'), 'utf8')) as VersionsIndex;
+    const index = JSON.parse(
+      await readFile(join(process.cwd(), 'public/versions-v7.json'), 'utf8'),
+    ) as VersionsIndex;
     expect(index.versions.length).toBeGreaterThan(0);
-    expect((await readdir(join(process.cwd(), 'public/data'))).some(name => name.includes('-v6-'))).toBe(false);
+    expect(
+      (await readdir(join(process.cwd(), 'public/data'))).some((name) => name.includes('-v6-')),
+    ).toBe(false);
     for (const version of index.versions) {
       expect(version.datasetId).toContain('-v7-');
       expect(version.packManifestUrl).toBe(`./data/${version.datasetId}/pack-manifest.json`);
-      const manifest = JSON.parse(await readFile(
-        join(process.cwd(), 'public', version.packManifestUrl.slice(2)),
-        'utf8'
-      )) as { datasetId?: string; formatVersion?: number };
+      const manifest = JSON.parse(
+        await readFile(join(process.cwd(), 'public', version.packManifestUrl.slice(2)), 'utf8'),
+      ) as { datasetId?: string; formatVersion?: number };
       expect(manifest).toMatchObject({ datasetId: version.datasetId, formatVersion: 7 });
     }
-
   });
 
   it('replaces the previous revision for the same GTNH version', () => {
     const existing: VersionsIndex = {
       schemaVersion: 1,
       generatedAt: 'old',
-      versions: [{
-        datasetId: '2.9.0-beta-2-old',
-        gtnhVersion: '2.9.0-beta-2',
-        revision: 'old',
-        publishedAt: 'old',
-        packManifestUrl: './data/2.9.0-beta-2-old/pack-manifest.json',
-        catalogBytes: 10,
-        offlineBytes: 20
-      }, {
-        datasetId: '2.8.0-r1',
-        gtnhVersion: '2.8.0',
-        revision: '1',
-        publishedAt: 'old',
-        packManifestUrl: './data/2.8.0-r1/pack-manifest.json',
-        catalogBytes: 30,
-        offlineBytes: 40
-      }]
+      versions: [
+        {
+          datasetId: '2.9.0-beta-2-old',
+          gtnhVersion: '2.9.0-beta-2',
+          revision: 'old',
+          publishedAt: 'old',
+          packManifestUrl: './data/2.9.0-beta-2-old/pack-manifest.json',
+          catalogBytes: 10,
+          offlineBytes: 20,
+        },
+        {
+          datasetId: '2.8.0-r1',
+          gtnhVersion: '2.8.0',
+          revision: '1',
+          publishedAt: 'old',
+          packManifestUrl: './data/2.8.0-r1/pack-manifest.json',
+          catalogBytes: 30,
+          offlineBytes: 40,
+        },
+      ],
     };
     const latest = {
       datasetId: '2.9.0-beta-2-new',
@@ -302,31 +327,34 @@ describe('data export tooling', () => {
       publishedAt: 'now',
       packManifestUrl: './data/2.9.0-beta-2-new/pack-manifest.json',
       catalogBytes: 50,
-      offlineBytes: 60
+      offlineBytes: 60,
     };
 
-    expect(withPublishedVersion(existing, latest, 'now').versions.map((entry) => entry.datasetId))
-      .toEqual(['2.9.0-beta-2-new', '2.8.0-r1']);
+    expect(
+      withPublishedVersion(existing, latest, 'now').versions.map((entry) => entry.datasetId),
+    ).toEqual(['2.9.0-beta-2-new', '2.8.0-r1']);
   });
 
   it('replaces an existing immutable identity instead of duplicating the index entry', () => {
     const existing: VersionsIndex = {
       schemaVersion: 1,
       generatedAt: 'old',
-      versions: [{
-        datasetId: 'same',
-        gtnhVersion: 'old',
-        revision: 'old',
-        publishedAt: 'old',
-        packManifestUrl: 'old',
-        catalogBytes: 1,
-        offlineBytes: 1
-      }]
+      versions: [
+        {
+          datasetId: 'same',
+          gtnhVersion: 'old',
+          revision: 'old',
+          publishedAt: 'old',
+          packManifestUrl: 'old',
+          catalogBytes: 1,
+          offlineBytes: 1,
+        },
+      ],
     };
     const replacement = {
       ...existing.versions[0]!,
       gtnhVersion: 'new',
-      publishedAt: 'now'
+      publishedAt: 'now',
     };
 
     expect(withPublishedVersion(existing, replacement, 'now').versions).toEqual([replacement]);

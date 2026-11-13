@@ -1,0 +1,535 @@
+.ore-members {
+  max-width: 1020px;
+  margin: 17px auto 0;
+}
+.ore-members > p {
+  margin: 0 0 7px;
+  color: #8d9297;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.65px;
+}
+.ore-members > div {
+  display: flex;
+  gap: 3px;
+  overflow-x: auto;
+  padding: 2px 0 8px;
+  scrollbar-color: #484c51 transparent;
+}
+.ore-members button {
+  width: 52px;
+  height: 52px;
+  flex: 0 0 52px;
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+}
+.ore-members button:hover {
+  filter: brightness(1.14);
+}
+.view-tabs {
+  max-width: 1020px;
+  margin: 29px auto 0;
+  display: flex;
+  overflow-x: auto;
+  border-bottom: 1px solid #3a3d41;
+  scrollbar-width: thin;
+}
+.view-tabs button {
+  min-height: 47px;
+  flex: 0 0 auto;
+  padding: 0 22px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: #8b9095;
+  font-weight: 700;
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.view-tabs button.active {
+  color: #eef0f2;
+  border-bottom-color: #aeb3b8;
+}
+.view-tabs span {
+  padding: 2px 6px;
+  border-radius: 8px;
+  background: #383b40;
+  font-size: 10px;
+}
+.view-tabs button.category-export {
+  width: 190px;
+  min-width: 190px;
+  flex-basis: 190px;
+  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid #50555a;
+  border-bottom-color: #50555a;
+  border-radius: 7px 7px 0 0;
+  background: #292c30;
+  color: #d2d5d8;
+  text-align: left;
+}
+.view-tabs button.category-export:hover {
+  border-color: #7b8187;
+  background: #34383d;
+}
+.view-tabs button.category-export:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.view-tabs button.category-export span {
+  min-width: 0;
+  overflow: hidden;
+  padding: 0;
+  border-radius: 0;
+  background: none;
+  font-size: inherit;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.ore-production-note {
+  max-width: 1020px;
+  margin: 13px auto 0;
+  padding: 10px 12px;
+  border: 1px solid #45494e;
+  border-radius: 7px;
+  background: #24272b;
+  color: #c8ccd0;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.ore-production-note button {
+  min-height: 32px;
+  padding: 2px 7px;
+  border: 0;
+  border-radius: 4px;
+  background: #383c42;
+  color: #f0f1f2;
+  font: inherit;
+  cursor: pointer;
+}
+.ore-production-note button:hover {
+  background: #454a51;
+}
+.type-row {
+  max-width: 1020px;
+  margin: 14px auto;
+  display: flex;
+  gap: 8px;
+  overflow: auto;
+  padding: 5px 2px 8px;
+}
+.type-row button {
+  flex: 0 0 62px;
+  width: 62px;
+  height: 62px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  border: 0;
+  background: transparent;
+  color: #92979c;
+  font-size: 24px;
+  cursor: pointer;
+}
+.type-row button.machine-tab {
+  width: 92px;
+  height: 92px;
+  flex-basis: 92px;
+  gap: 1px;
+  grid-template-rows: 60px 26px;
+  align-content: start;
+  font-size: 19px;
+}
+.type-row button.active {
+  color: #f0f1f2;
+}
+.machine-tab-icon {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  height: 60px;
+  isolation: isolate;
+}
+.machine-tab-count {
+  position: absolute;
+  right: 3px;
+  bottom: 2px;
+  pointer-events: none;
+  color: #e1e3e5;
+  font:
+    400 11px/14px Minecraft,
+    monospace;
+  text-shadow:
+    1px 1px #000,
+    -1px 0 #000,
+    0 -1px #000;
+}
+.type-row button.machine-tab small {
+  min-width: 0;
+  width: calc(100% - 4px);
+  overflow: hidden;
+  color: inherit;
+  font:
+    400 9px/13px Minecraft,
+    monospace;
+  text-shadow: 1px 1px #000;
+  letter-spacing: 0;
+  text-overflow: ellipsis;
+  white-space: normal;
+  overflow-wrap: normal;
+  word-break: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+.type-row button.machine-tab small.single-word {
+  display: block;
+  white-space: nowrap;
+}
+.type-row button.special-tab {
+  position: relative;
+  width: 92px;
+  height: 92px;
+  flex-basis: 92px;
+  gap: 1px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  color: #92979c;
+  font-size: 19px;
+}
+.type-row button.special-tab.active {
+  color: #f0f1f2;
+}
+.special-fallback {
+  line-height: 1;
+}
+.machine-fallback {
+  line-height: 1;
+}
+.pane-toolbar {
+  max-width: 1020px;
+  margin: 0 auto 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+}
+.pane-toolbar .recipe-search-block {
+  max-width: none;
+  margin: 0;
+  min-width: 0;
+}
+.export-actions {
+  max-width: none;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 7px;
+  margin: 0;
+}
+.export-actions button {
+  min-height: 38px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 12px;
+  border: 1px solid #50555a;
+  border-radius: 7px;
+  background: #292c30;
+  color: #d2d5d8;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.export-actions button:hover {
+  border-color: #7b8187;
+  background: #34383d;
+}
+.export-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.export-actions button:first-child {
+  background: #35393d;
+}
+.export-icon {
+  width: 16px;
+  height: 16px;
+  flex: 0 0 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.export-error {
+  flex: 1 0 100%;
+  max-width: 100%;
+  margin: 0;
+  color: #d0aeb2;
+  font-size: 11px;
+  text-align: right;
+}
+.recipe-search-block {
+  max-width: 1020px;
+  margin: 0 auto 14px;
+}
+.recipe-search-wrap {
+  height: 44px;
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 10px;
+  border: 1px solid #45494e;
+  border-radius: 8px;
+  background: #121315;
+  box-shadow: inset 0 1px 5px #0005;
+}
+.recipe-search-wrap:focus-within {
+  border-color: #8c9298;
+  box-shadow: 0 0 0 2px #aab0b622;
+}
+.recipe-search-wrap > svg {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 19px;
+  fill: none;
+  stroke: #90959a;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+.recipe-search-wrap input {
+  min-width: 0;
+  height: 100%;
+  flex: 1;
+  border: 0;
+  outline: 0;
+  color: #eef0f2;
+  background: transparent;
+  font-size: 14px;
+}
+.recipe-search-wrap input::placeholder {
+  color: #74787d;
+}
+.recipe-search-wrap button {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 32px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #959a9f;
+  cursor: pointer;
+}
+.recipe-search-wrap button svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+}
+.recipe-search-block > small {
+  display: block;
+  min-height: 16px;
+  margin: 6px 3px 0;
+  color: #858a8f;
+  font-size: 11px;
+}
+.recipe-list {
+  max-width: 1200px;
+  margin: auto;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 550px), 1fr));
+  gap: 14px;
+}
+.recipe-list.ore-diagrams {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, var(--ore-card-width)), 1fr));
+  justify-items: center;
+}
+.recipe-list.ore-diagrams > .special-card {
+  justify-self: center;
+}
+.recipe-list.ore-diagrams > .recipe-pagination {
+  grid-column: 1/-1;
+}
+.no-recipes,
+.recipe-loading {
+  grid-column: 1/-1;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  display: grid;
+  place-items: center;
+  padding: 70px;
+  overflow: hidden;
+  color: #7f8489;
+  text-align: center;
+}
+.no-recipes > span {
+  font-size: 40px;
+}
+.no-recipes b,
+.recipe-loading b {
+  margin-top: 10px;
+  color: #b5b9bd;
+}
+.no-recipes p,
+.recipe-loading p {
+  max-width: 100%;
+  margin: 8px 0 0;
+  overflow-wrap: anywhere;
+}
+.recipe-loading .spinner {
+  width: 32px;
+  height: 32px;
+}
+.recipe-loading.partial {
+  padding: 20px;
+  border: 1px solid #3d4145;
+  border-radius: 8px;
+  background: #202226;
+}
+.recipe-error p {
+  max-width: 620px;
+  overflow-wrap: anywhere;
+}
+.recipe-error button {
+  min-width: 120px;
+  min-height: 44px;
+  margin-top: 14px;
+  border: 1px solid #53585e;
+  border-radius: 7px;
+  background: #2a2d31;
+  color: #d7dade;
+  cursor: pointer;
+}
+.recipe-pagination {
+  grid-column: 1/-1;
+  display: grid;
+  grid-template-columns: minmax(92px, 1fr) auto minmax(92px, 1fr);
+  align-items: center;
+  gap: 10px;
+  width: min(520px, 100%);
+  margin: 10px auto 0;
+}
+.recipe-pagination button {
+  min-height: 46px;
+  border: 1px solid #50555a;
+  border-radius: 8px;
+  background: #292c30;
+  color: #d2d5d8;
+  font-weight: 700;
+  cursor: pointer;
+}
+.recipe-pagination button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.recipe-pagination span {
+  color: #92979c;
+  font-size: 12px;
+  text-align: center;
+  white-space: nowrap;
+}
+.export-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: grid;
+  place-items: center;
+  padding: 18px;
+  background: #050607cc;
+  backdrop-filter: blur(6px);
+}
+.export-dialog {
+  position: relative;
+  width: min(460px, 100%);
+  padding: 28px;
+  border: 1px solid #4b4f54;
+  border-radius: 14px;
+  background: #202226;
+  box-shadow: 0 30px 90px #000;
+}
+.export-dialog h2 {
+  margin: 0 46px 10px 0;
+  color: #f0f1f2;
+  font:
+    18px/24px Minecraft,
+    ui-sans-serif,
+    system-ui,
+    sans-serif;
+  text-shadow: 2px 2px #342c34;
+}
+.export-dialog > p:not(.eyebrow),
+.export-message {
+  margin: 0;
+  color: #a5aaaf;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.export-filter {
+  display: inline;
+  margin: 0;
+  padding: 2px 5px;
+  border: 1px solid #3f4449;
+  border-radius: 4px;
+  background: #151619;
+  color: #e1e4e7;
+  font:
+    12px/1.4 ui-monospace,
+    SFMono-Regular,
+    Consolas,
+    'Liberation Mono',
+    monospace;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  vertical-align: baseline;
+}
+.export-close {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  width: 44px;
+  height: 44px;
+  border: 0;
+  background: none;
+  color: #aeb3b8;
+  font-size: 25px;
+  cursor: pointer;
+}
+.export-choice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 22px;
+}
+.export-choice-actions button {
+  flex: 1;
+  min-height: 44px;
+  padding: 0 12px;
+  border: 1px solid #5a5f65;
+  border-radius: 7px;
+  background: #363a3f;
+  color: #e1e4e7;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.export-choice-actions button.primary {
+  background: #d1d4d7;
+  border-color: #d1d4d7;
+  color: #17191b;
+}

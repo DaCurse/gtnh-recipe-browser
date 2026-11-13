@@ -1,18 +1,63 @@
 import { createHash } from 'node:crypto';
 import { readFileSync, readdirSync } from 'node:fs';
-import { defineConfig } from 'vite';
+import { createServer, defineConfig, type Plugin } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { VitePWA } from 'vite-plugin-pwa';
 
 // One token identifies the shell and worker, including changes to either side.
 function shellSources(directory: string): string {
-  return readdirSync(directory, { withFileTypes: true }).sort((a, b) => a.name.localeCompare(b.name))
-    .map((entry) => entry.isDirectory() ? shellSources(`${directory}/${entry.name}`)
-      : readFileSync(`${directory}/${entry.name}`, 'utf8')).join('');
+  return readdirSync(directory, { withFileTypes: true })
+    .sort((a, b) => a.name.localeCompare(b.name))
+    .map((entry) =>
+      entry.isDirectory()
+        ? shellSources(`${directory}/${entry.name}`)
+        : readFileSync(`${directory}/${entry.name}`, 'utf8'),
+    )
+    .join('');
 }
-const shellRevision = createHash('sha256').update(shellSources('src'))
+const shellRevision = createHash('sha256')
+  .update(shellSources('src'))
   .update(readFileSync('vite.config.ts'))
-  .update(readFileSync('public/sw-takeover.js')).digest('hex').slice(0, 16);
+  .update(readFileSync('public/sw-takeover.js'))
+  .digest('hex')
+  .slice(0, 16);
+
+function startupHtml(): Plugin {
+  let cached: string | undefined;
+  return {
+    name: 'startup-html',
+    async transformIndexHtml(html) {
+      if (cached)
+        return html.replace(
+          /<!--startup-shell-->[\s\S]*?<!--\/startup-shell-->/,
+          `<!--startup-shell-->${cached}<!--/startup-shell-->`,
+        );
+      const server = await createServer({
+        configFile: false,
+        base: './',
+        cacheDir: '.export-work/startup-vite',
+        server: {
+          middlewareMode: true,
+          hmr: { host: '127.0.0.1', port: 20000 + Math.floor(Math.random() * 30000) },
+          watch: null,
+        },
+        plugins: [svelte()],
+        optimizeDeps: { noDiscovery: true },
+        appType: 'custom',
+      });
+      try {
+        const module = await server.ssrLoadModule('/tools/startup-shell.ts');
+        cached = module.startupShell();
+        return html.replace(
+          /<!--startup-shell-->[\s\S]*?<!--\/startup-shell-->/,
+          `<!--startup-shell-->${cached}<!--/startup-shell-->`,
+        );
+      } finally {
+        await server.close();
+      }
+    },
+  };
+}
 
 export default defineConfig({
   define: { __SHELL_REVISION__: JSON.stringify(shellRevision) },
@@ -20,9 +65,19 @@ export default defineConfig({
   // Disposable game clients and upstream source trees are tooling inputs, not
   // frontend entry points. Scanning/watching them can stall a local preview.
   optimizeDeps: { entries: ['index.html'] },
-  server: { watch: { ignored: ['**/.export-work/**', '**/.pack-output/**', '**/gtnh@ShadowTheAge/**', '**/nesql-exporter@ShadowTheAge/**'] } },
+  server: {
+    watch: {
+      ignored: [
+        '**/.export-work/**',
+        '**/.pack-output/**',
+        '**/gtnh@ShadowTheAge/**',
+        '**/nesql-exporter@ShadowTheAge/**',
+      ],
+    },
+  },
   plugins: [
     svelte(),
+    startupHtml(),
     VitePWA({
       registerType: 'prompt',
       injectRegister: null,
@@ -32,7 +87,7 @@ export default defineConfig({
         'assets/stone-background.png',
         'assets/gtnh-logo.png',
         'assets/gtnh-logo-header.webp',
-        'assets/gtnh-logo-192.png'
+        'assets/gtnh-logo-192.png',
       ],
       manifest: {
         name: 'GTNH Recipe Browser',
@@ -46,14 +101,14 @@ export default defineConfig({
           {
             src: 'assets/gtnh-logo-192.png',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/png',
           },
           {
             src: 'assets/gtnh-logo.png',
             sizes: '512x512',
-            type: 'image/png'
-          }
-        ]
+            type: 'image/png',
+          },
+        ],
       },
       workbox: {
         clientsClaim: false,
@@ -62,8 +117,8 @@ export default defineConfig({
         navigateFallback: 'index.html',
         // App routes use root query parameters. Static documents must reach the server.
         navigateFallbackAllowlist: [/\/(?:index\.html)?(?:\?.*)?$/],
-        importScripts: [`sw-takeover.js?revision=${shellRevision}`]
-      }
-    })
-  ]
+        importScripts: [`sw-takeover.js?revision=${shellRevision}`],
+      },
+    }),
+  ],
 });

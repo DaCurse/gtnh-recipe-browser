@@ -1,20 +1,40 @@
 import { describe, expect, it } from 'vitest';
-import { buildCatalogSearchDocument, catalogDocumentMatches, parseCatalogSearchQuery } from '../src/lib/catalogSearch';
+import {
+  buildCatalogSearchDocument,
+  catalogDocumentMatches,
+  parseCatalogSearchQuery,
+} from '../src/lib/catalogSearch';
 import { parseSearchExpression } from '../src/lib/searchSyntax';
 
 const document = buildCatalogSearchDocument({
-  id: 'family:hammer', name: 'Hammer', mod: 'gregtech', members: [
-    { id: 'i:gregtech:hammer:0', name: 'Iron Hammer', mod: 'GregTech',
-      rawTooltip: 'Iron Hammer\nDurability: 100\nMining Level: 2', oreDictionaryIds: ['o:craftingToolHardHammer'] },
-    { id: 'i:gregtech:hammer:1', name: 'Rubber Hammer', mod: 'GregTech',
-      rawTooltip: 'Rubber Hammer\nDurability: 50', oreDictionaryIds: ['o:craftingToolSoftHammer'] }
-  ]
+  id: 'family:hammer',
+  name: 'Hammer',
+  mod: 'gregtech',
+  members: [
+    {
+      id: 'i:gregtech:hammer:0',
+      name: 'Iron Hammer',
+      mod: 'GregTech',
+      rawTooltip: 'Iron Hammer\nDurability: 100\nMining Level: 2',
+      oreDictionaryIds: ['o:craftingToolHardHammer'],
+    },
+    {
+      id: 'i:gregtech:hammer:1',
+      name: 'Rubber Hammer',
+      mod: 'GregTech',
+      rawTooltip: 'Rubber Hammer\nDurability: 50',
+      oreDictionaryIds: ['o:craftingToolSoftHammer'],
+    },
+  ],
 });
-const matches = (source: string) => catalogDocumentMatches(document, parseCatalogSearchQuery(source));
+const matches = (source: string) =>
+  catalogDocumentMatches(document, parseCatalogSearchQuery(source));
 
 describe('NEI extended search syntax', () => {
   it('combines case-insensitive field filters and both exclusion operators', () => {
-    expect(matches('@GREG #"mining level" $craftingToolHardHammer &gregtech:hammer !rubber')).toBe(true);
+    expect(matches('@GREG #"mining level" $craftingToolHardHammer &gregtech:hammer !rubber')).toBe(
+      true,
+    );
     expect(matches('iron -#"durability: 100"')).toBe(false);
     expect(matches('hammer !@gregtech')).toBe(false);
     expect(matches('&minecraft')).toBe(false);
@@ -32,7 +52,11 @@ describe('NEI extended search syntax', () => {
   it('keeps quoted phrases and escaped quotes intact, including OR inside quotes', () => {
     const parsed = parseSearchExpression('"iron | copper" @"greg tech" "say \\"hello\\""');
     expect(parsed.clauses).toHaveLength(1);
-    expect(parsed.clauses[0]?.map(term => term.value)).toEqual(['iron | copper', 'greg tech', 'say "hello"']);
+    expect(parsed.clauses[0]?.map((term) => term.value)).toEqual([
+      'iron | copper',
+      'greg tech',
+      'say "hello"',
+    ]);
     expect(matches('"iron hammer"')).toBe(true);
     expect(matches('"hammer iron"')).toBe(false);
   });
@@ -57,7 +81,7 @@ describe('NEI extended search syntax', () => {
   it('preserves every input character and uses the upstream provider/operator colors', () => {
     const source = '  @GregTech  !#"Mining Level" | $ingotIron &minecraft:stone -copper* ';
     const { spans } = parseSearchExpression(source);
-    expect(spans.map(span => span.text).join('')).toBe(source);
+    expect(spans.map((span) => span.text).join('')).toBe(source);
     expect(spans).toContainEqual({ text: '@GregTech', format: 'd' });
     expect(spans).toContainEqual({ text: '!', format: '9' });
     expect(spans).toContainEqual({ text: 'Mining Level', format: 'e' });

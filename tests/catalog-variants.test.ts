@@ -2,14 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   buildCatalogSearchDocument,
   catalogDocumentMatches,
-  parseCatalogSearchQuery
+  parseCatalogSearchQuery,
 } from '../src/lib/catalogSearch';
 import {
   buildCatalogBrowseEntries,
   canonicalVariantNbt,
   deduplicateVariantMembers,
   resolveCatalogVariant,
-  variantNbtLabel
+  variantNbtLabel,
 } from '../src/lib/catalogVariants';
 import { describeGtOreVariant } from '../src/lib/gtOreVariants';
 import { querySearchMask, searchMaskContains } from '../src/lib/searchMask';
@@ -24,7 +24,7 @@ function entry(overrides: Partial<CatalogEntry> & Pick<CatalogEntry, 'id' | 'nam
     color: '#aaa',
     glyph: '□',
     searchable: true,
-    ...overrides
+    ...overrides,
   };
 }
 
@@ -36,15 +36,15 @@ describe('catalog variant families', () => {
         name: 'Small Ichorium Turbine',
         internalName: 'gregtech:gt.metatool.01',
         damage: 170,
-        nbt: '{material:ichorium}'
+        nbt: '{material:ichorium}',
       }),
       entry({
         id: 'i:gregtech:gt.metatool.01:170:b',
         name: 'Small Steel Turbine',
         internalName: 'gregtech:gt.metatool.01',
         damage: 170,
-        nbt: '{material:steel}'
-      })
+        nbt: '{material:steel}',
+      }),
     ];
 
     const [family] = buildCatalogBrowseEntries(entries);
@@ -52,7 +52,7 @@ describe('catalog variant families', () => {
     expect(family?.variantCount).toBe(2);
     expect(family?.variantIds).toEqual([
       'i:gregtech:gt.metatool.01:170:a',
-      'i:gregtech:gt.metatool.01:170:b'
+      'i:gregtech:gt.metatool.01:170:b',
     ]);
   });
 
@@ -61,7 +61,7 @@ describe('catalog variant families', () => {
       entry({ id: 'one', name: 'One', internalName: 'mod:item', damage: 1, nbt: null }),
       entry({ id: 'two', name: 'Two', internalName: 'mod:item', damage: 1, nbt: null }),
       entry({ id: 'small', name: 'Small Tool', internalName: 'mod:tool', damage: 10, nbt: '{}' }),
-      entry({ id: 'large', name: 'Large Tool', internalName: 'mod:tool', damage: 12, nbt: '{}' })
+      entry({ id: 'large', name: 'Large Tool', internalName: 'mod:tool', damage: 12, nbt: '{}' }),
     ];
 
     expect(buildCatalogBrowseEntries(entries)).toHaveLength(4);
@@ -75,7 +75,7 @@ describe('catalog variant families', () => {
         internalName: 'gregtech:gt.metatool.01',
         damage: 170,
         nbt: '{material:ichorium}',
-        icon: { url: 'icons.webp', index: 1, columns: 32 }
+        icon: { url: 'icons.webp', index: 1, columns: 32 },
       }),
       entry({
         id: 'steel',
@@ -83,8 +83,8 @@ describe('catalog variant families', () => {
         internalName: 'gregtech:gt.metatool.01',
         damage: 170,
         nbt: '{material:steel}',
-        icon: { url: 'icons.webp', index: 2, columns: 32 }
-      })
+        icon: { url: 'icons.webp', index: 2, columns: 32 },
+      }),
     ];
     const [family] = buildCatalogBrowseEntries(entries);
     const exactEntries = new Map(entries.map((item) => [item.id, item]));
@@ -103,7 +103,7 @@ describe('catalog variant families', () => {
       damage: 0,
       nbt: '{crop:"cropsnh:rubyne",scan:1b}',
       productionCount: 1,
-      rawTooltip: 'Growth 1 · Gain 1 · Resistance 1'
+      rawTooltip: 'Growth 1 · Gain 1 · Resistance 1',
     });
     const scannedA = entry({
       id: 'rubyne-scanned-a',
@@ -114,14 +114,14 @@ describe('catalog variant families', () => {
       nbt: '{re:1b,scan:1b,gr:1b,crop:"cropsnh:rubyne",ga:1b}',
       productionCount: 1,
       specialProductionCount: 3,
-      rawTooltip: 'Growth 1 · Gain 1 · Resistance 1'
+      rawTooltip: 'Growth 1 · Gain 1 · Resistance 1',
     });
     const scannedB = entry({
       ...scannedA,
       id: 'rubyne-scanned-b',
       nbt: '{re:1b,scan:1b,crop:"cropsnh:rubyne",gr:1b,ga:1b}',
       specialProductionCount: 1,
-      rawTooltip: 'Growth 1 · Gain 1 · Resistance 1'
+      rawTooltip: 'Growth 1 · Gain 1 · Resistance 1',
     });
 
     expect(canonicalVariantNbt(scannedA.nbt)).toBe(canonicalVariantNbt(scannedB.nbt));
@@ -139,23 +139,25 @@ describe('catalog variant families', () => {
       internalName: 'genericSeed',
       damage: 0,
       nbt: '{crop:"cropsnh:rubyne",scan:1b,gr:10b,ga:10b,re:10b}',
-      rawTooltip: 'Growth 10 · Gain 10 · Resistance 10'
+      rawTooltip: 'Growth 10 · Gain 10 · Resistance 10',
     });
     expect(deduplicateVariantMembers([scannedA, levelTen])).toHaveLength(2);
   });
 });
 
 describe('GregTech ore material families', () => {
-  function oreEntries(
-    series: Array<{ internalName: string; damages: number[] }>
-  ): CatalogEntry[] {
-    return series.flatMap((group) => group.damages.map((damage) => entry({
-      id: `i:gregtech:${group.internalName}:${damage}`,
-      name: oreFixture.material.name,
-      internalName: group.internalName,
-      damage,
-      nbt: null
-    })));
+  function oreEntries(series: Array<{ internalName: string; damages: number[] }>): CatalogEntry[] {
+    return series.flatMap((group) =>
+      group.damages.map((damage) =>
+        entry({
+          id: `i:gregtech:${group.internalName}:${damage}`,
+          name: oreFixture.material.name,
+          internalName: group.internalName,
+          damage,
+          nbt: null,
+        }),
+      ),
+    );
   }
 
   it('groups the seven pinned legacy Iron Ore host stones', () => {
@@ -165,12 +167,14 @@ describe('GregTech ore material families', () => {
     expect(family?.variantKind).toBe('gtOre');
     expect(family?.variantCount).toBe(7);
     expect(family?.variantIds[0]).toBe('i:gregtech:gt.blockores:32');
-    expect(family?.variantLabels).toEqual(Object.fromEntries(
-      oreFixture.legacy[0]!.damages.map((damage, index) => [
-        `i:gregtech:gt.blockores:${damage}`,
-        oreFixture.legacy[0]!.hosts[index]
-      ])
-    ));
+    expect(family?.variantLabels).toEqual(
+      Object.fromEntries(
+        oreFixture.legacy[0]!.damages.map((damage, index) => [
+          `i:gregtech:gt.blockores:${damage}`,
+          oreFixture.legacy[0]!.hosts[index],
+        ]),
+      ),
+    );
   });
 
   it('groups all 41 pinned current Iron Ore host stones in stable order', () => {
@@ -186,45 +190,50 @@ describe('GregTech ore material families', () => {
   });
 
   it('keeps legacy placeholders, other mods, and unsupported metadata exact', () => {
-    const collisionEntries = oreFixture.legacyPlaceholderCollision.map((item) => entry({
-      ...item,
-      nbt: null
-    }));
+    const collisionEntries = oreFixture.legacyPlaceholderCollision.map((item) =>
+      entry({
+        ...item,
+        nbt: null,
+      }),
+    );
     const unrelated = entry({
       id: 'i:minecraft:iron_ore:0',
       name: oreFixture.material.name,
       internalName: 'iron_ore',
       damage: 0,
-      nbt: null
+      nbt: null,
     });
     const unknownSeries = entry({
       id: 'i:gregtech:gt.blockores8:32',
       name: oreFixture.material.name,
       internalName: 'gt.blockores8',
       damage: 32,
-      nbt: null
+      nbt: null,
     });
     const natural = entry({
       id: 'i:gregtech:gt.blockores2:8032',
       name: oreFixture.material.name,
       internalName: 'gt.blockores2',
       damage: 8032,
-      nbt: null
+      nbt: null,
     });
     const groups = buildCatalogBrowseEntries([
       ...collisionEntries,
       unrelated,
       unknownSeries,
-      natural
+      natural,
     ]);
     const aer = groups.find((candidate) => candidate.name === 'Aer Infused Stone');
 
     expect(aer?.variantKind).toBe('gtOre');
     expect(aer?.variantCount).toBe(2);
-    expect(groups.find((candidate) => candidate.id === collisionEntries[0]!.id)?.variantKind)
-      .toBe('single');
+    expect(groups.find((candidate) => candidate.id === collisionEntries[0]!.id)?.variantKind).toBe(
+      'single',
+    );
     expect(groups.find((candidate) => candidate.id === unrelated.id)?.variantKind).toBe('single');
-    expect(groups.find((candidate) => candidate.id === unknownSeries.id)?.variantKind).toBe('single');
+    expect(groups.find((candidate) => candidate.id === unknownSeries.id)?.variantKind).toBe(
+      'single',
+    );
     expect(groups.find((candidate) => candidate.id === natural.id)?.variantKind).toBe('single');
   });
 
@@ -234,13 +243,13 @@ describe('GregTech ore material families', () => {
       name: oreFixture.material.name,
       internalName: 'gt.blockores7',
       damage: 4032,
-      nbt: null
+      nbt: null,
     });
 
     expect(describeGtOreVariant(deepslate)).toEqual({
       familyKey: `gtOre\u0000${oreFixture.material.id}\u0000${oreFixture.material.name}`,
       hostStone: 'Deepslate',
-      order: 38
+      order: 38,
     });
   });
 
@@ -249,12 +258,14 @@ describe('GregTech ore material families', () => {
       id: 'variants:iron',
       name: oreFixture.material.name,
       mod: 'gregtech',
-      members: [{
-        id: 'i:gregtech:gt.blockores7:4032',
-        name: oreFixture.material.name,
-        mod: 'gregtech',
-        variantLabel: 'Deepslate'
-      }]
+      members: [
+        {
+          id: 'i:gregtech:gt.blockores7:4032',
+          name: oreFixture.material.name,
+          mod: 'gregtech',
+          variantLabel: 'Deepslate',
+        },
+      ],
     });
 
     expect(catalogDocumentMatches(document, parseCatalogSearchQuery('deepslate iron'))).toBe(true);

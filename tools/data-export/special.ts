@@ -19,7 +19,7 @@ export const SPECIAL_CATEGORY_IDS = [
   'loot-bag',
   'vending-trade',
   'worldgen-loot',
-  'gt-ore-processing'
+  'gt-ore-processing',
 ] as const;
 
 type SpecialCategoryId = (typeof SPECIAL_CATEGORY_IDS)[number];
@@ -64,7 +64,7 @@ const CATEGORY_ALIASES: Record<string, SpecialCategoryId> = {
   'world-gen-loot': 'worldgen-loot',
   'ore-processing': 'gt-ore-processing',
   gtOreProcessing: 'gt-ore-processing',
-  oreProcessing: 'gt-ore-processing'
+  oreProcessing: 'gt-ore-processing',
 };
 
 interface SpecialSourceVersions {
@@ -172,7 +172,8 @@ function sortedUniqueStrings(value: unknown, path: string): string[] {
   if (!Array.isArray(value)) throw new SpecialDataError(`${path} must be an array`);
   const values = value.map((entry, index) => requiredString(entry, `${path}[${index}]`));
   const unique = [...new Set(values)].sort();
-  if (unique.length !== values.length) throw new SpecialDataError(`${path} contains duplicate values`);
+  if (unique.length !== values.length)
+    throw new SpecialDataError(`${path} contains duplicate values`);
   return unique;
 }
 
@@ -190,7 +191,8 @@ function normalizeGoodsId(value: string): string {
 function cloneForJson(value: unknown, path: string): unknown {
   if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
   if (typeof value === 'number') return finiteNumber(value, path);
-  if (Array.isArray(value)) return value.map((entry, index) => cloneForJson(entry, `${path}[${index}]`));
+  if (Array.isArray(value))
+    return value.map((entry, index) => cloneForJson(entry, `${path}[${index}]`));
   if (!isRecord(value)) throw new SpecialDataError(`${path} contains a non-JSON value`);
   const result: Record<string, unknown> = {};
   for (const key of Object.keys(value).sort()) {
@@ -199,13 +201,14 @@ function cloneForJson(value: unknown, path: string): unknown {
     if (normalizedKey.endsWith('goodsid') && typeof value[key] === 'string') {
       result[key] = normalizeGoodsId(value[key]);
     } else if (normalizedKey.endsWith('goodsids') && Array.isArray(value[key])) {
-      result[key] = value[key].map((entry, index) => normalizeGoodsId(
-        requiredString(entry, `${childPath}[${index}]`)
-      ));
+      result[key] = value[key].map((entry, index) =>
+        normalizeGoodsId(requiredString(entry, `${childPath}[${index}]`)),
+      );
     } else {
-      result[key] = key === 'oreDictionary'
-        ? requiredString(value[key], childPath)
-        : cloneForJson(value[key], childPath);
+      result[key] =
+        key === 'oreDictionary'
+          ? requiredString(value[key], childPath)
+          : cloneForJson(value[key], childPath);
     }
   }
   return result;
@@ -228,39 +231,57 @@ function sourceVersions(value: unknown): SpecialSourceVersions {
     }
     const flatMods: Record<string, string> = {};
     for (const [modId, version] of flat) {
-      if (['gtnh', 'gtnhVersion', 'overlay', 'overlayVersion', 'exporter', 'exporterCommit'].includes(modId)) continue;
-      flatMods[requiredString(modId, 'sourceVersions key')] = requiredString(version, `sourceVersions.${modId}`);
+      if (
+        ['gtnh', 'gtnhVersion', 'overlay', 'overlayVersion', 'exporter', 'exporterCommit'].includes(
+          modId,
+        )
+      )
+        continue;
+      flatMods[requiredString(modId, 'sourceVersions key')] = requiredString(
+        version,
+        `sourceVersions.${modId}`,
+      );
     }
     return {
       gtnhVersion,
       exporter: {
-        repository: requiredString(value.exporterRepository ?? 'runtime-overlay', 'sourceVersions.exporter.repository'),
-        commit: requiredString(value.exporterCommit ?? value.exporter ?? 'runtime', 'sourceVersions.exporter.commit')
+        repository: requiredString(
+          value.exporterRepository ?? 'runtime-overlay',
+          'sourceVersions.exporter.repository',
+        ),
+        commit: requiredString(
+          value.exporterCommit ?? value.exporter ?? 'runtime',
+          'sourceVersions.exporter.commit',
+        ),
       },
       overlay: { version: overlayVersion },
-      mods: Object.fromEntries(Object.entries(flatMods).sort(([left], [right]) => left.localeCompare(right)))
+      mods: Object.fromEntries(
+        Object.entries(flatMods).sort(([left], [right]) => left.localeCompare(right)),
+      ),
     };
   }
   if (!isRecord(exporter)) throw new SpecialDataError('sourceVersions.exporter must be an object');
   if (!isRecord(overlay)) throw new SpecialDataError('sourceVersions.overlay must be an object');
   const normalizedMods: Record<string, string> = {};
   for (const modId of Object.keys(mods).sort()) {
-    normalizedMods[requiredString(modId, 'sourceVersions.mods key')] =
-      requiredString(mods[modId], `sourceVersions.mods.${modId}`);
+    normalizedMods[requiredString(modId, 'sourceVersions.mods key')] = requiredString(
+      mods[modId],
+      `sourceVersions.mods.${modId}`,
+    );
   }
   return {
     gtnhVersion: requiredString(value.gtnhVersion, 'sourceVersions.gtnhVersion'),
     exporter: {
       repository: requiredString(exporter.repository, 'sourceVersions.exporter.repository'),
-      commit: requiredString(exporter.commit, 'sourceVersions.exporter.commit')
+      commit: requiredString(exporter.commit, 'sourceVersions.exporter.commit'),
     },
     overlay: {
       version: requiredString(overlay.version, 'sourceVersions.overlay.version'),
       ...(overlay.commit === undefined
         ? {}
-        : { commit: requiredString(overlay.commit, 'sourceVersions.overlay.commit') })
+        : { commit: requiredString(overlay.commit, 'sourceVersions.overlay.commit') }),
     },
-    mods: normalizedMods
+    mods: normalizedMods,
   };
 }
 
@@ -272,7 +293,7 @@ function serviceIcons(value: unknown): SpecialServiceIcon[] {
     const icon: SpecialServiceIcon = {
       id: requiredString(entry.id, `${path}.id`),
       label: requiredString(entry.label, `${path}.label`),
-      searchable: false
+      searchable: false,
     };
     if (entry.goodsId !== undefined) {
       icon.goodsId = normalizeGoodsId(requiredString(entry.goodsId, `${path}.goodsId`));
@@ -297,10 +318,12 @@ function viewTypes(value: unknown, iconIds: ReadonlySet<string>): SpecialViewTyp
     const view: SpecialViewType = {
       id: normalizeCategory(entry.id, `${path}.id`),
       label: requiredString(entry.label, `${path}.label`),
-      serviceIconId: requiredString(entry.serviceIconId, `${path}.serviceIconId`)
+      serviceIconId: requiredString(entry.serviceIconId, `${path}.serviceIconId`),
     };
     if (!iconIds.has(view.serviceIconId)) {
-      throw new SpecialDataError(`${path}.serviceIconId references unknown icon ${view.serviceIconId}`);
+      throw new SpecialDataError(
+        `${path}.serviceIconId references unknown icon ${view.serviceIconId}`,
+      );
     }
     return view;
   });
@@ -309,7 +332,9 @@ function viewTypes(value: unknown, iconIds: ReadonlySet<string>): SpecialViewTyp
     if (ids.has(view.id)) throw new SpecialDataError(`duplicate special view type ${view.id}`);
     ids.add(view.id);
   }
-  return views.sort((left, right) => SPECIAL_CATEGORY_IDS.indexOf(left.id) - SPECIAL_CATEGORY_IDS.indexOf(right.id));
+  return views.sort(
+    (left, right) => SPECIAL_CATEGORY_IDS.indexOf(left.id) - SPECIAL_CATEGORY_IDS.indexOf(right.id),
+  );
 }
 
 function lookupId(raw: Record<string, unknown>, names: string[], path: string): string {
@@ -327,13 +352,20 @@ function lookupId(raw: Record<string, unknown>, names: string[], path: string): 
   throw new SpecialDataError(`${path} is required`);
 }
 
-function normalizeRecord(value: unknown, index: number, iconIds: ReadonlySet<string>): SpecialRecord {
+function normalizeRecord(
+  value: unknown,
+  index: number,
+  iconIds: ReadonlySet<string>,
+): SpecialRecord {
   const path = `records[${index}]`;
   if (!isRecord(value)) throw new SpecialDataError(`${path} must be an object`);
   const category = normalizeCategory(value.category, `${path}.category`);
   const payloadValue = value.payload ?? value.data;
   if (!isRecord(payloadValue)) throw new SpecialDataError(`${path}.payload must be an object`);
-  const serviceIconId = requiredString(value.serviceIconId ?? value.iconId, `${path}.serviceIconId`);
+  const serviceIconId = requiredString(
+    value.serviceIconId ?? value.iconId,
+    `${path}.serviceIconId`,
+  );
   if (!iconIds.has(serviceIconId)) {
     throw new SpecialDataError(`${path}.serviceIconId references unknown icon ${serviceIconId}`);
   }
@@ -346,21 +378,44 @@ function normalizeRecord(value: unknown, index: number, iconIds: ReadonlySet<str
     goodsIds: sortedUniqueStrings(
       Array.isArray(rawGoodsIds)
         ? rawGoodsIds.map((entry, index) => {
-          const goodsId = requiredString(entry, `${path}.goodsIds[${index}]`);
-          return normalizeGoodsId(goodsId);
-        })
+            const goodsId = requiredString(entry, `${path}.goodsIds[${index}]`);
+            return normalizeGoodsId(goodsId);
+          })
         : rawGoodsIds,
-      `${path}.goodsIds`
+      `${path}.goodsIds`,
     ),
-    recipesLookupId: lookupId(value, ['recipesLookupId', 'recipeLookupId'], `${path}.recipesLookupId`),
+    recipesLookupId: lookupId(
+      value,
+      ['recipesLookupId', 'recipeLookupId'],
+      `${path}.recipesLookupId`,
+    ),
     usagesLookupId: lookupId(value, ['usagesLookupId', 'usageLookupId'], `${path}.usagesLookupId`),
     serviceIconId,
-    payload: cloneForJson(payloadValue, `${path}.payload`) as Record<string, unknown>
+    payload: cloneForJson(payloadValue, `${path}.payload`) as Record<string, unknown>,
   };
   // Preserve explicitly supplied extension fields in the normalized sidecar.
   // Known fields are rewritten above so aliases cannot leak into the wire form.
   for (const key of Object.keys(value).sort()) {
-    if (!['category', 'data', 'goodsIds', 'iconId', 'id', 'lookup', 'name', 'payload', 'recipeLookupId', 'recipesLookupId', 'search', 'searchText', 'serviceIconId', 'title', 'usageLookupId', 'usagesLookupId'].includes(key)) {
+    if (
+      ![
+        'category',
+        'data',
+        'goodsIds',
+        'iconId',
+        'id',
+        'lookup',
+        'name',
+        'payload',
+        'recipeLookupId',
+        'recipesLookupId',
+        'search',
+        'searchText',
+        'serviceIconId',
+        'title',
+        'usageLookupId',
+        'usagesLookupId',
+      ].includes(key)
+    ) {
       record[key] = cloneForJson(value[key], `${path}.${key}`);
     }
   }
@@ -398,18 +453,20 @@ function normalizeGtOreVeinChances(records: SpecialRecord[]): void {
     }
     const ids = [...dimensions].sort((left, right) => left.localeCompare(right));
     dimensionsByRecord.set(record, ids);
-    const weight = typeof payload.weight === 'number' && Number.isFinite(payload.weight)
-      ? payload.weight
-      : undefined;
+    const weight =
+      typeof payload.weight === 'number' && Number.isFinite(payload.weight)
+        ? payload.weight
+        : undefined;
     if (weight === undefined) continue;
     for (const id of ids) totals.set(id, (totals.get(id) ?? 0) + weight);
   }
 
   for (const [record, dimensions] of dimensionsByRecord) {
     const payload = record.payload;
-    const weight = typeof payload.weight === 'number' && Number.isFinite(payload.weight)
-      ? payload.weight
-      : undefined;
+    const weight =
+      typeof payload.weight === 'number' && Number.isFinite(payload.weight)
+        ? payload.weight
+        : undefined;
     if (weight === undefined || dimensions.length === 0) continue;
     const chances: Record<string, unknown> = isRecord(payload.dimensionChance)
       ? { ...payload.dimensionChance }
@@ -423,11 +480,13 @@ function normalizeGtOreVeinChances(records: SpecialRecord[]): void {
       chances[id] = weight / total;
       const rawDimension = Array.isArray(payload.dimensions)
         ? payload.dimensions.find((value) => {
-          if (typeof value === 'string' || typeof value === 'number') return String(value) === id;
-          if (!isRecord(value)) return false;
-          const valueId = value.id ?? value.dimension ?? value.name;
-          return (typeof valueId === 'string' || typeof valueId === 'number') && String(valueId) === id;
-        })
+            if (typeof value === 'string' || typeof value === 'number') return String(value) === id;
+            if (!isRecord(value)) return false;
+            const valueId = value.id ?? value.dimension ?? value.name;
+            return (
+              (typeof valueId === 'string' || typeof valueId === 'number') && String(valueId) === id
+            );
+          })
         : undefined;
       if (isRecord(rawDimension)) rawDimension.chance = weight / total;
     }
@@ -437,32 +496,37 @@ function normalizeGtOreVeinChances(records: SpecialRecord[]): void {
 
 function categories(value: unknown, records: readonly SpecialRecord[]): SpecialCategoryId[] {
   if (value === undefined) {
-    return SPECIAL_CATEGORY_IDS.filter((category) => records.some((record) => record.category === category));
+    return SPECIAL_CATEGORY_IDS.filter((category) =>
+      records.some((record) => record.category === category),
+    );
   }
   const listed = sortedUniqueStrings(value, 'categories');
-  return listed.map((category, index) => normalizeCategory(category, `categories[${index}]`)).sort(
-    (left, right) => SPECIAL_CATEGORY_IDS.indexOf(left) - SPECIAL_CATEGORY_IDS.indexOf(right)
-  );
+  return listed
+    .map((category, index) => normalizeCategory(category, `categories[${index}]`))
+    .sort(
+      (left, right) => SPECIAL_CATEGORY_IDS.indexOf(left) - SPECIAL_CATEGORY_IDS.indexOf(right),
+    );
 }
 
 function validateCategoryCoverage(
   listed: readonly SpecialCategoryId[],
   records: readonly SpecialRecord[],
-  options: SpecialValidationOptions
+  options: SpecialValidationOptions,
 ): void {
   const required = options.requiredCategories ?? SPECIAL_CATEGORY_IDS;
   for (const category of required) {
-    if (!listed.includes(category)) throw new SpecialDataError(`missing requested category ${category}`);
-    if (options.requireNonEmptyCategories !== false && !records.some((record) => record.category === category)) {
+    if (!listed.includes(category))
+      throw new SpecialDataError(`missing requested category ${category}`);
+    if (
+      options.requireNonEmptyCategories !== false &&
+      !records.some((record) => record.category === category)
+    ) {
       throw new SpecialDataError(`requested category ${category} has no records`);
     }
   }
 }
 
-function validateReferences(
-  data: SpecialData,
-  options: SpecialValidationOptions
-): void {
+function validateReferences(data: SpecialData, options: SpecialValidationOptions): void {
   const iconIds = new Set(data.serviceIcons.map((icon) => icon.id));
   const knownIcons = options.knownServiceIconIds;
   const knownGoods = options.knownGoodsIds;
@@ -475,12 +539,17 @@ function validateReferences(
     goods.add(icon.goodsId);
   }
   for (const record of data.records) {
-    if (!iconIds.has(record.serviceIconId)) throw new SpecialDataError(`${record.id}: unknown service icon ${record.serviceIconId}`);
+    if (!iconIds.has(record.serviceIconId))
+      throw new SpecialDataError(`${record.id}: unknown service icon ${record.serviceIconId}`);
     if (knownIcons && !knownIcons.has(record.serviceIconId)) {
-      throw new SpecialDataError(`${record.id}: service icon ${record.serviceIconId} is not in the exported icon catalog`);
+      throw new SpecialDataError(
+        `${record.id}: service icon ${record.serviceIconId} is not in the exported icon catalog`,
+      );
     }
     if (knownRecipes && !knownRecipes.has(record.recipesLookupId)) {
-      throw new SpecialDataError(`${record.id}: unresolved Recipes lookup ${record.recipesLookupId}`);
+      throw new SpecialDataError(
+        `${record.id}: unresolved Recipes lookup ${record.recipesLookupId}`,
+      );
     }
     if (knownUsages && !knownUsages.has(record.usagesLookupId)) {
       throw new SpecialDataError(`${record.id}: unresolved Usages lookup ${record.usagesLookupId}`);
@@ -543,21 +612,26 @@ function nestedGoodsIds(value: unknown): string[] {
  */
 export function canonicalizeSpecialData(
   value: unknown,
-  options: SpecialValidationOptions = {}
+  options: SpecialValidationOptions = {},
 ): SpecialData {
   if (!isRecord(value)) throw new SpecialDataError('special sidecar must be an object');
   if (value.schemaVersion !== SPECIAL_SCHEMA_VERSION) {
-    throw new SpecialDataError(`Unsupported special sidecar schema ${String(value.schemaVersion)}; required ${SPECIAL_SCHEMA_VERSION}`);
+    throw new SpecialDataError(
+      `Unsupported special sidecar schema ${String(value.schemaVersion)}; required ${SPECIAL_SCHEMA_VERSION}`,
+    );
   }
   const normalizedIcons = serviceIcons(value.serviceIcons);
   const iconIds = new Set(normalizedIcons.map((icon) => icon.id));
   const normalizedRecords = Array.isArray(value.records)
     ? value.records.map((record, index) => normalizeRecord(record, index, iconIds))
-    : (() => { throw new SpecialDataError('records must be an array'); })();
+    : (() => {
+        throw new SpecialDataError('records must be an array');
+      })();
   normalizeGtOreVeinChances(normalizedRecords);
   const recordIds = new Set<string>();
   for (const record of normalizedRecords) {
-    if (recordIds.has(record.id)) throw new SpecialDataError(`duplicate special record ID ${record.id}`);
+    if (recordIds.has(record.id))
+      throw new SpecialDataError(`duplicate special record ID ${record.id}`);
     recordIds.add(record.id);
   }
   const normalizedCategories = categories(value.categories, normalizedRecords);
@@ -567,9 +641,10 @@ export function canonicalizeSpecialData(
     categories: normalizedCategories,
     serviceIcons: normalizedIcons,
     records: normalizedRecords.sort((left, right) => {
-      const categoryOrder = SPECIAL_CATEGORY_IDS.indexOf(left.category) - SPECIAL_CATEGORY_IDS.indexOf(right.category);
+      const categoryOrder =
+        SPECIAL_CATEGORY_IDS.indexOf(left.category) - SPECIAL_CATEGORY_IDS.indexOf(right.category);
       return categoryOrder || left.id.localeCompare(right.id);
-    })
+    }),
   };
   const normalizedViews = viewTypes(value.specialViewTypes, iconIds);
   if (normalizedViews) data.specialViewTypes = normalizedViews;
@@ -580,20 +655,22 @@ export function canonicalizeSpecialData(
 
 export function serializeSpecialData(
   value: unknown,
-  options: SpecialValidationOptions = {}
+  options: SpecialValidationOptions = {},
 ): string {
   return `${JSON.stringify(canonicalizeSpecialData(value, options), null, 2)}\n`;
 }
 
 export async function readSpecialSidecar(
   path: string,
-  options: SpecialValidationOptions = {}
+  options: SpecialValidationOptions = {},
 ): Promise<SpecialData> {
   let parsed: unknown;
   try {
     parsed = JSON.parse(await readFile(path, 'utf8')) as unknown;
   } catch (error) {
-    throw new SpecialDataError(`Unable to read special sidecar ${path}: ${error instanceof Error ? error.message : String(error)}`);
+    throw new SpecialDataError(
+      `Unable to read special sidecar ${path}: ${error instanceof Error ? error.message : String(error)}`,
+    );
   }
   return canonicalizeSpecialData(parsed, options);
 }
@@ -603,10 +680,12 @@ export function specialDataSha256(value: unknown, options: SpecialValidationOpti
 }
 
 export function specialGoodsIds(data: SpecialData): string[] {
-  return [...new Set([
-    ...data.records.flatMap((record) => [...record.goodsIds, ...nestedGoodsIds(record.payload)]),
-    ...data.serviceIcons.flatMap((icon) => icon.goodsId ? [icon.goodsId] : [])
-  ])].sort();
+  return [
+    ...new Set([
+      ...data.records.flatMap((record) => [...record.goodsIds, ...nestedGoodsIds(record.payload)]),
+      ...data.serviceIcons.flatMap((icon) => (icon.goodsId ? [icon.goodsId] : [])),
+    ]),
+  ].sort();
 }
 
 /**
@@ -624,13 +703,15 @@ export function validateCropsNhSeedReferences(data: SpecialData): void {
   const categories = new Set(['crop-output', 'mutation-pool', 'crop-breeding']);
   const missing = data.records
     .filter((record) => categories.has(record.category))
-    .filter((record) => !record.goodsIds.some((goodsId) => goodsId.startsWith('i:cropsnh:genericSeed:')))
+    .filter(
+      (record) => !record.goodsIds.some((goodsId) => goodsId.startsWith('i:cropsnh:genericSeed:')),
+    )
     .map((record) => record.id);
   if (missing.length > 0) {
     const preview = missing.slice(0, 20).join(', ');
     const suffix = missing.length > 20 ? ` (+${missing.length - 20} more)` : '';
     throw new SpecialDataError(
-      `CropsNH records are missing DEFAULT_ANALYZED generic-seed goods IDs: ${preview}${suffix}`
+      `CropsNH records are missing DEFAULT_ANALYZED generic-seed goods IDs: ${preview}${suffix}`,
     );
   }
 }
@@ -638,10 +719,14 @@ export function validateCropsNhSeedReferences(data: SpecialData): void {
 export function buildSpecialViewTypes(data: SpecialData): SpecialViewType[] {
   if (data.specialViewTypes) return data.specialViewTypes.map((view) => ({ ...view }));
   const iconByCategory = new Map<string, string>();
-  for (const record of data.records) if (!iconByCategory.has(record.category)) iconByCategory.set(record.category, record.serviceIconId);
-  return SPECIAL_CATEGORY_IDS.filter((category) => iconByCategory.has(category)).map((category) => ({
-    id: category,
-    label: category.replaceAll('-', ' '),
-    serviceIconId: iconByCategory.get(category)!
-  }));
+  for (const record of data.records)
+    if (!iconByCategory.has(record.category))
+      iconByCategory.set(record.category, record.serviceIconId);
+  return SPECIAL_CATEGORY_IDS.filter((category) => iconByCategory.has(category)).map(
+    (category) => ({
+      id: category,
+      label: category.replaceAll('-', ' '),
+      serviceIconId: iconByCategory.get(category)!,
+    }),
+  );
 }

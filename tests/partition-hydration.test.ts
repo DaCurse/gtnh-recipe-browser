@@ -3,7 +3,13 @@ import { DatasetRepository } from '../src/lib/dataset';
 import type { CatalogEntry } from '../src/lib/types';
 
 const entry = (id: string, kind: CatalogEntry['kind']): CatalogEntry => ({
-  id, kind, name: id, mod: 'fixture', tooltip: [], color: '#fff', glyph: 'x'
+  id,
+  kind,
+  name: id,
+  mod: 'fixture',
+  tooltip: [],
+  color: '#fff',
+  glyph: 'x',
 });
 function partition(kind: 'groups' | 'details') {
   const ids = Array.from({ length: 32 }, (_, index) => `${kind}-${index}`);
@@ -11,17 +17,24 @@ function partition(kind: 'groups' | 'details') {
   entries.set('member', entry('member', 'item'));
   const records = ids.map((id, index) => ({ id, numericId: index, itemIds: ['member'] }));
   let release!: () => void;
-  const gate = new Promise<typeof records>((resolve) => { release = () => resolve(records); });
+  const gate = new Promise<typeof records>((resolve) => {
+    release = () => resolve(records);
+  });
   const repository: DatasetRepository = Object.create(DatasetRepository.prototype);
   Object.assign(repository, {
-    manifest: { formatVersion: 7, goodsDetailShards: [{ id: 'details', prefix: '' }], ingredientGroupShards: [{ id: 'groups', prefix: '' }] },
+    manifest: {
+      formatVersion: 7,
+      goodsDetailShards: [{ id: 'details', prefix: '' }],
+      ingredientGroupShards: [{ id: 'groups', prefix: '' }],
+    },
     entriesById: entries,
     goodsIds: new Set(kind === 'details' ? ids : ['member']),
     goodsDetails: new Map(),
     additionalMachineCapabilities: new Map(),
     ingredientGroups: new Map(kind === 'groups' ? ids.map((id) => [id, { id, itemIds: [] }]) : []),
     hydratedGroups: new Set(),
-    detailShard: vi.fn(() => gate), groupShard: vi.fn(() => gate)
+    detailShard: vi.fn(() => gate),
+    groupShard: vi.fn(() => gate),
   });
   return { repository, ids, entries, release };
 }

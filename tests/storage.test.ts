@@ -35,7 +35,7 @@ function dataset(datasetId: string, active: boolean, assetHashes: string[]): Dat
     totalBytes: 3,
     active,
     assetHashes,
-    updatedAt: 1
+    updatedAt: 1,
   };
 }
 
@@ -49,12 +49,12 @@ function seedLegacyDatabase(): Promise<void> {
         sha256: 'legacy-hash',
         bytes: new Uint8Array([1, 2, 3]).buffer,
         byteLength: 3,
-        cachedAt: 1
+        cachedAt: 1,
       });
       db.createObjectStore('metadata', { keyPath: 'key' });
       db.createObjectStore('catalogs', { keyPath: 'datasetId' }).put({
         datasetId: 'legacy-catalog',
-        expanded: new Array(10).fill('duplicate')
+        expanded: new Array(10).fill('duplicate'),
       });
     };
     request.onerror = () => reject(request.error);
@@ -92,15 +92,18 @@ function inspectDatabase(): Promise<{ storeNames: string[]; assetIndex: unknown 
 
 describe('IndexedDB dataset lifecycle', () => {
   it('reports physical, logical, shared, and per-dataset marginal storage', () => {
-    const report = calculateDatasetStorageReport([
-      dataset('usage-a', false, ['shared', 'only-a']),
-      dataset('usage-b', false, ['shared', 'only-b'])
-    ], new Map([
-      ['shared', 10],
-      ['only-a', 2],
-      ['only-b', 3],
-      ['orphan', 7]
-    ]));
+    const report = calculateDatasetStorageReport(
+      [
+        dataset('usage-a', false, ['shared', 'only-a']),
+        dataset('usage-b', false, ['shared', 'only-b']),
+      ],
+      new Map([
+        ['shared', 10],
+        ['only-a', 2],
+        ['only-b', 3],
+        ['orphan', 7],
+      ]),
+    );
 
     expect(report).toMatchObject({
       logicalBytes: 25,
@@ -108,21 +111,21 @@ describe('IndexedDB dataset lifecycle', () => {
       sharedSavingsBytes: 10,
       untrackedBytes: 7,
       sharedAssets: 1,
-      untrackedAssets: 1
+      untrackedAssets: 1,
     });
     expect(report.byDataset['usage-a']).toMatchObject({
       cachedBytes: 12,
       exclusiveBytes: 2,
       sharedBytes: 10,
       exclusiveAssets: 1,
-      sharedAssets: 1
+      sharedAssets: 1,
     });
     expect(report.byDataset['usage-b']).toMatchObject({
       cachedBytes: 13,
       exclusiveBytes: 3,
       sharedBytes: 10,
       exclusiveAssets: 1,
-      sharedAssets: 1
+      sharedAssets: 1,
     });
   });
 
@@ -133,7 +136,7 @@ describe('IndexedDB dataset lifecycle', () => {
     expect(await getCachedAsset('legacy-hash')).toEqual(new Uint8Array([1, 2, 3]));
     expect(await inspectDatabase()).toEqual({
       storeNames: ['asset-index', 'assets', 'datasets', 'metadata', 'runtime-cache'],
-      assetIndex: { sha256: 'legacy-hash', byteLength: 3 }
+      assetIndex: { sha256: 'legacy-hash', byteLength: 3 },
     });
 
     await removeCachedAsset('legacy-hash');
@@ -144,9 +147,11 @@ describe('IndexedDB dataset lifecycle', () => {
     const getAll = vi.spyOn(IDBObjectStore.prototype, 'getAll');
     try {
       expect((await cachedAssetSizes()).get('indexed-size')).toBe(4);
-      expect(getAll.mock.contexts.some((context) => (
-        (context as unknown as IDBObjectStore).name === 'assets'
-      ))).toBe(false);
+      expect(
+        getAll.mock.contexts.some(
+          (context) => (context as unknown as IDBObjectStore).name === 'assets',
+        ),
+      ).toBe(false);
     } finally {
       getAll.mockRestore();
       await removeCachedAsset('indexed-size');
@@ -162,11 +167,10 @@ describe('IndexedDB dataset lifecycle', () => {
     await saveDataset(dataset('version-b', false, ['shared', 'only-b']));
 
     await activateDataset('version-b');
-    expect((await listDatasets()).map(({ datasetId, active }) => [datasetId, active]))
-      .toEqual([
-        ['version-a', false],
-        ['version-b', true]
-      ]);
+    expect((await listDatasets()).map(({ datasetId, active }) => [datasetId, active])).toEqual([
+      ['version-a', false],
+      ['version-b', true],
+    ]);
 
     await removeDataset('version-a');
     expect(await getCachedAsset('only-a')).toBeNull();
@@ -195,13 +199,13 @@ describe('IndexedDB dataset lifecycle', () => {
     await Promise.all([
       recordDatasetAsset(datasetId, firstHash, 4),
       recordDatasetAsset(datasetId, secondHash, 2),
-      recordDatasetAsset(datasetId, firstHash, 4)
+      recordDatasetAsset(datasetId, firstHash, 4),
     ]);
 
     expect(await getDataset(datasetId)).toMatchObject({
       assetHashes: [firstHash, secondHash],
       storedBytes: 6,
-      status: 'partial'
+      status: 'partial',
     });
 
     await removeCachedAsset(firstHash);
@@ -215,21 +219,38 @@ describe('IndexedDB dataset lifecycle', () => {
     await cacheAsset('batch-b', new Uint8Array([4, 5]));
     let blobReads = 0;
     const original = IDBObjectStore.prototype.get;
-    const spy = vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (this: IDBObjectStore, key) {
+    const spy = vi.spyOn(IDBObjectStore.prototype, 'get').mockImplementation(function (
+      this: IDBObjectStore,
+      key,
+    ) {
       if (this.name === 'assets') blobReads++;
       return original.call(this, key);
     });
     try {
-      const assets = [{ sha256: 'batch-a', bytes: 3 }, { sha256: 'batch-b', bytes: 2 },
-        { sha256: 'batch-a', bytes: 3 }];
+      const assets = [
+        { sha256: 'batch-a', bytes: 3 },
+        { sha256: 'batch-b', bytes: 2 },
+        { sha256: 'batch-a', bytes: 3 },
+      ];
       await Promise.all([recordDatasetAssets(id, assets), recordDatasetAssets(id, assets)]);
       expect(blobReads).toBe(2);
       await recordDatasetAssets(id, assets);
       expect(blobReads).toBe(2);
-      expect(await getDataset(id)).toMatchObject({ assetHashes: ['batch-a', 'batch-b'], storedBytes: 5 });
-      await recordDatasetAssets(id, [{ sha256: 'absent', bytes: 99 }, { sha256: 'batch-wrong', bytes: -1 }]);
-      expect(await getDataset(id)).toMatchObject({ assetHashes: ['batch-a', 'batch-b'], storedBytes: 5 });
-    } finally { spy.mockRestore(); }
+      expect(await getDataset(id)).toMatchObject({
+        assetHashes: ['batch-a', 'batch-b'],
+        storedBytes: 5,
+      });
+      await recordDatasetAssets(id, [
+        { sha256: 'absent', bytes: 99 },
+        { sha256: 'batch-wrong', bytes: -1 },
+      ]);
+      expect(await getDataset(id)).toMatchObject({
+        assetHashes: ['batch-a', 'batch-b'],
+        storedBytes: 5,
+      });
+    } finally {
+      spy.mockRestore();
+    }
   });
 
   it('prunes obsolete rows after replacement while retaining current shared blobs', async () => {
@@ -240,33 +261,36 @@ describe('IndexedDB dataset lifecycle', () => {
     await cacheAsset('same-version-only', new Uint8Array([6]));
     await cacheAsset('untracked-old-object', new Uint8Array([5]));
     await saveDataset(dataset('migration-version', false, ['migration-only', 'migration-shared']));
-    const otherLegacy = dataset('other-legacy-version', true, ['other-legacy-only', 'migration-shared']);
+    const otherLegacy = dataset('other-legacy-version', true, [
+      'other-legacy-only',
+      'migration-shared',
+    ]);
     otherLegacy.gtnhVersion = 'other-version';
     await saveDataset(otherLegacy);
     await saveDataset({
       ...dataset('current-version', false, ['migration-shared', 'current-only']),
-      cacheVersion: CURRENT_DATASET_CACHE_VERSION
+      cacheVersion: CURRENT_DATASET_CACHE_VERSION,
     });
     await saveDataset({
       ...dataset('migration-version', false, ['migration-shared']),
-      cacheVersion: CURRENT_DATASET_CACHE_VERSION
+      cacheVersion: CURRENT_DATASET_CACHE_VERSION,
     });
     const sameVersionObsolete = {
       ...dataset('same-version-obsolete', false, ['same-version-only']),
       gtnhVersion: 'migration-version',
-      cacheVersion: CURRENT_DATASET_CACHE_VERSION
+      cacheVersion: CURRENT_DATASET_CACHE_VERSION,
     };
     await saveDataset(sameVersionObsolete);
 
     await migrateObsoleteDatasetStates('migration-version', [
       dataset('migration-version', false, ['migration-only', 'migration-shared']),
       otherLegacy,
-      sameVersionObsolete
+      sameVersionObsolete,
     ]);
 
     expect(await getDataset('migration-version')).toMatchObject({
       cacheVersion: CURRENT_DATASET_CACHE_VERSION,
-      assetHashes: ['migration-shared']
+      assetHashes: ['migration-shared'],
     });
     expect(await getDataset('other-legacy-version')).toBeNull();
     expect(await getDataset('same-version-obsolete')).toBeNull();

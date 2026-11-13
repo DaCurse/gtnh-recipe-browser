@@ -9,7 +9,7 @@ const source: CatalogEntry = {
   kind: 'item',
   tooltip: [],
   color: '#9a6',
-  glyph: 'T'
+  glyph: 'T',
 };
 
 describe('global special context item', () => {
@@ -17,7 +17,7 @@ describe('global special context item', () => {
     const entry = createSpecialContextEntry(
       source,
       { id: 'meteor-ritual', label: 'Meteor Rituals', serviceIconId: 'service:meteor' },
-      { label: 'Meteor Rituals', goodsId: 'i:test:meteor:0' }
+      { label: 'Meteor Rituals', goodsId: 'i:test:meteor:0' },
     );
 
     expect(entry).toMatchObject({
@@ -25,7 +25,7 @@ describe('global special context item', () => {
       name: 'All Meteor Rituals',
       mod: 'NEI Special Data',
       kind: 'item',
-      tooltipLayout: 'compact'
+      tooltipLayout: 'compact',
     });
     expect(entry.tooltip[0]).toContain('all meteor rituals');
   });

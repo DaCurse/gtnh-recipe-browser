@@ -23,7 +23,7 @@ export interface FluidRecipeScope {
  */
 export function fluidRecipeScope(
   entryId: string,
-  goods: ReadonlyMap<string, FluidContainerGoodsReference>
+  goods: ReadonlyMap<string, FluidContainerGoodsReference>,
 ): FluidRecipeScope | null {
   const selected = goods.get(entryId);
   if (!selected) return null;
@@ -35,6 +35,6 @@ export function fluidRecipeScope(
   return {
     fluidId,
     memberIds: new Set([fluidId, ...(fluid.containerItemIds ?? []), entryId]),
-    selectedContainer: selected.kind === 'item' ? selected.container ?? null : null
+    selectedContainer: selected.kind === 'item' ? (selected.container ?? null) : null,
   };
 }

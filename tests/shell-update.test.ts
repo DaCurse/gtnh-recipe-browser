@@ -1,14 +1,21 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { initializeShellUpdate } from '../src/lib/shellUpdate';
 
-afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); vi.useRealTimers(); });
+afterEach(() => {
+  vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
+  vi.useRealTimers();
+});
 
 describe('shell update before startup', () => {
   function setup(register: () => Promise<unknown>) {
     vi.stubEnv('PROD', true);
     vi.stubGlobal('__SHELL_REVISION__', 'test-shell');
     const events = new EventTarget();
-    const workers = Object.assign(events, { controller: { postMessage: vi.fn(), state: 'activated' }, register: vi.fn(register) });
+    const workers = Object.assign(events, {
+      controller: { postMessage: vi.fn(), state: 'activated' },
+      register: vi.fn(register),
+    });
     vi.stubGlobal('navigator', { serviceWorker: workers });
     vi.stubGlobal('document', { baseURI: 'https://example.test/app/' });
     vi.stubGlobal('location', { reload: vi.fn() });
@@ -21,8 +28,13 @@ describe('shell update before startup', () => {
     const startup = initializeShellUpdate();
     await vi.advanceTimersByTimeAsync(150);
     await startup;
-    expect(workers.controller.postMessage).toHaveBeenCalledWith({ type: 'GTNH_SHELL_READY', revision: 'test-shell' });
-    expect(workers.register).toHaveBeenCalledWith(new URL('https://example.test/app/sw.js'), { updateViaCache: 'none' });
+    expect(workers.controller.postMessage).toHaveBeenCalledWith({
+      type: 'GTNH_SHELL_READY',
+      revision: 'test-shell',
+    });
+    expect(workers.register).toHaveBeenCalledWith(new URL('https://example.test/app/sw.js'), {
+      updateViaCache: 'none',
+    });
   });
 
   it('allows startup after failed worker installation', async () => {

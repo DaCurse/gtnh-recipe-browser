@@ -88,13 +88,13 @@ identity, alternatives, cycles, branching proofs, depth limits, cancellation, an
 
 ## Published coverage
 
-| Dataset | Recipes | Nodes | Compressed bytes |
-| --- | ---: | ---: | ---: |
-| 2.9.0 | 287,414 | 135,962 | 4,743,580 |
-| 2.9.0-RC-1 | 286,630 | 135,703 | 4,703,131 |
-| 2.9.0-beta-3 | 286,455 | 135,596 | 4,701,142 |
-| 2.9.0-beta-2 | 285,691 | 135,206 | 4,688,189 |
-| 2.8.0 | 190,080 | 43,265 | 2,123,555 |
+| Dataset      | Recipes |   Nodes | Compressed bytes |
+| ------------ | ------: | ------: | ---------------: |
+| 2.9.0        | 287,414 | 135,962 |        4,743,580 |
+| 2.9.0-RC-1   | 286,630 | 135,703 |        4,703,131 |
+| 2.9.0-beta-3 | 286,455 | 135,596 |        4,701,142 |
+| 2.9.0-beta-2 | 285,691 | 135,206 |        4,688,189 |
+| 2.8.0        | 190,080 |  43,265 |        2,123,555 |
 
 Regression examples include the invalid Pu241 → borrowed/recovered tungsten → Pu239 path and the
 invalid oil → lubricant → recovered cell → externally supplied diesel path. The actual 2.9.0 oil

@@ -18,7 +18,7 @@ import {
   requiredArgument,
   sha256File,
   auditRenderedItemPaths,
-  validateCombinedTooltipSchema
+  validateCombinedTooltipSchema,
 } from './lib';
 import { readSpecialSidecar, validateCropsNhSeedReferences } from './special';
 import { validateQuestExport, validateQuestGoods, type QuestExportReport } from './quest-items';
@@ -35,20 +35,15 @@ function usage(): string {
     '',
     'The source exporter and processed input remain ShadowTheAge format-v5.',
     'This command emits and verifies the canonical shared format-7 pack.',
-    'Reuse paths are existing format-7 build or published dataset directories whose record pages may be frozen.'
+    'Reuse paths are existing format-7 build or published dataset directories whose record pages may be frozen.',
   ].join('\n');
 }
 
-function run(
-  command: string,
-  args: string[],
-  cwd?: string,
-  environment?: NodeJS.ProcessEnv
-): void {
+function run(command: string, args: string[], cwd?: string, environment?: NodeJS.ProcessEnv): void {
   const result = spawnSync(command, args, {
     cwd,
     stdio: 'inherit',
-    env: environment ? { ...process.env, ...environment } : process.env
+    env: environment ? { ...process.env, ...environment } : process.env,
   });
   if (result.error) throw result.error;
   if (result.status !== 0) throw new Error(`${command} exited with status ${result.status}`);
@@ -61,13 +56,13 @@ if (rawArguments.includes('--help') || rawArguments.includes('-h')) {
 }
 const args = argumentsMap(rawArguments);
 const repositoryRoot = process.cwd();
-if (args.has('format-version')) throw new Error('The source exporter emits format 5 only; --format-version is obsolete');
+if (args.has('format-version'))
+  throw new Error('The source exporter emits format 5 only; --format-version is obsolete');
 const sharedLayoutPath = args.get('layout');
 if (!sharedLayoutPath) throw new Error('--layout is required for the canonical pack');
 const reusePacksArgument = args.get('reuse-packs');
-const reusePacks = reusePacksArgument === undefined
-  ? []
-  : reusePacksArgument.split(',').map((path) => path.trim());
+const reusePacks =
+  reusePacksArgument === undefined ? [] : reusePacksArgument.split(',').map((path) => path.trim());
 if (reusePacks.some((path) => path.length === 0)) {
   throw new Error('--reuse-packs must contain comma-separated pack directories');
 }
@@ -95,15 +90,17 @@ if ((await stat(imageZip)).size < 10_000_000) {
 await validateCombinedTooltipSchema(scripts[0]!, ['THAUMCRAFT']);
 const imageEntries = execFileSync('unzip', ['-Z1', imageZip], {
   encoding: 'utf8',
-  maxBuffer: 256 * 1024 * 1024
-}).split('\n').filter(Boolean);
+  maxBuffer: 256 * 1024 * 1024,
+})
+  .split('\n')
+  .filter(Boolean);
 const imageAudit = await auditRenderedItemPaths(scripts[0]!, imageEntries);
 if (imageAudit.missingVariantPaths > 0) {
   throw new Error(
-    `NESQL image archive is missing ${imageAudit.missingVariantPaths.toLocaleString()} of `
-    + `${imageAudit.totalItemPaths.toLocaleString()} item renders referenced by the database. `
-    + `The exporter must snapshot image paths before mutable renderers run. Examples: `
-    + imageAudit.examples.join(', ')
+    `NESQL image archive is missing ${imageAudit.missingVariantPaths.toLocaleString()} of ` +
+      `${imageAudit.totalItemPaths.toLocaleString()} item renders referenced by the database. ` +
+      `The exporter must snapshot image paths before mutable renderers run. Examples: ` +
+      imageAudit.examples.join(', '),
   );
 }
 
@@ -113,7 +110,7 @@ try {
 } catch (error) {
   throw new Error(
     `NESQL export is missing ${sidecarPath}; the NEI special-data overlay must emit all requested categories.`,
-    { cause: error }
+    { cause: error },
   );
 }
 // Fail malformed or incomplete special exports before the expensive .NET
@@ -123,10 +120,14 @@ validateCropsNhSeedReferences(specialData);
 const specialDataPath = sidecarPath;
 const questRequestsPath = join(session.workDirectory, 'quest-item-requests.json');
 const questReportPath = join(nesqlDirectory, 'browser-quest-items.json');
-const questRequests = JSON.parse(await readFile(questRequestsPath, 'utf8')) as { references: QuestItemReference[] };
+const questRequests = JSON.parse(await readFile(questRequestsPath, 'utf8')) as {
+  references: QuestItemReference[];
+};
 const questReport = JSON.parse(await readFile(questReportPath, 'utf8')) as QuestExportReport;
 validateQuestExport(questRequests.references, questReport, session.gtnhVersion);
-console.log(`Quest item inventory: ${questReport.references.length} references, ${questReport.references.filter(row => row.status === 'unavailable').length} explicitly unavailable in the game registry.`);
+console.log(
+  `Quest item inventory: ${questReport.references.length} references, ${questReport.references.filter((row) => row.status === 'unavailable').length} explicitly unavailable in the game registry.`,
+);
 
 const processedDirectory = join(outputWorkDirectory, 'processed');
 const processorDirectory = join(outputWorkDirectory, 'processor');
@@ -138,33 +139,37 @@ for (const path of [firstBuild, secondBuild, finalPack]) {
 }
 const browserPolicyPatch = join(
   repositoryRoot,
-  'tools/data-export/patches/browser-catalog-policy.patch'
+  'tools/data-export/patches/browser-catalog-policy.patch',
 );
 const namedOreDictionariesPatch = join(
   repositoryRoot,
-  'tools/data-export/patches/named-ore-dictionaries.patch'
+  'tools/data-export/patches/named-ore-dictionaries.patch',
 );
 const specialRetentionPatch = join(
   repositoryRoot,
-  'tools/data-export/patches/special-retention.patch'
+  'tools/data-export/patches/special-retention.patch',
 );
 const specialRetentionSource = join(
   repositoryRoot,
-  'tools/data-export/patches/SpecialRetention.cs'
+  'tools/data-export/patches/SpecialRetention.cs',
 );
 if (!resumeProcessed) {
   await assertPathMissing(processedDirectory, 'Process output');
   await assertPathMissing(processorDirectory, 'Process output');
   await mkdir(processedDirectory, { recursive: true });
   await cp(join(repositoryRoot, 'gtnh@ShadowTheAge/export'), processorDirectory, {
-    recursive: true
+    recursive: true,
   });
   const processorPatch = join(repositoryRoot, 'tools/data-export/patches/processor-2.9.patch');
   run('patch', ['--dry-run', '--batch', '-p1', '-i', processorPatch], processorDirectory);
   run('patch', ['--batch', '-p1', '-i', processorPatch], processorDirectory);
   run('patch', ['--dry-run', '--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
   run('patch', ['--batch', '-p1', '-i', browserPolicyPatch], processorDirectory);
-  run('patch', ['--dry-run', '--batch', '-p1', '-i', namedOreDictionariesPatch], processorDirectory);
+  run(
+    'patch',
+    ['--dry-run', '--batch', '-p1', '-i', namedOreDictionariesPatch],
+    processorDirectory,
+  );
   run('patch', ['--batch', '-p1', '-i', namedOreDictionariesPatch], processorDirectory);
   run('patch', ['--dry-run', '--batch', '-p1', '-i', specialRetentionPatch], processorDirectory);
   run('patch', ['--batch', '-p1', '-i', specialRetentionPatch], processorDirectory);
@@ -184,34 +189,43 @@ if (
   !patchedItemPolicy.includes('BrowserCatalogPolicy.RetainRecipeConnectedItems') ||
   !patchedAtlasBuilder.includes('i >> IconAtlas.DimensionBits') ||
   !patchedAtlasBuilder.includes('hasVariantIdentity') ||
-  !patchedAtlasBuilder.includes('Mutable item renderers must preserve their persisted image path') ||
+  !patchedAtlasBuilder.includes(
+    'Mutable item renderers must preserve their persisted image path',
+  ) ||
   !patchedProcessor.includes('for (var i = 1; i < parts.Length; i++)') ||
   !patchedConverter.includes('GetRepositoryGroups()') ||
   !patchedConverter.includes('MarkOreDictionaryItems()') ||
   !patchedConverter.includes('SpecialRetention.Mark') ||
   !patchedConverter.includes('SpecialRetention.MarkOreDictionaries') ||
   !patchedDatabaseParser.includes('DatabasePath') ||
-  !(await access(join(processorDirectory, 'SpecialRetention.cs')).then(() => true).catch(() => false))
+  !(await access(join(processorDirectory, 'SpecialRetention.cs'))
+    .then(() => true)
+    .catch(() => false))
 ) {
   throw new Error('Processor compatibility patch did not produce the expected source');
 }
 const previousData = join(repositoryRoot, 'tests/fixtures/shadowtheage-v5-2.8.0/data.bin');
 if (!resumeProcessed) {
-  run('dotnet', [
-    'run',
-    '--project',
-    join(processorDirectory, 'export.csproj'),
-    '--',
-    nesqlDirectory,
-    '--output',
-    processedDirectory,
-    '--previous',
-    previousData
-  ], repositoryRoot, {
-    // Keep transient hash/remap allocations from exhausting a 16 GiB WSL environment.
-    // .NET environment-variable percentages use hexadecimal notation: 0x32 = 50%.
-    DOTNET_GCHeapHardLimitPercent: '0x32'
-  });
+  run(
+    'dotnet',
+    [
+      'run',
+      '--project',
+      join(processorDirectory, 'export.csproj'),
+      '--',
+      nesqlDirectory,
+      '--output',
+      processedDirectory,
+      '--previous',
+      previousData,
+    ],
+    repositoryRoot,
+    {
+      // Keep transient hash/remap allocations from exhausting a 16 GiB WSL environment.
+      // .NET environment-variable percentages use hexadecimal notation: 0x32 = 50%.
+      DOTNET_GCHeapHardLimitPercent: '0x32',
+    },
+  );
 }
 
 const dataPath = join(processedDirectory, 'data.bin');
@@ -219,30 +233,42 @@ const atlasPath = join(processedDirectory, 'atlas.webp');
 const data = await readFile(dataPath);
 const atlas = await readFile(atlasPath);
 const repository = decodeFormat5(data);
-validateQuestGoods(questReport, new Set([...repository.items, ...repository.fluids, ...repository.oreDictionaries, ...repository.ingredientGroups].map(goods => goods.id)));
+validateQuestGoods(
+  questReport,
+  new Set(
+    [
+      ...repository.items,
+      ...repository.fluids,
+      ...repository.oreDictionaries,
+      ...repository.ingredientGroups,
+    ].map((goods) => goods.id),
+  ),
+);
 if (repository.items.length < 75_000 || repository.recipes.length < 200_000) {
   throw new Error(
-    `Processed repository is unexpectedly small: ${repository.items.length} items, `
-    + `${repository.recipes.length} recipes`
+    `Processed repository is unexpectedly small: ${repository.items.length} items, ` +
+      `${repository.recipes.length} recipes`,
   );
 }
 const retainedGtTools = repository.items.filter(
   (item) =>
-    item.searchable
-    && item.mod.toLowerCase() === 'gregtech'
-    && item.internalName === 'gt.metatool.01'
+    item.searchable &&
+    item.mod.toLowerCase() === 'gregtech' &&
+    item.internalName === 'gt.metatool.01',
 );
 const craftableGtTools = retainedGtTools.filter((item) => item.productionRecipeIds.length > 0);
 if (retainedGtTools.length < 10_000 || craftableGtTools.length < 10_000) {
   throw new Error(
-    `Browser retention policy is incomplete: ${retainedGtTools.length} searchable GT tools, `
-    + `${craftableGtTools.length} with production recipes`
+    `Browser retention policy is incomplete: ${retainedGtTools.length} searchable GT tools, ` +
+      `${craftableGtTools.length} with production recipes`,
   );
 }
 const searchableItems = repository.items.filter((item) => item.searchable);
 const tooltips = searchableItems.map((item) => item.tooltip ?? '').filter(Boolean);
 if (tooltips.length < searchableItems.length * 0.25) {
-  throw new Error(`Only ${tooltips.length} of ${searchableItems.length} searchable items have tooltips`);
+  throw new Error(
+    `Only ${tooltips.length} of ${searchableItems.length} searchable items have tooltips`,
+  );
 }
 if (!tooltips.some((tooltip) => tooltip.includes('<span') || tooltip.includes('§'))) {
   throw new Error('Processed repository has no colored tooltip formatting');
@@ -254,25 +280,34 @@ if (!tooltips.some((tooltip) => tooltip.includes('\n') || /<br\s*\/?>/i.test(too
 // Extend the published trie using processed records before either deterministic build.
 // The source layout stays immutable; the resolved layout is release provenance in the workspace.
 const baseLayout = JSON.parse(await readFile(baseLayoutPath, 'utf8')) as SharedPartitionLayout;
-const layoutSpecial = expandGtOreSpecialData(repairSpecialServiceIcons(specialData, repository), repository);
+const layoutSpecial = expandGtOreSpecialData(
+  repairSpecialServiceIcons(specialData, repository),
+  repository,
+);
 const releaseLayout = extendSharedLayout(baseLayout, [repository], [layoutSpecial]);
 await writeFile(resolvedLayoutPath, `${JSON.stringify(releaseLayout, null, 2)}\n`);
 
 const sourceRevision = combinedRevision(data, atlas);
 const machineCraftersPath = join(outputWorkDirectory, 'machine-crafters.json');
-run('python3', [join(repositoryRoot, 'tools/data-export/machine-crafters.py'), '--script', scripts[0]!, '--output', machineCraftersPath]);
+run('python3', [
+  join(repositoryRoot, 'tools/data-export/machine-crafters.py'),
+  '--script',
+  scripts[0]!,
+  '--output',
+  machineCraftersPath,
+]);
 const options = {
   dataPath,
   atlasPath,
   gtnhVersion: session.gtnhVersion,
   revision: sourceRevision,
   machineCraftersPath,
-  ...(specialDataPath ? { specialDataPath } : {})
+  ...(specialDataPath ? { specialDataPath } : {}),
 };
 const buildOptions = {
   ...options,
   layoutPath: resolvedLayoutPath,
-  reusePacks: resolvedReusePacks
+  reusePacks: resolvedReusePacks,
 };
 const firstBuildResult = await buildPack({ ...buildOptions, outputDirectory: firstBuild });
 const datasetId = firstBuildResult.manifest.datasetId;
@@ -290,7 +325,7 @@ const verification = await verifyPack({
   atlasPath,
   specialDataPath,
   machineCraftersPath,
-  spriteSamples: 100
+  spriteSamples: 100,
 });
 await verifyPack({
   packDirectory: secondBuild,
@@ -299,7 +334,7 @@ await verifyPack({
   atlasPath,
   specialDataPath,
   machineCraftersPath,
-  spriteSamples: 100
+  spriteSamples: 100,
 });
 // Windows virus scanners can briefly hold a freshly verified asset open.
 await rm(secondBuild, { recursive: true, maxRetries: 20, retryDelay: 500 });
@@ -316,44 +351,50 @@ const provenance = {
   processor: session.processor,
   browserCatalogPolicy: {
     mode: 'recipe-connected',
-    patchSha256: await sha256File(browserPolicyPatch)
+    patchSha256: await sha256File(browserPolicyPatch),
   },
   namedOreDictionaries: {
     mode: 'preserve-all-names-and-separate-anonymous-groups',
-    patchSha256: await sha256File(namedOreDictionariesPatch)
+    patchSha256: await sha256File(namedOreDictionariesPatch),
   },
   toolchains: session.toolchains,
-  questItems: { requestsSha256: await sha256File(questRequestsPath), reportSha256: await sha256File(questReportPath),
-    retentionSha256: await sha256File(specialRetentionSource), referenceCount: questReport.references.length,
-    unavailableCount: questReport.references.filter(row => row.status === 'unavailable').length },
+  questItems: {
+    requestsSha256: await sha256File(questRequestsPath),
+    reportSha256: await sha256File(questReportPath),
+    retentionSha256: await sha256File(specialRetentionSource),
+    referenceCount: questReport.references.length,
+    unavailableCount: questReport.references.filter((row) => row.status === 'unavailable').length,
+  },
   previousData: {
     path: 'tests/fixtures/shadowtheage-v5-2.8.0/data.bin',
-    sha256: await sha256File(previousData)
+    sha256: await sha256File(previousData),
   },
   processed: {
     machineCrafters: { sha256: await sha256File(machineCraftersPath) },
     dataBin: { bytes: data.byteLength, sha256: await sha256File(dataPath) },
-    atlasWebp: { bytes: atlas.byteLength, sha256: await sha256File(atlasPath) }
+    atlasWebp: { bytes: atlas.byteLength, sha256: await sha256File(atlasPath) },
   },
   pack: {
     formatVersion: 7,
     sourceFormatVersion: repository.formatVersion,
     sharedLayoutSha256: await sha256File(resolvedLayoutPath),
     baseLayoutSha256: await sha256File(baseLayoutPath),
-    reusePacks: resolvedReusePacks
+    reusePacks: resolvedReusePacks,
   },
   deterministicPackSha256: firstDigest,
-  verification
+  verification,
 };
 await writeFile(
   join(outputWorkDirectory, 'provenance.json'),
   `${JSON.stringify(provenance, null, 2)}\n`,
-  { flag: 'wx' }
+  { flag: 'wx' },
 );
 const resultPath = join(outputWorkDirectory, 'process-result.json');
 await writeFile(
   resultPath,
   `${JSON.stringify({ datasetId, revision, packDirectory: finalPack, verification }, null, 2)}\n`,
-  { flag: 'wx' }
+  { flag: 'wx' },
 );
-console.log(JSON.stringify({ result: resultPath, pack: finalPack, datasetId, verification }, null, 2));
+console.log(
+  JSON.stringify({ result: resultPath, pack: finalPack, datasetId, verification }, null, 2),
+);

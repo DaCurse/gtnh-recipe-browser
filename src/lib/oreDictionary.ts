@@ -24,41 +24,47 @@ export interface OreDictionaryDefinition extends OreDictionaryReference {
 export function productionFallbackDictionary(
   entryId: string,
   dictionaries: Iterable<OreDictionaryDefinition>,
-  hasProduction: (itemId: string) => boolean
+  hasProduction: (itemId: string) => boolean,
 ): OreDictionaryDefinition | undefined {
   return [...dictionaries]
-    .filter((dictionary) =>
-      dictionary.itemIds.includes(entryId) &&
-      dictionary.itemIds.some((itemId) => itemId !== entryId && hasProduction(itemId)))
-    .sort((left, right) =>
-      left.itemIds.length - right.itemIds.length || left.id.localeCompare(right.id))[0];
+    .filter(
+      (dictionary) =>
+        dictionary.itemIds.includes(entryId) &&
+        dictionary.itemIds.some((itemId) => itemId !== entryId && hasProduction(itemId)),
+    )
+    .sort(
+      (left, right) =>
+        left.itemIds.length - right.itemIds.length || left.id.localeCompare(right.id),
+    )[0];
 }
 
 export function ingredientMatchesEntry(
   ingredient: RecipeIngredientReference,
   entryId: string,
   selectedMembers: ReadonlySet<string> | null,
-  dictionaries: ReadonlyMap<string, OreDictionaryReference>
+  dictionaries: ReadonlyMap<string, OreDictionaryReference>,
 ): boolean {
   if (selectedMembers) {
     if (ingredient.kind !== 'oreDict' && ingredient.kind !== 'itemGroup') {
       return selectedMembers.has(ingredient.goodsId);
     }
-    return dictionaries.get(ingredient.goodsId)?.itemIds.some((id) => selectedMembers.has(id)) ?? false;
+    return (
+      dictionaries.get(ingredient.goodsId)?.itemIds.some((id) => selectedMembers.has(id)) ?? false
+    );
   }
   if (ingredient.goodsId === entryId) return true;
-  return (ingredient.kind === 'oreDict' || ingredient.kind === 'itemGroup') &&
-    (dictionaries.get(ingredient.goodsId)?.itemIds.includes(entryId) ?? false);
+  return (
+    (ingredient.kind === 'oreDict' || ingredient.kind === 'itemGroup') &&
+    (dictionaries.get(ingredient.goodsId)?.itemIds.includes(entryId) ?? false)
+  );
 }
 
 export function materializeIngredient(
   ingredient: RecipeIngredientReference,
-  dictionaries: ReadonlyMap<string, OreDictionaryReference>
+  dictionaries: ReadonlyMap<string, OreDictionaryReference>,
 ): Ingredient {
   const grouped = ingredient.kind === 'oreDict' || ingredient.kind === 'itemGroup';
-  const alternatives = grouped
-    ? dictionaries.get(ingredient.goodsId)?.itemIds ?? []
-    : undefined;
+  const alternatives = grouped ? (dictionaries.get(ingredient.goodsId)?.itemIds ?? []) : undefined;
   return {
     id: ingredient.goodsId,
     amount: ingredient.amount,
@@ -66,9 +72,10 @@ export function materializeIngredient(
     slot: ingredient.slot,
     kind: ingredient.kind,
     ingredientGroupId: grouped ? ingredient.goodsId : undefined,
-    ingredientGroupKind: ingredient.kind === 'oreDict' || ingredient.kind === 'itemGroup'
-      ? ingredient.kind
-      : undefined,
-    alternatives
+    ingredientGroupKind:
+      ingredient.kind === 'oreDict' || ingredient.kind === 'itemGroup'
+        ? ingredient.kind
+        : undefined,
+    alternatives,
   };
 }

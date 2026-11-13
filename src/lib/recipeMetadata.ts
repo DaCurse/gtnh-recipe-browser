@@ -10,8 +10,38 @@ export interface GtPower {
 }
 
 const fuelTypes = ['Diesel', 'Gas', 'Hot', 'Dense Steam', 'Plasma', 'Magic'];
-const voltageTiers = ['LV', 'MV', 'HV', 'EV', 'IV', 'LuV', 'ZPM', 'UV', 'UHV', 'UEV', 'UIV', 'UMV', 'UXV', 'MAX'];
-const coilTiers = ['Cupronickel', 'Kanthal', 'Nichrome', 'TPV', 'HSS-G', 'HSS-S', 'Naquadah', 'Naquadah Alloy', 'Trinium', 'Electrum Flux', 'Awakened Draconium', 'Infinity', 'Hypogen', 'Eternal'];
+const voltageTiers = [
+  'LV',
+  'MV',
+  'HV',
+  'EV',
+  'IV',
+  'LuV',
+  'ZPM',
+  'UV',
+  'UHV',
+  'UEV',
+  'UIV',
+  'UMV',
+  'UXV',
+  'MAX',
+];
+const coilTiers = [
+  'Cupronickel',
+  'Kanthal',
+  'Nichrome',
+  'TPV',
+  'HSS-G',
+  'HSS-S',
+  'Naquadah',
+  'Naquadah Alloy',
+  'Trinium',
+  'Electrum Flux',
+  'Awakened Draconium',
+  'Infinity',
+  'Hypogen',
+  'Eternal',
+];
 
 export interface GtMetadataContext {
   recipeType: string;
@@ -21,21 +51,45 @@ export interface GtMetadataContext {
 // GTValues.TIER_COLORS, GT5-Unofficial 5.09.54.265. The browser uses the colours
 // without the in-game underline/bold decorations.
 const tierFormats: Readonly<Record<string, readonly string[]>> = {
-  ULV: ['c'], LV: ['2'], MV: ['6'], HV: ['e'], EV: ['8'], IV: ['9'], LuV: ['d'], ZPM: ['b'],
-  UV: ['2', 'n'], UHV: ['4', 'n'], UEV: ['5', 'n'], UIV: ['1', 'l', 'n'],
-  UMV: ['c', 'l', 'n'], UXV: ['4', 'l', 'n'], MAX: ['f', 'l', 'n'], 'MAX+': ['f', 'l', 'n', 'o']
+  ULV: ['c'],
+  LV: ['2'],
+  MV: ['6'],
+  HV: ['e'],
+  EV: ['8'],
+  IV: ['9'],
+  LuV: ['d'],
+  ZPM: ['b'],
+  UV: ['2', 'n'],
+  UHV: ['4', 'n'],
+  UEV: ['5', 'n'],
+  UIV: ['1', 'l', 'n'],
+  UMV: ['c', 'l', 'n'],
+  UXV: ['4', 'l', 'n'],
+  MAX: ['f', 'l', 'n'],
+  'MAX+': ['f', 'l', 'n', 'o'],
 };
 export function voltageTierFormats(tier: string): readonly string[] {
-  return tierFormats[tier]?.filter(format => /^[0-9a-f]$/.test(format)) ?? [];
+  return tierFormats[tier]?.filter((format) => /^[0-9a-f]$/.test(format)) ?? [];
 }
 
 // GTValues.VOLTAGE_NAMES, keyed by abbreviation rather than the packed tier index.
 const tierDescriptions: Readonly<Record<string, string>> = {
-  ULV: 'Ultra Low Voltage', LV: 'Low Voltage', MV: 'Medium Voltage', HV: 'High Voltage',
-  EV: 'Extreme Voltage', IV: 'Insane Voltage', LuV: 'Ludicrous Voltage', ZPM: 'ZPM Voltage',
-  UV: 'Ultimate Voltage', UHV: 'Ultimate High Voltage', UEV: 'Ultimate Extreme Voltage',
-  UIV: 'Ultimate Insane Voltage', UMV: 'Ultimate Mega Voltage', UXV: 'Ultimate Extended Mega Voltage',
-  MAX: 'Maximum Voltage', 'MAX+': 'Above Maximum Voltage'
+  ULV: 'Ultra Low Voltage',
+  LV: 'Low Voltage',
+  MV: 'Medium Voltage',
+  HV: 'High Voltage',
+  EV: 'Extreme Voltage',
+  IV: 'Insane Voltage',
+  LuV: 'Ludicrous Voltage',
+  ZPM: 'ZPM Voltage',
+  UV: 'Ultimate Voltage',
+  UHV: 'Ultimate High Voltage',
+  UEV: 'Ultimate Extreme Voltage',
+  UIV: 'Ultimate Insane Voltage',
+  UMV: 'Ultimate Mega Voltage',
+  UXV: 'Ultimate Extended Mega Voltage',
+  MAX: 'Maximum Voltage',
+  'MAX+': 'Above Maximum Voltage',
 };
 
 export function voltageTierDescription(tier: string): string {
@@ -59,8 +113,10 @@ export function recipeMetadataDescription(line: string): string {
     ['Recycle recipe', 'Recovers materials'],
     ['Kinetic energy:', 'Allowed kinetic energy range'],
   ];
-  return descriptions.find(([prefix]) => line.startsWith(prefix))?.[1]
-    ?? 'Machine-specific recipe information';
+  return (
+    descriptions.find(([prefix]) => line.startsWith(prefix))?.[1] ??
+    'Machine-specific recipe information'
+  );
 }
 
 export function voltageTierName(tier: number): string {
@@ -98,10 +154,7 @@ function heatRequired(heat: number, context?: GtMetadataContext): string {
   return `Heat: ${heat}K (${coilTiers[tier]})`;
 }
 
-export function formatGtMetadata(
-  metadata: GtMetadata,
-  context?: GtMetadataContext
-): string | null {
+export function formatGtMetadata(metadata: GtMetadata, context?: GtMetadataContext): string | null {
   switch (metadata.key) {
     case 'low_gravity':
       return metadata.value === 1 ? 'Requires low gravity' : null;

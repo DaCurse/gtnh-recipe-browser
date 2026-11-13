@@ -14,7 +14,7 @@ interface OreBlockSeries {
 const oreBlockSeries: Record<string, OreBlockSeries> = {
   'gt.blockores': {
     hosts: ['Stone', 'Netherrack', 'End Stone', 'Black Granite', 'Red Granite', 'Marble', 'Basalt'],
-    orderOffset: 0
+    orderOffset: 0,
   },
   'gt.blockores2': {
     hosts: [
@@ -25,21 +25,21 @@ const oreBlockSeries: Record<string, OreBlockSeries> = {
       'Red Granite',
       'Marble',
       'Basalt',
-      'Moon'
+      'Moon',
     ],
-    orderOffset: 0
+    orderOffset: 0,
   },
   'gt.blockores3': {
     hosts: ['Mars', 'Asteroid', 'Phobos', 'Deimos', 'Ceres', 'Io', 'Europa', 'Ganymede'],
-    orderOffset: 8
+    orderOffset: 8,
   },
   'gt.blockores4': {
     hosts: ['Callisto', 'Enceladus', 'Titan', 'Miranda', 'Oberon', 'Proteus', 'Triton', 'Pluto'],
-    orderOffset: 16
+    orderOffset: 16,
   },
   'gt.blockores5': {
     hosts: ['Venus', 'Mercury'],
-    orderOffset: 24
+    orderOffset: 24,
   },
   'gt.blockores6': {
     hosts: [
@@ -50,14 +50,22 @@ const oreBlockSeries: Record<string, OreBlockSeries> = {
       'Vega b',
       "Barnard's Star e",
       "Barnard's Star f",
-      'Horus'
+      'Horus',
     ],
-    orderOffset: 26
+    orderOffset: 26,
   },
   'gt.blockores7': {
-    hosts: ['Anubis & Maahes', 'Packed Ice', 'Seth Ice', 'Seth Clay', 'Deepslate', 'Tuff', 'Blue Ice'],
-    orderOffset: 34
-  }
+    hosts: [
+      'Anubis & Maahes',
+      'Packed Ice',
+      'Seth Ice',
+      'Seth Clay',
+      'Deepslate',
+      'Tuff',
+      'Blue Ice',
+    ],
+    orderOffset: 34,
+  },
 };
 
 /**
@@ -67,14 +75,15 @@ const oreBlockSeries: Record<string, OreBlockSeries> = {
  */
 export function describeGtOreVariant(entry: CatalogEntry): GtOreVariant | null {
   if (
-    entry.kind !== 'item'
-    || !entry.id.startsWith('i:gregtech:')
-    || !entry.internalName
-    || entry.damage === undefined
-    || !Number.isInteger(entry.damage)
-    || entry.damage < 0
-    || entry.damage >= 8_000
-  ) return null;
+    entry.kind !== 'item' ||
+    !entry.id.startsWith('i:gregtech:') ||
+    !entry.internalName ||
+    entry.damage === undefined ||
+    !Number.isInteger(entry.damage) ||
+    entry.damage < 0 ||
+    entry.damage >= 8_000
+  )
+    return null;
 
   const series = oreBlockSeries[entry.internalName];
   if (!series) return null;
@@ -86,6 +95,6 @@ export function describeGtOreVariant(entry: CatalogEntry): GtOreVariant | null {
   return {
     familyKey: `gtOre\u0000${materialId}\u0000${entry.name}`,
     hostStone,
-    order: series.orderOffset + stoneIndex
+    order: series.orderOffset + stoneIndex,
   };
 }

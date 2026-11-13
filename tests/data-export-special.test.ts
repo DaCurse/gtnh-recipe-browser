@@ -9,7 +9,7 @@ import {
   specialDataSha256,
   specialGoodsIds,
   validateCropsNhSeedReferences,
-  type SpecialData
+  type SpecialData,
 } from '../tools/data-export/special';
 
 const fixturePath = 'tests/fixtures/nei-special-v1/browser-nei-special.json';
@@ -18,7 +18,8 @@ async function fixture(): Promise<SpecialData> {
   return readSpecialSidecar(fixturePath, { requireNonEmptyCategories: true });
 }
 
-type JsonFixture = null | string | boolean | number | JsonFixture[] | { [key: string]: JsonFixture };
+type JsonFixture =
+  null | string | boolean | number | JsonFixture[] | { [key: string]: JsonFixture };
 
 function quoteJavaJson(value: string): string {
   let output = '"';
@@ -41,27 +42,44 @@ function legacyJavaJson(value: JsonFixture): string {
   if (typeof value === 'string') return quoteJavaJson(value);
   if (typeof value === 'boolean' || typeof value === 'number') return value.toString();
   if (Array.isArray(value)) return `[${value.map((entry) => legacyJavaJson(entry)).join(',')}]`;
-  return `{${Object.keys(value).sort().map((key) => `${quoteJavaJson(key)}:${legacyJavaJson(value[key]!)}`).join(',')}}`;
+  return `{${Object.keys(value)
+    .sort()
+    .map((key) => `${quoteJavaJson(key)}:${legacyJavaJson(value[key]!)}`)
+    .join(',')}}`;
 }
 
 function streamedJavaJson(value: JsonFixture): string {
   const chunks: string[] = [];
   const append = (entry: JsonFixture): void => {
-    if (entry === null) { chunks.push('null'); return; }
-    if (typeof entry === 'string') { chunks.push(quoteJavaJson(entry)); return; }
-    if (typeof entry === 'boolean' || typeof entry === 'number') { chunks.push(entry.toString()); return; }
+    if (entry === null) {
+      chunks.push('null');
+      return;
+    }
+    if (typeof entry === 'string') {
+      chunks.push(quoteJavaJson(entry));
+      return;
+    }
+    if (typeof entry === 'boolean' || typeof entry === 'number') {
+      chunks.push(entry.toString());
+      return;
+    }
     if (Array.isArray(entry)) {
       chunks.push('[');
-      entry.forEach((child, index) => { if (index > 0) chunks.push(','); append(child); });
+      entry.forEach((child, index) => {
+        if (index > 0) chunks.push(',');
+        append(child);
+      });
       chunks.push(']');
       return;
     }
     chunks.push('{');
-    Object.keys(entry).sort().forEach((key, index) => {
-      if (index > 0) chunks.push(',');
-      chunks.push(quoteJavaJson(key), ':');
-      append(entry[key]!);
-    });
+    Object.keys(entry)
+      .sort()
+      .forEach((key, index) => {
+        if (index > 0) chunks.push(',');
+        chunks.push(quoteJavaJson(key), ':');
+        append(entry[key]!);
+      });
     chunks.push('}');
   };
   append(value);
@@ -73,17 +91,23 @@ describe('NEI special sidecar contract', () => {
   it('accepts every requested category and preserves rich payloads', async () => {
     const data = await fixture();
     expect(data.categories).toEqual([...SPECIAL_CATEGORY_IDS]);
-    expect(new Set(data.records.map((record) => record.category))).toEqual(new Set(SPECIAL_CATEGORY_IDS));
-    expect(data.records.find((record) => record.category === 'meteor-ritual')?.payload).toMatchObject({
+    expect(new Set(data.records.map((record) => record.category))).toEqual(
+      new Set(SPECIAL_CATEGORY_IDS),
+    );
+    expect(
+      data.records.find((record) => record.category === 'meteor-ritual')?.payload,
+    ).toMatchObject({
       lpCost: 50000,
       radius: 3,
-      reagents: [{ goodsId: 'i:BloodMagic:slate:0', amount: 1, effect: 'stabilize' }]
+      reagents: [{ goodsId: 'i:BloodMagic:slate:0', amount: 1, effect: 'stabilize' }],
     });
-    expect(data.records.find((record) => record.category === 'gt-ore-processing')?.payload).toMatchObject({
+    expect(
+      data.records.find((record) => record.category === 'gt-ore-processing')?.payload,
+    ).toMatchObject({
       edges: expect.arrayContaining([
         expect.objectContaining({ machine: 'chemical-bath' }),
-        expect.objectContaining({ machine: 'sifting' })
-      ])
+        expect.objectContaining({ machine: 'sifting' }),
+      ]),
     });
     expect(data.serviceIcons.every((icon) => icon.searchable === false)).toBe(true);
   });
@@ -94,7 +118,7 @@ describe('NEI special sidecar contract', () => {
     source.records = [...records].reverse().map((record) => ({
       ...record,
       category: record.category === 'crop-outputs' ? 'crop-output' : record.category,
-      goodsIds: [...(record.goodsIds as string[])].reverse()
+      goodsIds: [...(record.goodsIds as string[])].reverse(),
     }));
     const first = canonicalizeSpecialData(source);
     const second = canonicalizeSpecialData(JSON.parse(serializeSpecialData(source)) as unknown);
@@ -109,7 +133,7 @@ describe('NEI special sidecar contract', () => {
       'lootbag:common',
       'vending:steel-for-coins',
       'worldgen:forge-chest',
-      'ore-processing:iron'
+      'ore-processing:iron',
     ]);
     expect(first.records[0]?.goodsIds).toEqual(['i:gregtech:gt.metaitem.01:2816']);
   });
@@ -117,30 +141,43 @@ describe('NEI special sidecar contract', () => {
   it('rejects missing categories, unresolved goods, lookups, and service icons', async () => {
     const source = JSON.parse(await readFile(fixturePath, 'utf8')) as Record<string, unknown>;
     const records = source.records as Array<Record<string, unknown>>;
-    source.categories = (source.categories as string[]).filter((category) => category !== 'lootbags');
-    expect(() => canonicalizeSpecialData(source)).toThrow(new SpecialDataError('missing requested category loot-bag'));
+    source.categories = (source.categories as string[]).filter(
+      (category) => category !== 'lootbags',
+    );
+    expect(() => canonicalizeSpecialData(source)).toThrow(
+      new SpecialDataError('missing requested category loot-bag'),
+    );
 
     source.categories = [...(source.categories as string[]), 'lootbags'];
     records[0]!.goodsIds = ['i:missing:item:0'];
-    expect(() => canonicalizeSpecialData(source, { knownGoodsIds: new Set(['i:gregtech:gt.metaitem.01:2816']) }))
-      .toThrow(/unresolved goods ID i:missing:item:0/);
+    expect(() =>
+      canonicalizeSpecialData(source, {
+        knownGoodsIds: new Set(['i:gregtech:gt.metaitem.01:2816']),
+      }),
+    ).toThrow(/unresolved goods ID i:missing:item:0/);
 
     records[0]!.goodsIds = ['i:gregtech:gt.metaitem.01:2816'];
     records[0]!.recipesLookupId = 'special:missing';
-    expect(() => canonicalizeSpecialData(source, {
-      knownRecipeLookupIds: new Set(['special:crop:blazereed:recipes'])
-    })).toThrow(/unresolved Recipes lookup special:missing/);
+    expect(() =>
+      canonicalizeSpecialData(source, {
+        knownRecipeLookupIds: new Set(['special:crop:blazereed:recipes']),
+      }),
+    ).toThrow(/unresolved Recipes lookup special:missing/);
 
     records[0]!.recipesLookupId = 'special:crop:blazereed:recipes';
     records[0]!.serviceIconId = 'service:missing';
-    expect(() => canonicalizeSpecialData(source)).toThrow(/references unknown icon service:missing/);
+    expect(() => canonicalizeSpecialData(source)).toThrow(
+      /references unknown icon service:missing/,
+    );
   });
 
   it('rejects duplicate IDs and invalid service-only search state', async () => {
     const source = JSON.parse(await readFile(fixturePath, 'utf8')) as Record<string, unknown>;
     const records = source.records as Array<Record<string, unknown>>;
     source.records = [...records, { ...records[0] }];
-    expect(() => canonicalizeSpecialData(source)).toThrow(/duplicate special record ID crop:blazereed/);
+    expect(() => canonicalizeSpecialData(source)).toThrow(
+      /duplicate special record ID crop:blazereed/,
+    );
 
     source.records = records;
     const icons = source.serviceIcons as Array<Record<string, unknown>>;
@@ -155,7 +192,9 @@ describe('NEI special sidecar contract', () => {
     const payload = vending.payload as Record<string, unknown>;
     const inputs = payload.inputs as Array<Record<string, unknown>>;
     inputs[0]!.oreDictionary = '';
-    expect(() => canonicalizeSpecialData(source)).toThrow(/oreDictionary must be a non-empty string/);
+    expect(() => canonicalizeSpecialData(source)).toThrow(
+      /oreDictionary must be a non-empty string/,
+    );
   });
 
   it('rejects raw NESQL keys instead of accepting them as browser goods IDs', async () => {
@@ -163,7 +202,7 @@ describe('NEI special sidecar contract', () => {
     const records = source.records as Array<Record<string, unknown>>;
     records[0]!.goodsIds = ['i~gregtech~gt.metaitem.01~2816'];
     expect(() => canonicalizeSpecialData(source)).toThrow(
-      /invalid canonical goods ID i~gregtech~gt\.metaitem\.01~2816/
+      /invalid canonical goods ID i~gregtech~gt\.metaitem\.01~2816/,
     );
 
     records[0]!.goodsIds = ['f:cropsnh:cropsnh:jagi'];
@@ -179,9 +218,7 @@ describe('NEI special sidecar contract', () => {
 
     const data = canonicalizeSpecialData(source);
     expect(data.records[0]!.goodsIds).toContain('o:oreIron');
-    expect(data.records[0]!.payload.outputs).toEqual([
-      { goodsId: 'o:dustIron', weight: 1 }
-    ]);
+    expect(data.records[0]!.payload.outputs).toEqual([{ goodsId: 'o:dustIron', weight: 1 }]);
     expect(specialGoodsIds(data)).not.toContain('od~oreIron');
   });
 
@@ -194,7 +231,7 @@ describe('NEI special sidecar contract', () => {
       ...(vein.payload as Record<string, unknown>),
       dimensions: ['Overworld'],
       dimensionChance: { Overworld: 60 },
-      weight: 60
+      weight: 60,
     };
     const second = {
       ...vein,
@@ -203,8 +240,8 @@ describe('NEI special sidecar contract', () => {
       payload: {
         ...(vein.payload as Record<string, unknown>),
         dimensionChance: { Overworld: 20 },
-        weight: 20
-      }
+        weight: 20,
+      },
     };
     source.records = [...records, second];
     const data = canonicalizeSpecialData(source);
@@ -236,13 +273,15 @@ describe('NEI special sidecar contract', () => {
     const missing = data.records.find((record) => record.category === 'crop-output')!;
     missing.goodsIds = missing.goodsIds.filter((goodsId) => goodsId !== seed);
     expect(() => validateCropsNhSeedReferences(data)).toThrow(
-      /CropsNH records are missing DEFAULT_ANALYZED generic-seed goods IDs: crop:blazereed/
+      /CropsNH records are missing DEFAULT_ANALYZED generic-seed goods IDs: crop:blazereed/,
     );
   });
 
   it('keeps the maintained overlay outside both read-only upstream submodules', async () => {
     const patch = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
-    expect(patch).toContain('NeiSpecialOverlay.export(repositoryDirectory, exporterState, activePlugins)');
+    expect(patch).toContain(
+      'NeiSpecialOverlay.export(repositoryDirectory, exporterState, activePlugins)',
+    );
     expect(patch).toContain('No NEI special-data adapters installed');
     expect(patch).toContain('requireId(searchText, "record search text")');
     expect(patch).toContain('record.put("searchText", searchText)');
@@ -266,19 +305,21 @@ describe('NEI special sidecar contract', () => {
   it('pins and wires the maintained runtime adapter for every special category', async () => {
     const adapter = await readFile('tools/data-export/overlay/RuntimeSpecialAdapter.java', 'utf8');
     for (const category of SPECIAL_CATEGORY_IDS) {
-      expect(adapter).toContain(`category(sink, "${category}"`);
+      expect(adapter.replace(/\s+/g, '')).toContain(`category(sink,"${category}"`);
     }
     expect(adapter).toContain('getIndexedModList');
     expect(adapter).toContain('pin.getValue().equals(display)');
     expect(adapter).toContain('implements NeiSpecialOverlay.Adapter');
-    expect(adapter).toContain('searchText("gregtech", "gt-ore-processing"');
+    expect(adapter).toMatch(/searchText\(\s*"gregtech",\s*"gt-ore-processing"/);
     expect(adapter).toContain('detectPrefix');
     expect(adapter).toContain('getTotalListWeight');
     expect(adapter).toContain('estimatedMeteorAmounts');
     expect(adapter).toContain('dimensionOverrides');
     expect(adapter).toContain('dimensionDisplayGoods');
     expect(adapter).toContain('getDimAbbreviatedName');
-    expect(adapter).toContain('dimensionHelper = Class.forName("gtneioreplugin.util.DimensionHelper")');
+    expect(adapter).toContain(
+      'dimensionHelper = Class.forName("gtneioreplugin.util.DimensionHelper")',
+    );
     expect(adapter).toContain('oreVeinToProbabilityInDimension');
     expect(adapter).toContain('retainMaterialOreDictionary');
     expect(adapter).toContain('getSeedItem');
@@ -311,7 +352,9 @@ describe('NEI special sidecar contract', () => {
     expect(adapter).toContain('outputBelongsTo');
     expect(adapter).toContain('MAX_ORE_GRAPH_EDGES');
     expect(adapter).toContain('GT ore provenance closure recipes=');
-    expect(adapter).toContain('if (!oreDictionary.isEmpty()) payload.put("oreDictionary", oreDictionary);');
+    expect(adapter).toContain(
+      'if (!oreDictionary.isEmpty()) payload.put("oreDictionary", oreDictionary);',
+    );
     expect(adapter).not.toContain('materialByKey');
 
     const overlay = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
@@ -326,7 +369,9 @@ describe('NEI special sidecar contract', () => {
 
   it('keeps the maintained Java overlay hunk length synchronized', async () => {
     const patch = await readFile('tools/data-export/patches/nei-special-overlay.patch', 'utf8');
-    const start = patch.indexOf('diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java');
+    const start = patch.indexOf(
+      'diff --git a/src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java',
+    );
     expect(start).toBeGreaterThanOrEqual(0);
     const sourcePatch = patch.slice(start);
     const header = sourcePatch.match(/^@@ -0,0 \+1,(\d+) @@$/m);
@@ -347,13 +392,17 @@ describe('NEI special sidecar contract', () => {
       .join('\n');
     expect(javaSource).toContain('Map<String, Object> SOURCE_VERSIONS');
     expect(javaSource).toContain(
-      'versions.put("gtnhVersion", System.getProperty("nesql.special.gtnhVersion", "2.9.0-beta-2"))'
+      'versions.put("gtnhVersion", System.getProperty("nesql.special.gtnhVersion", "2.9.0-beta-2"))',
     );
     expect(javaSource).toContain('versions.put("exporter", exporter)');
     expect(javaSource).toContain('versions.put("overlay", overlay)');
     expect(javaSource).toContain('versions.put("mods", mods)');
-    expect(javaSource).toContain('exporter.put("repository", "https://github.com/ShadowTheAge/nesql-exporter")');
-    expect(javaSource).toContain('exporter.put("commit", "b9279b39f2f439da78eebd70fab272b028947371")');
+    expect(javaSource).toContain(
+      'exporter.put("repository", "https://github.com/ShadowTheAge/nesql-exporter")',
+    );
+    expect(javaSource).toContain(
+      'exporter.put("commit", "b9279b39f2f439da78eebd70fab272b028947371")',
+    );
     expect(javaSource).not.toContain('versions.put("gtnh",');
     expect(javaSource).not.toContain('versions.put("overlay", "nei-special-v1")');
   });
@@ -362,7 +411,7 @@ describe('NEI special sidecar contract', () => {
     const sample: JsonFixture = {
       z: 'quote" slash\\ line\n tab\t control\u0001',
       array: [null, true, 2.5, { b: 'é', a: 'first' }],
-      a: 'first'
+      a: 'first',
     };
     const legacy = `${legacyJavaJson(sample)}\n`;
     const streamed = streamedJavaJson(sample);
@@ -376,7 +425,9 @@ describe('NEI special sidecar contract', () => {
       .filter((line) => line.startsWith('+') && !line.startsWith('+++'))
       .map((line) => line.slice(1))
       .join('\n');
-    expect(javaSource).toContain('static void write(Writer output, Object value) throws IOException');
+    expect(javaSource).toContain(
+      'static void write(Writer output, Object value) throws IOException',
+    );
     expect(javaSource).toContain('Json.write(writer, root)');
     expect(javaSource).not.toContain('Json.encode(root)');
     expect(javaSource).not.toContain('new StringBuilder()');
@@ -389,7 +440,7 @@ describe('NEI special sidecar contract', () => {
   it('requires the sidecar for special exports and preserves the GT-tool sanity predicate', async () => {
     const process = await readFile('tools/data-export/process.ts', 'utf8');
     expect(process).toContain('NESQL export is missing ${sidecarPath}');
-    expect(process).toContain("await access(sidecarPath)");
+    expect(process).toContain('await access(sidecarPath)');
     expect(process).not.toContain('allow-missing-special');
     expect(process).toContain("item.mod.toLowerCase() === 'gregtech'");
     expect(process).toContain('validateCropsNhSeedReferences(specialData)');
@@ -411,7 +462,9 @@ describe('NEI special sidecar contract', () => {
 
   it('builds the disposable exporter without leaving a Gradle daemon behind', async () => {
     const prepare = await readFile('tools/data-export/prepare.ts', 'utf8');
-    expect(prepare).toContain("run('bash', ['./gradlew', '--no-daemon', 'build'], patchedExporter);");
+    expect(prepare).toContain(
+      "run('bash', ['./gradlew', '--no-daemon', 'build'], patchedExporter);",
+    );
   });
 
   it('retains sidecar item/fluid and ore-dictionary references before projection', async () => {
@@ -421,6 +474,8 @@ describe('NEI special sidecar contract', () => {
     expect(retention).toContain('references unknown item');
     const patch = await readFile('tools/data-export/patches/special-retention.patch', 'utf8');
     expect(patch).toContain('SpecialRetention.Mark(generator.DatabasePath, items, fluids)');
-    expect(patch).toContain('SpecialRetention.MarkOreDictionaries(generator.DatabasePath, igroups)');
+    expect(patch).toContain(
+      'SpecialRetention.MarkOreDictionaries(generator.DatabasePath, igroups)',
+    );
   });
 });

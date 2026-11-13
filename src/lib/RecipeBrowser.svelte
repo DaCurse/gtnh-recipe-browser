@@ -7,7 +7,7 @@
     createSpecialExport,
     downloadBrowserExport,
     recipeRecordsForExport,
-    specialRecordsForExport
+    specialRecordsForExport,
   } from './browserExport';
   import type { DatasetRepository } from './dataset';
   import ItemIcon from './ItemIcon.svelte';
@@ -31,7 +31,7 @@
     setMode,
     setSpecialNavigation,
     navigate,
-    openQuest
+    openQuest,
   }: {
     repository: DatasetRepository;
     selected: CatalogEntry;
@@ -46,24 +46,36 @@
     setMode: (view: RecipeView) => void;
     setSpecialNavigation: (specialType: string, specialScope: SpecialScope) => void;
     navigate: (id: string, view: RecipeView) => void;
-    openQuest: (id:string, version:string, chapter?:string) => void;
+    openQuest: (id: string, version: string, chapter?: string) => void;
   } = $props();
 
-  let questLinks=$state.raw<QuestLinksRepository>();
-  let questLinksRevision=$state(0);
-  let questLinksReady=$state(false);
-  $effect(()=>{
-    const datasetId=repository.datasetId,id=selected.id;
-    if(!active) return;
-    let cancelled=false;
-    questLinksReady=false;
-    if(questLinks?.data.recipeDatasetId!==datasetId) questLinks=undefined;
-    void loadQuestLinks(datasetId).then(async links=>{
-      await links?.prepare(id);
-      if(!cancelled) { questLinks=links;questLinksRevision++; }
-    }).catch(()=>{/* Optional companion data must not block ordinary recipes. */})
-      .finally(()=>{if(!cancelled) questLinksReady=true;});
-    return()=>{cancelled=true;};
+  let questLinks = $state.raw<QuestLinksRepository>();
+  let questLinksRevision = $state(0);
+  let questLinksReady = $state(false);
+  $effect(() => {
+    const datasetId = repository.datasetId,
+      id = selected.id;
+    if (!active) return;
+    let cancelled = false;
+    questLinksReady = false;
+    if (questLinks?.data.recipeDatasetId !== datasetId) questLinks = undefined;
+    void loadQuestLinks(datasetId)
+      .then(async (links) => {
+        await links?.prepare(id);
+        if (!cancelled) {
+          questLinks = links;
+          questLinksRevision++;
+        }
+      })
+      .catch(() => {
+        /* Optional companion data must not block ordinary recipes. */
+      })
+      .finally(() => {
+        if (!cancelled) questLinksReady = true;
+      });
+    return () => {
+      cancelled = true;
+    };
   });
 
   const browserState = new RecipeBrowserState({
@@ -72,11 +84,15 @@
     catalogEntry: (id) => entryById.get(id),
     mode: () => mode,
     active: () => active,
-    detailReady: () => !itemDataLoading && !itemDataError && (specialType !== 'quests' || questLinksReady),
-    extraSpecial: () => { void questLinksRevision;return questLinks; },
+    detailReady: () =>
+      !itemDataLoading && !itemDataError && (specialType !== 'quests' || questLinksReady),
+    extraSpecial: () => {
+      void questLinksRevision;
+      return questLinks;
+    },
     specialType: () => specialType,
     specialScope: () => specialScope,
-    onSpecialNavigation: (nextType, nextScope) => setSpecialNavigation(nextType, nextScope)
+    onSpecialNavigation: (nextType, nextScope) => setSpecialNavigation(nextType, nextScope),
   });
 
   function updateRecipeQuery(nextQuery: string) {
@@ -103,14 +119,18 @@
   const recipePageCount = $derived(browserState.recipePageCount);
   const recipeSearchPending = $derived(browserState.recipeSearchPending);
   const modeLabel = $derived(browserState.modeLabel);
-  const categoryExportLabel = $derived(browserState.showingSpecial
-    ? `Export all ${browserState.specialTypeLabel}`
-    : `Export all ${modeLabel}`);
-  const paneExportLabel = $derived(browserState.showingSpecial
-    ? browserState.showingGlobalSpecial
+  const categoryExportLabel = $derived(
+    browserState.showingSpecial
       ? `Export all ${browserState.specialTypeLabel}`
-      : `Export all ${selected.name} ${browserState.specialTypeLabel}`
-    : `Export all ${browserState.type || selected.name} ${modeLabel}`);
+      : `Export all ${modeLabel}`,
+  );
+  const paneExportLabel = $derived(
+    browserState.showingSpecial
+      ? browserState.showingGlobalSpecial
+        ? `Export all ${browserState.specialTypeLabel}`
+        : `Export all ${selected.name} ${browserState.specialTypeLabel}`
+      : `Export all ${browserState.type || selected.name} ${modeLabel}`,
+  );
   const specialSearchTotal = $derived(browserState.specialSearchTotal);
   const specialPageCount = $derived(browserState.specialPageCount);
   const specialSearchPending = $derived(browserState.specialSearchPending);
@@ -138,7 +158,12 @@
   }
 
   function requestExport(target: ExportTarget) {
-    trackEvent('data_export_clicked', { target, view: mode, kind: browserState.showingSpecial ? 'special' : 'recipes', dataset_version: repository.gtnhVersion });
+    trackEvent('data_export_clicked', {
+      target,
+      view: mode,
+      kind: browserState.showingSpecial ? 'special' : 'recipes',
+      dataset_version: repository.gtnhVersion,
+    });
     exportError = '';
     if (target === 'category') {
       void performExport(target, 'all');
@@ -162,29 +187,36 @@
     exportWorking = true;
     exportError = '';
     const started = performance.now();
-    const reportExport = (recordCount: number) => trackEvent('data_export_completed', {
-      target, choice, view: mode, recipe_type: browserState.type || 'all', record_count: recordCount, kind: browserState.showingSpecial ? 'special' : 'recipes',
-      dataset_version: repository.gtnhVersion, duration_ms: Math.round(performance.now() - started)
-    });
+    const reportExport = (recordCount: number) =>
+      trackEvent('data_export_completed', {
+        target,
+        choice,
+        view: mode,
+        recipe_type: browserState.type || 'all',
+        record_count: recordCount,
+        kind: browserState.showingSpecial ? 'special' : 'recipes',
+        dataset_version: repository.gtnhVersion,
+        duration_ms: Math.round(performance.now() - started),
+      });
     const query = exportQuery(target);
     const applyFilter = choice === 'filtered' && query.trim().length > 0;
     try {
       if (target === 'category') {
         if (browserState.showingSpecial) {
-          const viewType = specialTypes.find((candidate) => candidate.id === browserState.specialType);
+          const viewType = specialTypes.find(
+            (candidate) => candidate.id === browserState.specialType,
+          );
           if (!viewType) return;
           const specialRepo = browserState.specialProvider();
           const loader = specialRepo.specialForAll ?? specialRepo.specialRecordsForAll;
-          const records = loader
-            ? await loader.call(specialRepo, mode, viewType.id)
-            : [];
+          const records = loader ? await loader.call(specialRepo, mode, viewType.id) : [];
           const value = createSpecialExport({
             repository,
             selected,
             view: mode,
             scope: 'special-global',
             specialViewType: { id: viewType.id, label: viewType.label },
-            records
+            records,
           });
           downloadBrowserExport(value, browserExportFilename(value));
           reportExport(value.records.length);
@@ -196,7 +228,7 @@
           browserState.allRecipes,
           null,
           '',
-          false
+          false,
         );
         const value = createRecipeExport({
           repository,
@@ -204,7 +236,7 @@
           view: mode,
           scope: 'pane',
           recipeType: null,
-          records
+          records,
         });
         downloadBrowserExport(value, browserExportFilename(value));
         reportExport(value.records.length);
@@ -212,7 +244,9 @@
       }
 
       if (browserState.showingSpecial) {
-        const viewType = specialTypes.find((candidate) => candidate.id === browserState.specialType);
+        const viewType = specialTypes.find(
+          (candidate) => candidate.id === browserState.specialType,
+        );
         if (!viewType) return;
         const records = specialRecordsForExport(browserState.specialRecords, query, applyFilter);
         const value = createSpecialExport({
@@ -223,7 +257,7 @@
           specialViewType: { id: viewType.id, label: viewType.label },
           query,
           applied: applyFilter,
-          records
+          records,
         });
         downloadBrowserExport(value, browserExportFilename(value));
         reportExport(value.records.length);
@@ -233,13 +267,7 @@
       const activeRecipes = browserState.type
         ? browserState.allRecipes.filter((recipe) => recipe.type === browserState.type)
         : browserState.allRecipes;
-      const records = recipeRecordsForExport(
-        repository,
-        activeRecipes,
-        null,
-        query,
-        applyFilter
-      );
+      const records = recipeRecordsForExport(repository, activeRecipes, null, query, applyFilter);
       const value = createRecipeExport({
         repository,
         selected,
@@ -248,7 +276,7 @@
         recipeType: browserState.type || null,
         query,
         applied: applyFilter,
-        records
+        records,
       });
       downloadBrowserExport(value, browserExportFilename(value));
       reportExport(value.records.length);
@@ -269,9 +297,14 @@
     Usages {#if recipeCount('usages') !== undefined}<span>{recipeCount('usages')}</span>{/if}
   </button>
   {#if selected.machineCapabilities?.length}
-    <button class="mc-button" class:active={mode === 'machineUsages'} onclick={() => setMode('machineUsages')}>
+    <button
+      class="mc-button"
+      class:active={mode === 'machineUsages'}
+      onclick={() => setMode('machineUsages')}
+    >
       Machine Usages
-      {#if recipeCount('machineUsages') !== undefined}<span>{recipeCount('machineUsages')}</span>{/if}
+      {#if recipeCount('machineUsages') !== undefined}<span>{recipeCount('machineUsages')}</span
+        >{/if}
     </button>
   {/if}
   {#if related.length > 0 || browserState.showingSpecial}
@@ -279,7 +312,11 @@
       class="mc-button category-export"
       type="button"
       onclick={() => requestExport('category')}
-      disabled={itemDataLoading || Boolean(itemDataError) || exportWorking || browserState.recipeLoading || browserState.specialLoading}
+      disabled={itemDataLoading ||
+        Boolean(itemDataError) ||
+        exportWorking ||
+        browserState.recipeLoading ||
+        browserState.specialLoading}
       title={categoryExportLabel}
       aria-label={categoryExportLabel}
     >
@@ -293,8 +330,10 @@
 
 {#if mode === 'recipes' && selected.productionOreDictionaryId}
   <div class="ore-production-note">
-    No direct output exists for this exact item. Showing recipes which produce an
-    interchangeable <button class="mc-button" onclick={() => navigate(selected.productionOreDictionaryId!, 'recipes')}>
+    No direct output exists for this exact item. Showing recipes which produce an interchangeable <button
+      class="mc-button"
+      onclick={() => navigate(selected.productionOreDictionaryId!, 'recipes')}
+    >
       {selected.productionOreDictionaryId!.replace(/^o:/, '')}
     </button> member.
   </div>
@@ -312,12 +351,16 @@
       aria-label={tab}
     >
       <span class="machine-tab-icon">
-      {#if tabCrafter}
-        <ItemIcon entry={tabCrafter} size={60} selected={browserState.type === tab} />
-      {:else}
-        <span class="machine-fallback">⚙</span>
-      {/if}
-        <span class="machine-tab-count" style:font-size={countFontSize(machineCounts.get(tab) ?? 0)} aria-hidden="true">{(machineCounts.get(tab) ?? 0).toLocaleString()}</span>
+        {#if tabCrafter}
+          <ItemIcon entry={tabCrafter} size={60} selected={browserState.type === tab} />
+        {:else}
+          <span class="machine-fallback">⚙</span>
+        {/if}
+        <span
+          class="machine-tab-count"
+          style:font-size={countFontSize(machineCounts.get(tab) ?? 0)}
+          aria-hidden="true">{(machineCounts.get(tab) ?? 0).toLocaleString()}</span
+        >
       </span>
       <small class:single-word={!/\s/.test(tab)}>{tab}</small>
     </button>
@@ -332,16 +375,22 @@
       aria-label={tab.label}
     >
       <span class="machine-tab-icon">
-      {#if tabIcon}
-        <ItemIcon entry={tabIcon} size={60} selected={browserState.specialType === tab.id} />
-      {:else}
-        <span class="special-fallback">{tab.glyph ?? '✦'}</span>
-      {/if}
+        {#if tabIcon}
+          <ItemIcon entry={tabIcon} size={60} selected={browserState.specialType === tab.id} />
+        {:else}
+          <span class="special-fallback">{tab.glyph ?? '✦'}</span>
+        {/if}
         {#if browserState.specialCount(mode, tab.id) !== undefined}
-          <span class="machine-tab-count" style:font-size={countFontSize(browserState.specialCount(mode, tab.id)!)} aria-hidden="true">{browserState.specialCount(mode, tab.id)!.toLocaleString()}</span>
+          <span
+            class="machine-tab-count"
+            style:font-size={countFontSize(browserState.specialCount(mode, tab.id)!)}
+            aria-hidden="true">{browserState.specialCount(mode, tab.id)!.toLocaleString()}</span
+          >
         {/if}
       </span>
-      <small class:single-word={!/\s/.test(tab.shortLabel ?? tab.label)}>{tab.shortLabel ?? tab.label}</small>
+      <small class:single-word={!/\s/.test(tab.shortLabel ?? tab.label)}
+        >{tab.shortLabel ?? tab.label}</small
+      >
     </button>
   {/each}
 </div>
@@ -349,59 +398,71 @@
 <div class="pane-toolbar">
   {#if browserState.showingSpecial}
     <div class="recipe-search-block">
-    <div class="recipe-search-wrap">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="10.5" cy="10.5" r="6.5"></circle>
-        <path d="m15.5 15.5 4 4"></path>
-      </svg>
-      <input
-        bind:value={browserState.specialQuery}
-        placeholder={`Filter ${browserState.specialTypeLabel} by item, dimension, or metadata…`}
-        aria-label={`Filter ${browserState.specialTypeLabel}`}
-      />
-      {#if browserState.specialQuery}
-        <button onclick={() => browserState.specialQuery = ''} aria-label="Clear special-data filter">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m7 7 10 10M17 7 7 17"></path>
-          </svg>
-        </button>
-      {/if}
-    </div>
-    <small>{specialSearchPending
-      ? 'Filtering…'
-      : `${specialSearchTotal.toLocaleString()} matching ${browserState.specialTypeLabel}`}</small>
+      <div class="recipe-search-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5"></circle>
+          <path d="m15.5 15.5 4 4"></path>
+        </svg>
+        <input
+          bind:value={browserState.specialQuery}
+          placeholder={`Filter ${browserState.specialTypeLabel} by item, dimension, or metadata…`}
+          aria-label={`Filter ${browserState.specialTypeLabel}`}
+        />
+        {#if browserState.specialQuery}
+          <button
+            onclick={() => (browserState.specialQuery = '')}
+            aria-label="Clear special-data filter"
+          >
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m7 7 10 10M17 7 7 17"></path>
+            </svg>
+          </button>
+        {/if}
+      </div>
+      <small
+        >{specialSearchPending
+          ? 'Filtering…'
+          : `${specialSearchTotal.toLocaleString()} matching ${browserState.specialTypeLabel}`}</small
+      >
     </div>
   {:else if related.length > 0}
     <div class="recipe-search-block">
-    <div class="recipe-search-wrap">
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <circle cx="10.5" cy="10.5" r="6.5"></circle>
-        <path d="m15.5 15.5 4 4"></path>
-      </svg>
-      <input
-        value={browserState.recipeQuery}
-        oninput={(event) => updateRecipeQuery((event.currentTarget as HTMLInputElement).value)}
-        placeholder={`Filter ${modeLabel} by item, mod, or metadata…`}
-        aria-label={`Filter ${modeLabel}`}
-      />
-      {#if browserState.recipeQuery}
-        <button onclick={() => updateRecipeQuery('')} aria-label="Clear recipe filter">
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path d="m7 7 10 10M17 7 7 17"></path>
-          </svg>
-        </button>
-      {/if}
-    </div>
-    <small>{recipeSearchPending
-      ? 'Filtering…'
-      : `${recipeSearchTotal.toLocaleString()} matching ${modeLabel}`}</small>
+      <div class="recipe-search-wrap">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="10.5" cy="10.5" r="6.5"></circle>
+          <path d="m15.5 15.5 4 4"></path>
+        </svg>
+        <input
+          value={browserState.recipeQuery}
+          oninput={(event) => updateRecipeQuery((event.currentTarget as HTMLInputElement).value)}
+          placeholder={`Filter ${modeLabel} by item, mod, or metadata…`}
+          aria-label={`Filter ${modeLabel}`}
+        />
+        {#if browserState.recipeQuery}
+          <button onclick={() => updateRecipeQuery('')} aria-label="Clear recipe filter">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="m7 7 10 10M17 7 7 17"></path>
+            </svg>
+          </button>
+        {/if}
+      </div>
+      <small
+        >{recipeSearchPending
+          ? 'Filtering…'
+          : `${recipeSearchTotal.toLocaleString()} matching ${modeLabel}`}</small
+      >
     </div>
   {/if}
   <div class="export-actions">
-    <button class="mc-button"
+    <button
+      class="mc-button"
       type="button"
       onclick={() => requestExport('pane')}
-      disabled={itemDataLoading || Boolean(itemDataError) || exportWorking || browserState.recipeLoading || browserState.specialLoading}
+      disabled={itemDataLoading ||
+        Boolean(itemDataError) ||
+        exportWorking ||
+        browserState.recipeLoading ||
+        browserState.specialLoading}
       title={paneExportLabel}
       aria-label={paneExportLabel}
     >
@@ -414,8 +475,13 @@
   </div>
 </div>
 
-<div class="recipe-list" class:ore-diagrams={browserState.showingSpecial && browserState.specialType === 'gt-ore-processing'}
-  style:--ore-card-width={`${oreCardWidth}px`} bind:clientWidth={recipeListWidth}>
+<div
+  class="recipe-list"
+  class:ore-diagrams={browserState.showingSpecial &&
+    browserState.specialType === 'gt-ore-processing'}
+  style:--ore-card-width={`${oreCardWidth}px`}
+  bind:clientWidth={recipeListWidth}
+>
   {#if itemDataError}
     <div class="no-recipes recipe-error" role="alert">
       <span aria-hidden="true">!</span>
@@ -429,15 +495,23 @@
       <div class="load-progress compact indeterminate" aria-hidden="true"><span></span></div>
     </div>
   {:else if browserState.showingSpecial && browserState.specialLoading && browserState.specialRecords.length === 0}
-    <div class:partial={browserState.specialRecords.length > 0} class="recipe-loading" aria-live="polite">
+    <div
+      class:partial={browserState.specialRecords.length > 0}
+      class="recipe-loading"
+      aria-live="polite"
+    >
       <span class="spinner" aria-hidden="true"></span>
       <b>Loading {browserState.specialTypeLabel}…</b>
-      <p>{browserState.specialTotalShards > 0
-        ? `${browserState.specialLoadedShards} of ${browserState.specialTotalShards} special-data chunks`
-        : 'Finding the NEI data needed for this item.'}</p>
+      <p>
+        {browserState.specialTotalShards > 0
+          ? `${browserState.specialLoadedShards} of ${browserState.specialTotalShards} special-data chunks`
+          : 'Finding the NEI data needed for this item.'}
+      </p>
       {#if browserState.specialTotalShards > 0}
         <div class="load-progress compact">
-          <span style:width={`${browserState.specialLoadedShards / browserState.specialTotalShards * 100}%`}></span>
+          <span
+            style:width={`${(browserState.specialLoadedShards / browserState.specialTotalShards) * 100}%`}
+          ></span>
         </div>
       {/if}
     </div>
@@ -455,17 +529,25 @@
     </div>
   {:else if browserState.showingSpecial && visibleSpecialRecords.length === 0}
     <div class="no-recipes">
-      <b>{browserState.specialFilter ? `No ${modeLabel} for ${browserState.specialTypeLabel} match your search.` : `No ${modeLabel} for ${browserState.specialTypeLabel} found.`}</b>
-      <p>{browserState.specialFilter
-        ? 'Try fewer terms or clear the filter.'
-        : 'No entries in this tab match this item.'}</p>
+      <b
+        >{browserState.specialFilter
+          ? `No ${modeLabel} for ${browserState.specialTypeLabel} match your search.`
+          : `No ${modeLabel} for ${browserState.specialTypeLabel} found.`}</b
+      >
+      <p>
+        {browserState.specialFilter
+          ? 'Try fewer terms or clear the filter.'
+          : 'No entries in this tab match this item.'}
+      </p>
     </div>
   {:else if browserState.showingSpecial}
     {#if browserState.specialLoading}
       <div class="recipe-loading partial" aria-live="polite">
         <span class="mini-spinner" aria-hidden="true"></span>
         <b>Loading more {browserState.specialTypeLabel}…</b>
-        {#if browserState.specialTotalShards > 0}<small>{browserState.specialLoadedShards} of {browserState.specialTotalShards} chunks</small>{/if}
+        {#if browserState.specialTotalShards > 0}<small
+            >{browserState.specialLoadedShards} of {browserState.specialTotalShards} chunks</small
+          >{/if}
       </div>
     {/if}
     {#each visibleSpecialRecords as record (record.id)}
@@ -476,30 +558,36 @@
         {navigate}
         {questLinks}
         questLinksLoading={!questLinksReady}
-        openQuest={(id)=>{if(questLinks) openQuest(id,questLinks.data.version,questLinks.data.chapters[id]?.[0]?.id);}}
+        openQuest={(id) => {
+          if (questLinks)
+            openQuest(id, questLinks.data.version, questLinks.data.chapters[id]?.[0]?.id);
+        }}
         showingGlobal={browserState.showingGlobalSpecial}
-        showAll={() => browserState.showingGlobalSpecial
-          ? browserState.returnToItemSpecial()
-          : browserState.enterSpecialGlobal()}
+        showAll={() =>
+          browserState.showingGlobalSpecial
+            ? browserState.returnToItemSpecial()
+            : browserState.enterSpecialGlobal()}
       />
     {/each}
     {#if specialSearchTotal > browserState.specialPageSize}
       <nav class="recipe-pagination" aria-label="Special data pages">
-        <button class="mc-button"
+        <button
+          class="mc-button"
           disabled={browserState.specialPage === 0}
-          onclick={() => browserState.setSpecialPage(browserState.specialPage - 1)}
-        >Previous</button>
+          onclick={() => browserState.setSpecialPage(browserState.specialPage - 1)}>Previous</button
+        >
         <span>
           {browserState.specialPage * browserState.specialPageSize + 1}–{Math.min(
             (browserState.specialPage + 1) * browserState.specialPageSize,
-            specialSearchTotal
+            specialSearchTotal,
           )}
           of {specialSearchTotal.toLocaleString()}
         </span>
-        <button class="mc-button"
+        <button
+          class="mc-button"
           disabled={browserState.specialPage >= specialPageCount - 1}
-          onclick={() => browserState.setSpecialPage(browserState.specialPage + 1)}
-        >Next</button>
+          onclick={() => browserState.setSpecialPage(browserState.specialPage + 1)}>Next</button
+        >
       </nav>
     {/if}
   {:else if browserState.recipePreparing}
@@ -511,12 +599,16 @@
     <div class:partial={related.length > 0} class="recipe-loading" aria-live="polite">
       <span class="spinner" aria-hidden="true"></span>
       <b>Loading {modeLabel}…</b>
-      <p>{browserState.recipeTotalShards > 0
-        ? `${browserState.recipeLoadedShards} of ${browserState.recipeTotalShards} recipe chunks`
-        : 'Finding the recipe data needed for this item.'}</p>
+      <p>
+        {browserState.recipeTotalShards > 0
+          ? `${browserState.recipeLoadedShards} of ${browserState.recipeTotalShards} recipe chunks`
+          : 'Finding the recipe data needed for this item.'}
+      </p>
       {#if browserState.recipeTotalShards > 0}
         <div class="load-progress compact">
-          <span style:width={`${browserState.recipeLoadedShards / browserState.recipeTotalShards * 100}%`}></span>
+          <span
+            style:width={`${(browserState.recipeLoadedShards / browserState.recipeTotalShards) * 100}%`}
+          ></span>
         </div>
       {/if}
     </div>
@@ -534,17 +626,25 @@
     </div>
   {:else if !browserState.recipeLoading && visibleRecipes.length === 0}
     <div class="no-recipes">
-      <b>{browserState.recipeFilter ? `No ${modeLabel} match your search.` : `No ${modeLabel} found.`}</b>
-      <p>{browserState.recipeFilter
-        ? 'Try fewer terms or clear the filter.'
-        : 'No entries match this item.'}</p>
+      <b
+        >{browserState.recipeFilter
+          ? `No ${modeLabel} match your search.`
+          : `No ${modeLabel} found.`}</b
+      >
+      <p>
+        {browserState.recipeFilter
+          ? 'Try fewer terms or clear the filter.'
+          : 'No entries match this item.'}
+      </p>
     </div>
   {:else}
     {#if browserState.recipeLoading}
       <div class="recipe-loading partial recipe-progress" role="status">
         <span class="spinner" aria-hidden="true"></span>
         <b>Loading more {modeLabel}…</b>
-        <small>{browserState.recipeLoadedShards} of {browserState.recipeTotalShards} recipe chunks</small>
+        <small
+          >{browserState.recipeLoadedShards} of {browserState.recipeTotalShards} recipe chunks</small
+        >
       </div>
     {/if}
     {#each visibleRecipes as recipe (recipe.id)}
@@ -552,39 +652,52 @@
     {/each}
     {#if recipeSearchTotal > browserState.recipePageSize}
       <nav class="recipe-pagination" aria-label="Recipe pages">
-        <button class="mc-button"
+        <button
+          class="mc-button"
           disabled={browserState.recipePage === 0}
-          onclick={() => browserState.setPage(browserState.recipePage - 1)}
-        >Previous</button>
+          onclick={() => browserState.setPage(browserState.recipePage - 1)}>Previous</button
+        >
         <span>
           {browserState.recipePage * browserState.recipePageSize + 1}–{Math.min(
             (browserState.recipePage + 1) * browserState.recipePageSize,
-            recipeSearchTotal
+            recipeSearchTotal,
           )}
           of {recipeSearchTotal.toLocaleString()}
         </span>
-        <button class="mc-button"
+        <button
+          class="mc-button"
           disabled={browserState.recipePage >= recipePageCount - 1}
-          onclick={() => browserState.setPage(browserState.recipePage + 1)}
-        >Next</button>
+          onclick={() => browserState.setPage(browserState.recipePage + 1)}>Next</button
+        >
       </nav>
     {/if}
   {/if}
 </div>
 
 {#if exportPrompt}
-  <div class="export-scrim" role="presentation" onclick={(event) => {
-    if (event.currentTarget === event.target) exportPrompt = null;
-  }}>
+  <div
+    class="export-scrim"
+    role="presentation"
+    onclick={(event) => {
+      if (event.currentTarget === event.target) exportPrompt = null;
+    }}
+  >
     <div class="export-dialog" role="dialog" aria-modal="true" aria-label="Choose JSON records">
-      <button class="export-close" aria-label="Close" onclick={() => exportPrompt = null}>×</button>
+      <button class="export-close" aria-label="Close" onclick={() => (exportPrompt = null)}
+        >×</button
+      >
       <p class="eyebrow">DOWNLOAD JSON</p>
       <h2>Choose records</h2>
       <div class="export-message">
-        This export has an active filter: <pre class="export-filter">"{exportQuery(exportPrompt)}"</pre>. Would you like to download only matching records or all records in this view?
+        This export has an active filter: <pre class="export-filter">"{exportQuery(
+            exportPrompt,
+          )}"</pre>
+        . Would you like to download only matching records or all records in this view?
       </div>
       <div class="export-choice-actions">
-        <button class="mc-button primary" onclick={() => confirmExport('filtered')}>Filtered results</button>
+        <button class="mc-button primary" onclick={() => confirmExport('filtered')}
+          >Filtered results</button
+        >
         <button class="mc-button" onclick={() => confirmExport('all')}>All results</button>
       </div>
     </div>

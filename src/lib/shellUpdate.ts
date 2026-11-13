@@ -28,7 +28,9 @@ export async function initializeShellUpdate(timeoutMs = 150): Promise<void> {
   });
   let timer: ReturnType<typeof setTimeout> | undefined;
   const update = async () => {
-    const registration = await workers.register(new URL('sw.js', document.baseURI), { updateViaCache: 'none' });
+    const registration = await workers.register(new URL('sw.js', document.baseURI), {
+      updateViaCache: 'none',
+    });
     if (!registration) return;
     // Announce before catalog work can occupy the main thread. A freshly installed
     // worker must not mistake a busy current shell for an unresponsive legacy client.
@@ -56,9 +58,12 @@ export async function initializeShellUpdate(timeoutMs = 150): Promise<void> {
     if (registration.waiting) await activate(registration.waiting);
   };
   try {
-    await Promise.race([update(), new Promise<void>((resolve) => {
-      timer = setTimeout(resolve, timeoutMs);
-    })]);
+    await Promise.race([
+      update(),
+      new Promise<void>((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
+      }),
+    ]);
   } catch (error) {
     console.warn('Service worker update unavailable', error);
   } finally {

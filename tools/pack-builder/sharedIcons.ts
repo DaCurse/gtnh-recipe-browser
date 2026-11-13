@@ -65,9 +65,7 @@ interface SharedIconManifest {
   iconSheets: readonly SharedIconSheetAsset[];
 }
 
-type SharedIconManifestLike =
-  | SharedIconManifest
-  | readonly SharedIconSheetAsset[];
+type SharedIconManifestLike = SharedIconManifest | readonly SharedIconSheetAsset[];
 
 /**
  * A previous pack and the local object-store location for its icon assets.
@@ -94,9 +92,7 @@ interface SharedIconAssetWriteRequest {
  * The callback is called for both new and reused sheets: a new manifest must
  * contain the complete reused asset and must not depend on an older manifest.
  */
-type SharedIconAssetWriter = (
-  request: SharedIconAssetWriteRequest
-) => MaybePromise<{
+type SharedIconAssetWriter = (request: SharedIconAssetWriteRequest) => MaybePromise<{
   url: string;
   bytes: number;
   sha256: string;
@@ -112,7 +108,7 @@ export interface SharedIconBuildOptions {
   /** Override path-based loading, and load only selected previous sheets. */
   readPreviousAsset?: (
     sheet: SharedIconSheetAsset,
-    source: SharedIconPackSource
+    source: SharedIconPackSource,
   ) => MaybePromise<Uint8Array>;
   /** Use the surrounding builder's content-addressed writer when supplied. */
   writeAsset?: SharedIconAssetWriter;
@@ -175,20 +171,24 @@ function assertSha256(value: unknown, label: string): asserts value is string {
 }
 
 function assertSheetGeometry(sheet: SharedIconSheetAsset): void {
-  if (sheet.kind !== 'iconSheet'
-    || sheet.encoding !== 'identity'
-    || sheet.mediaType !== 'image/webp'
-    || sheet.columns !== SHARED_ICON_SHEET_COLUMNS
-    || sheet.rows !== SHARED_ICON_SHEET_ROWS
-    || sheet.spriteSize !== SHARED_ICON_SPRITE_SIZE
-    || !Number.isInteger(sheet.iconCount)
-    || sheet.iconCount < 0
-    || sheet.iconCount > SHARED_ICONS_PER_SHEET) {
+  if (
+    sheet.kind !== 'iconSheet' ||
+    sheet.encoding !== 'identity' ||
+    sheet.mediaType !== 'image/webp' ||
+    sheet.columns !== SHARED_ICON_SHEET_COLUMNS ||
+    sheet.rows !== SHARED_ICON_SHEET_ROWS ||
+    sheet.spriteSize !== SHARED_ICON_SPRITE_SIZE ||
+    !Number.isInteger(sheet.iconCount) ||
+    sheet.iconCount < 0 ||
+    sheet.iconCount > SHARED_ICONS_PER_SHEET
+  ) {
     throw new Error(`Invalid shared icon sheet geometry for ${String(sheet.id)}`);
   }
 }
 
-function declaredSheetHashes(sheet: SharedIconSheetAsset): Array<string | null | undefined> | undefined {
+function declaredSheetHashes(
+  sheet: SharedIconSheetAsset,
+): Array<string | null | undefined> | undefined {
   assertSheetGeometry(sheet);
   assertSha256(sheet.sha256, `Shared icon sheet ${sheet.id} sha256`);
   if (typeof sheet.id !== 'string' || sheet.id.length === 0) {
@@ -196,7 +196,9 @@ function declaredSheetHashes(sheet: SharedIconSheetAsset): Array<string | null |
   }
   if (sheet.spriteHashes === undefined) return undefined;
   if (!Array.isArray(sheet.spriteHashes) || sheet.spriteHashes.length > SHARED_ICONS_PER_SHEET) {
-    throw new Error(`Shared icon sheet ${sheet.id} must declare at most ${SHARED_ICONS_PER_SHEET} sprite hashes`);
+    throw new Error(
+      `Shared icon sheet ${sheet.id} must declare at most ${SHARED_ICONS_PER_SHEET} sprite hashes`,
+    );
   }
   const result: Array<string | null | undefined> = [];
   for (let index = 0; index < SHARED_ICONS_PER_SHEET; index++) {
@@ -214,13 +216,16 @@ function sourceSheets(source: SharedIconPackSource): readonly SharedIconSheetAss
   return (source.manifest as SharedIconManifest).iconSheets;
 }
 
-function sameHashes(left: readonly (string | null | undefined)[], right: readonly (string | null | undefined)[]): boolean {
+function sameHashes(
+  left: readonly (string | null | undefined)[],
+  right: readonly (string | null | undefined)[],
+): boolean {
   return left.length === right.length && left.every((value, index) => value === right[index]);
 }
 
 async function preparePreviousSheets(
   sources: readonly SharedIconPackSource[],
-  options: SharedIconBuildOptions
+  options: SharedIconBuildOptions,
 ): Promise<{
   sheets: PreparedPreviousSheet[];
   bySha: Map<string, PreparedPreviousSheet>;
@@ -241,7 +246,7 @@ async function preparePreviousSheets(
         spriteHashes: [],
         source,
         bytes: Buffer.alloc(0),
-        spritePixels: []
+        spritePixels: [],
       };
       prepared.bytes = await readPreviousSheet(prepared, options);
       bySha.set(descriptor.sha256, prepared);
@@ -295,9 +300,11 @@ export function sharedIconPixelsEquivalent(left: Uint8Array, right: Uint8Array):
     maximum = Math.max(maximum, difference);
     if (index % 4 === 3) alpha += difference;
   }
-  return total / canonicalLeft.length <= MAX_VISUAL_MEAN_CHANNEL_DIFFERENCE
-    && alpha / (canonicalLeft.length / 4) <= MAX_VISUAL_ALPHA_MEAN_DIFFERENCE
-    && maximum <= MAX_VISUAL_SINGLE_CHANNEL_DIFFERENCE;
+  return (
+    total / canonicalLeft.length <= MAX_VISUAL_MEAN_CHANNEL_DIFFERENCE &&
+    alpha / (canonicalLeft.length / 4) <= MAX_VISUAL_ALPHA_MEAN_DIFFERENCE &&
+    maximum <= MAX_VISUAL_SINGLE_CHANNEL_DIFFERENCE
+  );
 }
 
 function extractSprite(raw: Uint8Array, width: number, iconId: number): Buffer {
@@ -308,7 +315,7 @@ function extractSprite(raw: Uint8Array, width: number, iconId: number): Buffer {
     const sourceStart = ((sourceY + row) * width + sourceX) * RGBA_CHANNELS;
     result.set(
       raw.subarray(sourceStart, sourceStart + SPRITE_BYTES / SHARED_ICON_SPRITE_SIZE),
-      row * SPRITE_BYTES / SHARED_ICON_SPRITE_SIZE
+      (row * SPRITE_BYTES) / SHARED_ICON_SPRITE_SIZE,
     );
   }
   return canonicalSharedIconPixels(result);
@@ -322,7 +329,7 @@ function extractSheetCell(raw: Uint8Array, width: number, index: number): Buffer
     const sourceStart = ((sourceY + row) * width + sourceX) * RGBA_CHANNELS;
     result.set(
       raw.subarray(sourceStart, sourceStart + SPRITE_BYTES / SHARED_ICON_SPRITE_SIZE),
-      row * SPRITE_BYTES / SHARED_ICON_SPRITE_SIZE
+      (row * SPRITE_BYTES) / SHARED_ICON_SPRITE_SIZE,
     );
   }
   return canonicalSharedIconPixels(result);
@@ -330,38 +337,45 @@ function extractSheetCell(raw: Uint8Array, width: number, index: number): Buffer
 
 async function encodeSpritePage(
   hashes: readonly string[],
-  pixelsByHash: ReadonlyMap<string, Buffer>
+  pixelsByHash: ReadonlyMap<string, Buffer>,
 ): Promise<Buffer> {
   const page = Buffer.alloc(
-    SHARED_ICON_SHEET_COLUMNS * SHARED_ICON_SHEET_ROWS
-      * SHARED_ICON_SPRITE_SIZE * SHARED_ICON_SPRITE_SIZE * RGBA_CHANNELS
+    SHARED_ICON_SHEET_COLUMNS *
+      SHARED_ICON_SHEET_ROWS *
+      SHARED_ICON_SPRITE_SIZE *
+      SHARED_ICON_SPRITE_SIZE *
+      RGBA_CHANNELS,
   );
   for (let index = 0; index < hashes.length; index++) {
     const pixels = pixelsByHash.get(hashes[index]!);
     if (!pixels) throw new Error(`No pixels available for new shared icon ${hashes[index]}`);
     for (let row = 0; row < SHARED_ICON_SPRITE_SIZE; row++) {
-      const sourceStart = row * SPRITE_BYTES / SHARED_ICON_SPRITE_SIZE;
+      const sourceStart = (row * SPRITE_BYTES) / SHARED_ICON_SPRITE_SIZE;
       const targetX = (index % SHARED_ICON_SHEET_COLUMNS) * SHARED_ICON_SPRITE_SIZE;
       const targetY = Math.floor(index / SHARED_ICON_SHEET_COLUMNS) * SHARED_ICON_SPRITE_SIZE;
-      const targetStart = ((targetY + row)
-        * SHARED_ICON_SHEET_COLUMNS * SHARED_ICON_SPRITE_SIZE
-        + targetX) * RGBA_CHANNELS;
-      pixels.copy(page, targetStart, sourceStart, sourceStart + SPRITE_BYTES / SHARED_ICON_SPRITE_SIZE);
+      const targetStart =
+        ((targetY + row) * SHARED_ICON_SHEET_COLUMNS * SHARED_ICON_SPRITE_SIZE + targetX) *
+        RGBA_CHANNELS;
+      pixels.copy(
+        page,
+        targetStart,
+        sourceStart,
+        sourceStart + SPRITE_BYTES / SHARED_ICON_SPRITE_SIZE,
+      );
     }
   }
   return sharp(page, {
     raw: {
       width: SHARED_ICON_SHEET_COLUMNS * SHARED_ICON_SPRITE_SIZE,
       height: SHARED_ICON_SHEET_ROWS * SHARED_ICON_SPRITE_SIZE,
-      channels: RGBA_CHANNELS
-    }
-  }).webp({ lossless: true, effort: 6 }).toBuffer();
+      channels: RGBA_CHANNELS,
+    },
+  })
+    .webp({ lossless: true, effort: 6 })
+    .toBuffer();
 }
 
-function assetPathCandidates(
-  source: SharedIconPackSource,
-  sheet: SharedIconSheetAsset
-): string[] {
+function assetPathCandidates(source: SharedIconPackSource, sheet: SharedIconSheetAsset): string[] {
   const paths: string[] = [];
   const keys = [sheet.sha256, sheet.id, basenameFromUrl(sheet.url)];
   for (const key of keys) {
@@ -389,41 +403,49 @@ function basenameFromUrl(value: string | undefined): string | undefined {
 
 async function readPreviousSheet(
   sheet: PreparedPreviousSheet,
-  options: SharedIconBuildOptions
+  options: SharedIconBuildOptions,
 ): Promise<Buffer> {
   const bytes = options.readPreviousAsset
     ? Buffer.from(await options.readPreviousAsset(sheet.descriptor, sheet.source))
     : await (async () => {
-      const candidates = assetPathCandidates(sheet.source, sheet.descriptor);
-      if (candidates.length === 0) {
-        throw new Error(
-          `No local path for reused shared icon sheet ${sheet.descriptor.sha256}; `
-          + 'provide assetDirectory, assetPaths, or readPreviousAsset'
-        );
-      }
-      let lastError: unknown;
-      for (const candidate of candidates) {
-        try {
-          return await readFile(candidate);
-        } catch (error) {
-          lastError = error;
+        const candidates = assetPathCandidates(sheet.source, sheet.descriptor);
+        if (candidates.length === 0) {
+          throw new Error(
+            `No local path for reused shared icon sheet ${sheet.descriptor.sha256}; ` +
+              'provide assetDirectory, assetPaths, or readPreviousAsset',
+          );
         }
-      }
-      throw new Error(`Unable to read reused shared icon sheet ${sheet.descriptor.sha256}`, { cause: lastError });
-    })();
+        let lastError: unknown;
+        for (const candidate of candidates) {
+          try {
+            return await readFile(candidate);
+          } catch (error) {
+            lastError = error;
+          }
+        }
+        throw new Error(`Unable to read reused shared icon sheet ${sheet.descriptor.sha256}`, {
+          cause: lastError,
+        });
+      })();
   if (sha256(bytes) !== sheet.descriptor.sha256) {
-    throw new Error(`Reused shared icon sheet ${sheet.descriptor.sha256} failed SHA-256 validation`);
+    throw new Error(
+      `Reused shared icon sheet ${sheet.descriptor.sha256} failed SHA-256 validation`,
+    );
   }
   const decoded = await sharp(bytes).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
   const expectedSize = SHARED_ICON_SHEET_COLUMNS * SHARED_ICON_SPRITE_SIZE;
-  if (decoded.info.width !== expectedSize || decoded.info.height !== expectedSize || decoded.info.channels !== RGBA_CHANNELS) {
+  if (
+    decoded.info.width !== expectedSize ||
+    decoded.info.height !== expectedSize ||
+    decoded.info.channels !== RGBA_CHANNELS
+  ) {
     throw new Error(
-      `Reused shared icon sheet ${sheet.descriptor.sha256} is not ${expectedSize}x${expectedSize} RGBA`
+      `Reused shared icon sheet ${sheet.descriptor.sha256} is not ${expectedSize}x${expectedSize} RGBA`,
     );
   }
   const derivedHashes: Array<string | null> = Array.from(
     { length: SHARED_ICONS_PER_SHEET },
-    () => null
+    () => null,
   );
   for (let index = 0; index < sheet.descriptor.iconCount; index++) {
     const pixels = extractSheetCell(decoded.data, decoded.info.width, index);
@@ -436,8 +458,8 @@ async function readPreviousSheet(
       const declared = declaredHashes[index];
       if (declared !== undefined && declared !== null && declared !== derivedHashes[index]) {
         throw new Error(
-          `Reused shared icon sheet ${sheet.descriptor.sha256} cell ${index} `
-          + `has derived hash ${derivedHashes[index]}, expected ${declared}`
+          `Reused shared icon sheet ${sheet.descriptor.sha256} cell ${index} ` +
+            `has derived hash ${derivedHashes[index]}, expected ${declared}`,
         );
       }
     }
@@ -446,10 +468,7 @@ async function readPreviousSheet(
   return bytes;
 }
 
-function standaloneAssetWriter(
-  outputDirectory: string,
-  baseUrl: string
-): SharedIconAssetWriter {
+function standaloneAssetWriter(outputDirectory: string, baseUrl: string): SharedIconAssetWriter {
   return async ({ sheetId, bytes }) => {
     const assetsDirectory = join(outputDirectory, 'assets', 'sha256');
     await mkdir(assetsDirectory, { recursive: true });
@@ -469,7 +488,7 @@ function standaloneAssetWriter(
       bytes: bytes.byteLength,
       sha256: sheetId,
       encoding: 'identity',
-      mediaType: 'image/webp'
+      mediaType: 'image/webp',
     };
   };
 }
@@ -479,7 +498,8 @@ function chooseWriter(options: SharedIconBuildOptions): SharedIconAssetWriter {
     throw new Error('Specify only one of writeAsset and outputDirectory');
   }
   if (options.writeAsset) return options.writeAsset;
-  if (options.outputDirectory) return standaloneAssetWriter(options.outputDirectory, options.baseUrl ?? '.');
+  if (options.outputDirectory)
+    return standaloneAssetWriter(options.outputDirectory, options.baseUrl ?? '.');
   throw new Error('Shared icon building requires writeAsset or outputDirectory');
 }
 
@@ -490,7 +510,9 @@ function ownerMap(owners: readonly SharedIconOwner[]): Map<string, SharedIconOwn
       throw new Error('Shared icon owner ID must not be empty');
     }
     if (!Number.isInteger(owner.iconId) || owner.iconId < 0) {
-      throw new Error(`Shared icon owner ${owner.id} has an invalid atlas icon ID ${String(owner.iconId)}`);
+      throw new Error(
+        `Shared icon owner ${owner.id} has an invalid atlas icon ID ${String(owner.iconId)}`,
+      );
     }
     const existing = result.get(owner.id);
     if (existing && existing.iconId !== owner.iconId) {
@@ -503,12 +525,14 @@ function ownerMap(owners: readonly SharedIconOwner[]): Map<string, SharedIconOwn
 
 function buildSheetAsset(
   sheet: PlannedSheet,
-  storage: Awaited<ReturnType<SharedIconAssetWriter>>
+  storage: Awaited<ReturnType<SharedIconAssetWriter>>,
 ): SharedIconSheetAsset {
-  if (storage.sha256 !== sheet.sheetId
-    || storage.bytes !== sheet.bytes.byteLength
-    || storage.encoding !== 'identity'
-    || storage.mediaType !== 'image/webp') {
+  if (
+    storage.sha256 !== sheet.sheetId ||
+    storage.bytes !== sheet.bytes.byteLength ||
+    storage.encoding !== 'identity' ||
+    storage.mediaType !== 'image/webp'
+  ) {
     throw new Error(`Icon writer returned invalid storage metadata for ${sheet.sheetId}`);
   }
   return {
@@ -522,7 +546,7 @@ function buildSheetAsset(
     iconCount: sheet.iconCount,
     columns: SHARED_ICON_SHEET_COLUMNS,
     rows: SHARED_ICON_SHEET_ROWS,
-    spriteSize: SHARED_ICON_SPRITE_SIZE
+    spriteSize: SHARED_ICON_SPRITE_SIZE,
   };
 }
 
@@ -536,7 +560,9 @@ function buildSheetAsset(
  * Only sheets needed by the current owner set are returned, although previous
  * sheets must be decoded once to derive their unpublished cell hashes.
  */
-export async function buildSharedIcons(options: SharedIconBuildOptions): Promise<SharedIconBuildResult> {
+export async function buildSharedIcons(
+  options: SharedIconBuildOptions,
+): Promise<SharedIconBuildResult> {
   const owners = ownerMap(options.owners);
   if (owners.size === 0) {
     return {
@@ -550,8 +576,8 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
         newSpriteCount: 0,
         selectedPreviousSheetCount: 0,
         newSheetCount: 0,
-        assetBytes: 0
-      }
+        assetBytes: 0,
+      },
     };
   }
 
@@ -562,8 +588,8 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
     .toBuffer({ resolveWithObject: true });
   if (atlasInfo.width !== SHARED_ICON_ATLAS_WIDTH || atlasInfo.channels !== RGBA_CHANNELS) {
     throw new Error(
-      `Expected an ${SHARED_ICON_ATLAS_WIDTH}px-wide RGBA atlas, got `
-      + `${atlasInfo.width}x${atlasInfo.height} with ${atlasInfo.channels} channels`
+      `Expected an ${SHARED_ICON_ATLAS_WIDTH}px-wide RGBA atlas, got ` +
+        `${atlasInfo.width}x${atlasInfo.height} with ${atlasInfo.channels} channels`,
     );
   }
   const maxIconId = Math.max(...[...owners.values()].map((owner) => owner.iconId));
@@ -596,10 +622,10 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
   const newLocationByHash = new Map<string, { sheetId: string; index: number }>();
   const selectedPrevious = new Map<string, PreparedPreviousSheet>();
   let reusedSpriteCount = 0;
-  const sourceHashes = [...pixelsByHash.keys()].sort((left, right) => (
-    firstIconIdByHash.get(left)! - firstIconIdByHash.get(right)!
-      || left.localeCompare(right)
-  ));
+  const sourceHashes = [...pixelsByHash.keys()].sort(
+    (left, right) =>
+      firstIconIdByHash.get(left)! - firstIconIdByHash.get(right)! || left.localeCompare(right),
+  );
   const ownersByHash = new Map<string, string[]>();
   for (const [ownerId, hash] of hashByOwner) {
     const ids = ownersByHash.get(hash) ?? [];
@@ -615,7 +641,12 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
           const slot = source.ownerSlots?.get(ownerId);
           const sheet = slot ? previous.bySha.get(slot.sheetId) : undefined;
           const priorPixels = sheet && slot ? sheet.spritePixels[slot.index] : undefined;
-          if (sheet && slot && priorPixels && sharedIconPixelsEquivalent(currentPixels, priorPixels)) {
+          if (
+            sheet &&
+            slot &&
+            priorPixels &&
+            sharedIconPixelsEquivalent(currentPixels, priorPixels)
+          ) {
             location = { sheet, index: slot.index };
             break;
           }
@@ -633,16 +664,16 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
   }
 
   const planned: PlannedSheet[] = [];
-  for (const sheet of [...selectedPrevious.values()].sort((left, right) => (
-    left.descriptor.sha256.localeCompare(right.descriptor.sha256)
-  ))) {
+  for (const sheet of [...selectedPrevious.values()].sort((left, right) =>
+    left.descriptor.sha256.localeCompare(right.descriptor.sha256),
+  )) {
     planned.push({
       sheetId: sheet.descriptor.sha256,
       bytes: sheet.bytes,
       spriteHashes: sheet.spriteHashes,
       iconCount: sheet.descriptor.iconCount,
       reused: true,
-      previous: sheet.descriptor
+      previous: sheet.descriptor,
     });
   }
 
@@ -658,10 +689,10 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
       bytes,
       spriteHashes: [
         ...pageHashes,
-        ...Array.from({ length: SHARED_ICONS_PER_SHEET - pageHashes.length }, () => null)
+        ...Array.from({ length: SHARED_ICONS_PER_SHEET - pageHashes.length }, () => null),
       ],
       iconCount: pageHashes.length,
-      reused: false
+      reused: false,
     });
   }
 
@@ -671,8 +702,10 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
   for (const sheet of planned) {
     const existingPlan = plannedById.get(sheet.sheetId);
     if (existingPlan) {
-      if (existingPlan.iconCount !== sheet.iconCount
-        || !sameHashes(existingPlan.spriteHashes, sheet.spriteHashes)) {
+      if (
+        existingPlan.iconCount !== sheet.iconCount ||
+        !sameHashes(existingPlan.spriteHashes, sheet.spriteHashes)
+      ) {
         throw new Error(`Different shared icon pages have the same SHA-256 ${sheet.sheetId}`);
       }
       continue;
@@ -686,7 +719,7 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
       sheetId: sheet.sheetId,
       bytes: sheet.bytes,
       reused: sheet.reused,
-      ...(sheet.previous ? { previous: sheet.previous } : {})
+      ...(sheet.previous ? { previous: sheet.previous } : {}),
     });
     const asset = buildSheetAsset(sheet, storage);
     assetById.set(sheet.sheetId, asset);
@@ -700,7 +733,7 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
       slots.set(ownerId, {
         sheetId: previousLocation.sheet.descriptor.sha256,
         index: previousLocation.index,
-        spriteHash
+        spriteHash,
       });
       continue;
     }
@@ -724,7 +757,7 @@ export async function buildSharedIcons(options: SharedIconBuildOptions): Promise
       newSpriteCount: newHashes.length,
       selectedPreviousSheetCount: selectedPrevious.size,
       newSheetCount: planned.filter((sheet) => !sheet.reused).length,
-      assetBytes: assets.reduce((total, asset) => total + asset.bytes, 0)
-    }
+      assetBytes: assets.reduce((total, asset) => total + asset.bytes, 0),
+    },
   };
 }

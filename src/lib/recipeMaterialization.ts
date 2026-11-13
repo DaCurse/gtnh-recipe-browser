@@ -1,15 +1,11 @@
 import { materializeIngredient } from './oreDictionary';
 import { formatGtMetadata, hasRelevantPower, voltageTierName } from './recipeMetadata';
-import {
-  recipeCrafterId,
-  recipeTypeCrafters,
-  recipeTypeIconId
-} from './recipePresentation';
+import { recipeCrafterId, recipeTypeCrafters, recipeTypeIconId } from './recipePresentation';
 import type {
   PackedIngredientGroup,
   PackedOreDictionary,
   PackedRecipe,
-  PackedRecipeType
+  PackedRecipeType,
 } from './datasetSchema';
 import type { Recipe } from './types';
 
@@ -35,7 +31,7 @@ export function materializeRecipe(
   order: number,
   recipeTypes: ReadonlyMap<string, PackedRecipeType>,
   ingredientGroups: ReadonlyMap<string, PackedOreDictionary | PackedIngredientGroup>,
-  gtnhVersion?: string
+  gtnhVersion?: string,
 ): Recipe {
   const type = recipeTypes.get(recipe.recipeTypeId);
   if (!type) throw new Error(`Unknown recipe type ${recipe.recipeTypeId}`);
@@ -62,20 +58,21 @@ export function materializeRecipe(
     eu: totalEu === undefined ? undefined : amount(totalEu),
     euExact: totalEu === undefined ? undefined : `${totalEu.toLocaleString('en-US')} EU`,
     euPerTick: euPerTick === undefined ? undefined : power(euPerTick),
-    euPerTickExact: euPerTick === undefined
-      ? undefined
-      : `${euPerTick.toLocaleString('en-US')} EU/t`,
+    euPerTickExact:
+      euPerTick === undefined ? undefined : `${euPerTick.toLocaleString('en-US')} EU/t`,
     metadata: gt?.metadata
-      .map((metadata) => formatGtMetadata(metadata, {
-        recipeType: type.name,
-        voltageTier: gt.voltageTier
-      }))
+      .map((metadata) =>
+        formatGtMetadata(metadata, {
+          recipeType: type.name,
+          voltageTier: gt.voltageTier,
+        }),
+      )
       .filter((line): line is string => line !== null),
     crafterId: recipeCrafterId(type, gt?.voltageTier),
     crafters: recipeTypeCrafters(type),
     typeIconId: recipeTypeIconId(type),
     circuitConflicts: gt?.circuitConflicts,
     specialValue: gt?.specialValue,
-    order
+    order,
   };
 }

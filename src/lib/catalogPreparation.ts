@@ -46,44 +46,71 @@ export async function catalogIndexes(prepared: PreparedCatalog): Promise<Prepare
 export async function prepareCatalog(
   manifest: DatasetManifest,
   manifestUrl: string,
-  report: (percent: number, stage: string) => void
+  report: (percent: number, stage: string) => void,
 ): Promise<PreparedCatalog> {
   if (typeof Worker === 'undefined') {
     const { prepareBootstrapCatalog } = await import('./catalogBootstrap');
     return prepareBootstrapCatalog(manifest, manifestUrl, report);
   }
   return new Promise((resolve, reject) => {
-    const worker = new Worker(new URL('../workers/catalogBootstrap.worker.ts', import.meta.url), { type: 'module' });
+    const worker = new Worker(new URL('../workers/catalogBootstrap.worker.ts', import.meta.url), {
+      type: 'module',
+    });
     let prepared: PreparedCatalog | undefined;
     let counts: { entries: number; groups: number; browse: number } | undefined;
-    const fail = (error: unknown) => { worker.terminate(); reject(error); };
-    worker.onerror = event => fail(new Error(event.message || 'Catalogue preparation worker failed'));
+    const fail = (error: unknown) => {
+      worker.terminate();
+      reject(error);
+    };
+    worker.onerror = (event) =>
+      fail(new Error(event.message || 'Catalogue preparation worker failed'));
     worker.onmessageerror = () => fail(new Error('Unable to read prepared catalogue'));
-    worker.onmessage = event => {
+    worker.onmessage = (event) => {
       const message = event.data;
       try {
-        if (message.type === 'progress') { report(message.percent, message.stage); return; }
-        if (message.type === 'error') { fail(new Error(message.error)); return; }
+        if (message.type === 'progress') {
+          report(message.percent, message.stage);
+          return;
+        }
+        if (message.type === 'error') {
+          fail(new Error(message.error));
+          return;
+        }
         if (message.type === 'header') {
           counts = message.counts;
-          prepared = { resolved: { entries: [], recipeTypes: new Map(message.recipeTypes), ingredientGroups: new Map() },
-            browseRows: [], specialViewTypes: message.specialViewTypes, specialServiceIcons: message.specialServiceIcons };
+          prepared = {
+            resolved: {
+              entries: [],
+              recipeTypes: new Map(message.recipeTypes),
+              ingredientGroups: new Map(),
+            },
+            browseRows: [],
+            specialViewTypes: message.specialViewTypes,
+            specialServiceIcons: message.specialServiceIcons,
+          };
           return;
         }
         if (!prepared || !counts) throw new Error('Missing catalogue preparation header');
         if (message.type === 'entries') prepared.resolved.entries.push(...message.rows);
         else if (message.type === 'browse') prepared.browseRows.push(...message.rows);
-        else if (message.type === 'groups') for (const [id, group] of message.rows) prepared.resolved.ingredientGroups.set(id, group);
+        else if (message.type === 'groups')
+          for (const [id, group] of message.rows) prepared.resolved.ingredientGroups.set(id, group);
         else if (message.type === 'done') {
-          if (prepared.resolved.entries.length !== counts.entries || prepared.browseRows.length !== counts.browse
-            || prepared.resolved.ingredientGroups.size !== counts.groups) throw new Error('Incomplete prepared catalogue');
+          if (
+            prepared.resolved.entries.length !== counts.entries ||
+            prepared.browseRows.length !== counts.browse ||
+            prepared.resolved.ingredientGroups.size !== counts.groups
+          )
+            throw new Error('Incomplete prepared catalogue');
           worker.terminate();
           resolve(prepared);
           return;
         } else throw new Error('Unexpected catalogue preparation response');
         // Let input, paint, and timers run before accepting another batch.
         setTimeout(() => worker.postMessage({ type: 'next' }), 0);
-      } catch (error) { fail(error); }
+      } catch (error) {
+        fail(error);
+      }
     };
     worker.postMessage({ manifest, manifestUrl });
   });

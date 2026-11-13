@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { progressClip, recipeProgressFrames, RECIPE_ANIMATION_MS } from '../src/lib/recipeAnimation';
+import {
+  progressClip,
+  recipeProgressFrames,
+  RECIPE_ANIMATION_MS,
+} from '../src/lib/recipeAnimation';
 import { machineUiProfiles } from '../src/lib/machineUi';
 
 describe('native NEI progress animation', () => {
@@ -17,13 +21,17 @@ describe('native NEI progress animation', () => {
     expect(progressClip('CIRCULAR_CW', 0.625, 20)).toContain('100% 25%');
   });
   it('keeps assembly line bars on one cycle with their source split timing', () => {
-    const bars = machineUiProfiles.find(profile => profile.id === 'gt.recipe.fakeAssemblylineProcess')!.widgets.filter(widget => widget.filled);
+    const bars = machineUiProfiles
+      .find((profile) => profile.id === 'gt.recipe.fakeAssemblylineProcess')!
+      .widgets.filter((widget) => widget.filled);
     expect(RECIPE_ANIMATION_MS).toBe(10_000);
     expect(bars).toHaveLength(3);
     const first = recipeProgressFrames(bars[0]!);
     const second = recipeProgressFrames(bars[1]!);
-    expect(first.find(frame => frame.clipPath === 'inset(0 0% 0 0)')!.offset).toBeLessThan(0.5);
-    expect(second.find(frame => frame.clipPath !== 'inset(0 100% 0 0)')!.offset).toBeGreaterThan(0.5);
+    expect(first.find((frame) => frame.clipPath === 'inset(0 0% 0 0)')!.offset).toBeLessThan(0.5);
+    expect(second.find((frame) => frame.clipPath !== 'inset(0 100% 0 0)')!.offset).toBeGreaterThan(
+      0.5,
+    );
     expect(bars[2]!.direction).toBe('UP');
   });
 });

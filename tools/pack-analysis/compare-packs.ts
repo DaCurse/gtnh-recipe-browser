@@ -87,7 +87,7 @@ function stableValue(value: unknown, stripKeys = new Set<string>()): unknown {
     Object.entries(value as JsonObject)
       .filter(([key, child]) => !stripKeys.has(key) && child !== undefined)
       .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, child]) => [key, stableValue(child, stripKeys)])
+      .map(([key, child]) => [key, stableValue(child, stripKeys)]),
   );
 }
 
@@ -109,13 +109,26 @@ function localAssetFilename(asset: PackAsset): string {
 }
 
 function localAssetPath(directory: string, asset: PackAsset, assetDirectory?: string): string {
-  return resolve(assetDirectory ?? resolve(directory, 'assets', 'sha256'), localAssetFilename(asset));
+  return resolve(
+    assetDirectory ?? resolve(directory, 'assets', 'sha256'),
+    localAssetFilename(asset),
+  );
 }
 
-async function readDecodedAsset(directory: string, asset: PackAsset, assetDirectory?: string, manifest?: PackManifest): Promise<unknown> {
+async function readDecodedAsset(
+  directory: string,
+  asset: PackAsset,
+  assetDirectory?: string,
+  manifest?: PackManifest,
+): Promise<unknown> {
   if (manifest?.recordPages) {
-    return decode(await readLogicalAsset(asset as unknown as ImmutableAsset, manifest as unknown as GeneratedPackManifest,
-      assetDirectory ?? resolve(directory, 'assets', 'sha256')));
+    return decode(
+      await readLogicalAsset(
+        asset as unknown as ImmutableAsset,
+        manifest as unknown as GeneratedPackManifest,
+        assetDirectory ?? resolve(directory, 'assets', 'sha256'),
+      ),
+    );
   }
   const bytes = await readFile(localAssetPath(directory, asset, assetDirectory));
   const decoded = asset.encoding === 'gzip' ? gunzipSync(bytes) : bytes;
@@ -126,7 +139,7 @@ function recordSet(
   name: string,
   records: Iterable<{ id: string; namespace?: string; value: unknown }>,
   stripKeys = new Set<string>(),
-  normalize?: (value: unknown) => unknown
+  normalize?: (value: unknown) => unknown,
 ): RecordSet {
   const result = new Map<string, RecordValue>();
   for (const record of records) {
@@ -136,7 +149,7 @@ function recordSet(
       id: record.id,
       namespace: record.namespace ?? '',
       value,
-      canonical
+      canonical,
     });
   }
   return { name, records: result };
@@ -148,7 +161,7 @@ function assetGroups(manifest: PackManifest): PackAsset[] {
     ...manifest.catalogAssets,
     ...manifest.recipeShards,
     ...(manifest.specialDataShards ?? []),
-    ...manifest.iconSheets
+    ...manifest.iconSheets,
   ];
 }
 
@@ -156,7 +169,7 @@ async function loadIcons(
   directory: string,
   descriptors: PackAsset[],
   assetDirectory?: string,
-  ownerIcons?: Array<{ id: string; icon: { sheetId: string; index: number } | null }>
+  ownerIcons?: Array<{ id: string; icon: { sheetId: string; index: number } | null }>,
 ): Promise<Map<string, string>> {
   const icons = new Map<string, string>();
   const sheets = new Map<string, { descriptor: PackAsset; data: Buffer; width: number }>();
@@ -166,7 +179,10 @@ async function loadIcons(
     const columns = Number(descriptor.columns ?? 32);
     const spriteSize = Number(descriptor.spriteSize ?? 32);
     const bytes = await readFile(localAssetPath(directory, descriptor, assetDirectory));
-    const { data, info } = await sharp(bytes).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
+    const { data, info } = await sharp(bytes)
+      .ensureAlpha()
+      .raw()
+      .toBuffer({ resolveWithObject: true });
     sheets.set(descriptor.id, { descriptor, data, width: info.width });
     if (ownerIcons) continue;
     for (let localIcon = 0; localIcon < iconCount; localIcon++) {
@@ -187,7 +203,7 @@ async function loadIcons(
     const spriteSize = Number(sheet.descriptor.spriteSize ?? 32);
     const columns = Number(sheet.descriptor.columns ?? 32);
     const sprite = Buffer.alloc(spriteSize * spriteSize * 4);
-    const x = icon.index % columns * spriteSize;
+    const x = (icon.index % columns) * spriteSize;
     const y = Math.floor(icon.index / columns) * spriteSize;
     for (let row = 0; row < spriteSize; row++) {
       const start = ((y + row) * sheet.width + x) * 4;
@@ -198,42 +214,85 @@ async function loadIcons(
   return icons;
 }
 
-async function loadPack(directoryArgument: string, name: string, assetDirectory?: string): Promise<LoadedPack> {
+async function loadPack(
+  directoryArgument: string,
+  name: string,
+  assetDirectory?: string,
+): Promise<LoadedPack> {
   const directory = resolve(directoryArgument);
-  const manifest = JSON.parse(await readFile(resolve(directory, 'pack-manifest.json'), 'utf8')) as PackManifest;
+  const manifest = JSON.parse(
+    await readFile(resolve(directory, 'pack-manifest.json'), 'utf8'),
+  ) as PackManifest;
   const assets = assetGroups(manifest);
-  const catalogs = await Promise.all(manifest.catalogAssets.map(async (asset) => ({
-    asset,
-    value: await readDecodedAsset(directory, asset, assetDirectory, manifest) as JsonObject
-  })));
-  const details = await Promise.all((manifest.goodsDetailShards ?? []).map(async (asset) => {
-    const value = await readDecodedAsset(directory, asset, assetDirectory, manifest) as JsonObject;
-    return expandRelations(value.goods as Array<{ id: string }>, value.lists as PackedRelationList[] | undefined);
-  }));
-  const groups = await Promise.all((manifest.ingredientGroupShards ?? []).map(async (asset) => {
-    const value = await readDecodedAsset(directory, asset, assetDirectory, manifest) as JsonObject;
-    return expandRelations(value.ingredientGroups as Array<{ id: string }>, value.lists as PackedRelationList[] | undefined);
-  }));
+  const catalogs = await Promise.all(
+    manifest.catalogAssets.map(async (asset) => ({
+      asset,
+      value: (await readDecodedAsset(directory, asset, assetDirectory, manifest)) as JsonObject,
+    })),
+  );
+  const details = await Promise.all(
+    (manifest.goodsDetailShards ?? []).map(async (asset) => {
+      const value = (await readDecodedAsset(
+        directory,
+        asset,
+        assetDirectory,
+        manifest,
+      )) as JsonObject;
+      return expandRelations(
+        value.goods as Array<{ id: string }>,
+        value.lists as PackedRelationList[] | undefined,
+      );
+    }),
+  );
+  const groups = await Promise.all(
+    (manifest.ingredientGroupShards ?? []).map(async (asset) => {
+      const value = (await readDecodedAsset(
+        directory,
+        asset,
+        assetDirectory,
+        manifest,
+      )) as JsonObject;
+      return expandRelations(
+        value.ingredientGroups as Array<{ id: string }>,
+        value.lists as PackedRelationList[] | undefined,
+      );
+    }),
+  );
   const core = catalogs.find(({ value }) => value.kind === 'core')?.value ?? {};
   const goods = catalogs
     .filter(({ value }) => value.kind === 'goods')
-    .flatMap(({ value }) => Array.isArray(value.goods) ? value.goods : []);
+    .flatMap(({ value }) => (Array.isArray(value.goods) ? value.goods : []));
   const goodsMetadata = catalogs
     .filter(({ value }) => value.kind === 'goodsMetadata')
-    .flatMap(({ value }) => Array.isArray(value.goods) ? value.goods : []).concat(details.flat());
-  const recipeTypes = catalogs.flatMap(({ value }) => Array.isArray(value.recipeTypes) ? value.recipeTypes : []);
-  const oreDictionaries = catalogs.flatMap(({ value }) => Array.isArray(value.oreDictionaries) ? value.oreDictionaries : []);
-  const ingredientGroups = catalogs.flatMap(({ value }) => Array.isArray(value.ingredientGroups) ? value.ingredientGroups : []).concat(groups.flat());
-  const serviceIcons = catalogs.flatMap(({ value }) => Array.isArray(value.specialServiceIcons) ? value.specialServiceIcons : []);
-  const specialViews = catalogs.flatMap(({ value }) => Array.isArray(value.specialViewTypes) ? value.specialViewTypes : []);
-  const ownerIcons = catalogs.flatMap(({ value }) => Array.isArray(value.icons)
-    ? value.icons as Array<{ id: string; icon: { sheetId: string; index: number } | null }>
-    : []);
+    .flatMap(({ value }) => (Array.isArray(value.goods) ? value.goods : []))
+    .concat(details.flat());
+  const recipeTypes = catalogs.flatMap(({ value }) =>
+    Array.isArray(value.recipeTypes) ? value.recipeTypes : [],
+  );
+  const oreDictionaries = catalogs.flatMap(({ value }) =>
+    Array.isArray(value.oreDictionaries) ? value.oreDictionaries : [],
+  );
+  const ingredientGroups = catalogs
+    .flatMap(({ value }) => (Array.isArray(value.ingredientGroups) ? value.ingredientGroups : []))
+    .concat(groups.flat());
+  const serviceIcons = catalogs.flatMap(({ value }) =>
+    Array.isArray(value.specialServiceIcons) ? value.specialServiceIcons : [],
+  );
+  const specialViews = catalogs.flatMap(({ value }) =>
+    Array.isArray(value.specialViewTypes) ? value.specialViewTypes : [],
+  );
+  const ownerIcons = catalogs.flatMap(({ value }) =>
+    Array.isArray(value.icons)
+      ? (value.icons as Array<{ id: string; icon: { sheetId: string; index: number } | null }>)
+      : [],
+  );
   if (manifest.formatVersion === 7) {
     for (const value of [...goods, ...recipeTypes, ...serviceIcons]) {
       const record = value as { id: string; icon?: { sheetId: string; index: number } | null };
       if (!record.icon) continue;
-      const sheet = manifest.iconSheets.find((sheet) => sheet.sha256.startsWith(record.icon!.sheetId));
+      const sheet = manifest.iconSheets.find((sheet) =>
+        sheet.sha256.startsWith(record.icon!.sheetId),
+      );
       if (!sheet) throw new Error(`${record.id}: missing icon sheet`);
       ownerIcons.push({ id: record.id, icon: { ...record.icon, sheetId: sheet.sha256 } });
     }
@@ -245,34 +304,44 @@ async function loadPack(directoryArgument: string, name: string, assetDirectory?
     recipeTypeIds.set(sourceId, stableId);
     recipeTypeIds.set(stableId, stableId);
   }
-  const obsoleteRecipeRemaps = catalogs
-    .find(({ value }) => value.kind === 'recipeRemaps')?.value.obsoleteRecipeRemaps ?? core.obsoleteRecipeRemaps ?? {};
-  const recipeShards = await Promise.all(manifest.recipeShards.map(async (asset) => ({
-    asset,
-    value: await readDecodedAsset(directory, asset, assetDirectory, manifest) as JsonObject
-  })));
+  const obsoleteRecipeRemaps =
+    catalogs.find(({ value }) => value.kind === 'recipeRemaps')?.value.obsoleteRecipeRemaps ??
+    core.obsoleteRecipeRemaps ??
+    {};
+  const recipeShards = await Promise.all(
+    manifest.recipeShards.map(async (asset) => ({
+      asset,
+      value: (await readDecodedAsset(directory, asset, assetDirectory, manifest)) as JsonObject,
+    })),
+  );
   const recipes = recipeShards.flatMap(({ asset, value }) =>
     (Array.isArray(value.recipes) ? value.recipes : []).map((recipe) => ({
       id: String((recipe as JsonObject).id),
-      namespace: recipeTypeIds.get(String(asset.recipeTypeId ?? (recipe as JsonObject).recipeTypeId ?? ''))
-        ?? String(asset.recipeTypeId ?? (recipe as JsonObject).recipeTypeId ?? ''),
+      namespace:
+        recipeTypeIds.get(
+          String(asset.recipeTypeId ?? (recipe as JsonObject).recipeTypeId ?? ''),
+        ) ?? String(asset.recipeTypeId ?? (recipe as JsonObject).recipeTypeId ?? ''),
       value: {
         ...(recipe as JsonObject),
-        recipeTypeId: recipeTypeIds.get(String((recipe as JsonObject).recipeTypeId ?? asset.recipeTypeId ?? ''))
-          ?? String((recipe as JsonObject).recipeTypeId ?? asset.recipeTypeId ?? '')
-      }
-    }))
+        recipeTypeId:
+          recipeTypeIds.get(
+            String((recipe as JsonObject).recipeTypeId ?? asset.recipeTypeId ?? ''),
+          ) ?? String((recipe as JsonObject).recipeTypeId ?? asset.recipeTypeId ?? ''),
+      },
+    })),
   );
-  const specialShards = await Promise.all((manifest.specialDataShards ?? []).map(async (asset) => ({
-    asset,
-    value: await readDecodedAsset(directory, asset, assetDirectory, manifest) as JsonObject
-  })));
+  const specialShards = await Promise.all(
+    (manifest.specialDataShards ?? []).map(async (asset) => ({
+      asset,
+      value: (await readDecodedAsset(directory, asset, assetDirectory, manifest)) as JsonObject,
+    })),
+  );
   const specialRecords = specialShards.flatMap(({ asset, value }) =>
     (Array.isArray(value.records) ? value.records : []).map((record) => ({
       id: String((record as JsonObject).id),
       namespace: String(asset.specialViewTypeId ?? (record as JsonObject).category ?? ''),
-      value: record
-    }))
+      value: record,
+    })),
   );
   const catalogGoods = recordSet(
     'goods',
@@ -288,8 +357,8 @@ async function loadPack(directoryArgument: string, name: string, assetDirectory?
       'specialUsageLookupIds',
       'specialProductionCount',
       'specialUsageCount',
-      'icon'
-    ])
+      'icon',
+    ]),
   );
   const catalogGoodsMetadata = recordSet(
     'goods-metadata',
@@ -300,13 +369,17 @@ async function loadPack(directoryArgument: string, name: string, assetDirectory?
   const typeSet = recordSet(
     'recipe-types',
     recipeTypes.map((value) => ({
-      id: recipeTypeIds.get(String((value as JsonObject).id)) ?? stableRecipeTypeId(value as JsonObject),
+      id:
+        recipeTypeIds.get(String((value as JsonObject).id)) ??
+        stableRecipeTypeId(value as JsonObject),
       value: {
         ...(value as JsonObject),
-        id: recipeTypeIds.get(String((value as JsonObject).id)) ?? stableRecipeTypeId(value as JsonObject)
-      }
+        id:
+          recipeTypeIds.get(String((value as JsonObject).id)) ??
+          stableRecipeTypeId(value as JsonObject),
+      },
     })),
-    new Set(['order'])
+    new Set(['order']),
   );
   const oreSet = recordSet(
     'ore-dictionaries',
@@ -317,8 +390,8 @@ async function loadPack(directoryArgument: string, name: string, assetDirectory?
       'specialProductionLookupIds',
       'specialUsageLookupIds',
       'specialProductionCount',
-      'specialUsageCount'
-    ])
+      'specialUsageCount',
+    ]),
   );
   const groupSet = recordSet(
     'ingredient-groups',
@@ -329,8 +402,8 @@ async function loadPack(directoryArgument: string, name: string, assetDirectory?
       'specialProductionLookupIds',
       'specialUsageLookupIds',
       'specialProductionCount',
-      'specialUsageCount'
-    ])
+      'specialUsageCount',
+    ]),
   );
   const catalogValue = {
     recipeTypes: typeSet.records,
@@ -339,16 +412,29 @@ async function loadPack(directoryArgument: string, name: string, assetDirectory?
     serviceItemIds: core.serviceItemIds ?? [],
     obsoleteRecipeRemaps,
     specialViewTypes: specialViews,
-    specialServiceIcons: serviceIcons
+    specialServiceIcons: serviceIcons,
   };
   return {
     name,
     directory,
     manifest,
     assets,
-    recordSets: [catalogGoods, catalogGoodsMetadata, recipeSet, specialSet, typeSet, oreSet, groupSet],
-    icons: await loadIcons(directory, manifest.iconSheets, assetDirectory, manifest.recordPages ? ownerIcons : undefined),
-    canonicalCore: stableJson(catalogValue, new Set(['order', 'icon']))
+    recordSets: [
+      catalogGoods,
+      catalogGoodsMetadata,
+      recipeSet,
+      specialSet,
+      typeSet,
+      oreSet,
+      groupSet,
+    ],
+    icons: await loadIcons(
+      directory,
+      manifest.iconSheets,
+      assetDirectory,
+      manifest.recordPages ? ownerIcons : undefined,
+    ),
+    canonicalCore: stableJson(catalogValue, new Set(['order', 'icon'])),
   };
 }
 
@@ -388,7 +474,7 @@ function diffRecords(left: RecordSet, right: RecordSet) {
     identicalPercentOfRight: percentage(identical, right.records.size),
     sharedCanonicalBytes,
     sharedCompressedBytes,
-    sharedCollectionCompressedBytes: gzipSize(Buffer.from(stableJson(common), 'utf8'))
+    sharedCollectionCompressedBytes: gzipSize(Buffer.from(stableJson(common), 'utf8')),
   };
 }
 
@@ -397,7 +483,7 @@ function gzipSize(value: Uint8Array): number {
 }
 
 function percentage(value: number, total: number): number {
-  return total === 0 ? 100 : Math.round(value / total * 10_000) / 100;
+  return total === 0 ? 100 : Math.round((value / total) * 10_000) / 100;
 }
 
 function compareHashes(left: Map<string, string>, right: Map<string, string>) {
@@ -421,7 +507,7 @@ function compareHashes(left: Map<string, string>, right: Map<string, string>) {
     modified,
     added,
     removed,
-    identicalPercentOfRight: percentage(identical, right.size)
+    identicalPercentOfRight: percentage(identical, right.size),
   };
 }
 
@@ -439,34 +525,47 @@ function contentAddressedAssetStats(left: LoadedPack, right: LoadedPack) {
     rightLogicalBytes: right.manifest.totals.offlineBytes,
     separateLogicalBytes: left.manifest.totals.offlineBytes + right.manifest.totals.offlineBytes,
     currentUniqueBytesAcrossBoth: [...union.values()].reduce((total, bytes) => total + bytes, 0),
-    currentDuplicateBytesAcrossBoth: left.manifest.totals.offlineBytes
-      + right.manifest.totals.offlineBytes - [...union.values()].reduce((total, bytes) => total + bytes, 0),
+    currentDuplicateBytesAcrossBoth:
+      left.manifest.totals.offlineBytes +
+      right.manifest.totals.offlineBytes -
+      [...union.values()].reduce((total, bytes) => total + bytes, 0),
     sharedBytes,
     rightIncrementalBytes,
     uniqueObjectCountAcrossBoth: union.size,
     sharedObjectCount: sharedHashes.length,
     rightAssetCount: right.assets.length,
-    rightNewObjectCount: [...rightHashes.keys()].filter((hash) => !leftHashes.has(hash)).length
+    rightNewObjectCount: [...rightHashes.keys()].filter((hash) => !leftHashes.has(hash)).length,
   };
 }
 
 function summarizeAssets(
   assets: readonly PackAsset[],
-  recordPageHashes: ReadonlySet<string>
-): Record<string, {
-  count: number;
-  bytes: number;
-  minBytes: number;
-  maxBytes: number;
-}> {
-  const result: Record<string, { count: number; bytes: number; minBytes: number; maxBytes: number }> = {};
+  recordPageHashes: ReadonlySet<string>,
+): Record<
+  string,
+  {
+    count: number;
+    bytes: number;
+    minBytes: number;
+    maxBytes: number;
+  }
+> {
+  const result: Record<
+    string,
+    { count: number; bytes: number; minBytes: number; maxBytes: number }
+  > = {};
   for (const asset of assets) {
     const kind = recordPageHashes.has(asset.sha256)
       ? 'recordPage'
       : asset.kind === 'catalog'
         ? String(asset.role ?? 'catalog')
         : String(asset.kind ?? 'unknown');
-    const summary = result[kind] ??= { count: 0, bytes: 0, minBytes: Number.POSITIVE_INFINITY, maxBytes: 0 };
+    const summary = (result[kind] ??= {
+      count: 0,
+      bytes: 0,
+      minBytes: Number.POSITIVE_INFINITY,
+      maxBytes: 0,
+    });
     summary.count++;
     summary.bytes += asset.bytes;
     summary.minBytes = Math.min(summary.minBytes, asset.bytes);
@@ -489,12 +588,15 @@ function payloadBytes(logicalId: string, namespace: string, records: RecordValue
     records: records
       .slice()
       .sort((left, right) => left.id.localeCompare(right.id))
-      .map((record) => JSON.parse(record.canonical))
+      .map((record) => JSON.parse(record.canonical)),
   };
   return gzipSync(encode({ schemaVersion: 5, kind: 'records', ...value }));
 }
 
-function groupedRecords(records: Iterable<RecordValue>, nibbles: number): Map<string, RecordValue[]> {
+function groupedRecords(
+  records: Iterable<RecordValue>,
+  nibbles: number,
+): Map<string, RecordValue[]> {
   const result = new Map<string, RecordValue[]>();
   for (const record of records) {
     const prefix = prefixFor(`${record.namespace}\0${record.id}`, nibbles);
@@ -508,9 +610,10 @@ function groupedRecords(records: Iterable<RecordValue>, nibbles: number): Map<st
 function choosePrefixDepth(records: RecordValue[], targetBytes: number): number {
   for (let nibbles = 0; nibbles <= MAX_PREFIX_NIBBLES; nibbles++) {
     const groups = groupedRecords(records, nibbles);
-    const tooLarge = [...groups.entries()].some(([prefix, bucket]) =>
-      payloadBytes(`probe/${prefix}`, bucket[0]?.namespace ?? '', bucket).byteLength > targetBytes
-      && bucket.length > 1
+    const tooLarge = [...groups.entries()].some(
+      ([prefix, bucket]) =>
+        payloadBytes(`probe/${prefix}`, bucket[0]?.namespace ?? '', bucket).byteLength >
+          targetBytes && bucket.length > 1,
     );
     if (!tooLarge) return nibbles;
   }
@@ -532,7 +635,7 @@ function unionHashPrefixChunks(
   left: LoadedPack,
   right: LoadedPack,
   setName: string,
-  targetBytes: number
+  targetBytes: number,
 ) {
   const union = combinedRecords(left, right, setName);
   const byNamespace = new Map<string, RecordValue[]>();
@@ -550,7 +653,10 @@ function unionHashPrefixChunks(
     const chunks: SimulatedChunk[] = [];
     const grouped = new Map<string, RecordValue[]>();
     for (const record of set?.records.values() ?? []) {
-      const prefix = prefixFor(`${record.namespace}\0${record.id}`, nibblesByNamespace[record.namespace] ?? 0);
+      const prefix = prefixFor(
+        `${record.namespace}\0${record.id}`,
+        nibblesByNamespace[record.namespace] ?? 0,
+      );
       const key = `${record.namespace}\0${prefix}`;
       const bucket = grouped.get(key) ?? [];
       bucket.push(record);
@@ -559,7 +665,12 @@ function unionHashPrefixChunks(
     for (const [key, bucket] of grouped) {
       const [namespace, prefix] = key.split('\0');
       const logicalId = `${setName}/${namespace}/${prefix || 'root'}`;
-      chunks.push({ logicalId, namespace, bytes: payloadBytes(logicalId, namespace, bucket), recordCount: bucket.length });
+      chunks.push({
+        logicalId,
+        namespace,
+        bytes: payloadBytes(logicalId, namespace, bucket),
+        recordCount: bucket.length,
+      });
     }
     return chunks;
   };
@@ -567,8 +678,12 @@ function unionHashPrefixChunks(
   const rightChunks = make(right);
   const leftHashes = new Map(leftChunks.map((chunk) => [chunk.logicalId, sha256(chunk.bytes)]));
   const rightHashes = new Map(rightChunks.map((chunk) => [chunk.logicalId, sha256(chunk.bytes)]));
-  const shared = leftChunks.filter((chunk) => rightHashes.get(chunk.logicalId) === sha256(chunk.bytes));
-  const rightIncremental = rightChunks.filter((chunk) => leftHashes.get(chunk.logicalId) !== sha256(chunk.bytes));
+  const shared = leftChunks.filter(
+    (chunk) => rightHashes.get(chunk.logicalId) === sha256(chunk.bytes),
+  );
+  const rightIncremental = rightChunks.filter(
+    (chunk) => leftHashes.get(chunk.logicalId) !== sha256(chunk.bytes),
+  );
   const all = [...leftChunks, ...rightChunks];
   const max = Math.max(0, ...all.map((chunk) => chunk.bytes.byteLength));
   const min = all.length === 0 ? 0 : Math.min(...all.map((chunk) => chunk.bytes.byteLength));
@@ -580,10 +695,13 @@ function unionHashPrefixChunks(
     leftBytes: leftChunks.reduce((total, chunk) => total + chunk.bytes.byteLength, 0),
     rightBytes: rightChunks.reduce((total, chunk) => total + chunk.bytes.byteLength, 0),
     sharedBytes: shared.reduce((total, chunk) => total + chunk.bytes.byteLength, 0),
-    rightIncrementalBytes: rightIncremental.reduce((total, chunk) => total + chunk.bytes.byteLength, 0),
+    rightIncrementalBytes: rightIncremental.reduce(
+      (total, chunk) => total + chunk.bytes.byteLength,
+      0,
+    ),
     maxChunkBytes: max,
     minChunkBytes: min,
-    nibblesByNamespace
+    nibblesByNamespace,
   };
 }
 
@@ -599,10 +717,15 @@ function cdcChunks(pack: LoadedPack, setName: string, targetBytes: number): Simu
   const result: SimulatedChunk[] = [];
   for (const [namespace, records] of byNamespace) {
     records.sort((left, right) => left.id.localeCompare(right.id));
-    const average = records.length === 0
-      ? 1
-      : records.reduce((total, record) => total + Buffer.byteLength(record.canonical), 0) / records.length;
-    const maskBits = Math.max(1, Math.min(20, Math.round(Math.log2(Math.max(2, targetBytes / Math.max(1, average))))));
+    const average =
+      records.length === 0
+        ? 1
+        : records.reduce((total, record) => total + Buffer.byteLength(record.canonical), 0) /
+          records.length;
+    const maskBits = Math.max(
+      1,
+      Math.min(20, Math.round(Math.log2(Math.max(2, targetBytes / Math.max(1, average))))),
+    );
     const mask = (1n << BigInt(maskBits)) - 1n;
     let current: RecordValue[] = [];
     let currentBytes = 0;
@@ -615,11 +738,17 @@ function cdcChunks(pack: LoadedPack, setName: string, targetBytes: number): Simu
         rolling = ((rolling << 8n) ^ BigInt(fingerprint[index]!)) & U64_MASK;
       }
       const minimum = targetBytes * 0.45;
-      const boundary = current.length > 1
-        && ((rolling & mask) === 0n && currentBytes >= minimum || currentBytes >= targetBytes);
+      const boundary =
+        current.length > 1 &&
+        (((rolling & mask) === 0n && currentBytes >= minimum) || currentBytes >= targetBytes);
       if (boundary) {
         const logicalId = `${setName}/${namespace}/cdc-${result.length}`;
-        result.push({ logicalId, namespace, bytes: payloadBytes(logicalId, namespace, current), recordCount: current.length });
+        result.push({
+          logicalId,
+          namespace,
+          bytes: payloadBytes(logicalId, namespace, current),
+          recordCount: current.length,
+        });
         current = [];
         currentBytes = 0;
         rolling = 0n;
@@ -627,7 +756,12 @@ function cdcChunks(pack: LoadedPack, setName: string, targetBytes: number): Simu
     }
     if (current.length > 0) {
       const logicalId = `${setName}/${namespace}/cdc-${result.length}`;
-      result.push({ logicalId, namespace, bytes: payloadBytes(logicalId, namespace, current), recordCount: current.length });
+      result.push({
+        logicalId,
+        namespace,
+        bytes: payloadBytes(logicalId, namespace, current),
+        recordCount: current.length,
+      });
     }
   }
   return result;
@@ -650,7 +784,7 @@ function cdcStats(left: LoadedPack, right: LoadedPack, setName: string, targetBy
     sharedBytes: rightShared.reduce((total, chunk) => total + chunk.bytes.byteLength, 0),
     rightIncrementalBytes: rightNew.reduce((total, chunk) => total + chunk.bytes.byteLength, 0),
     maxChunkBytes: Math.max(0, ...all.map((chunk) => chunk.bytes.byteLength)),
-    minChunkBytes: all.length === 0 ? 0 : Math.min(...all.map((chunk) => chunk.bytes.byteLength))
+    minChunkBytes: all.length === 0 ? 0 : Math.min(...all.map((chunk) => chunk.bytes.byteLength)),
   };
 }
 
@@ -664,16 +798,23 @@ function changedFields(left: LoadedPack, right: LoadedPack, name: string): Recor
   const a = left.recordSets.find((set) => set.name === name);
   const b = right.recordSets.find((set) => set.name === name);
   const changes = new Map<string, number>();
-  for (const id of new Set([...a?.records.keys() ?? [], ...b?.records.keys() ?? []])) {
+  for (const id of new Set([...(a?.records.keys() ?? []), ...(b?.records.keys() ?? [])])) {
     const leftValue = a?.records.get(id)?.value;
     const rightValue = b?.records.get(id)?.value;
-    if (leftValue === undefined || rightValue === undefined
-      || leftValue === null || rightValue === null
-      || typeof leftValue !== 'object' || typeof rightValue !== 'object'
-      || Array.isArray(leftValue) || Array.isArray(rightValue)) continue;
+    if (
+      leftValue === undefined ||
+      rightValue === undefined ||
+      leftValue === null ||
+      rightValue === null ||
+      typeof leftValue !== 'object' ||
+      typeof rightValue !== 'object' ||
+      Array.isArray(leftValue) ||
+      Array.isArray(rightValue)
+    )
+      continue;
     const keys = new Set([
       ...Object.keys(leftValue as JsonObject),
-      ...Object.keys(rightValue as JsonObject)
+      ...Object.keys(rightValue as JsonObject),
     ]);
     for (const key of keys) {
       const leftField = (leftValue as JsonObject)[key];
@@ -683,7 +824,9 @@ function changedFields(left: LoadedPack, right: LoadedPack, name: string): Recor
       }
     }
   }
-  return Object.fromEntries([...changes.entries()].sort(([, leftCount], [, rightCount]) => rightCount - leftCount));
+  return Object.fromEntries(
+    [...changes.entries()].sort(([, leftCount], [, rightCount]) => rightCount - leftCount),
+  );
 }
 
 function formatBytes(bytes: number): string {
@@ -697,8 +840,14 @@ function markdown(report: JsonObject): string {
   const current = report.currentContentAddressing as JsonObject;
   const records = report.records as Record<string, JsonObject>;
   const fieldChanges = (report.fieldChanges ?? {}) as Record<string, Record<string, number>>;
-  const hashPrefix = ((report.proposals as JsonObject | undefined)?.hashPrefix ?? {}) as Record<string, JsonObject>;
-  const cdc = ((report.proposals as JsonObject | undefined)?.recordAwareCdc ?? {}) as Record<string, JsonObject>;
+  const hashPrefix = ((report.proposals as JsonObject | undefined)?.hashPrefix ?? {}) as Record<
+    string,
+    JsonObject
+  >;
+  const cdc = ((report.proposals as JsonObject | undefined)?.recordAwareCdc ?? {}) as Record<
+    string,
+    JsonObject
+  >;
   const lines = [
     '# Beta 2 / beta 3 shared-pack analysis',
     '',
@@ -725,7 +874,9 @@ function markdown(report: JsonObject): string {
     '',
     '| Field | Records changed |',
     '| --- | ---: |',
-    ...Object.entries(fieldChanges['goods-metadata'] ?? {}).map(([name, count]) => `| ${name} | ${count} |`),
+    ...Object.entries(fieldChanges['goods-metadata'] ?? {}).map(
+      ([name, count]) => `| ${name} | ${count} |`,
+    ),
     '',
     '## Proposed chunking simulations',
     '',
@@ -741,7 +892,7 @@ function markdown(report: JsonObject): string {
     }),
     '',
     'The simulations use dataset-independent payloads without `datasetId` wrappers. Hash-prefix partitions use a union-derived layout; CDC boundaries are computed independently per dataset and always fall between complete records.',
-    ''
+    '',
   ];
   return `${lines.join('\n')}\n`;
 }
@@ -754,13 +905,23 @@ function argument(name: string): string | undefined {
 const leftPath = argument('left');
 const rightPath = argument('right');
 if (!leftPath || !rightPath) {
-  console.error('Usage: npm run analyze:pack-reuse -- --left <pack> --right <pack> [--asset-directory <global-store>] [--json <file>] [--markdown <file>]');
+  console.error(
+    'Usage: npm run analyze:pack-reuse -- --left <pack> --right <pack> [--asset-directory <global-store>] [--json <file>] [--markdown <file>]',
+  );
   process.exit(2);
 }
 
 const assetDirectory = argument('asset-directory');
-const left = await loadPack(leftPath, 'beta-2', assetDirectory ? resolve(assetDirectory) : undefined);
-const right = await loadPack(rightPath, 'beta-3', assetDirectory ? resolve(assetDirectory) : undefined);
+const left = await loadPack(
+  leftPath,
+  'beta-2',
+  assetDirectory ? resolve(assetDirectory) : undefined,
+);
+const right = await loadPack(
+  rightPath,
+  'beta-3',
+  assetDirectory ? resolve(assetDirectory) : undefined,
+);
 const recordNames = [
   'goods',
   'goods-metadata',
@@ -768,14 +929,14 @@ const recordNames = [
   'special',
   'recipe-types',
   'ore-dictionaries',
-  'ingredient-groups'
+  'ingredient-groups',
 ];
 const hashPrefix: Record<string, unknown> = {};
 const recordAwareCdc: Record<string, unknown> = {};
 const targets: Record<string, number> = {
   goods: GOODS_TARGET_BYTES,
   recipes: RECIPE_TARGET_BYTES,
-  special: SPECIAL_TARGET_BYTES
+  special: SPECIAL_TARGET_BYTES,
 };
 for (const name of ['goods', 'recipes', 'special']) {
   hashPrefix[name] = unionHashPrefixChunks(left, right, name, targets[name]!);
@@ -787,35 +948,41 @@ const report = {
   identity: {
     left: left.manifest.datasetId,
     right: right.manifest.datasetId,
-    format: left.manifest.formatVersion
+    format: left.manifest.formatVersion,
   },
   currentContentAddressing: contentAddressedAssetStats(left, right),
   currentAssets: {
-    left: summarizeAssets(left.assets, new Set(left.manifest.recordPages?.map((asset) => asset.sha256))),
-    right: summarizeAssets(right.assets, new Set(right.manifest.recordPages?.map((asset) => asset.sha256)))
+    left: summarizeAssets(
+      left.assets,
+      new Set(left.manifest.recordPages?.map((asset) => asset.sha256)),
+    ),
+    right: summarizeAssets(
+      right.assets,
+      new Set(right.manifest.recordPages?.map((asset) => asset.sha256)),
+    ),
   },
   records: Object.fromEntries(recordNames.map((name) => [name, classStats(left, right, name)])),
   fieldChanges: {
-    'goods-metadata': changedFields(left, right, 'goods-metadata')
+    'goods-metadata': changedFields(left, right, 'goods-metadata'),
   },
   core: {
     identical: left.canonicalCore === right.canonicalCore,
     beta2CanonicalBytes: Buffer.byteLength(left.canonicalCore),
     beta3CanonicalBytes: Buffer.byteLength(right.canonicalCore),
-    sharedCanonicalBytes: left.canonicalCore === right.canonicalCore
-      ? Buffer.byteLength(left.canonicalCore)
-      : 0
+    sharedCanonicalBytes:
+      left.canonicalCore === right.canonicalCore ? Buffer.byteLength(left.canonicalCore) : 0,
   },
   icons: compareHashes(left.icons, right.icons),
   proposals: {
     targetBytes: targets,
     hashPrefix,
-    recordAwareCdc
-  }
+    recordAwareCdc,
+  },
 };
 
 const jsonPath = argument('json');
-if (jsonPath) await writeFile(resolve(jsonPath), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
+if (jsonPath)
+  await writeFile(resolve(jsonPath), `${JSON.stringify(report, null, 2)}\n`, { flag: 'wx' });
 const markdownPath = argument('markdown');
 if (markdownPath) await writeFile(resolve(markdownPath), markdown(report), { flag: 'wx' });
 console.log(JSON.stringify(report, null, 2));

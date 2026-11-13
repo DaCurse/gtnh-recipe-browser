@@ -15,7 +15,7 @@ describe('progressive bounded-concurrency work', () => {
         if (value === 0) await firstGate;
         return value;
       },
-      ({ value }) => seen.push(value)
+      ({ value }) => seen.push(value),
     );
 
     await Promise.resolve();
@@ -35,7 +35,7 @@ describe('progressive bounded-concurrency work', () => {
       ({ completed }) => {
         if (completed === 1) controller.abort();
       },
-      controller.signal
+      controller.signal,
     );
 
     await expect(pending).rejects.toMatchObject({ name: 'AbortError' });

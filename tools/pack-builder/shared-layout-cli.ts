@@ -6,18 +6,17 @@ import {
   buildSharedLayout,
   DEFAULT_SHARED_LAYOUT_TARGETS,
   extendSharedLayout,
-  type SharedLayoutTargets
+  type SharedLayoutTargets,
 } from './sharedLayout';
-import {
-  expandGtOreSpecialData
-} from './specialOreAliases';
+import { expandGtOreSpecialData } from './specialOreAliases';
 import { repairSpecialServiceIcons } from './specialServiceIcons';
 import { parseBrowserNeiSpecial, type BrowserNeiSpecialData } from './special';
 
 function values(name: string): string[] {
   const result: string[] = [];
   for (let index = 0; index < process.argv.length; index++) {
-    if (process.argv[index] === `--${name}` && process.argv[index + 1]) result.push(process.argv[index + 1]!);
+    if (process.argv[index] === `--${name}` && process.argv[index + 1])
+      result.push(process.argv[index + 1]!);
   }
   return result;
 }
@@ -63,17 +62,17 @@ for (let index = 0; index < dataPaths.length; index++) {
 const existingLayout = value('existing-layout');
 const layout = existingLayout
   ? extendSharedLayout(
-    JSON.parse(await readFile(resolve(existingLayout), 'utf8')),
-    repositories,
-    specialData
-  )
+      JSON.parse(await readFile(resolve(existingLayout), 'utf8')),
+      repositories,
+      specialData,
+    )
   : buildSharedLayout(repositories, specialData, {
-    recipes: target('recipes'),
-    goods: target('goods'),
-    goodsMetadata: target('goodsMetadata'),
-    special: target('special'),
-    oreDictionaries: target('oreDictionaries')
-  });
+      recipes: target('recipes'),
+      goods: target('goods'),
+      goodsMetadata: target('goodsMetadata'),
+      special: target('special'),
+      oreDictionaries: target('oreDictionaries'),
+    });
 const output = value('output');
 const text = `${JSON.stringify(layout, null, 2)}\n`;
 if (output) {

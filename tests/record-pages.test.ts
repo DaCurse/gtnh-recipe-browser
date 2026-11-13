@@ -10,39 +10,70 @@ import type { GeneratedPackManifest, ImmutableAsset } from '../tools/pack-builde
 import { assembleRecordPages } from '../src/lib/recordPages';
 
 const directories: string[] = [];
-afterEach(async () => { await Promise.all(directories.splice(0).map((path) => rm(path, { recursive: true, force: true }))); });
+afterEach(async () => {
+  await Promise.all(
+    directories.splice(0).map((path) => rm(path, { recursive: true, force: true })),
+  );
+});
 async function directory() {
   const path = await mkdtemp(join(tmpdir(), 'record-pages-'));
   directories.push(path);
   return path;
 }
 async function asset(directory: string, records: unknown[]): Promise<ImmutableAsset> {
-  const bytes = gzipSync(encode({ schemaVersion: 5, kind: 'recipeShard', logicalId: 'test', recipes: records }), { level: 9 });
+  const bytes = gzipSync(
+    encode({ schemaVersion: 5, kind: 'recipeShard', logicalId: 'test', recipes: records }),
+    { level: 9 },
+  );
   const hash = createHash('sha256').update(bytes).digest('hex');
   await writeFile(join(directory, hash), bytes);
-  return { id: 'test', sha256: hash, bytes: bytes.length, encoding: 'gzip', mediaType: 'application/msgpack', url: hash };
+  return {
+    id: 'test',
+    sha256: hash,
+    bytes: bytes.length,
+    encoding: 'gzip',
+    mediaType: 'application/msgpack',
+    url: hash,
+  };
 }
 describe('immutable record pages', () => {
   it('reuses frozen records after insertions, deletion, modification and reordering without a base manifest', async () => {
     const first = await directory();
-    const records = Array.from({ length: 500 }, (_, id) => ({ id: `recipe-${id}`, value: 'content'.repeat(100) }));
+    const records = Array.from({ length: 500 }, (_, id) => ({
+      id: `recipe-${id}`,
+      value: 'content'.repeat(100),
+    }));
     const original = await asset(first, records);
     const pages = await buildRecordPages([original], first, '../..', []);
     const prior = { recordPages: pages } as GeneratedPackManifest;
     for (const changed of [
       [...records, { id: 'inserted', value: 'new' }],
       records.slice(1),
-      records.map((record, i) => i === 20 ? { ...record, value: 'modified' } : record),
-      records.toReversed()
+      records.map((record, i) => (i === 20 ? { ...record, value: 'modified' } : record)),
+      records.toReversed(),
     ]) {
       const next = await directory();
       const logical = await asset(next, changed);
-      const nextPages = await buildRecordPages([logical], next, '../..', [{ manifest: prior, assetsDirectory: first }]);
-      expect(pages.every((page) => nextPages.some((nextPage) => nextPage.sha256 === page.sha256))).toBe(true);
-      expect(nextPages.filter((page) => !pages.some((previous) => previous.sha256 === page.sha256)).length).toBeLessThanOrEqual(1);
-      const result = await readLogicalAsset(logical, { recordPages: nextPages } as GeneratedPackManifest, next);
+      const nextPages = await buildRecordPages([logical], next, '../..', [
+        { manifest: prior, assetsDirectory: first },
+      ]);
+      expect(
+        pages.every((page) => nextPages.some((nextPage) => nextPage.sha256 === page.sha256)),
+      ).toBe(true);
+      expect(
+        nextPages.filter((page) => !pages.some((previous) => previous.sha256 === page.sha256))
+          .length,
+      ).toBeLessThanOrEqual(1);
+      const result = await readLogicalAsset(
+        logical,
+        { recordPages: nextPages } as GeneratedPackManifest,
+        next,
+      );
       expect((decode(result) as { recipes: unknown[] }).recipes).toEqual(changed);
-      for (const page of pages) expect(await readFile(join(next, page.sha256))).toEqual(await readFile(join(first, page.sha256)));
+      for (const page of pages)
+        expect(await readFile(join(next, page.sha256))).toEqual(
+          await readFile(join(first, page.sha256)),
+        );
     }
   });
   it('consolidates fragmented bootstrap reuse without rewriting predecessor or lazy pages', async () => {
@@ -53,22 +84,39 @@ describe('immutable record pages', () => {
       const bytes = gzipSync(encode([encode(record)]), { level: 9 });
       const hash = createHash('sha256').update(bytes).digest('hex');
       await writeFile(join(first, hash), bytes);
-      pages.push({ id: hash, sha256: hash, bytes: bytes.length, family: 'bootstrap',
-        encoding: 'gzip', mediaType: 'application/msgpack', url: hash });
+      pages.push({
+        id: hash,
+        sha256: hash,
+        bytes: bytes.length,
+        family: 'bootstrap',
+        encoding: 'gzip',
+        mediaType: 'application/msgpack',
+        url: hash,
+      });
     }
-    const previousLazy = { ...await asset(first, [{ id: 'lazy-recipe' }]), family: 'recipes' as const };
+    const previousLazy = {
+      ...(await asset(first, [{ id: 'lazy-recipe' }])),
+      family: 'recipes' as const,
+    };
     const lazyPages = await buildRecordPages([previousLazy], first, '../..', []);
     const prior = { recordPages: [...pages, ...lazyPages] } as GeneratedPackManifest;
     const next = await directory();
     const logical = await asset(next, records);
-    const lazy = { ...await asset(next, [{ id: 'lazy-recipe' }]), family: 'recipes' as const };
-    const nextPages = await buildRecordPages([logical, lazy], next, '../..', [{ manifest: prior, assetsDirectory: first }]);
+    const lazy = { ...(await asset(next, [{ id: 'lazy-recipe' }])), family: 'recipes' as const };
+    const nextPages = await buildRecordPages([logical, lazy], next, '../..', [
+      { manifest: prior, assetsDirectory: first },
+    ]);
     expect(nextPages.filter((page) => page.family === 'bootstrap')).toHaveLength(1);
-    expect(nextPages.filter((page) => page.family === 'recipes').map((page) => page.sha256))
-      .toEqual(lazyPages.map((page) => page.sha256));
+    expect(
+      nextPages.filter((page) => page.family === 'recipes').map((page) => page.sha256),
+    ).toEqual(lazyPages.map((page) => page.sha256));
     const manifest = { recordPages: nextPages } as GeneratedPackManifest;
-    expect((decode(await readLogicalAsset(logical, manifest, next)) as { recipes: unknown[] }).recipes).toEqual(records);
-    expect((decode(await readLogicalAsset(lazy, manifest, next)) as { recipes: unknown[] }).recipes).toEqual([{ id: 'lazy-recipe' }]);
+    expect(
+      (decode(await readLogicalAsset(logical, manifest, next)) as { recipes: unknown[] }).recipes,
+    ).toEqual(records);
+    expect(
+      (decode(await readLogicalAsset(lazy, manifest, next)) as { recipes: unknown[] }).recipes,
+    ).toEqual([{ id: 'lazy-recipe' }]);
     for (const page of [...pages, ...lazyPages]) {
       const bytes = await readFile(join(first, page.sha256));
       expect(createHash('sha256').update(bytes).digest('hex')).toBe(page.sha256);
@@ -79,9 +127,22 @@ describe('immutable record pages', () => {
     const logical = await asset(path, [{ id: 'large', text: 'x'.repeat(4_500_000) }]);
     const pages = await buildRecordPages([logical], path, '../..', []);
     expect(pages.some((page) => page.oversizedSingleton)).toBe(true);
-    expect((decode(await readLogicalAsset(logical, { recordPages: pages } as GeneratedPackManifest, path)) as { recipes: unknown[] }).recipes).toHaveLength(1);
-    await expect(readLogicalAsset(logical, { recordPages: [] } as unknown as GeneratedPackManifest, path)).rejects.toThrow('absent from manifest');
+    expect(
+      (
+        decode(
+          await readLogicalAsset(logical, { recordPages: pages } as GeneratedPackManifest, path),
+        ) as { recipes: unknown[] }
+      ).recipes,
+    ).toHaveLength(1);
+    await expect(
+      readLogicalAsset(logical, { recordPages: [] } as unknown as GeneratedPackManifest, path),
+    ).rejects.toThrow('absent from manifest');
     expect(() => assembleRecordPages({ ...logical, segments: [[9, 0, 1]] }, new Map())).toThrow();
-    expect(() => assembleRecordPages({ ...logical, segments: [[0, -1, 1]] }, new Map([[0, [new Uint8Array(1)]]]))).toThrow();
+    expect(() =>
+      assembleRecordPages(
+        { ...logical, segments: [[0, -1, 1]] },
+        new Map([[0, [new Uint8Array(1)]]]),
+      ),
+    ).toThrow();
   });
 });

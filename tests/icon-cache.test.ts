@@ -25,12 +25,15 @@ describe('verified icon sheet cache', () => {
       totalBytes: bytes.byteLength,
       active: false,
       assetHashes: [],
-      updatedAt: Date.now()
+      updatedAt: Date.now(),
     });
-    const fetchMock = vi.fn(async () => new Response(bytes, {
-      status: 200,
-      headers: { 'content-type': 'image/webp' }
-    }));
+    const fetchMock = vi.fn(
+      async () =>
+        new Response(bytes, {
+          status: 200,
+          headers: { 'content-type': 'image/webp' },
+        }),
+    );
     vi.stubGlobal('fetch', fetchMock);
     const icon = {
       id: 'icons-0',
@@ -38,7 +41,7 @@ describe('verified icon sheet cache', () => {
       bytes: bytes.byteLength,
       sha256,
       encoding: 'identity' as const,
-      datasetId
+      datasetId,
     };
 
     await resolveIconSheetUrl(icon);

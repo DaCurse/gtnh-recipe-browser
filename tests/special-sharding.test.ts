@@ -4,13 +4,20 @@ import {
   readSpecialSidecar,
   serializeSpecialData,
   specialGoodsIds,
-  type SpecialRecord
+  type SpecialRecord,
 } from '../tools/data-export/special';
 import { buildSpecialGoodsIndex } from '../tools/pack-builder/builder';
 import { expandGtOreSpecialData } from '../tools/pack-builder/specialOreAliases';
-import { isVendingMachineItem, repairSpecialServiceIcons } from '../tools/pack-builder/specialServiceIcons';
+import {
+  isVendingMachineItem,
+  repairSpecialServiceIcons,
+} from '../tools/pack-builder/specialServiceIcons';
 import { specialGoodsForDirection } from '../tools/pack-builder/special';
-import type { DecodedItem, DecodedOreDictionary, DecodedRepository } from '../tools/pack-builder/model';
+import type {
+  DecodedItem,
+  DecodedOreDictionary,
+  DecodedRepository,
+} from '../tools/pack-builder/model';
 
 const fixturePath = 'tests/fixtures/nei-special-v1/browser-nei-special.json';
 
@@ -19,32 +26,60 @@ describe('special-data packing', () => {
     const data = await readSpecialSidecar(fixturePath, { requireNonEmptyCategories: true });
     expect(buildSpecialViewTypes(data).map((view) => view.id)).toEqual(data.categories);
     expect(specialGoodsIds(data)).toContain('f:gregtech:hydrogen');
-    expect(serializeSpecialData(data)).toBe(serializeSpecialData(JSON.parse(serializeSpecialData(data))));
+    expect(serializeSpecialData(data)).toBe(
+      serializeSpecialData(JSON.parse(serializeSpecialData(data))),
+    );
   });
 
   it('repairs stale worldgen and vending service sprites from catalog anchors', async () => {
     const data = await readSpecialSidecar(fixturePath, { requireNonEmptyCategories: true });
-    data.serviceIcons = data.serviceIcons.map((icon) => icon.id === 'service:worldgen'
-      || icon.id === 'service:vending' ? { ...icon, goodsId: 'i:wrong:placeholder:0' } : icon);
+    data.serviceIcons = data.serviceIcons.map((icon) =>
+      icon.id === 'service:worldgen' || icon.id === 'service:vending'
+        ? { ...icon, goodsId: 'i:wrong:placeholder:0' }
+        : icon,
+    );
     const item = (fields: Partial<DecodedItem>): DecodedItem => ({
-      id: 'i:test:item:0', name: 'Test', mod: 'test', internalName: 'item', numericId: 1,
-      iconId: 1, tooltip: null, unlocalizedName: 'item.test', nbt: null, searchMask: [],
-      productionRecipeIds: [], usageRecipeIds: [], searchable: true, kind: 'item', stackSize: 64,
-      damage: 0, container: null, ...fields
+      id: 'i:test:item:0',
+      name: 'Test',
+      mod: 'test',
+      internalName: 'item',
+      numericId: 1,
+      iconId: 1,
+      tooltip: null,
+      unlocalizedName: 'item.test',
+      nbt: null,
+      searchMask: [],
+      productionRecipeIds: [],
+      usageRecipeIds: [],
+      searchable: true,
+      kind: 'item',
+      stackSize: 64,
+      damage: 0,
+      container: null,
+      ...fields,
     });
     const chest = item({
-      id: 'i:minecraft:chest:0', mod: 'minecraft', internalName: 'chest', name: 'Chest'
+      id: 'i:minecraft:chest:0',
+      mod: 'minecraft',
+      internalName: 'chest',
+      name: 'Chest',
     });
     const vending = item({
-      id: 'i:gregtech:gt.blockmachines:2741', mod: 'gregtech', internalName: 'gt.blockmachines',
-      name: 'Vending Machine', unlocalizedName: 'gt.blockmachines.multimachine.vendingmachine', damage: 2741
+      id: 'i:gregtech:gt.blockmachines:2741',
+      mod: 'gregtech',
+      internalName: 'gt.blockmachines',
+      name: 'Vending Machine',
+      unlocalizedName: 'gt.blockmachines.multimachine.vendingmachine',
+      damage: 2741,
     });
     const repository = { items: [chest, vending] } as unknown as DecodedRepository;
     const repaired = repairSpecialServiceIcons(data, repository);
-    expect(repaired.serviceIcons.find((icon) => icon.id === 'service:worldgen')?.goodsId)
-      .toBe(chest.id);
-    expect(repaired.serviceIcons.find((icon) => icon.id === 'service:vending')?.goodsId)
-      .toBe(vending.id);
+    expect(repaired.serviceIcons.find((icon) => icon.id === 'service:worldgen')?.goodsId).toBe(
+      chest.id,
+    );
+    expect(repaired.serviceIcons.find((icon) => icon.id === 'service:vending')?.goodsId).toBe(
+      vending.id,
+    );
     expect(isVendingMachineItem(vending)).toBe(true);
   });
 
@@ -60,7 +95,7 @@ describe('special-data packing', () => {
         usageGoodsIds: ['i:demo:b:0'],
         recipesLookupId: 'special:directional:a:recipes',
         usagesLookupId: 'special:directional:a:usages',
-        payload: {}
+        payload: {},
       },
       {
         ...template,
@@ -70,25 +105,28 @@ describe('special-data packing', () => {
         usageGoodsIds: ['i:demo:a:0'],
         recipesLookupId: 'special:directional:b:recipes',
         usagesLookupId: 'special:directional:b:usages',
-        payload: {}
-      }
+        payload: {},
+      },
     ];
     const shards = new Map([
       ['directional-a', 'special-a'],
-      ['directional-b', 'special-b']
+      ['directional-b', 'special-b'],
     ]);
     const index = buildSpecialGoodsIndex(records, shards);
 
-    const expected = new Map<string, {
-      recipes: { shardIds: string[]; lookupIds: string[]; recordCount: number };
-      usages: { shardIds: string[]; lookupIds: string[]; recordCount: number };
-    }>();
+    const expected = new Map<
+      string,
+      {
+        recipes: { shardIds: string[]; lookupIds: string[]; recordCount: number };
+        usages: { shardIds: string[]; lookupIds: string[]; recordCount: number };
+      }
+    >();
     for (const record of records) {
       for (const direction of ['recipes', 'usages'] as const) {
         for (const goodsId of specialGoodsForDirection(record, direction)) {
           const current = expected.get(goodsId) ?? {
             recipes: { shardIds: [], lookupIds: [], recordCount: 0 },
-            usages: { shardIds: [], lookupIds: [], recordCount: 0 }
+            usages: { shardIds: [], lookupIds: [], recordCount: 0 },
           };
           const projection = current[direction];
           const shard = shards.get(record.id);
@@ -107,21 +145,21 @@ describe('special-data packing', () => {
       recipes: {
         shardIds: ['special-a', 'special-b'],
         lookupIds: ['special:directional:a:recipes', 'special:directional:b:recipes'],
-        recordCount: 2
+        recordCount: 2,
       },
       usages: {
         shardIds: ['special-b'],
         lookupIds: ['special:directional:b:usages'],
-        recordCount: 1
-      }
+        recordCount: 1,
+      },
     });
     expect(index.get('i:demo:b:0')).toEqual({
       recipes: { shardIds: [], lookupIds: [], recordCount: 0 },
       usages: {
         shardIds: ['special-a'],
         lookupIds: ['special:directional:a:usages'],
-        recordCount: 1
-      }
+        recordCount: 1,
+      },
     });
   });
 
@@ -131,16 +169,18 @@ describe('special-data packing', () => {
     const canonicalId = 'i:cropsnh:genericSeed:0:canonical';
     const siblingId = 'i:cropsnh:genericSeed:0:sibling';
     const otherCropId = 'i:cropsnh:genericSeed:0:other';
-    const records: SpecialRecord[] = [{
-      ...template,
-      id: 'crop:cropsnh-rubyne',
-      goodsIds: [canonicalId],
-      productionGoodsIds: [canonicalId],
-      usageGoodsIds: [canonicalId],
-      recipesLookupId: 'special:crop:cropsnh-rubyne:recipes',
-      usagesLookupId: 'special:crop:cropsnh-rubyne:usages',
-      payload: {}
-    }];
+    const records: SpecialRecord[] = [
+      {
+        ...template,
+        id: 'crop:cropsnh-rubyne',
+        goodsIds: [canonicalId],
+        productionGoodsIds: [canonicalId],
+        usageGoodsIds: [canonicalId],
+        recipesLookupId: 'special:crop:cropsnh-rubyne:recipes',
+        usagesLookupId: 'special:crop:cropsnh-rubyne:usages',
+        payload: {},
+      },
+    ];
     const seed = (id: string, nbt: string): DecodedItem => ({
       id,
       name: 'Rubyne Seeds',
@@ -158,13 +198,17 @@ describe('special-data packing', () => {
       searchable: true,
       stackSize: 64,
       damage: 0,
-      container: null
+      container: null,
     });
-    const index = buildSpecialGoodsIndex(records, new Map([['crop:cropsnh-rubyne', 'special-crop']]), [
-      seed(canonicalId, '{crop:"cropsnh:rubyne",scan:1b}'),
-      seed(siblingId, '{re:1b,scan:1b,crop:"cropsnh:rubyne",gr:1b,ga:1b}'),
-      seed(otherCropId, '{crop:"cropsnh:other",scan:1b}')
-    ]);
+    const index = buildSpecialGoodsIndex(
+      records,
+      new Map([['crop:cropsnh-rubyne', 'special-crop']]),
+      [
+        seed(canonicalId, '{crop:"cropsnh:rubyne",scan:1b}'),
+        seed(siblingId, '{re:1b,scan:1b,crop:"cropsnh:rubyne",gr:1b,ga:1b}'),
+        seed(otherCropId, '{crop:"cropsnh:other",scan:1b}'),
+      ],
+    );
 
     expect(index.get(siblingId)).toEqual(index.get(canonicalId));
     expect(index.get(otherCropId)).toBeUndefined();
@@ -177,16 +221,18 @@ describe('special-data packing', () => {
     const vanillaOre = 'i:minecraft:iron_ore:0';
     const gtDust = 'i:gregtech:gt.metaitem.01:2032';
     const ic2Dust = 'i:IC2:itemDust:5';
-    const records: SpecialRecord[] = [{
-      ...template,
-      id: 'vein:iron',
-      goodsIds: ['o:oreIron', 'o:dustIron'],
-      productionGoodsIds: ['o:oreIron', 'o:dustIron'],
-      usageGoodsIds: ['o:oreIron', 'o:dustIron'],
-      recipesLookupId: 'special:vein:iron:recipes',
-      usagesLookupId: 'special:vein:iron:usages',
-      payload: {}
-    }];
+    const records: SpecialRecord[] = [
+      {
+        ...template,
+        id: 'vein:iron',
+        goodsIds: ['o:oreIron', 'o:dustIron'],
+        productionGoodsIds: ['o:oreIron', 'o:dustIron'],
+        usageGoodsIds: ['o:oreIron', 'o:dustIron'],
+        recipesLookupId: 'special:vein:iron:recipes',
+        usagesLookupId: 'special:vein:iron:usages',
+        payload: {},
+      },
+    ];
     const item = (id: string, mod: string, internalName: string): DecodedItem => ({
       id,
       name: id,
@@ -204,11 +250,11 @@ describe('special-data packing', () => {
       searchable: true,
       stackSize: 64,
       damage: 0,
-      container: null
+      container: null,
     });
     const groups: DecodedOreDictionary[] = [
       { id: 'o:oreIron', kind: 'oreDict', searchMask: [], itemIds: [gtOre, vanillaOre] },
-      { id: 'o:dustIron', kind: 'oreDict', searchMask: [], itemIds: [gtDust, ic2Dust] }
+      { id: 'o:dustIron', kind: 'oreDict', searchMask: [], itemIds: [gtDust, ic2Dust] },
     ];
     const index = buildSpecialGoodsIndex(
       records,
@@ -217,9 +263,9 @@ describe('special-data packing', () => {
         item(gtOre, 'gregtech', 'gt.blockores2'),
         item(vanillaOre, 'minecraft', 'iron_ore'),
         item(gtDust, 'gregtech', 'gt.metaitem.01'),
-        item(ic2Dust, 'IC2', 'itemDust')
+        item(ic2Dust, 'IC2', 'itemDust'),
       ],
-      groups
+      groups,
     );
 
     expect(index.get(gtOre)).toEqual(index.get('o:oreIron'));
@@ -239,14 +285,14 @@ describe('special-data packing', () => {
         goodsIds: ['i:gregtech:gt.blockores2:32'],
         productionGoodsIds: ['i:production-only'],
         usageGoodsIds: ['i:usage-only'],
-        payload: { layers: [{ material: 'Iron' }] }
+        payload: { layers: [{ material: 'Iron' }] },
       },
       {
         ...smallOre,
         id: 'small-ore:iron-material',
         goodsIds: ['i:gregtech:gt.blockores2:32'],
-        payload: { material: 'Iron' }
-      }
+        payload: { material: 'Iron' },
+      },
     ];
     const repository = {
       items: [],
@@ -256,9 +302,9 @@ describe('special-data packing', () => {
         { id: 'o:dustIron', kind: 'oreDict', searchMask: [], itemIds: [] },
         { id: 'o:crushedIron', kind: 'oreDict', searchMask: [], itemIds: [] },
         { id: 'o:rawOreIron', kind: 'oreDict', searchMask: [], itemIds: [] },
-        { id: 'o:gemIron', kind: 'oreDict', searchMask: [], itemIds: [] }
+        { id: 'o:gemIron', kind: 'oreDict', searchMask: [], itemIds: [] },
       ],
-      ingredientGroups: []
+      ingredientGroups: [],
     } as unknown as DecodedRepository;
     const expanded = expandGtOreSpecialData({ ...data, records }, repository);
 
@@ -268,7 +314,7 @@ describe('special-data packing', () => {
         'o:crushedIron',
         'o:dustIron',
         'o:gemIron',
-        'o:rawOreIron'
+        'o:rawOreIron',
       ]);
       expect(record.goodsIds).not.toContain('o:oreIron');
     }
@@ -277,14 +323,14 @@ describe('special-data packing', () => {
       'o:crushedIron',
       'o:dustIron',
       'o:gemIron',
-      'o:rawOreIron'
+      'o:rawOreIron',
     ]);
     expect(expanded.records[0]?.usageGoodsIds).toEqual([
       'i:usage-only',
       'o:crushedIron',
       'o:dustIron',
       'o:gemIron',
-      'o:rawOreIron'
+      'o:rawOreIron',
     ]);
   });
 });

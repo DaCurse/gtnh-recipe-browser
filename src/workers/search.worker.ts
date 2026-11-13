@@ -4,15 +4,34 @@ import {
   catalogDocumentMatches,
   parseCatalogSearchQuery,
   type CatalogSearchDocument,
-  type CatalogSearchEntry
+  type CatalogSearchEntry,
 } from '../lib/catalogSearch';
 
 type WorkerRequest =
   | { type: 'init'; generation: number }
-  | { type: 'append'; generation: number; catalog: CatalogSearchEntry[]; completed: number; total: number }
-  | { type: 'appendDocuments'; generation: number; documents: CatalogSearchDocument[]; completed: number; total: number }
+  | {
+      type: 'append';
+      generation: number;
+      catalog: CatalogSearchEntry[];
+      completed: number;
+      total: number;
+    }
+  | {
+      type: 'appendDocuments';
+      generation: number;
+      documents: CatalogSearchDocument[];
+      completed: number;
+      total: number;
+    }
   | { type: 'finish'; generation: number }
-  | { type: 'search'; generation: number; id: number; query: string; offset: number; limit: number };
+  | {
+      type: 'search';
+      generation: number;
+      id: number;
+      query: string;
+      offset: number;
+      limit: number;
+    };
 
 let generation = 0;
 let catalog: CatalogSearchDocument[] = [];
@@ -26,7 +45,7 @@ function yieldToNewerRequests(): Promise<void> {
 
 async function search(
   request: Extract<WorkerRequest, { type: 'search' }>,
-  token: number
+  token: number,
 ): Promise<void> {
   if (request.query !== lastQuery) {
     const query = parseCatalogSearchQuery(request.query);
@@ -54,9 +73,7 @@ async function search(
     id: request.id,
     offset: request.offset,
     total: lastMatches.length,
-    ids: lastMatches
-      .slice(request.offset, request.offset + request.limit)
-      .map((entry) => entry.id)
+    ids: lastMatches.slice(request.offset, request.offset + request.limit).map((entry) => entry.id),
   });
 }
 
@@ -77,7 +94,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
       type: 'progress',
       generation,
       completed: request.completed,
-      total: request.total
+      total: request.total,
     });
     return;
   }
@@ -87,7 +104,7 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
       type: 'progress',
       generation,
       completed: request.completed,
-      total: request.total
+      total: request.total,
     });
     return;
   }

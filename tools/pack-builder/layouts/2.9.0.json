@@ -8,33 +8,15 @@
     "oreDictionaries": 1048576
   },
   "recipeTypes": {
-    "recipeType:avaritia:Compressor": [
-      ""
-    ],
-    "recipeType:avaritia:Extreme%20Crafting%20(Shaped)": [
-      ""
-    ],
-    "recipeType:avaritia:Extreme%20Crafting%20(Shapeless)": [
-      ""
-    ],
-    "recipeType:gregtech:Accelerated%20Biological%20Coordinator": [
-      ""
-    ],
-    "recipeType:gregtech:Acid%20Generator": [
-      ""
-    ],
-    "recipeType:gregtech:Algae%20Pond": [
-      ""
-    ],
-    "recipeType:gregtech:Alloy%20Blast%20Smelter": [
-      ""
-    ],
-    "recipeType:gregtech:Alloy%20Smelter": [
-      ""
-    ],
-    "recipeType:gregtech:Arc%20Furnace": [
-      ""
-    ],
+    "recipeType:avaritia:Compressor": [""],
+    "recipeType:avaritia:Extreme%20Crafting%20(Shaped)": [""],
+    "recipeType:avaritia:Extreme%20Crafting%20(Shapeless)": [""],
+    "recipeType:gregtech:Accelerated%20Biological%20Coordinator": [""],
+    "recipeType:gregtech:Acid%20Generator": [""],
+    "recipeType:gregtech:Algae%20Pond": [""],
+    "recipeType:gregtech:Alloy%20Blast%20Smelter": [""],
+    "recipeType:gregtech:Alloy%20Smelter": [""],
+    "recipeType:gregtech:Arc%20Furnace": [""],
     "recipeType:gregtech:Assembler": [
       "",
       "0",
@@ -54,171 +36,61 @@
       "e",
       "f"
     ],
-    "recipeType:gregtech:Assemblyline%20Process": [
-      ""
-    ],
-    "recipeType:gregtech:Autoclave": [
-      ""
-    ],
-    "recipeType:gregtech:Bacterial%20Vat": [
-      ""
-    ],
-    "recipeType:gregtech:Baryonic%20Perfection": [
-      ""
-    ],
-    "recipeType:gregtech:Beam%20Crafter": [
-      ""
-    ],
-    "recipeType:gregtech:Bending%20Machine": [
-      ""
-    ],
-    "recipeType:gregtech:Bio%20Lab": [
-      ""
-    ],
-    "recipeType:gregtech:Blast%20Furnace": [
-      ""
-    ],
-    "recipeType:gregtech:Boldarnator": [
-      ""
-    ],
-    "recipeType:gregtech:Brewery": [
-      ""
-    ],
-    "recipeType:gregtech:Bricked%20Blast%20Furnace": [
-      ""
-    ],
-    "recipeType:gregtech:COMET%20-%20Compact%20Cyclotron": [
-      ""
-    ],
-    "recipeType:gregtech:Cable%20Coating": [
-      ""
-    ],
-    "recipeType:gregtech:Canner": [
-      ""
-    ],
-    "recipeType:gregtech:Cauldron": [
-      ""
-    ],
-    "recipeType:gregtech:Centrifuge": [
-      ""
-    ],
-    "recipeType:gregtech:Chemical%20Bath": [
-      ""
-    ],
-    "recipeType:gregtech:Chemical%20Plant": [
-      ""
-    ],
-    "recipeType:gregtech:Chemical%20Reactor": [
-      ""
-    ],
-    "recipeType:gregtech:Circuit%20Assembler": [
-      ""
-    ],
-    "recipeType:gregtech:Circuit%20Assembly%20Line": [
-      ""
-    ],
-    "recipeType:gregtech:Clarifier": [
-      ""
-    ],
-    "recipeType:gregtech:Coke%20Oven": [
-      ""
-    ],
-    "recipeType:gregtech:Cold%20Trap": [
-      ""
-    ],
-    "recipeType:gregtech:Combustion%20Generator%20Fuels": [
-      ""
-    ],
-    "recipeType:gregtech:Component%20Assembly%20Line": [
-      ""
-    ],
-    "recipeType:gregtech:Condensate%20Assembling": [
-      ""
-    ],
-    "recipeType:gregtech:Condensate%20Entanglement": [
-      ""
-    ],
-    "recipeType:gregtech:Crop%20Breeder": [
-      ""
-    ],
-    "recipeType:gregtech:Crop%20Gene%20Extractor": [
-      ""
-    ],
-    "recipeType:gregtech:Crop%20Synthesizer": [
-      ""
-    ],
-    "recipeType:gregtech:Cutting%20Machine": [
-      ""
-    ],
-    "recipeType:gregtech:DTPF": [
-      ""
-    ],
-    "recipeType:gregtech:Degassing": [
-      ""
-    ],
-    "recipeType:gregtech:Dehydrator": [
-      ""
-    ],
-    "recipeType:gregtech:Digester": [
-      ""
-    ],
-    "recipeType:gregtech:Dissolution%20Tank": [
-      ""
-    ],
-    "recipeType:gregtech:Distillation%20Tower": [
-      ""
-    ],
-    "recipeType:gregtech:Distillery": [
-      ""
-    ],
-    "recipeType:gregtech:Draconic%20Evolution%20Fusion%20Crafter": [
-      ""
-    ],
-    "recipeType:gregtech:Electric%20Implosion%20Compressor": [
-      ""
-    ],
-    "recipeType:gregtech:Electrolyzer": [
-      ""
-    ],
-    "recipeType:gregtech:Electromagnetic%20Polarizer": [
-      ""
-    ],
-    "recipeType:gregtech:Electromagnetic%20Separator": [
-      ""
-    ],
-    "recipeType:gregtech:Entropic%20Processing": [
-      ""
-    ],
-    "recipeType:gregtech:Extractor": [
-      ""
-    ],
-    "recipeType:gregtech:Extreme%20Diesel%20Engine%20Fuel": [
-      ""
-    ],
-    "recipeType:gregtech:Extreme%20Heat%20Exchanger": [
-      ""
-    ],
-    "recipeType:gregtech:Extruder": [
-      ""
-    ],
-    "recipeType:gregtech:Eye%20of%20Harmony": [
-      ""
-    ],
-    "recipeType:gregtech:Fermenter": [
-      ""
-    ],
-    "recipeType:gregtech:Flocculation": [
-      ""
-    ],
-    "recipeType:gregtech:Flotation%20Cell": [
-      ""
-    ],
-    "recipeType:gregtech:Fluid%20Extractor": [
-      ""
-    ],
-    "recipeType:gregtech:Fluid%20Heater": [
-      ""
-    ],
+    "recipeType:gregtech:Assemblyline%20Process": [""],
+    "recipeType:gregtech:Autoclave": [""],
+    "recipeType:gregtech:Bacterial%20Vat": [""],
+    "recipeType:gregtech:Baryonic%20Perfection": [""],
+    "recipeType:gregtech:Beam%20Crafter": [""],
+    "recipeType:gregtech:Bending%20Machine": [""],
+    "recipeType:gregtech:Bio%20Lab": [""],
+    "recipeType:gregtech:Blast%20Furnace": [""],
+    "recipeType:gregtech:Boldarnator": [""],
+    "recipeType:gregtech:Brewery": [""],
+    "recipeType:gregtech:Bricked%20Blast%20Furnace": [""],
+    "recipeType:gregtech:COMET%20-%20Compact%20Cyclotron": [""],
+    "recipeType:gregtech:Cable%20Coating": [""],
+    "recipeType:gregtech:Canner": [""],
+    "recipeType:gregtech:Cauldron": [""],
+    "recipeType:gregtech:Centrifuge": [""],
+    "recipeType:gregtech:Chemical%20Bath": [""],
+    "recipeType:gregtech:Chemical%20Plant": [""],
+    "recipeType:gregtech:Chemical%20Reactor": [""],
+    "recipeType:gregtech:Circuit%20Assembler": [""],
+    "recipeType:gregtech:Circuit%20Assembly%20Line": [""],
+    "recipeType:gregtech:Clarifier": [""],
+    "recipeType:gregtech:Coke%20Oven": [""],
+    "recipeType:gregtech:Cold%20Trap": [""],
+    "recipeType:gregtech:Combustion%20Generator%20Fuels": [""],
+    "recipeType:gregtech:Component%20Assembly%20Line": [""],
+    "recipeType:gregtech:Condensate%20Assembling": [""],
+    "recipeType:gregtech:Condensate%20Entanglement": [""],
+    "recipeType:gregtech:Crop%20Breeder": [""],
+    "recipeType:gregtech:Crop%20Gene%20Extractor": [""],
+    "recipeType:gregtech:Crop%20Synthesizer": [""],
+    "recipeType:gregtech:Cutting%20Machine": [""],
+    "recipeType:gregtech:DTPF": [""],
+    "recipeType:gregtech:Degassing": [""],
+    "recipeType:gregtech:Dehydrator": [""],
+    "recipeType:gregtech:Digester": [""],
+    "recipeType:gregtech:Dissolution%20Tank": [""],
+    "recipeType:gregtech:Distillation%20Tower": [""],
+    "recipeType:gregtech:Distillery": [""],
+    "recipeType:gregtech:Draconic%20Evolution%20Fusion%20Crafter": [""],
+    "recipeType:gregtech:Electric%20Implosion%20Compressor": [""],
+    "recipeType:gregtech:Electrolyzer": [""],
+    "recipeType:gregtech:Electromagnetic%20Polarizer": [""],
+    "recipeType:gregtech:Electromagnetic%20Separator": [""],
+    "recipeType:gregtech:Entropic%20Processing": [""],
+    "recipeType:gregtech:Extractor": [""],
+    "recipeType:gregtech:Extreme%20Diesel%20Engine%20Fuel": [""],
+    "recipeType:gregtech:Extreme%20Heat%20Exchanger": [""],
+    "recipeType:gregtech:Extruder": [""],
+    "recipeType:gregtech:Eye%20of%20Harmony": [""],
+    "recipeType:gregtech:Fermenter": [""],
+    "recipeType:gregtech:Flocculation": [""],
+    "recipeType:gregtech:Flotation%20Cell": [""],
+    "recipeType:gregtech:Fluid%20Extractor": [""],
+    "recipeType:gregtech:Fluid%20Heater": [""],
     "recipeType:gregtech:Fluid%20Solidifier": [
       "0",
       "1",
@@ -237,84 +109,32 @@
       "e",
       "f"
     ],
-    "recipeType:gregtech:Forge%20Hammer": [
-      ""
-    ],
-    "recipeType:gregtech:Forming%20Press": [
-      ""
-    ],
-    "recipeType:gregtech:Foundry%20Module%20Components": [
-      ""
-    ],
-    "recipeType:gregtech:Full-Board%20Immersion%20Device": [
-      ""
-    ],
-    "recipeType:gregtech:Furnace": [
-      ""
-    ],
-    "recipeType:gregtech:Fusion%20Reactor": [
-      ""
-    ],
-    "recipeType:gregtech:Gas%20Turbine%20Fuel": [
-      ""
-    ],
-    "recipeType:gregtech:Godforge%20Upgrades": [
-      ""
-    ],
-    "recipeType:gregtech:Helioflux%20Melting%20Core": [
-      ""
-    ],
-    "recipeType:gregtech:Heliofusion%20Exoticizer": [
-      ""
-    ],
-    "recipeType:gregtech:Heliothermal%20Plasma%20Fabricator": [
-      ""
-    ],
-    "recipeType:gregtech:High%20Energy%20Laser%20Treatment": [
-      ""
-    ],
-    "recipeType:gregtech:High%20Temperature%20Gas%20Reactor": [
-      ""
-    ],
-    "recipeType:gregtech:Ice%20Cream%20Machine": [
-      ""
-    ],
-    "recipeType:gregtech:Implosion%20Compressor": [
-      ""
-    ],
-    "recipeType:gregtech:Industrial%20Chisel": [
-      ""
-    ],
-    "recipeType:gregtech:Industrial%20Coke%20Oven": [
-      ""
-    ],
-    "recipeType:gregtech:Isotope%20Decay": [
-      ""
-    ],
-    "recipeType:gregtech:LFTR%20Gas%20Sparging": [
-      ""
-    ],
-    "recipeType:gregtech:Large%20Boiler": [
-      ""
-    ],
-    "recipeType:gregtech:Large%20Chemical%20Reactor": [
-      ""
-    ],
-    "recipeType:gregtech:Large%20Hadron%20Collider": [
-      ""
-    ],
-    "recipeType:gregtech:Large%20Naquadah%20Reactor": [
-      ""
-    ],
-    "recipeType:gregtech:Laser%20Engraver": [
-      ""
-    ],
-    "recipeType:gregtech:Lathe": [
-      ""
-    ],
-    "recipeType:gregtech:Liquid%20Fluoride%20Thorium%20Reactor": [
-      ""
-    ],
+    "recipeType:gregtech:Forge%20Hammer": [""],
+    "recipeType:gregtech:Forming%20Press": [""],
+    "recipeType:gregtech:Foundry%20Module%20Components": [""],
+    "recipeType:gregtech:Full-Board%20Immersion%20Device": [""],
+    "recipeType:gregtech:Furnace": [""],
+    "recipeType:gregtech:Fusion%20Reactor": [""],
+    "recipeType:gregtech:Gas%20Turbine%20Fuel": [""],
+    "recipeType:gregtech:Godforge%20Upgrades": [""],
+    "recipeType:gregtech:Helioflux%20Melting%20Core": [""],
+    "recipeType:gregtech:Heliofusion%20Exoticizer": [""],
+    "recipeType:gregtech:Heliothermal%20Plasma%20Fabricator": [""],
+    "recipeType:gregtech:High%20Energy%20Laser%20Treatment": [""],
+    "recipeType:gregtech:High%20Temperature%20Gas%20Reactor": [""],
+    "recipeType:gregtech:Ice%20Cream%20Machine": [""],
+    "recipeType:gregtech:Implosion%20Compressor": [""],
+    "recipeType:gregtech:Industrial%20Chisel": [""],
+    "recipeType:gregtech:Industrial%20Coke%20Oven": [""],
+    "recipeType:gregtech:Isotope%20Decay": [""],
+    "recipeType:gregtech:LFTR%20Gas%20Sparging": [""],
+    "recipeType:gregtech:Large%20Boiler": [""],
+    "recipeType:gregtech:Large%20Chemical%20Reactor": [""],
+    "recipeType:gregtech:Large%20Hadron%20Collider": [""],
+    "recipeType:gregtech:Large%20Naquadah%20Reactor": [""],
+    "recipeType:gregtech:Laser%20Engraver": [""],
+    "recipeType:gregtech:Lathe": [""],
+    "recipeType:gregtech:Liquid%20Fluoride%20Thorium%20Reactor": [""],
     "recipeType:gregtech:Macerator": [
       "0",
       "1",
@@ -333,258 +153,90 @@
       "e",
       "f"
     ],
-    "recipeType:gregtech:Magic%20Energy%20Absorber%20Fuels": [
-      ""
-    ],
-    "recipeType:gregtech:Mass%20Fabrication": [
-      ""
-    ],
-    "recipeType:gregtech:Matter%20Amplifier": [
-      ""
-    ],
-    "recipeType:gregtech:Matter%20Fabricator": [
-      ""
-    ],
-    "recipeType:gregtech:Milling": [
-      ""
-    ],
-    "recipeType:gregtech:Mixer": [
-      ""
-    ],
-    "recipeType:gregtech:Molecular%20Transformer": [
-      ""
-    ],
-    "recipeType:gregtech:Multiblock%20Centrifuge": [
-      ""
-    ],
-    "recipeType:gregtech:Multiblock%20Dehydrator": [
-      ""
-    ],
-    "recipeType:gregtech:Multiblock%20Electrolyzer": [
-      ""
-    ],
-    "recipeType:gregtech:Multiblock%20Mixer": [
-      ""
-    ],
-    "recipeType:gregtech:Nano%20Forge": [
-      ""
-    ],
-    "recipeType:gregtech:Nanochip%20Assembly%20Matrix": [
-      ""
-    ],
-    "recipeType:gregtech:Nanochip%20Conversion%20Complex": [
-      ""
-    ],
-    "recipeType:gregtech:Nanometer%20Encasement%20Wrapper": [
-      ""
-    ],
-    "recipeType:gregtech:Nanoprecision%20Cutting%20Chamber": [
-      ""
-    ],
-    "recipeType:gregtech:Nanoprecision%20Wire%20Tracer": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Fuel%20Refinery": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20Mk-I": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20Mk-II": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20Mk-III": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20Mk-IV": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20Mk-V": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20MkI": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20MkII": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20MkIII": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20MkIV": [
-      ""
-    ],
-    "recipeType:gregtech:Naquadah%20Reactor%20MkV": [
-      ""
-    ],
-    "recipeType:gregtech:Neutron%20Activator": [
-      ""
-    ],
-    "recipeType:gregtech:Neutronium%20Compressor": [
-      ""
-    ],
-    "recipeType:gregtech:Nuclear%20Fission": [
-      ""
-    ],
-    "recipeType:gregtech:Nuclear%20Fuel%20Processing": [
-      ""
-    ],
-    "recipeType:gregtech:Nuclear%20Salt%20Processing%20Plant": [
-      ""
-    ],
-    "recipeType:gregtech:Oil%20Cracker": [
-      ""
-    ],
-    "recipeType:gregtech:Optically%20Optimized%20Organizer": [
-      ""
-    ],
-    "recipeType:gregtech:Ore%20Washer": [
-      ""
-    ],
-    "recipeType:gregtech:Ozonation": [
-      ""
-    ],
-    "recipeType:gregtech:PCB%20Factory": [
-      ""
-    ],
-    "recipeType:gregtech:Packager": [
-      ""
-    ],
-    "recipeType:gregtech:Part%20Preparation%20Apparatus": [
-      ""
-    ],
-    "recipeType:gregtech:Plasma%20Generator%20Fuels": [
-      ""
-    ],
-    "recipeType:gregtech:Precise%20Assembler": [
-      ""
-    ],
-    "recipeType:gregtech:Printer": [
-      ""
-    ],
-    "recipeType:gregtech:Pyrolyse%20Oven": [
-      ""
-    ],
-    "recipeType:gregtech:QC%20Components": [
-      ""
-    ],
-    "recipeType:gregtech:Quantum%20Force%20Transformer": [
-      ""
-    ],
-    "recipeType:gregtech:RTG": [
-      ""
-    ],
-    "recipeType:gregtech:Radio%20Hatch%20Material%20List": [
-      ""
-    ],
-    "recipeType:gregtech:Reactor%20Processing%20Unit": [
-      ""
-    ],
-    "recipeType:gregtech:Recycler": [
-      ""
-    ],
-    "recipeType:gregtech:Replicator": [
-      ""
-    ],
-    "recipeType:gregtech:Research%20Station": [
-      ""
-    ],
-    "recipeType:gregtech:Rock%20Breaker": [
-      ""
-    ],
-    "recipeType:gregtech:Rocket%20Engine%20Fuel": [
-      ""
-    ],
-    "recipeType:gregtech:Scanner": [
-      ""
-    ],
-    "recipeType:gregtech:Seed%20Generator": [
-      ""
-    ],
-    "recipeType:gregtech:Semifluid%20Generator%20Fuels": [
-      ""
-    ],
-    "recipeType:gregtech:Sifter": [
-      ""
-    ],
-    "recipeType:gregtech:Simple%20Dust%20Washer": [
-      ""
-    ],
-    "recipeType:gregtech:Solar%20Factory": [
-      ""
-    ],
-    "recipeType:gregtech:Solar%20Tower": [
-      ""
-    ],
-    "recipeType:gregtech:Source%20Chamber": [
-      ""
-    ],
-    "recipeType:gregtech:Space%20Assembler": [
-      ""
-    ],
-    "recipeType:gregtech:Space%20Mining": [
-      ""
-    ],
-    "recipeType:gregtech:Space%20Projects": [
-      ""
-    ],
-    "recipeType:gregtech:Space%20Research": [
-      ""
-    ],
-    "recipeType:gregtech:Superconductive%20Strand%20Splitter": [
-      ""
-    ],
-    "recipeType:gregtech:Target%20Chamber": [
-      ""
-    ],
-    "recipeType:gregtech:Temperature%20Fluctuation": [
-      ""
-    ],
-    "recipeType:gregtech:Thermal%20Boiler": [
-      ""
-    ],
-    "recipeType:gregtech:Thermal%20Centrifuge": [
-      ""
-    ],
-    "recipeType:gregtech:Thermal%20Generator%20Fuels": [
-      ""
-    ],
-    "recipeType:gregtech:Transcendent%20Plasma%20Mixer": [
-      ""
-    ],
-    "recipeType:gregtech:Tree%20Growth%20Simulator": [
-      ""
-    ],
-    "recipeType:gregtech:Ultra-high%20Energy%20Etching%20Array": [
-      ""
-    ],
-    "recipeType:gregtech:Unpackager": [
-      ""
-    ],
-    "recipeType:gregtech:Vacuum%20Freezer": [
-      ""
-    ],
-    "recipeType:gregtech:Vacuum%20Furnace": [
-      ""
-    ],
-    "recipeType:gregtech:Wiremill": [
-      ""
-    ],
-    "recipeType:gregtech:Zhuhai%20-%20Fishing%20Port": [
-      ""
-    ],
-    "recipeType:gregtech:Zhuhai%20Fishing%20Port": [
-      ""
-    ],
-    "recipeType:gregtech:gt.recipe.efrblasting": [
-      ""
-    ],
-    "recipeType:gregtech:gt.recipe.efrsmelting": [
-      ""
-    ],
-    "recipeType:gregtech:pH%20Neutralization": [
-      ""
-    ],
+    "recipeType:gregtech:Magic%20Energy%20Absorber%20Fuels": [""],
+    "recipeType:gregtech:Mass%20Fabrication": [""],
+    "recipeType:gregtech:Matter%20Amplifier": [""],
+    "recipeType:gregtech:Matter%20Fabricator": [""],
+    "recipeType:gregtech:Milling": [""],
+    "recipeType:gregtech:Mixer": [""],
+    "recipeType:gregtech:Molecular%20Transformer": [""],
+    "recipeType:gregtech:Multiblock%20Centrifuge": [""],
+    "recipeType:gregtech:Multiblock%20Dehydrator": [""],
+    "recipeType:gregtech:Multiblock%20Electrolyzer": [""],
+    "recipeType:gregtech:Multiblock%20Mixer": [""],
+    "recipeType:gregtech:Nano%20Forge": [""],
+    "recipeType:gregtech:Nanochip%20Assembly%20Matrix": [""],
+    "recipeType:gregtech:Nanochip%20Conversion%20Complex": [""],
+    "recipeType:gregtech:Nanometer%20Encasement%20Wrapper": [""],
+    "recipeType:gregtech:Nanoprecision%20Cutting%20Chamber": [""],
+    "recipeType:gregtech:Nanoprecision%20Wire%20Tracer": [""],
+    "recipeType:gregtech:Naquadah%20Fuel%20Refinery": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20Mk-I": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20Mk-II": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20Mk-III": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20Mk-IV": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20Mk-V": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20MkI": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20MkII": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20MkIII": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20MkIV": [""],
+    "recipeType:gregtech:Naquadah%20Reactor%20MkV": [""],
+    "recipeType:gregtech:Neutron%20Activator": [""],
+    "recipeType:gregtech:Neutronium%20Compressor": [""],
+    "recipeType:gregtech:Nuclear%20Fission": [""],
+    "recipeType:gregtech:Nuclear%20Fuel%20Processing": [""],
+    "recipeType:gregtech:Nuclear%20Salt%20Processing%20Plant": [""],
+    "recipeType:gregtech:Oil%20Cracker": [""],
+    "recipeType:gregtech:Optically%20Optimized%20Organizer": [""],
+    "recipeType:gregtech:Ore%20Washer": [""],
+    "recipeType:gregtech:Ozonation": [""],
+    "recipeType:gregtech:PCB%20Factory": [""],
+    "recipeType:gregtech:Packager": [""],
+    "recipeType:gregtech:Part%20Preparation%20Apparatus": [""],
+    "recipeType:gregtech:Plasma%20Generator%20Fuels": [""],
+    "recipeType:gregtech:Precise%20Assembler": [""],
+    "recipeType:gregtech:Printer": [""],
+    "recipeType:gregtech:Pyrolyse%20Oven": [""],
+    "recipeType:gregtech:QC%20Components": [""],
+    "recipeType:gregtech:Quantum%20Force%20Transformer": [""],
+    "recipeType:gregtech:RTG": [""],
+    "recipeType:gregtech:Radio%20Hatch%20Material%20List": [""],
+    "recipeType:gregtech:Reactor%20Processing%20Unit": [""],
+    "recipeType:gregtech:Recycler": [""],
+    "recipeType:gregtech:Replicator": [""],
+    "recipeType:gregtech:Research%20Station": [""],
+    "recipeType:gregtech:Rock%20Breaker": [""],
+    "recipeType:gregtech:Rocket%20Engine%20Fuel": [""],
+    "recipeType:gregtech:Scanner": [""],
+    "recipeType:gregtech:Seed%20Generator": [""],
+    "recipeType:gregtech:Semifluid%20Generator%20Fuels": [""],
+    "recipeType:gregtech:Sifter": [""],
+    "recipeType:gregtech:Simple%20Dust%20Washer": [""],
+    "recipeType:gregtech:Solar%20Factory": [""],
+    "recipeType:gregtech:Solar%20Tower": [""],
+    "recipeType:gregtech:Source%20Chamber": [""],
+    "recipeType:gregtech:Space%20Assembler": [""],
+    "recipeType:gregtech:Space%20Mining": [""],
+    "recipeType:gregtech:Space%20Projects": [""],
+    "recipeType:gregtech:Space%20Research": [""],
+    "recipeType:gregtech:Superconductive%20Strand%20Splitter": [""],
+    "recipeType:gregtech:Target%20Chamber": [""],
+    "recipeType:gregtech:Temperature%20Fluctuation": [""],
+    "recipeType:gregtech:Thermal%20Boiler": [""],
+    "recipeType:gregtech:Thermal%20Centrifuge": [""],
+    "recipeType:gregtech:Thermal%20Generator%20Fuels": [""],
+    "recipeType:gregtech:Transcendent%20Plasma%20Mixer": [""],
+    "recipeType:gregtech:Tree%20Growth%20Simulator": [""],
+    "recipeType:gregtech:Ultra-high%20Energy%20Etching%20Array": [""],
+    "recipeType:gregtech:Unpackager": [""],
+    "recipeType:gregtech:Vacuum%20Freezer": [""],
+    "recipeType:gregtech:Vacuum%20Furnace": [""],
+    "recipeType:gregtech:Wiremill": [""],
+    "recipeType:gregtech:Zhuhai%20-%20Fishing%20Port": [""],
+    "recipeType:gregtech:Zhuhai%20Fishing%20Port": [""],
+    "recipeType:gregtech:gt.recipe.efrblasting": [""],
+    "recipeType:gregtech:gt.recipe.efrsmelting": [""],
+    "recipeType:gregtech:pH%20Neutralization": [""],
     "recipeType:minecraft:Crafting%20(Shaped)": [
       "0",
       "1",
@@ -603,15 +255,9 @@
       "e",
       "f"
     ],
-    "recipeType:minecraft:Crafting%20(Shapeless)": [
-      ""
-    ],
-    "recipeType:thaumcraft:Arcane%20Infusion": [
-      ""
-    ],
-    "recipeType:thaumcraft:Crucible": [
-      ""
-    ],
+    "recipeType:minecraft:Crafting%20(Shapeless)": [""],
+    "recipeType:thaumcraft:Arcane%20Infusion": [""],
+    "recipeType:thaumcraft:Crucible": [""],
     "recipeType:thaumcraft:Item%20aspects": [
       "0",
       "1",
@@ -630,39 +276,17 @@
       "e",
       "f"
     ],
-    "recipeType:thaumcraft:Magical%20Crafting%20(Shaped)": [
-      ""
-    ],
-    "recipeType:thaumcraft:Magical%20Crafting%20(Shapeless)": [
-      ""
-    ],
-    "recipeType:gregtech:Cryogenic%20Freezer": [
-      ""
-    ],
-    "recipeType:gregtech:Fluid%20Canner": [
-      ""
-    ],
-    "recipeType:gregtech:High%20Temperature%20Gas-cooled%20Reactor": [
-      ""
-    ],
-    "recipeType:gregtech:Plasma%20Arc%20Furnace": [
-      ""
-    ],
-    "recipeType:gregtech:Primitive%20Blast%20Furnace": [
-      ""
-    ],
-    "recipeType:gregtech:Slicer": [
-      ""
-    ],
-    "recipeType:gregtech:Tool%20Casting%20Machine": [
-      ""
-    ],
-    "recipeType:gregtech:Part%20Processing%20Apparatus": [
-      ""
-    ],
-    "recipeType:gregtech:Magic%20Energy%20Converter%20Fuels": [
-      ""
-    ]
+    "recipeType:thaumcraft:Magical%20Crafting%20(Shaped)": [""],
+    "recipeType:thaumcraft:Magical%20Crafting%20(Shapeless)": [""],
+    "recipeType:gregtech:Cryogenic%20Freezer": [""],
+    "recipeType:gregtech:Fluid%20Canner": [""],
+    "recipeType:gregtech:High%20Temperature%20Gas-cooled%20Reactor": [""],
+    "recipeType:gregtech:Plasma%20Arc%20Furnace": [""],
+    "recipeType:gregtech:Primitive%20Blast%20Furnace": [""],
+    "recipeType:gregtech:Slicer": [""],
+    "recipeType:gregtech:Tool%20Casting%20Machine": [""],
+    "recipeType:gregtech:Part%20Processing%20Apparatus": [""],
+    "recipeType:gregtech:Magic%20Energy%20Converter%20Fuels": [""]
   },
   "goods": [
     "a",
@@ -943,12 +567,8 @@
     "f"
   ],
   "specialViews": {
-    "crop-breeding": [
-      ""
-    ],
-    "crop-output": [
-      ""
-    ],
+    "crop-breeding": [""],
+    "crop-output": [""],
     "gt-ore-processing": [
       "0",
       "1",
@@ -967,27 +587,13 @@
       "e",
       "f"
     ],
-    "gt-ore-vein": [
-      ""
-    ],
-    "gt-small-ore": [
-      ""
-    ],
-    "loot-bag": [
-      ""
-    ],
-    "meteor-ritual": [
-      ""
-    ],
-    "mutation-pool": [
-      ""
-    ],
-    "vending-trade": [
-      ""
-    ],
-    "worldgen-loot": [
-      ""
-    ]
+    "gt-ore-vein": [""],
+    "gt-small-ore": [""],
+    "loot-bag": [""],
+    "meteor-ritual": [""],
+    "mutation-pool": [""],
+    "vending-trade": [""],
+    "worldgen-loot": [""]
   },
   "iconOwners": [
     "f:AWWayofTime:lifeessence",

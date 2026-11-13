@@ -1,11 +1,7 @@
 import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { encode } from '@msgpack/msgpack';
-import type {
-  DecodedRecipe,
-  DecodedRecipeType,
-  DecodedRepository
-} from './model';
+import type { DecodedRecipe, DecodedRecipeType, DecodedRepository } from './model';
 import type { SpecialData, SpecialRecord } from './special';
 import { buildSpecialViewTypes, specialGoodsForDirection } from './special';
 
@@ -58,7 +54,7 @@ export const DEFAULT_SHARED_LAYOUT_TARGETS: SharedLayoutTargets = {
   goods: 160 * 1024,
   goodsMetadata: 512 * 1024,
   special: 1024 * 1024,
-  oreDictionaries: 1024 * 1024
+  oreDictionaries: 1024 * 1024,
 };
 
 export interface SharedRecord {
@@ -92,14 +88,14 @@ const GOODS_METADATA_FIELDS = [
   'specialProductionLookupIds',
   'specialUsageLookupIds',
   'specialProductionCount',
-  'specialUsageCount'
+  'specialUsageCount',
 ] as const;
 
 const GOODS_METADATA_FIELD_SET = new Set<string>(GOODS_METADATA_FIELDS);
 
 function sharedGoodsStableValue(value: Record<string, unknown>): Record<string, unknown> {
   return Object.fromEntries(
-    Object.entries(value).filter(([key]) => !GOODS_METADATA_FIELD_SET.has(key))
+    Object.entries(value).filter(([key]) => !GOODS_METADATA_FIELD_SET.has(key)),
   );
 }
 
@@ -111,7 +107,11 @@ interface SharedOversizedSingleton {
 }
 
 type SharedProbeLogicalId = (namespace: string, prefix: string) => string;
-type SharedBucketEncoder = (logicalId: string, prefix: string, records: readonly SharedRecord[]) => unknown;
+type SharedBucketEncoder = (
+  logicalId: string,
+  prefix: string,
+  records: readonly SharedRecord[],
+) => unknown;
 
 function stableRecipeTypeId(type: Pick<DecodedRecipeType, 'category' | 'name'>): string {
   // The decoder's source ID contains an order number. Reconstruct the stable
@@ -120,16 +120,16 @@ function stableRecipeTypeId(type: Pick<DecodedRecipeType, 'category' | 'name'>):
   return `recipeType:${encodeURIComponent(type.category)}:${encodeURIComponent(type.name)}`;
 }
 
-function stableRecipeTypeIds(
-  types: readonly DecodedRecipeType[]
-): Map<string, string> {
+function stableRecipeTypeIds(types: readonly DecodedRecipeType[]): Map<string, string> {
   const result = new Map<string, string>();
   const owners = new Map<string, string>();
   for (const type of types) {
     const stableId = stableRecipeTypeId(type);
     const previous = owners.get(stableId);
     if (previous !== undefined && previous !== type.id) {
-      throw new Error(`Recipe type IDs collide after removing presentation order: ${previous} and ${type.id}`);
+      throw new Error(
+        `Recipe type IDs collide after removing presentation order: ${previous} and ${type.id}`,
+      );
     }
     owners.set(stableId, type.id);
     result.set(type.id, stableId);
@@ -144,43 +144,53 @@ function iconOwners(repository: DecodedRepository): Array<{ id: string; iconId: 
     ...repository.recipeTypes.flatMap((type) => [
       ...type.singleblocks,
       ...type.multiblocks,
-      ...(type.defaultCrafter ? [type.defaultCrafter] : [])
-    ])
+      ...(type.defaultCrafter ? [type.defaultCrafter] : []),
+    ]),
   ].map((entry) => ({ id: entry.id, iconId: entry.iconId }));
 }
 
 function buildIconOwners(repositories: readonly DecodedRepository[]): string[] {
-  return [...new Set(repositories.flatMap((repository) => iconOwners(repository).map((owner) => owner.id)))].sort();
+  return [
+    ...new Set(
+      repositories.flatMap((repository) => iconOwners(repository).map((owner) => owner.id)),
+    ),
+  ].sort();
 }
 
 function sharedIconSlots(
-  owners: readonly string[]
+  owners: readonly string[],
 ): Map<string, { sheetId: string; index: number }> {
-  return new Map(owners.map((ownerId, slot) => [
-    ownerId,
-    {
-      sheetId: `icons-${Math.floor(slot / 1024).toString().padStart(3, '0')}`,
-      index: slot % 1024
-    }
-  ]));
+  return new Map(
+    owners.map((ownerId, slot) => [
+      ownerId,
+      {
+        sheetId: `icons-${Math.floor(slot / 1024)
+          .toString()
+          .padStart(3, '0')}`,
+        index: slot % 1024,
+      },
+    ]),
+  );
 }
 
 export function sharedPrefixLayout(layout: SharedPartitionLayout): SharedPrefixLayout {
   return {
     schemaVersion: layout.schemaVersion,
     targets: { ...layout.targets },
-    recipeTypes: Object.fromEntries(Object.entries(layout.recipeTypes).map(([id, prefixes]) => [id, [...prefixes]])),
+    recipeTypes: Object.fromEntries(
+      Object.entries(layout.recipeTypes).map(([id, prefixes]) => [id, [...prefixes]]),
+    ),
     goods: [...layout.goods],
     oreDictionaries: [...layout.oreDictionaries],
-    specialViews: Object.fromEntries(Object.entries(layout.specialViews).map(([id, prefixes]) => [id, [...prefixes]]))
+    specialViews: Object.fromEntries(
+      Object.entries(layout.specialViews).map(([id, prefixes]) => [id, [...prefixes]]),
+    ),
   };
 }
 
 /** The fingerprint covers the published trie, not formatting of the input file. */
 export function sharedPrefixLayoutFingerprint(layout: SharedPrefixLayout): string {
-  return createHash('sha256')
-    .update(JSON.stringify(layout))
-    .digest('hex');
+  return createHash('sha256').update(JSON.stringify(layout)).digest('hex');
 }
 
 export function sharedLayoutFingerprint(layout: SharedPartitionLayout): string {
@@ -196,7 +206,8 @@ function assertPrefixList(value: unknown, label: string): asserts value is strin
     if (typeof prefix !== 'string' || !/^[0-9a-f]{0,8}$/.test(prefix)) {
       throw new Error(`${label} contains an invalid partition prefix ${String(prefix)}`);
     }
-    if (seen.has(prefix)) throw new Error(`${label} contains duplicate partition prefix ${prefix || 'root'}`);
+    if (seen.has(prefix))
+      throw new Error(`${label} contains duplicate partition prefix ${prefix || 'root'}`);
     seen.add(prefix);
   }
 }
@@ -235,26 +246,30 @@ export function validateSharedPrefixLayout(layout: SharedPrefixLayout): void {
  */
 export function assertSharedLayoutExtension(
   previous: SharedPrefixLayout,
-  next: SharedPrefixLayout
+  next: SharedPrefixLayout,
 ): void {
   validateSharedPrefixLayout(previous);
   validateSharedPrefixLayout(next);
   for (const key of ['recipes', 'goods', 'goodsMetadata', 'special', 'oreDictionaries'] as const) {
     if (previous.targets[key] !== next.targets[key]) {
-      throw new Error(`Shared layout target ${key} changed from ${previous.targets[key]} to ${next.targets[key]}`);
+      throw new Error(
+        `Shared layout target ${key} changed from ${previous.targets[key]} to ${next.targets[key]}`,
+      );
     }
   }
   const assertMapExtension = (
     mapName: string,
     oldMap: Record<string, string[]>,
-    newMap: Record<string, string[]>
+    newMap: Record<string, string[]>,
   ): void => {
     for (const [namespace, oldPrefixes] of Object.entries(oldMap)) {
       const newPrefixes = newMap[namespace];
       if (!newPrefixes) throw new Error(`Shared layout removed namespace ${mapName}.${namespace}`);
       for (const prefix of oldPrefixes) {
         if (!newPrefixes.includes(prefix)) {
-          throw new Error(`Shared layout removed ${mapName}.${namespace} prefix ${prefix || 'root'}`);
+          throw new Error(
+            `Shared layout removed ${mapName}.${namespace} prefix ${prefix || 'root'}`,
+          );
         }
       }
       for (const candidate of newPrefixes) {
@@ -262,7 +277,7 @@ export function assertSharedLayoutExtension(
         for (const previousPrefix of oldPrefixes) {
           if (candidate !== previousPrefix && previousPrefix.startsWith(candidate)) {
             throw new Error(
-              `Shared layout introduced ${mapName}.${namespace} ancestor ${candidate || 'root'} for existing prefix ${previousPrefix || 'root'}`
+              `Shared layout introduced ${mapName}.${namespace} ancestor ${candidate || 'root'} for existing prefix ${previousPrefix || 'root'}`,
             );
           }
         }
@@ -285,7 +300,7 @@ export function assertSharedLayoutExtension(
         // leaves are fine; only a strict ancestor of an old prefix is banned.
         if (candidate !== previousPrefix && previousPrefix.startsWith(candidate)) {
           throw new Error(
-            `Shared layout introduced ${name} ancestor ${candidate || 'root'} for existing prefix ${previousPrefix || 'root'}`
+            `Shared layout introduced ${name} ancestor ${candidate || 'root'} for existing prefix ${previousPrefix || 'root'}`,
           );
         }
       }
@@ -303,14 +318,16 @@ export function sharedRepository(repository: DecodedRepository): DecodedReposito
     ...repository,
     recipeTypes: repository.recipeTypes.map((type) => ({
       ...type,
-      id: typeIds.get(type.id)!
+      id: typeIds.get(type.id)!,
     })),
     recipes: repository.recipes.map((recipe) => ({
       ...recipe,
-      recipeTypeId: typeIds.get(recipe.recipeTypeId) ?? (() => {
-        throw new Error(`Recipe ${recipe.id} references unknown type ${recipe.recipeTypeId}`);
-      })()
-    }))
+      recipeTypeId:
+        typeIds.get(recipe.recipeTypeId) ??
+        (() => {
+          throw new Error(`Recipe ${recipe.id} references unknown type ${recipe.recipeTypeId}`);
+        })(),
+    })),
   };
 }
 
@@ -328,11 +345,15 @@ export function sharedLogicalId(kind: string, namespace: string, prefix: string)
 
 export function groupSharedRecords<T extends SharedRecord>(
   records: readonly T[],
-  prefixes: readonly string[]
+  prefixes: readonly string[],
 ): Map<string, T[]> {
   const grouped = new Map<string, T[]>();
   for (const record of records) {
-    const hash = sharedPartitionPrefix(record.namespace, record.id, SHARED_LAYOUT_MAX_PREFIX_NIBBLES);
+    const hash = sharedPartitionPrefix(
+      record.namespace,
+      record.id,
+      SHARED_LAYOUT_MAX_PREFIX_NIBBLES,
+    );
     const prefix = [...prefixes]
       .filter((candidate) => hash.startsWith(candidate))
       .sort((left, right) => right.length - left.length)[0];
@@ -343,7 +364,8 @@ export function groupSharedRecords<T extends SharedRecord>(
     bucket.push(record);
     grouped.set(prefix, bucket);
   }
-  for (const bucket of grouped.values()) bucket.sort((left, right) => left.id.localeCompare(right.id));
+  for (const bucket of grouped.values())
+    bucket.sort((left, right) => left.id.localeCompare(right.id));
   return grouped;
 }
 
@@ -355,18 +377,18 @@ function partitionPrefixesForRecords<T extends SharedRecord>(
   records: readonly T[],
   targetBytes: number,
   encodeBucket: SharedBucketEncoder,
-  logicalIdForPrefix: SharedProbeLogicalId
+  logicalIdForPrefix: SharedProbeLogicalId,
 ): string[] {
   const split = (bucket: readonly T[], prefix: string): string[] => {
     if (bucket.length === 0) return [];
-    const size = sharedMessagePackBytes(encodeBucket(
-      logicalIdForPrefix(bucket[0]!.namespace, prefix),
-      prefix,
-      bucket
-    ));
+    const size = sharedMessagePackBytes(
+      encodeBucket(logicalIdForPrefix(bucket[0]!.namespace, prefix), prefix, bucket),
+    );
     if (size <= targetBytes || bucket.length === 1) return [prefix];
     if (prefix.length >= SHARED_LAYOUT_MAX_PREFIX_NIBBLES) {
-      throw new Error(`Unable to partition ${bucket[0]!.namespace}; a single record exceeds the shared target`);
+      throw new Error(
+        `Unable to partition ${bucket[0]!.namespace}; a single record exceeds the shared target`,
+      );
     }
     const groups = new Map<string, T[]>();
     for (const record of bucket) {
@@ -388,16 +410,14 @@ function oversizedSingletonsForRecords<T extends SharedRecord>(
   prefixes: readonly string[],
   targetBytes: number,
   encodeBucket: SharedBucketEncoder,
-  logicalIdForPrefix: SharedProbeLogicalId
+  logicalIdForPrefix: SharedProbeLogicalId,
 ): SharedOversizedSingleton[] {
   const result: SharedOversizedSingleton[] = [];
   for (const [prefix, bucket] of groupSharedRecords(records, prefixes)) {
     if (bucket.length !== 1) continue;
-    const estimatedBytes = sharedMessagePackBytes(encodeBucket(
-      logicalIdForPrefix(bucket[0]!.namespace, prefix),
-      prefix,
-      bucket
-    ));
+    const estimatedBytes = sharedMessagePackBytes(
+      encodeBucket(logicalIdForPrefix(bucket[0]!.namespace, prefix), prefix, bucket),
+    );
     if (estimatedBytes > targetBytes) {
       result.push({ namespace: bucket[0]!.namespace, prefix, estimatedBytes });
     }
@@ -422,13 +442,17 @@ function extendPartitionPrefixes<T extends SharedRecord>(
   records: readonly T[],
   targetBytes: number,
   encodeBucket: SharedBucketEncoder,
-  logicalIdForPrefix: SharedProbeLogicalId
+  logicalIdForPrefix: SharedProbeLogicalId,
 ): string[] {
   const prefixes = new Set(previous);
   // A record outside a previously published sparse trie gets its own leaf.
   // This never changes the meaning of an existing prefix.
   for (const record of records) {
-    const hash = sharedPartitionPrefix(record.namespace, record.id, SHARED_LAYOUT_MAX_PREFIX_NIBBLES);
+    const hash = sharedPartitionPrefix(
+      record.namespace,
+      record.id,
+      SHARED_LAYOUT_MAX_PREFIX_NIBBLES,
+    );
     if (![...prefixes].some((prefix) => hash.startsWith(prefix))) prefixes.add(hash);
   }
   // Existing leaves may be split into descendants when this dataset makes a
@@ -436,19 +460,27 @@ function extendPartitionPrefixes<T extends SharedRecord>(
   // it, while longest-prefix matching routes this dataset to the descendants.
   const leavesToSplit = [...prefixes];
   for (const prefix of leavesToSplit) {
-    const bucket = records.filter((record) => (
-      sharedPartitionPrefix(record.namespace, record.id, SHARED_LAYOUT_MAX_PREFIX_NIBBLES).startsWith(prefix)
-    ));
+    const bucket = records.filter((record) =>
+      sharedPartitionPrefix(
+        record.namespace,
+        record.id,
+        SHARED_LAYOUT_MAX_PREFIX_NIBBLES,
+      ).startsWith(prefix),
+    );
     if (bucket.length === 0) continue;
     const split = (values: readonly T[], currentPrefix: string): void => {
-      const size = sharedMessagePackBytes(encodeBucket(
-        logicalIdForPrefix(values[0]!.namespace, currentPrefix),
-        currentPrefix,
-        values
-      ));
+      const size = sharedMessagePackBytes(
+        encodeBucket(
+          logicalIdForPrefix(values[0]!.namespace, currentPrefix),
+          currentPrefix,
+          values,
+        ),
+      );
       if (size <= targetBytes || values.length <= 1) return;
       if (currentPrefix.length >= SHARED_LAYOUT_MAX_PREFIX_NIBBLES) {
-        throw new Error(`Unable to extend ${values[0]!.namespace}; a singleton record exceeds the shared target`);
+        throw new Error(
+          `Unable to extend ${values[0]!.namespace}; a singleton record exceeds the shared target`,
+        );
       }
       const children = new Map<string, T[]>();
       for (const record of values) {
@@ -465,13 +497,12 @@ function extendPartitionPrefixes<T extends SharedRecord>(
     };
     split(bucket, prefix);
   }
-  return [...prefixes].sort((left, right) => left.length - right.length || left.localeCompare(right));
+  return [...prefixes].sort(
+    (left, right) => left.length - right.length || left.localeCompare(right),
+  );
 }
 
-function recipeRecords(
-  repository: DecodedRepository,
-  typeId: string
-): SharedRecord[] {
+function recipeRecords(repository: DecodedRepository, typeId: string): SharedRecord[] {
   return repository.recipes
     .filter((recipe) => recipe.recipeTypeId === typeId)
     .map((recipe) => ({ id: recipe.id, namespace: typeId, value: recipe }));
@@ -481,19 +512,19 @@ function goodsRecords(
   repository: DecodedRepository,
   recipeShardByRecipeId: ReadonlyMap<string, string>,
   specialGoodsIndex: ReadonlyMap<string, SharedSpecialGoodsIndexEntry>,
-  iconSlots: ReadonlyMap<string, { sheetId: string; index: number }>
+  iconSlots: ReadonlyMap<string, { sheetId: string; index: number }>,
 ): SharedRecord[] {
   return [...repository.items, ...repository.fluids].map((goods) => {
     const { productionRecipeIds, usageRecipeIds, ...base } = goods;
     delete (base as Partial<typeof goods>).iconId;
     const value = {
       ...base,
-      productionShards: [...new Set(productionRecipeIds.map((id) => recipeShardByRecipeId.get(id)))].filter(
-        (id): id is string => id !== undefined
-      ).sort(),
-      usageShards: [...new Set(usageRecipeIds.map((id) => recipeShardByRecipeId.get(id)))].filter(
-        (id): id is string => id !== undefined
-      ).sort(),
+      productionShards: [...new Set(productionRecipeIds.map((id) => recipeShardByRecipeId.get(id)))]
+        .filter((id): id is string => id !== undefined)
+        .sort(),
+      usageShards: [...new Set(usageRecipeIds.map((id) => recipeShardByRecipeId.get(id)))]
+        .filter((id): id is string => id !== undefined)
+        .sort(),
       productionCount: productionRecipeIds.length,
       usageCount: usageRecipeIds.length,
       // Every format-5 goods record receives a fixed-shape icon reference;
@@ -505,19 +536,19 @@ function goodsRecords(
       specialProductionLookupIds: specialGoodsIndex.get(goods.id)?.recipes.lookupIds ?? [],
       specialUsageLookupIds: specialGoodsIndex.get(goods.id)?.usages.lookupIds ?? [],
       specialProductionCount: specialGoodsIndex.get(goods.id)?.recipes.recordCount ?? 0,
-      specialUsageCount: specialGoodsIndex.get(goods.id)?.usages.recordCount ?? 0
+      specialUsageCount: specialGoodsIndex.get(goods.id)?.usages.recordCount ?? 0,
     };
     return {
       id: goods.id,
       namespace: 'goods',
-      value: sharedGoodsStableValue(value)
+      value: sharedGoodsStableValue(value),
     };
   });
 }
 
 function oreDictionaryRecords(
   repository: DecodedRepository,
-  specialGoodsIndex: ReadonlyMap<string, SharedSpecialGoodsIndexEntry>
+  specialGoodsIndex: ReadonlyMap<string, SharedSpecialGoodsIndexEntry>,
 ): SharedRecord[] {
   return repository.oreDictionaries.map((group) => {
     const special = specialGoodsIndex.get(group.id);
@@ -531,8 +562,8 @@ function oreDictionaryRecords(
         specialProductionLookupIds: special?.recipes.lookupIds ?? [],
         specialUsageLookupIds: special?.usages.lookupIds ?? [],
         specialProductionCount: special?.recipes.recordCount ?? 0,
-        specialUsageCount: special?.usages.recordCount ?? 0
-      }
+        specialUsageCount: special?.usages.recordCount ?? 0,
+      },
     };
   });
 }
@@ -559,18 +590,27 @@ function emptySharedSpecialDirection(): {
 function sharedSpecialGoodsIndex(
   records: readonly SharedRecord[],
   specialViews: Readonly<Record<string, string[]>>,
-  repositories: readonly DecodedRepository[]
+  repositories: readonly DecodedRepository[],
 ): ReadonlyMap<string, SharedSpecialGoodsIndexEntry> {
-  const mutable = new Map<string, {
-    recipes: ReturnType<typeof emptySharedSpecialDirection>;
-    usages: ReturnType<typeof emptySharedSpecialDirection>;
-  }>();
+  const mutable = new Map<
+    string,
+    {
+      recipes: ReturnType<typeof emptySharedSpecialDirection>;
+      usages: ReturnType<typeof emptySharedSpecialDirection>;
+    }
+  >();
   const shardByRecordId = new Map<string, string>();
   for (const record of records) {
     const prefixes = specialViews[record.namespace];
     if (!prefixes) continue;
     const prefix = [...prefixes]
-      .filter((candidate) => sharedPartitionPrefix(record.namespace, record.id, SHARED_LAYOUT_MAX_PREFIX_NIBBLES).startsWith(candidate))
+      .filter((candidate) =>
+        sharedPartitionPrefix(
+          record.namespace,
+          record.id,
+          SHARED_LAYOUT_MAX_PREFIX_NIBBLES,
+        ).startsWith(candidate),
+      )
       .sort((left, right) => right.length - left.length)[0];
     if (prefix === undefined) continue;
     shardByRecordId.set(record.id, sharedLogicalId('special', record.namespace, prefix));
@@ -580,11 +620,13 @@ function sharedSpecialGoodsIndex(
       for (const goodsId of goodsIds) {
         const entry = mutable.get(goodsId) ?? {
           recipes: emptySharedSpecialDirection(),
-          usages: emptySharedSpecialDirection()
+          usages: emptySharedSpecialDirection(),
         };
         const projection = entry[direction];
         projection.recordCount++;
-        projection.lookupIds.add(direction === 'recipes' ? special.recipesLookupId : special.usagesLookupId);
+        projection.lookupIds.add(
+          direction === 'recipes' ? special.recipesLookupId : special.usagesLookupId,
+        );
         const shardId = shardByRecordId.get(record.id);
         if (shardId) projection.shardIds.add(shardId);
         mutable.set(goodsId, entry);
@@ -600,7 +642,7 @@ function sharedSpecialGoodsIndex(
     if (!sourceEntry) return;
     const targetEntry = mutable.get(target) ?? {
       recipes: emptySharedSpecialDirection(),
-      usages: emptySharedSpecialDirection()
+      usages: emptySharedSpecialDirection(),
     };
     for (const direction of ['recipes', 'usages'] as const) {
       targetEntry[direction].recordCount += sourceEntry[direction].recordCount;
@@ -611,15 +653,22 @@ function sharedSpecialGoodsIndex(
   };
   const groups = repositories.flatMap((repository) => [
     ...repository.oreDictionaries,
-    ...repository.ingredientGroups
+    ...repository.ingredientGroups,
   ]);
   for (const group of groups) for (const itemId of group.itemIds) merge(itemId, group.id);
   const goods = repositories.flatMap((repository) => [...repository.items, ...repository.fluids]);
   const cropKeys = new Map<string, string[]>();
   for (const goodsEntry of goods) {
-    if (goodsEntry.kind !== 'item' || goodsEntry.mod.toLocaleLowerCase() !== 'cropsnh'
-      || goodsEntry.internalName !== 'genericSeed' || !goodsEntry.nbt) continue;
-    const crop = goodsEntry.nbt.match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/i)?.[1]?.toLocaleLowerCase();
+    if (
+      goodsEntry.kind !== 'item' ||
+      goodsEntry.mod.toLocaleLowerCase() !== 'cropsnh' ||
+      goodsEntry.internalName !== 'genericSeed' ||
+      !goodsEntry.nbt
+    )
+      continue;
+    const crop = goodsEntry.nbt
+      .match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/i)?.[1]
+      ?.toLocaleLowerCase();
     if (!crop) continue;
     const members = cropKeys.get(crop) ?? [];
     members.push(goodsEntry.id);
@@ -630,39 +679,47 @@ function sharedSpecialGoodsIndex(
     if (source) for (const member of members) merge(member, source);
   }
 
-  return new Map([...mutable.entries()].sort(([left], [right]) => left.localeCompare(right)).map(([id, entry]) => [
-    id,
-    {
-      recipes: {
-        shardIds: [...entry.recipes.shardIds].sort(),
-        lookupIds: [...entry.recipes.lookupIds].sort(),
-        recordCount: entry.recipes.recordCount
-      },
-      usages: {
-        shardIds: [...entry.usages.shardIds].sort(),
-        lookupIds: [...entry.usages.lookupIds].sort(),
-        recordCount: entry.usages.recordCount
-      }
-    }
-  ]));
+  return new Map(
+    [...mutable.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([id, entry]) => [
+        id,
+        {
+          recipes: {
+            shardIds: [...entry.recipes.shardIds].sort(),
+            lookupIds: [...entry.recipes.lookupIds].sort(),
+            recordCount: entry.recipes.recordCount,
+          },
+          usages: {
+            shardIds: [...entry.usages.shardIds].sort(),
+            lookupIds: [...entry.usages.lookupIds].sort(),
+            recordCount: entry.usages.recordCount,
+          },
+        },
+      ]),
+  );
 }
 
 function specialRecords(data: SpecialData | undefined): SharedRecord[] {
   return (data?.records ?? []).map((record) => ({
     id: record.id,
     namespace: record.category,
-    value: record
+    value: record,
   }));
 }
 
-function recipeBucket(logicalId: string, prefix: string, records: readonly SharedRecord[]): unknown {
+function recipeBucket(
+  logicalId: string,
+  prefix: string,
+  records: readonly SharedRecord[],
+): unknown {
   return {
     schemaVersion: 5,
     kind: 'recipeShard',
     logicalId,
     recipeTypeId: records[0]?.namespace,
     prefix,
-    recipes: records.map((record) => record.value as DecodedRecipe)
+    recipes: records.map((record) => record.value as DecodedRecipe),
   };
 }
 
@@ -672,28 +729,36 @@ function goodsBucket(logicalId: string, prefix: string, records: readonly Shared
     kind: 'goods',
     logicalId,
     prefix,
-    goods: records.map((record) => record.value)
+    goods: records.map((record) => record.value),
   };
 }
 
-function oreDictionaryBucket(logicalId: string, prefix: string, records: readonly SharedRecord[]): unknown {
+function oreDictionaryBucket(
+  logicalId: string,
+  prefix: string,
+  records: readonly SharedRecord[],
+): unknown {
   return {
     schemaVersion: 5,
     kind: 'oreDictionaries',
     logicalId,
     prefix,
-    oreDictionaries: records.map((record) => record.value)
+    oreDictionaries: records.map((record) => record.value),
   };
 }
 
-function specialBucket(logicalId: string, prefix: string, records: readonly SharedRecord[]): unknown {
+function specialBucket(
+  logicalId: string,
+  prefix: string,
+  records: readonly SharedRecord[],
+): unknown {
   return {
     schemaVersion: 5,
     kind: 'special',
     logicalId,
     specialViewTypeId: records[0]?.namespace,
     prefix,
-    records: records.map((record) => record.value as SpecialRecord)
+    records: records.map((record) => record.value as SpecialRecord),
   };
 }
 
@@ -715,11 +780,13 @@ function oreDictionaryLogicalId(_namespace: string, prefix: string): string {
 
 function extendIconSlots(
   previous: readonly string[],
-  repositories: readonly DecodedRepository[]
+  repositories: readonly DecodedRepository[],
 ): string[] {
   const nextOwners = [...previous];
   const known = new Set(nextOwners);
-  const owners = new Set(repositories.flatMap((repository) => iconOwners(repository).map((owner) => owner.id)));
+  const owners = new Set(
+    repositories.flatMap((repository) => iconOwners(repository).map((owner) => owner.id)),
+  );
   for (const ownerId of [...owners].sort()) {
     if (known.has(ownerId)) continue;
     nextOwners.push(ownerId);
@@ -736,27 +803,35 @@ function extendIconSlots(
 export function buildSharedLayout(
   repositories: readonly DecodedRepository[],
   specialDataValues: readonly (SpecialData | undefined)[],
-  targets: SharedLayoutTargets = DEFAULT_SHARED_LAYOUT_TARGETS
+  targets: SharedLayoutTargets = DEFAULT_SHARED_LAYOUT_TARGETS,
 ): SharedPartitionLayout {
-  if (repositories.length === 0) throw new Error('At least one repository is required for a shared layout');
+  if (repositories.length === 0)
+    throw new Error('At least one repository is required for a shared layout');
   const stableRepositories = repositories.map(sharedRepository);
   const oversizedSingletons: SharedOversizedSingleton[] = [];
   const iconOwners = buildIconOwners(stableRepositories);
   const iconSlots = sharedIconSlots(iconOwners);
-  const typeIds = new Set(stableRepositories.flatMap((repository) => repository.recipeTypes.map((type) => type.id)));
+  const typeIds = new Set(
+    stableRepositories.flatMap((repository) => repository.recipeTypes.map((type) => type.id)),
+  );
   const recipeTypes: Record<string, string[]> = {};
   for (const typeId of [...typeIds].sort()) {
-    const records = uniqueSharedRecords(stableRepositories.flatMap((repository) => recipeRecords(repository, typeId)));
-    recipeTypes[typeId] = records.length === 0
-      ? ['']
-      : partitionPrefixesForRecords(records, targets.recipes, recipeBucket, recipeShardLogicalId);
-    oversizedSingletons.push(...oversizedSingletonsForRecords(
-      records,
-      recipeTypes[typeId],
-      targets.recipes,
-      recipeBucket,
-      recipeShardLogicalId
-    ));
+    const records = uniqueSharedRecords(
+      stableRepositories.flatMap((repository) => recipeRecords(repository, typeId)),
+    );
+    recipeTypes[typeId] =
+      records.length === 0
+        ? ['']
+        : partitionPrefixesForRecords(records, targets.recipes, recipeBucket, recipeShardLogicalId);
+    oversizedSingletons.push(
+      ...oversizedSingletonsForRecords(
+        records,
+        recipeTypes[typeId],
+        targets.recipes,
+        recipeBucket,
+        recipeShardLogicalId,
+      ),
+    );
   }
   const recipeShardByRecipeId = new Map<string, string>();
   for (const repository of stableRepositories) {
@@ -772,53 +847,70 @@ export function buildSharedLayout(
   const allSpecial = uniqueSharedRecords(specialDataValues.flatMap(specialRecords));
   const viewIds = new Set([
     ...allSpecial.map((record) => record.namespace),
-    ...specialDataValues.flatMap((data) => data ? buildSpecialViewTypes(data).map((view) => view.id) : [])
+    ...specialDataValues.flatMap((data) =>
+      data ? buildSpecialViewTypes(data).map((view) => view.id) : [],
+    ),
   ]);
   const specialViews: Record<string, string[]> = {};
   for (const viewId of [...viewIds].sort()) {
     const records = allSpecial.filter((record) => record.namespace === viewId);
-    specialViews[viewId] = records.length === 0
-      ? ['']
-      : partitionPrefixesForRecords(records, targets.special, specialBucket, specialShardLogicalId);
-    oversizedSingletons.push(...oversizedSingletonsForRecords(
-      records,
-      specialViews[viewId],
-      targets.special,
-      specialBucket,
-      specialShardLogicalId
-    ));
+    specialViews[viewId] =
+      records.length === 0
+        ? ['']
+        : partitionPrefixesForRecords(
+            records,
+            targets.special,
+            specialBucket,
+            specialShardLogicalId,
+          );
+    oversizedSingletons.push(
+      ...oversizedSingletonsForRecords(
+        records,
+        specialViews[viewId],
+        targets.special,
+        specialBucket,
+        specialShardLogicalId,
+      ),
+    );
   }
   const specialGoodsIndex = sharedSpecialGoodsIndex(allSpecial, specialViews, stableRepositories);
-  const allOreDictionaries = uniqueSharedRecords(stableRepositories.map((repository) => oreDictionaryRecords(
-    repository,
-    specialGoodsIndex
-  )).flat());
-  const oreDictionaries = allOreDictionaries.length === 0
-    ? ['']
-    : partitionPrefixesForRecords(allOreDictionaries, targets.oreDictionaries, oreDictionaryBucket, oreDictionaryLogicalId);
-  oversizedSingletons.push(...oversizedSingletonsForRecords(
-    allOreDictionaries,
-    oreDictionaries,
-    targets.oreDictionaries,
-    oreDictionaryBucket,
-    oreDictionaryLogicalId
-  ));
-  const allGoods = uniqueSharedRecords(stableRepositories.map((repository) => goodsRecords(
-    repository,
-    recipeShardByRecipeId,
-    specialGoodsIndex,
-    iconSlots
-  )).flat());
-  const goods = allGoods.length === 0
-    ? ['']
-    : partitionPrefixesForRecords(allGoods, targets.goods, goodsBucket, goodsLogicalId);
-  oversizedSingletons.push(...oversizedSingletonsForRecords(
-    allGoods,
-    goods,
-    targets.goods,
-    goodsBucket,
-    goodsLogicalId
-  ));
+  const allOreDictionaries = uniqueSharedRecords(
+    stableRepositories
+      .map((repository) => oreDictionaryRecords(repository, specialGoodsIndex))
+      .flat(),
+  );
+  const oreDictionaries =
+    allOreDictionaries.length === 0
+      ? ['']
+      : partitionPrefixesForRecords(
+          allOreDictionaries,
+          targets.oreDictionaries,
+          oreDictionaryBucket,
+          oreDictionaryLogicalId,
+        );
+  oversizedSingletons.push(
+    ...oversizedSingletonsForRecords(
+      allOreDictionaries,
+      oreDictionaries,
+      targets.oreDictionaries,
+      oreDictionaryBucket,
+      oreDictionaryLogicalId,
+    ),
+  );
+  const allGoods = uniqueSharedRecords(
+    stableRepositories
+      .map((repository) =>
+        goodsRecords(repository, recipeShardByRecipeId, specialGoodsIndex, iconSlots),
+      )
+      .flat(),
+  );
+  const goods =
+    allGoods.length === 0
+      ? ['']
+      : partitionPrefixesForRecords(allGoods, targets.goods, goodsBucket, goodsLogicalId);
+  oversizedSingletons.push(
+    ...oversizedSingletonsForRecords(allGoods, goods, targets.goods, goodsBucket, goodsLogicalId),
+  );
   return {
     schemaVersion: SHARED_LAYOUT_SCHEMA_VERSION,
     targets,
@@ -827,7 +919,7 @@ export function buildSharedLayout(
     oreDictionaries,
     specialViews,
     iconOwners,
-    oversizedSingletons
+    oversizedSingletons,
   };
 }
 
@@ -840,38 +932,59 @@ export function buildSharedLayout(
 export function extendSharedLayout(
   previous: SharedPartitionLayout,
   repositories: readonly DecodedRepository[],
-  specialDataValues: readonly (SpecialData | undefined)[]
+  specialDataValues: readonly (SpecialData | undefined)[],
 ): SharedPartitionLayout {
   validateSharedLayout(previous);
-  if (repositories.length === 0) throw new Error('At least one repository is required for a shared layout');
+  if (repositories.length === 0)
+    throw new Error('At least one repository is required for a shared layout');
   const stableRepositories = repositories.map(sharedRepository);
   const oversizedSingletons = [...(previous.oversizedSingletons ?? [])];
   const iconOwners = extendIconSlots(previous.iconOwners ?? [], stableRepositories);
   const iconSlots = sharedIconSlots(iconOwners);
-  const typeIds = new Set(stableRepositories.flatMap((repository) => repository.recipeTypes.map((type) => type.id)));
+  const typeIds = new Set(
+    stableRepositories.flatMap((repository) => repository.recipeTypes.map((type) => type.id)),
+  );
   const recipeTypes: Record<string, string[]> = { ...previous.recipeTypes };
   for (const typeId of [...typeIds].sort()) {
-    const records = uniqueSharedRecords(stableRepositories.flatMap((repository) => recipeRecords(repository, typeId)));
+    const records = uniqueSharedRecords(
+      stableRepositories.flatMap((repository) => recipeRecords(repository, typeId)),
+    );
     const old = recipeTypes[typeId];
     recipeTypes[typeId] = old
-      ? extendPartitionPrefixes(old, records, previous.targets.recipes, recipeBucket, recipeShardLogicalId)
+      ? extendPartitionPrefixes(
+          old,
+          records,
+          previous.targets.recipes,
+          recipeBucket,
+          recipeShardLogicalId,
+        )
       : records.length === 0
         ? ['']
-        : partitionPrefixesForRecords(records, previous.targets.recipes, recipeBucket, recipeShardLogicalId);
-    oversizedSingletons.push(...oversizedSingletonsForRecords(
-      records,
-      recipeTypes[typeId],
-      previous.targets.recipes,
-      recipeBucket,
-      recipeShardLogicalId
-    ));
+        : partitionPrefixesForRecords(
+            records,
+            previous.targets.recipes,
+            recipeBucket,
+            recipeShardLogicalId,
+          );
+    oversizedSingletons.push(
+      ...oversizedSingletonsForRecords(
+        records,
+        recipeTypes[typeId],
+        previous.targets.recipes,
+        recipeBucket,
+        recipeShardLogicalId,
+      ),
+    );
   }
 
   const recipeShardByRecipeId = new Map<string, string>();
   for (const repository of stableRepositories) {
     for (const type of repository.recipeTypes) {
       const prefixes = recipeTypes[type.id]!;
-      for (const [prefix, bucket] of groupSharedRecords(recipeRecords(repository, type.id), prefixes)) {
+      for (const [prefix, bucket] of groupSharedRecords(
+        recipeRecords(repository, type.id),
+        prefixes,
+      )) {
         const logicalId = sharedLogicalId('recipes', type.id, prefix);
         for (const record of bucket) recipeShardByRecipeId.set(record.id, logicalId);
       }
@@ -881,57 +994,84 @@ export function extendSharedLayout(
   const allSpecial = uniqueSharedRecords(specialDataValues.flatMap(specialRecords));
   const viewIds = new Set([
     ...allSpecial.map((record) => record.namespace),
-    ...specialDataValues.flatMap((data) => data ? buildSpecialViewTypes(data).map((view) => view.id) : [])
+    ...specialDataValues.flatMap((data) =>
+      data ? buildSpecialViewTypes(data).map((view) => view.id) : [],
+    ),
   ]);
   for (const viewId of viewIds) {
     const records = allSpecial.filter((record) => record.namespace === viewId);
     const old = specialViews[viewId];
     specialViews[viewId] = old
-      ? extendPartitionPrefixes(old, records, previous.targets.special, specialBucket, specialShardLogicalId)
-        : records.length === 0
-          ? ['']
-          : partitionPrefixesForRecords(records, previous.targets.special, specialBucket, specialShardLogicalId);
-    oversizedSingletons.push(...oversizedSingletonsForRecords(
-      records,
-      specialViews[viewId],
-      previous.targets.special,
-      specialBucket,
-      specialShardLogicalId
-    ));
+      ? extendPartitionPrefixes(
+          old,
+          records,
+          previous.targets.special,
+          specialBucket,
+          specialShardLogicalId,
+        )
+      : records.length === 0
+        ? ['']
+        : partitionPrefixesForRecords(
+            records,
+            previous.targets.special,
+            specialBucket,
+            specialShardLogicalId,
+          );
+    oversizedSingletons.push(
+      ...oversizedSingletonsForRecords(
+        records,
+        specialViews[viewId],
+        previous.targets.special,
+        specialBucket,
+        specialShardLogicalId,
+      ),
+    );
   }
   const specialGoodsIndex = sharedSpecialGoodsIndex(allSpecial, specialViews, stableRepositories);
-  const allOreDictionaries = uniqueSharedRecords(stableRepositories.map((repository) => oreDictionaryRecords(
-    repository,
-    specialGoodsIndex
-  )).flat());
+  const allOreDictionaries = uniqueSharedRecords(
+    stableRepositories
+      .map((repository) => oreDictionaryRecords(repository, specialGoodsIndex))
+      .flat(),
+  );
   const oreDictionaries = extendPartitionPrefixes(
     previous.oreDictionaries,
     allOreDictionaries,
     previous.targets.oreDictionaries,
     oreDictionaryBucket,
-    oreDictionaryLogicalId
+    oreDictionaryLogicalId,
   );
-  oversizedSingletons.push(...oversizedSingletonsForRecords(
-    allOreDictionaries,
-    oreDictionaries,
-    previous.targets.oreDictionaries,
-    oreDictionaryBucket,
-    oreDictionaryLogicalId
-  ));
-  const allGoods = uniqueSharedRecords(stableRepositories.map((repository) => goodsRecords(
-    repository,
-    recipeShardByRecipeId,
-    specialGoodsIndex,
-    iconSlots
-  )).flat());
-  const goods = extendPartitionPrefixes(previous.goods, allGoods, previous.targets.goods, goodsBucket, goodsLogicalId);
-  oversizedSingletons.push(...oversizedSingletonsForRecords(
+  oversizedSingletons.push(
+    ...oversizedSingletonsForRecords(
+      allOreDictionaries,
+      oreDictionaries,
+      previous.targets.oreDictionaries,
+      oreDictionaryBucket,
+      oreDictionaryLogicalId,
+    ),
+  );
+  const allGoods = uniqueSharedRecords(
+    stableRepositories
+      .map((repository) =>
+        goodsRecords(repository, recipeShardByRecipeId, specialGoodsIndex, iconSlots),
+      )
+      .flat(),
+  );
+  const goods = extendPartitionPrefixes(
+    previous.goods,
     allGoods,
-    goods,
     previous.targets.goods,
     goodsBucket,
-    goodsLogicalId
-  ));
+    goodsLogicalId,
+  );
+  oversizedSingletons.push(
+    ...oversizedSingletonsForRecords(
+      allGoods,
+      goods,
+      previous.targets.goods,
+      goodsBucket,
+      goodsLogicalId,
+    ),
+  );
 
   return {
     ...previous,
@@ -940,10 +1080,11 @@ export function extendSharedLayout(
     oreDictionaries,
     specialViews,
     iconOwners,
-    oversizedSingletons: [...new Map(oversizedSingletons.map((entry) => [
-      `${entry.namespace}\0${entry.prefix}`,
-      entry
-    ])).values()]
+    oversizedSingletons: [
+      ...new Map(
+        oversizedSingletons.map((entry) => [`${entry.namespace}\0${entry.prefix}`, entry]),
+      ).values(),
+    ],
   };
 }
 
@@ -961,10 +1102,13 @@ export function validateSharedLayout(layout: SharedPartitionLayout): void {
     owners.add(ownerId);
   }
   for (const singleton of layout.oversizedSingletons ?? []) {
-    if (!singleton || typeof singleton.namespace !== 'string'
-      || !/^[0-9a-f]{0,8}$/.test(singleton.prefix)
-      || !Number.isInteger(singleton.estimatedBytes)
-      || singleton.estimatedBytes < 0) {
+    if (
+      !singleton ||
+      typeof singleton.namespace !== 'string' ||
+      !/^[0-9a-f]{0,8}$/.test(singleton.prefix) ||
+      !Number.isInteger(singleton.estimatedBytes) ||
+      singleton.estimatedBytes < 0
+    ) {
       throw new Error('Invalid oversized singleton diagnostic');
     }
   }

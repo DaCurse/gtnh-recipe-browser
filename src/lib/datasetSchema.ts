@@ -269,8 +269,9 @@ export interface PackedCatalogGoods {
   kind: 'goods';
   logicalId: string;
   prefix: string;
-  goods: Array<Partial<PackedGoods> & Pick<PackedGoods,
-    'id' | 'name' | 'nbt' | 'searchable' | 'icon'>>;
+  goods: Array<
+    Partial<PackedGoods> & Pick<PackedGoods, 'id' | 'name' | 'nbt' | 'searchable' | 'icon'>
+  >;
 }
 
 export interface PackedCatalogGoodsSearch {

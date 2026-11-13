@@ -1,10 +1,15 @@
-import { buildRecipeSearchDocument, recipeSearchTerms, toRecipeSearchCatalogEntry, toRecipeSearchRecord } from './recipeSearch';
+import {
+  buildRecipeSearchDocument,
+  recipeSearchTerms,
+  toRecipeSearchCatalogEntry,
+  toRecipeSearchRecord,
+} from './recipeSearch';
 import {
   specialCategory,
   specialSearchText,
   type SpecialDrop,
   type SpecialGoods,
-  type SpecialRecord
+  type SpecialRecord,
 } from './specialData';
 import type { CatalogEntry, Ingredient, Recipe, RecipeView } from './types';
 
@@ -35,7 +40,9 @@ interface BrowserExportSpecialViewType {
   label: string;
 }
 
-export interface BrowserExportEnvelope<TRecord extends Recipe | SpecialRecord = Recipe | SpecialRecord> {
+export interface BrowserExportEnvelope<
+  TRecord extends Recipe | SpecialRecord = Recipe | SpecialRecord,
+> {
   schemaVersion: typeof BROWSER_EXPORT_SCHEMA_VERSION;
   kind: BrowserExportKind;
   dataset: BrowserExportDataset;
@@ -78,10 +85,11 @@ export interface SpecialExportOptions extends BrowserExportBaseOptions {
 
 function compareStableOrder(
   left: { id: string; order?: number },
-  right: { id: string; order?: number }
+  right: { id: string; order?: number },
 ): number {
-  return (left.order ?? 0) - (right.order ?? 0)
-    || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0);
+  return (
+    (left.order ?? 0) - (right.order ?? 0) || (left.id < right.id ? -1 : left.id > right.id ? 1 : 0)
+  );
 }
 
 function ordered<T extends { id: string; order?: number }>(records: readonly T[]): T[] {
@@ -92,7 +100,7 @@ function selectionOf(selected: BrowserExportSelection | CatalogEntry): BrowserEx
   return {
     id: selected.id,
     name: selected.name,
-    kind: selected.kind
+    kind: selected.kind,
   };
 }
 
@@ -100,7 +108,7 @@ function filterOf(query: string | undefined, applied: boolean | undefined): Brow
   const normalizedQuery = query ?? '';
   return {
     query: normalizedQuery,
-    applied: applied ?? normalizedQuery.trim().length > 0
+    applied: applied ?? normalizedQuery.trim().length > 0,
   };
 }
 
@@ -108,7 +116,7 @@ function datasetOf(repository: BrowserExportRepository): BrowserExportDataset {
   return {
     datasetId: repository.datasetId,
     gtnhVersion: repository.gtnhVersion,
-    revision: repository.revision
+    revision: repository.revision,
   };
 }
 
@@ -116,7 +124,7 @@ function catalogNames(repository: BrowserExportRepository): ReadonlyMap<string, 
   return new Map(
     repository.entries
       .filter((entry) => entry.name.trim().length > 0)
-      .map((entry) => [entry.id, entry.name])
+      .map((entry) => [entry.id, entry.name]),
   );
 }
 
@@ -132,7 +140,7 @@ type GoodsGroup = GoodsValue | readonly GoodsValue[];
 function catalogNameForId(
   id: string,
   names: ReadonlyMap<string, string>,
-  fallback?: string
+  fallback?: string,
 ): string {
   return names.get(id) ?? fallback ?? id;
 }
@@ -141,34 +149,28 @@ function withCatalogName<T extends object>(
   value: T,
   id: string,
   names: ReadonlyMap<string, string>,
-  fallback?: string
+  fallback?: string,
 ): NamedCatalogObject<T> {
   const existingName = (value as { name?: unknown }).name;
   return {
     ...value,
-    name: catalogNameForId(
-      id,
-      names,
-      typeof existingName === 'string' ? existingName : fallback
-    )
+    name: catalogNameForId(id, names, typeof existingName === 'string' ? existingName : fallback),
   };
 }
 
 function namesForIds(
   ids: readonly string[] | undefined,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): string[] | undefined {
   return ids?.map((id) => catalogNameForId(id, names));
 }
 
 function namesForIdMap(
   values: Readonly<Record<string, unknown>> | undefined,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, string> | undefined {
   if (!values) return undefined;
-  return Object.fromEntries(
-    Object.keys(values).map((id) => [id, catalogNameForId(id, names)])
-  );
+  return Object.fromEntries(Object.keys(values).map((id) => [id, catalogNameForId(id, names)]));
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -181,7 +183,7 @@ function isSpecialGoods(value: unknown): value is SpecialGoods {
 
 function decorateSpecialGoods<T extends SpecialGoods>(
   goods: T,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): NamedCatalogObject<T> & { alternativeNames?: string[]; oreDictionaryName?: string } {
   const decorated = withCatalogName(goods, goods.goodsId, names, goods.label);
   return {
@@ -191,14 +193,11 @@ function decorateSpecialGoods<T extends SpecialGoods>(
       : {}),
     ...(goods.oreDictionaryId !== undefined
       ? { oreDictionaryName: catalogNameForId(goods.oreDictionaryId, names) }
-      : {})
+      : {}),
   };
 }
 
-function decorateKnownGoodsValue(
-  value: unknown,
-  names: ReadonlyMap<string, string>
-): unknown {
+function decorateKnownGoodsValue(value: unknown, names: ReadonlyMap<string, string>): unknown {
   if (Array.isArray(value)) {
     return value.map((child) => decorateKnownGoodsValue(child, names));
   }
@@ -207,15 +206,12 @@ function decorateKnownGoodsValue(
 
 function decorateKnownGoodsList(
   values: readonly unknown[] | undefined,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): unknown[] | undefined {
   return values?.map((value) => decorateKnownGoodsValue(value, names));
 }
 
-function namesForKnownGoodsValue(
-  value: unknown,
-  names: ReadonlyMap<string, string>
-): unknown {
+function namesForKnownGoodsValue(value: unknown, names: ReadonlyMap<string, string>): unknown {
   if (typeof value === 'string') return catalogNameForId(value, names);
   if (Array.isArray(value)) return value.map((child) => namesForKnownGoodsValue(child, names));
   if (isSpecialGoods(value)) {
@@ -226,14 +222,14 @@ function namesForKnownGoodsValue(
 
 function namesForKnownGoodsList(
   values: readonly unknown[] | undefined,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): unknown[] | undefined {
   return values?.map((value) => namesForKnownGoodsValue(value, names));
 }
 
 function decorateIngredient(
   ingredient: Ingredient,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Ingredient {
   return {
     ...withCatalogName(ingredient, ingredient.id, names),
@@ -242,7 +238,7 @@ function decorateIngredient(
       : {}),
     ...(ingredient.alternatives !== undefined
       ? { alternativeNames: namesForIds(ingredient.alternatives, names) }
-      : {})
+      : {}),
   };
 }
 
@@ -259,7 +255,7 @@ function decorateRecipe(recipe: Recipe, names: ReadonlyMap<string, string>): Rec
       : {}),
     ...(recipe.typeIconId !== undefined
       ? { typeIconName: catalogNameForId(recipe.typeIconId, names) }
-      : {})
+      : {}),
   };
 }
 
@@ -276,47 +272,45 @@ interface CropExportPayload {
 
 function decorateCropPayload(
   value: CropExportPayload,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
     ...(value.drops ? { drops: decorateKnownGoodsList(value.drops, names) } : {}),
     ...(value.soils
       ? {
-        soils: decorateKnownGoodsList(value.soils, names),
-        soilsNames: namesForKnownGoodsList(value.soils, names)
-      }
+          soils: decorateKnownGoodsList(value.soils, names),
+          soilsNames: namesForKnownGoodsList(value.soils, names),
+        }
       : {}),
     ...(value.underBlocks
       ? {
-        underBlocks: decorateKnownGoodsList(value.underBlocks, names),
-        underBlocksNames: namesForKnownGoodsList(value.underBlocks, names)
-      }
+          underBlocks: decorateKnownGoodsList(value.underBlocks, names),
+          underBlocksNames: namesForKnownGoodsList(value.underBlocks, names),
+        }
       : {}),
     ...(value.blocksUnder
       ? {
-        blocksUnder: decorateKnownGoodsList(value.blocksUnder, names),
-        blocksUnderNames: namesForKnownGoodsList(value.blocksUnder, names)
-      }
+          blocksUnder: decorateKnownGoodsList(value.blocksUnder, names),
+          blocksUnderNames: namesForKnownGoodsList(value.blocksUnder, names),
+        }
       : {}),
     ...(value.machineCatalysts
       ? {
-        machineCatalysts: decorateKnownGoodsList(value.machineCatalysts, names),
-        machineCatalystsNames: namesForKnownGoodsList(value.machineCatalysts, names)
-      }
+          machineCatalysts: decorateKnownGoodsList(value.machineCatalysts, names),
+          machineCatalystsNames: namesForKnownGoodsList(value.machineCatalysts, names),
+        }
       : {}),
     ...(value.parents
       ? {
-        parents: decorateKnownGoodsList(value.parents, names),
-        parentsNames: namesForKnownGoodsList(value.parents, names)
-      }
+          parents: decorateKnownGoodsList(value.parents, names),
+          parentsNames: namesForKnownGoodsList(value.parents, names),
+        }
       : {}),
-    ...(value.outputSeed
-      ? { outputSeed: decorateSpecialGoods(value.outputSeed, names) }
-      : {}),
+    ...(value.outputSeed ? { outputSeed: decorateSpecialGoods(value.outputSeed, names) } : {}),
     ...(value.memberSeeds
       ? { memberSeeds: value.memberSeeds.map((seed) => decorateSpecialGoods(seed, names)) }
-      : {})
+      : {}),
   };
 }
 
@@ -340,57 +334,51 @@ interface VeinExportPayload {
 
 function decorateVeinLayer(
   value: VeinExportLayer,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
     ...(value.goodsIds ? { goodsNames: namesForIds(value.goodsIds, names) } : {}),
-    ...(value.oreGoodsId
-      ? { oreGoodsName: catalogNameForId(value.oreGoodsId, names) }
-      : {}),
+    ...(value.oreGoodsId ? { oreGoodsName: catalogNameForId(value.oreGoodsId, names) } : {}),
     ...(value.oreDictionaryId
       ? { oreDictionaryName: catalogNameForId(value.oreDictionaryId, names) }
       : {}),
-    ...(value.ores ? { ores: value.ores.map((ore) => decorateSpecialGoods(ore, names)) } : {})
+    ...(value.ores ? { ores: value.ores.map((ore) => decorateSpecialGoods(ore, names)) } : {}),
   };
 }
 
 function decorateVeinPayload(
   value: VeinExportPayload,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
-    ...(value.goodsId
-      ? { goodsName: catalogNameForId(value.goodsId, names) }
-      : {}),
+    ...(value.goodsId ? { goodsName: catalogNameForId(value.goodsId, names) } : {}),
     ...(value.goodsIds ? { goodsNames: namesForIds(value.goodsIds, names) } : {}),
     ...(value.layers
       ? { layers: value.layers.map((layer) => decorateVeinLayer(layer, names)) }
       : {}),
-    ...(value.ores
-      ? { ores: value.ores.map((ore) => decorateSpecialGoods(ore, names)) }
-      : {}),
+    ...(value.ores ? { ores: value.ores.map((ore) => decorateSpecialGoods(ore, names)) } : {}),
     ...(value.representativeOres
       ? {
-        representativeOres: decorateKnownGoodsList(value.representativeOres, names),
-        representativeOresNames: namesForKnownGoodsList(value.representativeOres, names)
-      }
+          representativeOres: decorateKnownGoodsList(value.representativeOres, names),
+          representativeOresNames: namesForKnownGoodsList(value.representativeOres, names),
+        }
       : {}),
     ...(value.representativeDusts
       ? {
-        representativeDusts: decorateKnownGoodsList(value.representativeDusts, names),
-        representativeDustsNames: namesForKnownGoodsList(value.representativeDusts, names)
-      }
+          representativeDusts: decorateKnownGoodsList(value.representativeDusts, names),
+          representativeDustsNames: namesForKnownGoodsList(value.representativeDusts, names),
+        }
       : {}),
     ...(value.potentialDrops
       ? { potentialDrops: value.potentialDrops.map((drop) => decorateSpecialGoods(drop, names)) }
       : {}),
     ...(value.dimensionGoodsIds
       ? {
-        dimensionGoodsNames: namesForIdMap(value.dimensionGoodsIds, names)
-      }
-      : {})
+          dimensionGoodsNames: namesForIdMap(value.dimensionGoodsIds, names),
+        }
+      : {}),
   };
 }
 
@@ -407,34 +395,30 @@ interface MeteorExportPayload {
 
 function decorateMeteorPayload(
   value: MeteorExportPayload,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
     ...(value.focus ? { focus: decorateSpecialGoods(value.focus, names) } : {}),
-    ...(value.focusGoodsId
-      ? { focusGoodsName: catalogNameForId(value.focusGoodsId, names) }
-      : {}),
+    ...(value.focusGoodsId ? { focusGoodsName: catalogNameForId(value.focusGoodsId, names) } : {}),
     ...(value.crystalGoodsId
       ? { crystalGoodsName: catalogNameForId(value.crystalGoodsId, names) }
       : {}),
     ...(value.outputs
       ? { outputs: value.outputs.map((output) => decorateSpecialGoods(output, names)) }
       : {}),
-    ...(value.ores
-      ? { ores: value.ores.map((ore) => decorateSpecialGoods(ore, names)) }
-      : {}),
+    ...(value.ores ? { ores: value.ores.map((ore) => decorateSpecialGoods(ore, names)) } : {}),
     ...(value.filler
       ? { filler: value.filler.map((filler) => decorateSpecialGoods(filler, names)) }
       : {}),
     ...(value.reagents
       ? {
-        reagents: decorateKnownGoodsList(value.reagents, names)
-      }
+          reagents: decorateKnownGoodsList(value.reagents, names),
+        }
       : {}),
     ...(value.estimatedAmounts
       ? { estimatedAmountNames: namesForIdMap(value.estimatedAmounts, names) }
-      : {})
+      : {}),
   };
 }
 
@@ -454,32 +438,30 @@ interface LootExportPayload {
 
 function decorateLootPayload(
   value: LootExportPayload,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
     ...(value.bag ? { bag: decorateSpecialGoods(value.bag, names) } : {}),
-    ...(value.bagGoodsId
-      ? { bagGoodsName: catalogNameForId(value.bagGoodsId, names) }
-      : {}),
-    ...(value.drops
-      ? { drops: value.drops.map((drop) => decorateSpecialGoods(drop, names)) }
-      : {}),
+    ...(value.bagGoodsId ? { bagGoodsName: catalogNameForId(value.bagGoodsId, names) } : {}),
+    ...(value.drops ? { drops: value.drops.map((drop) => decorateSpecialGoods(drop, names)) } : {}),
     ...(value.groups
       ? {
-        groups: value.groups.map((group) => ({
-          ...group,
-          ...(group.alternatives
-            ? { alternatives: group.alternatives.map((drop) => decorateSpecialGoods(drop, names)) }
-            : {}),
-          ...(group.drops
-            ? { drops: group.drops.map((drop) => decorateSpecialGoods(drop, names)) }
-            : {})
-        }))
-      }
+          groups: value.groups.map((group) => ({
+            ...group,
+            ...(group.alternatives
+              ? {
+                  alternatives: group.alternatives.map((drop) => decorateSpecialGoods(drop, names)),
+                }
+              : {}),
+            ...(group.drops
+              ? { drops: group.drops.map((drop) => decorateSpecialGoods(drop, names)) }
+              : {}),
+          })),
+        }
       : {}),
     ...(value.fortune ? { fortuneNames: namesForIdMap(value.fortune, names) } : {}),
-    ...(value.limits ? { limitNames: namesForIdMap(value.limits, names) } : {})
+    ...(value.limits ? { limitNames: namesForIdMap(value.limits, names) } : {}),
   };
 }
 
@@ -503,17 +485,17 @@ interface VendingExportPayload {
 
 function decorateGoodsIdContainer(
   value: GoodsIdContainer,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
-    ...(value.goodsIds ? { goodsNames: namesForIds(value.goodsIds, names) } : {})
+    ...(value.goodsIds ? { goodsNames: namesForIds(value.goodsIds, names) } : {}),
   };
 }
 
 function decorateVendingPayload(
   value: VendingExportPayload,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
@@ -544,12 +526,14 @@ function decorateVendingPayload(
       : {}),
     ...(value.nonConsumedItems
       ? {
-        nonConsumedItems: value.nonConsumedItems.map((entry) => decorateGoodsIdContainer(entry, names))
-      }
+          nonConsumedItems: value.nonConsumedItems.map((entry) =>
+            decorateGoodsIdContainer(entry, names),
+          ),
+        }
       : {}),
     ...(value.toItems
       ? { toItems: value.toItems.map((entry) => decorateGoodsIdContainer(entry, names)) }
-      : {})
+      : {}),
   };
 }
 
@@ -561,26 +545,24 @@ interface WorldgenExportPayload {
 
 function decorateWorldgenPayload(
   value: WorldgenExportPayload,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
-    ...(value.drops
-      ? { drops: value.drops.map((drop) => decorateSpecialGoods(drop, names)) }
-      : {}),
+    ...(value.drops ? { drops: value.drops.map((drop) => decorateSpecialGoods(drop, names)) } : {}),
     ...(value.entries
       ? { entries: value.entries.map((entry) => decorateSpecialGoods(entry, names)) }
       : {}),
     ...(value.tables
       ? {
-        tables: value.tables.map((table) => ({
-          ...table,
-          ...(table.items
-            ? { items: table.items.map((item) => decorateSpecialGoods(item, names)) }
-            : {})
-        }))
-      }
-      : {})
+          tables: value.tables.map((table) => ({
+            ...table,
+            ...(table.items
+              ? { items: table.items.map((item) => decorateSpecialGoods(item, names)) }
+              : {}),
+          })),
+        }
+      : {}),
   };
 }
 
@@ -611,25 +593,23 @@ interface OreProcessingExportPayload {
 
 function decorateProcessingStage(
   value: ProcessingStageExportValue,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
-    ...(value.machineId
-      ? { machineName: catalogNameForId(value.machineId, names) }
-      : {}),
+    ...(value.machineId ? { machineName: catalogNameForId(value.machineId, names) } : {}),
     ...(value.inputs
       ? { inputs: value.inputs.map((input) => decorateSpecialGoods(input, names)) }
       : {}),
     ...(value.outputs
       ? { outputs: value.outputs.map((output) => decorateSpecialGoods(output, names)) }
-      : {})
+      : {}),
   };
 }
 
 function decorateProcessingNode(
   value: ProcessingNodeExportValue,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
@@ -638,30 +618,26 @@ function decorateProcessingNode(
       : value.id && names.has(value.id)
         ? { name: catalogNameForId(value.id, names) }
         : {}),
-    ...(value.machineId
-      ? { machineName: catalogNameForId(value.machineId, names) }
-      : {})
+    ...(value.machineId ? { machineName: catalogNameForId(value.machineId, names) } : {}),
   };
 }
 
 function decorateProcessingEdge(
   value: ProcessingEdgeExportValue,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
     ...(value.from && names.has(value.from)
       ? { fromName: catalogNameForId(value.from, names) }
       : {}),
-    ...(value.to && names.has(value.to)
-      ? { toName: catalogNameForId(value.to, names) }
-      : {})
+    ...(value.to && names.has(value.to) ? { toName: catalogNameForId(value.to, names) } : {}),
   };
 }
 
 function decorateOreProcessingPayload(
   value: OreProcessingExportPayload,
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): Record<string, unknown> {
   return {
     ...value,
@@ -669,24 +645,24 @@ function decorateOreProcessingPayload(
     ...(value.result ? { result: decorateSpecialGoods(value.result, names) } : {}),
     ...(value.stages
       ? {
-        stages: value.stages.map((stage) => typeof stage === 'string'
-          ? stage
-          : decorateProcessingStage(stage, names))
-      }
+          stages: value.stages.map((stage) =>
+            typeof stage === 'string' ? stage : decorateProcessingStage(stage, names),
+          ),
+        }
       : {}),
     ...(value.nodes
       ? { nodes: value.nodes.map((node) => decorateProcessingNode(node, names)) }
       : {}),
     ...(value.edges
       ? { edges: value.edges.map((edge) => decorateProcessingEdge(edge, names)) }
-      : {})
+      : {}),
   };
 }
 
 function decorateSpecialPayload(
   category: string,
   payload: SpecialRecord['payload'],
-  names: ReadonlyMap<string, string>
+  names: ReadonlyMap<string, string>,
 ): SpecialRecord['payload'] {
   switch (specialCategory(category)) {
     case 'crop':
@@ -711,29 +687,28 @@ function decorateSpecialPayload(
   }
 }
 
-function decorateSpecialRecord(record: SpecialRecord, names: ReadonlyMap<string, string>): SpecialRecord {
+function decorateSpecialRecord(
+  record: SpecialRecord,
+  names: ReadonlyMap<string, string>,
+): SpecialRecord {
   return {
     ...record,
     ...(record.goodsIds ? { goodsNames: namesForIds(record.goodsIds, names) } : {}),
     ...(record.productionGoodsIds
       ? { productionGoodsNames: namesForIds(record.productionGoodsIds, names) }
       : {}),
-    ...(record.usageGoodsIds
-      ? { usageGoodsNames: namesForIds(record.usageGoodsIds, names) }
-      : {}),
+    ...(record.usageGoodsIds ? { usageGoodsNames: namesForIds(record.usageGoodsIds, names) } : {}),
     ...(record.inputs
       ? { inputs: record.inputs.map((input) => decorateSpecialGoods(input, names)) }
       : {}),
     ...(record.outputs
       ? { outputs: record.outputs.map((output) => decorateSpecialGoods(output, names)) }
       : {}),
-    payload: decorateSpecialPayload(record.category, record.payload, names)
+    payload: decorateSpecialPayload(record.category, record.payload, names),
   };
 }
 
-export function createRecipeExport(
-  options: RecipeExportOptions
-): BrowserExportEnvelope<Recipe> {
+export function createRecipeExport(options: RecipeExportOptions): BrowserExportEnvelope<Recipe> {
   const names = catalogNames(options.repository);
   return {
     schemaVersion: BROWSER_EXPORT_SCHEMA_VERSION,
@@ -745,12 +720,12 @@ export function createRecipeExport(
     recipeType: options.recipeType ?? null,
     specialViewType: null,
     filter: filterOf(options.query, options.applied),
-    records: ordered(options.records).map((recipe) => decorateRecipe(recipe, names))
+    records: ordered(options.records).map((recipe) => decorateRecipe(recipe, names)),
   };
 }
 
 export function createSpecialExport(
-  options: SpecialExportOptions
+  options: SpecialExportOptions,
 ): BrowserExportEnvelope<SpecialRecord> {
   const names = catalogNames(options.repository);
   return {
@@ -763,21 +738,20 @@ export function createSpecialExport(
     recipeType: null,
     specialViewType: options.specialViewType ?? null,
     filter: filterOf(options.query, options.applied),
-    records: ordered(options.records).map((record) => decorateSpecialRecord(record, names))
+    records: ordered(options.records).map((record) => decorateSpecialRecord(record, names)),
   };
 }
 
-function recipeSearchDocuments(
-  repository: BrowserExportRepository,
-  records: readonly Recipe[]
-) {
+function recipeSearchDocuments(repository: BrowserExportRepository, records: readonly Recipe[]) {
   const catalog = new Map(
-    repository.entries.map((entry) => [entry.id, toRecipeSearchCatalogEntry(entry)])
+    repository.entries.map((entry) => [entry.id, toRecipeSearchCatalogEntry(entry)]),
   );
-  return new Map(records.map((recipe) => [
-    recipe.id,
-    buildRecipeSearchDocument(toRecipeSearchRecord(recipe), catalog)
-  ]));
+  return new Map(
+    records.map((recipe) => [
+      recipe.id,
+      buildRecipeSearchDocument(toRecipeSearchRecord(recipe), catalog),
+    ]),
+  );
 }
 
 /** Select complete or filtered materialized recipe records for a download. */
@@ -786,7 +760,7 @@ export function recipeRecordsForExport(
   records: readonly Recipe[],
   recipeType: string | null,
   query: string,
-  applied: boolean
+  applied: boolean,
 ): Recipe[] {
   const source = ordered(records);
   if (!applied) return source;
@@ -803,7 +777,7 @@ export function recipeRecordsForExport(
 export function specialRecordsForExport(
   records: readonly SpecialRecord[],
   query: string,
-  applied: boolean
+  applied: boolean,
 ): SpecialRecord[] {
   const source = ordered(records);
   if (!applied) return source;
@@ -819,14 +793,14 @@ function stableJsonValue(value: unknown): unknown {
   if (value === null || typeof value !== 'object') return value;
   const object = value as Record<string, unknown>;
   return Object.fromEntries(
-    Object.keys(object).sort().map((key) => [key, stableJsonValue(object[key])])
+    Object.keys(object)
+      .sort()
+      .map((key) => [key, stableJsonValue(object[key])]),
   );
 }
 
 /** Serialize an export with deterministic object-key and record ordering. */
-export function serializeBrowserExport(
-  value: BrowserExportEnvelope
-): string {
+export function serializeBrowserExport(value: BrowserExportEnvelope): string {
   return `${JSON.stringify(stableJsonValue(value), null, 2)}\n`;
 }
 
@@ -843,33 +817,33 @@ function sanitizeExportFilename(value: string): string {
 const RECIPE_VIEW_FILENAME: Record<RecipeView, string> = {
   recipes: 'recipes',
   usages: 'usages',
-  machineUsages: 'machine-usages'
+  machineUsages: 'machine-usages',
 };
 
-export function browserExportFilename(
-  value: BrowserExportEnvelope
-): string {
+export function browserExportFilename(value: BrowserExportEnvelope): string {
   if (value.scope === 'special-global') {
     const view = sanitizeExportFilename(value.specialViewType?.id ?? 'special');
     return `gtnh-special-global-${view}.json`;
   }
   const selection = sanitizeExportFilename(value.selection.name || value.selection.id);
-  const recipeSubject = value.kind === 'recipes' && value.recipeType
-    ? sanitizeExportFilename(value.recipeType)
-    : selection;
-  const view = value.kind === 'special'
-    ? sanitizeExportFilename(value.specialViewType?.id ?? 'special')
-    : RECIPE_VIEW_FILENAME[value.view];
+  const recipeSubject =
+    value.kind === 'recipes' && value.recipeType
+      ? sanitizeExportFilename(value.recipeType)
+      : selection;
+  const view =
+    value.kind === 'special'
+      ? sanitizeExportFilename(value.specialViewType?.id ?? 'special')
+      : RECIPE_VIEW_FILENAME[value.view];
   return `gtnh-${recipeSubject}-${view}.json`;
 }
 
 /** Download through a short-lived JSON Blob so packed shard bytes never leak into the export. */
 export function downloadBrowserExport(
   value: BrowserExportEnvelope,
-  filename = browserExportFilename(value)
+  filename = browserExportFilename(value),
 ): string {
   const blob = new Blob([serializeBrowserExport(value)], {
-    type: 'application/json;charset=utf-8'
+    type: 'application/json;charset=utf-8',
   });
   const objectUrl = URL.createObjectURL(blob);
   const anchor = document.createElement('a');

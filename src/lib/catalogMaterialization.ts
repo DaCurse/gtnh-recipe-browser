@@ -1,24 +1,32 @@
 import { fluidRecipeScope } from './fluidContainers';
 import { minecraftHtmlPlainText } from './minecraftText';
 import { productionFallbackDictionary } from './oreDictionary';
-import { propagateOreMachineCapabilities, recipeTypeMachineCapabilities } from './recipePresentation';
+import {
+  propagateOreMachineCapabilities,
+  recipeTypeMachineCapabilities,
+} from './recipePresentation';
 import type {
   DatasetManifest,
   PackedCatalog,
   PackedGoods,
   PackedIngredientGroup,
   PackedOreDictionary,
-  PackedRecipeType
+  PackedRecipeType,
 } from './datasetSchema';
 import type { CatalogEntry } from './types';
 
-export function ingredientGroupPreview(itemIds: string[], entries: ReadonlyMap<string, CatalogEntry>): Pick<CatalogEntry, 'members' | 'tooltip' | 'icon'> {
-  const representative = itemIds.map(id => entries.get(id)).find(entry => entry?.icon);
+export function ingredientGroupPreview(
+  itemIds: string[],
+  entries: ReadonlyMap<string, CatalogEntry>,
+): Pick<CatalogEntry, 'members' | 'tooltip' | 'icon'> {
+  const representative = itemIds.map((id) => entries.get(id)).find((entry) => entry?.icon);
   return {
     members: itemIds,
     icon: representative?.icon,
-    tooltip: [`${itemIds.length.toLocaleString('en-US')} interchangeable item${itemIds.length === 1 ? '' : 's'}`,
-      'All listed members are valid recipe ingredients.']
+    tooltip: [
+      `${itemIds.length.toLocaleString('en-US')} interchangeable item${itemIds.length === 1 ? '' : 's'}`,
+      'All listed members are valid recipe ingredients.',
+    ],
   };
 }
 
@@ -35,22 +43,35 @@ export function materializeCatalog(
   manifest: DatasetManifest,
   manifestUrl: string,
   catalog: PackedCatalog,
-  includeRelations = true
+  includeRelations = true,
 ): MaterializedCatalog {
   const sheets = new Map(manifest.iconSheets.map((sheet) => [sheet.id, sheet]));
-  const shortSheets = new Map(manifest.iconSheets.map((sheet) => [sheet.sha256.slice(0, 16), sheet]));
-  if (shortSheets.size !== manifest.iconSheets.length) throw new Error('Ambiguous icon sheet fingerprint');
-  const resolvedIcons = new Map(manifest.iconSheets.map((sheet) => [sheet.id, {
-    id: sheet.id, url: new URL(sheet.url, manifestUrl).href, columns: sheet.columns,
-    sha256: sheet.sha256, bytes: sheet.bytes, encoding: sheet.encoding, datasetId: manifest.datasetId
-  }]));
+  const shortSheets = new Map(
+    manifest.iconSheets.map((sheet) => [sheet.sha256.slice(0, 16), sheet]),
+  );
+  if (shortSheets.size !== manifest.iconSheets.length)
+    throw new Error('Ambiguous icon sheet fingerprint');
+  const resolvedIcons = new Map(
+    manifest.iconSheets.map((sheet) => [
+      sheet.id,
+      {
+        id: sheet.id,
+        url: new URL(sheet.url, manifestUrl).href,
+        columns: sheet.columns,
+        sha256: sheet.sha256,
+        bytes: sheet.bytes,
+        encoding: sheet.encoding,
+        datasetId: manifest.datasetId,
+      },
+    ]),
+  );
   const goodsById = new Map(catalog.goods.map((goods) => [goods.id, goods]));
   const recipeTypes = new Map(catalog.recipeTypes.map((type) => [type.id, type]));
   const oreDictionaries = new Map(catalog.oreDictionaries.map((ore) => [ore.id, ore]));
   const anonymousGroups = catalog.ingredientGroups ?? [];
   const ingredientGroups = new Map<string, PackedOreDictionary | PackedIngredientGroup>([
     ...catalog.oreDictionaries.map((group) => [group.id, group] as const),
-    ...anonymousGroups.map((group) => [group.id, group] as const)
+    ...anonymousGroups.map((group) => [group.id, group] as const),
   ]);
   const itemOres = new Map<string, PackedOreDictionary[]>();
   for (const ore of includeRelations ? catalog.oreDictionaries : []) {
@@ -67,7 +88,7 @@ export function materializeCatalog(
     const fallback = productionFallbackDictionary(
       goods.id,
       itemOres.get(goods.id) ?? [],
-      (itemId) => (goodsById.get(itemId)?.productionCount ?? 0) > 0
+      (itemId) => (goodsById.get(itemId)?.productionCount ?? 0) > 0,
     );
     if (fallback) productionFallbacks.set(goods.id, fallback);
   }
@@ -86,29 +107,37 @@ export function materializeCatalog(
         recipeTypeId: type.id,
         recipeTypeName: type.name,
         recipeShards: shardsByRecipeType.get(type.id) ?? [],
-        maxVoltageTier: machine.maxVoltageTier
+        maxVoltageTier: machine.maxVoltageTier,
       });
       directCapabilities.set(machine.id, capabilities);
     }
   }
-  const capabilitiesByMachine = propagateOreMachineCapabilities(
-    directCapabilities,
-    [...catalog.oreDictionaries, ...anonymousGroups]
-  );
+  const capabilitiesByMachine = propagateOreMachineCapabilities(directCapabilities, [
+    ...catalog.oreDictionaries,
+    ...anonymousGroups,
+  ]);
 
   const goodsEntries = catalog.goods.map((goods): CatalogEntry => {
-    const sheet = goods.icon ? sheets.get(goods.icon.sheetId) ?? shortSheets.get(goods.icon.sheetId) : undefined;
+    const sheet = goods.icon
+      ? (sheets.get(goods.icon.sheetId) ?? shortSheets.get(goods.icon.sheetId))
+      : undefined;
     const name = minecraftHtmlPlainText(goods.name).trim();
     const productionFallback = productionFallbacks.get(goods.id);
     const fluidScope = includeRelations ? fluidRecipeScope(goods.id, goodsById) : null;
     const recipeScopeIds = fluidScope?.memberIds ?? productionFallback?.itemIds;
     const productionShards = recipeScopeIds
-      ? [...new Set([...recipeScopeIds].flatMap((itemId) =>
-          goodsById.get(itemId)?.productionShards ?? []))].sort()
+      ? [
+          ...new Set(
+            [...recipeScopeIds].flatMap((itemId) => goodsById.get(itemId)?.productionShards ?? []),
+          ),
+        ].sort()
       : goods.productionShards;
     const usageShards = fluidScope
-      ? [...new Set([...fluidScope.memberIds].flatMap((itemId) =>
-          goodsById.get(itemId)?.usageShards ?? []))].sort()
+      ? [
+          ...new Set(
+            [...fluidScope.memberIds].flatMap((itemId) => goodsById.get(itemId)?.usageShards ?? []),
+          ),
+        ].sort()
       : goods.usageShards;
     return {
       id: goods.id,
@@ -128,7 +157,10 @@ export function materializeCatalog(
       color: '#aeb3b8',
       glyph: goods.kind === 'fluid' ? '≈' : '□',
       searchable: goods.searchable,
-      icon: goods.icon && sheet ? { ...resolvedIcons.get(sheet.id)!, index: goods.icon.index } : undefined,
+      icon:
+        goods.icon && sheet
+          ? { ...resolvedIcons.get(sheet.id)!, index: goods.icon.index }
+          : undefined,
       productionShards,
       usageShards,
       productionCount: recipeScopeIds ? undefined : goods.productionCount,
@@ -143,53 +175,55 @@ export function materializeCatalog(
       oreDictionaryIds: (itemOres.get(goods.id) ?? []).map((ore) => ore.id),
       container: goods.container,
       containerItemIds: goods.containerItemIds,
-      machineCapabilities: capabilitiesByMachine.get(goods.id)
+      machineCapabilities: capabilitiesByMachine.get(goods.id),
     };
   });
 
   const goodsEntriesById = new Map(goodsEntries.map((entry) => [entry.id, entry]));
-  const groupEntries = [...catalog.oreDictionaries, ...anonymousGroups].map((group): CatalogEntry => {
-    const productionShards = new Set<string>();
-    const usageShards = new Set<string>();
-    const specialProductionShards = new Set(group.specialProductionShards ?? []);
-    const specialUsageShards = new Set(group.specialUsageShards ?? []);
-    const specialProductionLookupIds = new Set(group.specialProductionLookupIds ?? []);
-    const specialUsageLookupIds = new Set(group.specialUsageLookupIds ?? []);
-    let specialProductionCount = group.specialProductionCount ?? 0;
-    let specialUsageCount = group.specialUsageCount ?? 0;
-    for (const memberId of group.itemIds) {
-      const member = goodsById.get(memberId);
-      member?.productionShards.forEach((id) => productionShards.add(id));
-      member?.usageShards.forEach((id) => usageShards.add(id));
-      member?.specialProductionShards?.forEach((id) => specialProductionShards.add(id));
-      member?.specialUsageShards?.forEach((id) => specialUsageShards.add(id));
-      member?.specialProductionLookupIds?.forEach((id) => specialProductionLookupIds.add(id));
-      member?.specialUsageLookupIds?.forEach((id) => specialUsageLookupIds.add(id));
-      specialProductionCount += member?.specialProductionCount ?? 0;
-      specialUsageCount += member?.specialUsageCount ?? 0;
-    }
-    const namedDictionary = group.id.startsWith('o:');
-    const dictionaryName = namedDictionary ? group.id.slice(2) : '';
-    return {
-      id: group.id,
-      name: namedDictionary ? `Ore dictionary: ${dictionaryName}` : 'Interchangeable ingredients',
-      mod: namedDictionary ? 'Ore Dictionary' : 'Recipe Alternatives',
-      kind: namedDictionary ? 'oreDict' : 'itemGroup',
-      ...ingredientGroupPreview(group.itemIds, goodsEntriesById),
-      color: '#aeb3b8',
-      glyph: '◇',
-      searchable: false,
-      productionShards: [...productionShards].sort(),
-      usageShards: [...usageShards].sort(),
-      specialProductionShards: [...specialProductionShards].sort(),
-      specialUsageShards: [...specialUsageShards].sort(),
-      specialProductionLookupIds: [...specialProductionLookupIds].sort(),
-      specialUsageLookupIds: [...specialUsageLookupIds].sort(),
-      specialProductionCount,
-      specialUsageCount,
-      machineCapabilities: capabilitiesByMachine.get(group.id)
-    };
-  });
+  const groupEntries = [...catalog.oreDictionaries, ...anonymousGroups].map(
+    (group): CatalogEntry => {
+      const productionShards = new Set<string>();
+      const usageShards = new Set<string>();
+      const specialProductionShards = new Set(group.specialProductionShards ?? []);
+      const specialUsageShards = new Set(group.specialUsageShards ?? []);
+      const specialProductionLookupIds = new Set(group.specialProductionLookupIds ?? []);
+      const specialUsageLookupIds = new Set(group.specialUsageLookupIds ?? []);
+      let specialProductionCount = group.specialProductionCount ?? 0;
+      let specialUsageCount = group.specialUsageCount ?? 0;
+      for (const memberId of group.itemIds) {
+        const member = goodsById.get(memberId);
+        member?.productionShards.forEach((id) => productionShards.add(id));
+        member?.usageShards.forEach((id) => usageShards.add(id));
+        member?.specialProductionShards?.forEach((id) => specialProductionShards.add(id));
+        member?.specialUsageShards?.forEach((id) => specialUsageShards.add(id));
+        member?.specialProductionLookupIds?.forEach((id) => specialProductionLookupIds.add(id));
+        member?.specialUsageLookupIds?.forEach((id) => specialUsageLookupIds.add(id));
+        specialProductionCount += member?.specialProductionCount ?? 0;
+        specialUsageCount += member?.specialUsageCount ?? 0;
+      }
+      const namedDictionary = group.id.startsWith('o:');
+      const dictionaryName = namedDictionary ? group.id.slice(2) : '';
+      return {
+        id: group.id,
+        name: namedDictionary ? `Ore dictionary: ${dictionaryName}` : 'Interchangeable ingredients',
+        mod: namedDictionary ? 'Ore Dictionary' : 'Recipe Alternatives',
+        kind: namedDictionary ? 'oreDict' : 'itemGroup',
+        ...ingredientGroupPreview(group.itemIds, goodsEntriesById),
+        color: '#aeb3b8',
+        glyph: '◇',
+        searchable: false,
+        productionShards: [...productionShards].sort(),
+        usageShards: [...usageShards].sort(),
+        specialProductionShards: [...specialProductionShards].sort(),
+        specialUsageShards: [...specialUsageShards].sort(),
+        specialProductionLookupIds: [...specialProductionLookupIds].sort(),
+        specialUsageLookupIds: [...specialUsageLookupIds].sort(),
+        specialProductionCount,
+        specialUsageCount,
+        machineCapabilities: capabilitiesByMachine.get(group.id),
+      };
+    },
+  );
 
   return {
     entries: [...goodsEntries, ...groupEntries],
@@ -197,6 +231,6 @@ export function materializeCatalog(
     recipeTypes,
     oreDictionaries,
     ingredientGroups,
-    productionFallbacks
+    productionFallbacks,
   };
 }

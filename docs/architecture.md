@@ -222,7 +222,6 @@ its epoch in IndexedDB metadata; a failed target load leaves it pending. If a us
 startup falls back to it while the rollout target is unavailable. Legacy cache rows and retired dataset links are
 resolved to published semantic-version replacements before any manifest fetch. No v6 manifest is selectable.
 
-
 ## One-time release switching
 
 `versions-v7.json` publishes a monotonically increasing rollout epoch and target dataset.

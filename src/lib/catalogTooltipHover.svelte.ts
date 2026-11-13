@@ -21,5 +21,7 @@ export class CatalogTooltipHover {
     this.y = rect.bottom;
   }
 
-  clear(): void { this.entry = undefined; }
+  clear(): void {
+    this.entry = undefined;
+  }
 }

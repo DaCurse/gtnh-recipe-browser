@@ -12,22 +12,37 @@ interface OrderIndex {
 }
 const registry: Record<string, { sha256: string; bytes: number }> = releases.releases;
 
-export function catalogOrderAsset(manifest: DatasetManifest, manifestUrl: string): DatasetAsset | undefined {
+export function catalogOrderAsset(
+  manifest: DatasetManifest,
+  manifestUrl: string,
+): DatasetAsset | undefined {
   const descriptor = registry[manifest.datasetId];
-  return descriptor ? { ...descriptor, id: 'catalog-order', encoding: 'gzip',
-    url: new URL(`../../assets/sha256/${descriptor.sha256}`, manifestUrl).href } : undefined;
+  return descriptor
+    ? {
+        ...descriptor,
+        id: 'catalog-order',
+        encoding: 'gzip',
+        url: new URL(`../../assets/sha256/${descriptor.sha256}`, manifestUrl).href,
+      }
+    : undefined;
 }
 
 export async function applyCatalogOrder(
-  entries: CatalogEntry[], manifest: DatasetManifest, manifestUrl: string
+  entries: CatalogEntry[],
+  manifest: DatasetManifest,
+  manifestUrl: string,
 ): Promise<void> {
   const asset = catalogOrderAsset(manifest, manifestUrl);
   if (!asset) return;
   const bytes = await fetchVerified(asset, manifestUrl);
   const index = JSON.parse(new TextDecoder().decode(await decompress(bytes))) as OrderIndex;
-  if (index.schemaVersion !== 1 || index.datasetId !== manifest.datasetId
-    || index.sourceDataSha256 !== manifest.source?.dataSha256 || !index.registryIds
-    || Object.values(index.registryIds).some(id => !Number.isSafeInteger(id) || id < 0)) {
+  if (
+    index.schemaVersion !== 1 ||
+    index.datasetId !== manifest.datasetId ||
+    index.sourceDataSha256 !== manifest.source?.dataSha256 ||
+    !index.registryIds ||
+    Object.values(index.registryIds).some((id) => !Number.isSafeInteger(id) || id < 0)
+  ) {
     throw new Error('Catalogue ordering index does not match this dataset');
   }
   for (const entry of entries) {
@@ -35,4 +50,3 @@ export async function applyCatalogOrder(
     if (numericId !== undefined) entry.numericId = numericId;
   }
 }
-

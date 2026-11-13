@@ -140,3 +140,17 @@ team, and respective mod authors. These assets are used under fair use.
 Production uses PostHog US for traffic, popular searches/items, feature usage, and export actions.
 See [analytics events and report setup](docs/analytics.md) for event properties, collection controls,
 and verification. Development and preview hosts do not send telemetry.
+
+## Formatting
+
+Install Python formatting support with `python -m pip install -r tools/requirements-format.txt`.
+Run `npm run format` to format maintained source, tests and tooling, or
+`npm run format:check` to check it. Generated data, immutable fixtures, source
+artwork and upstream submodules are excluded. Java uses the Prettier Java plugin;
+Python uses the pinned Ruff formatter.
+
+`src/app.css` is the global style entry point. Its ordered imports under
+`src/styles/` separate base layout, catalogue, project links, item details,
+Minecraft text/tooltips, recipe browsing and responsive overrides. These retain
+global selectors because multiple components share those contracts; existing
+component-specific styles remain scoped in their Svelte components.

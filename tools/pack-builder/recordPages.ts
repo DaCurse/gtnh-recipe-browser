@@ -4,7 +4,14 @@ import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync, gunzipSync } from 'node:zlib';
 import { encode, decode } from '@msgpack/msgpack';
-import { assembleRecordPages, compactRecordPageSelections, decodeRecordPage, recordPageSelections, RECORD_PAGE_TARGET_BYTES, type RecordPageSelection } from '../../src/lib/recordPages';
+import {
+  assembleRecordPages,
+  compactRecordPageSelections,
+  decodeRecordPage,
+  recordPageSelections,
+  RECORD_PAGE_TARGET_BYTES,
+  type RecordPageSelection,
+} from '../../src/lib/recordPages';
 import type { GeneratedPackManifest, ImmutableAsset, RecordPageFamily } from './manifest';
 
 const digest = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');
@@ -12,7 +19,13 @@ const digest = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest(
 function collectionHeader(length: number, map = false): Uint8Array {
   if (length < 16) return Uint8Array.of((map ? 0x80 : 0x90) + length);
   if (length <= 65535) return Uint8Array.of(map ? 0xde : 0xdc, length >>> 8, length & 255);
-  return Uint8Array.of(map ? 0xdf : 0xdd, length >>> 24, length >>> 16 & 255, length >>> 8 & 255, length & 255);
+  return Uint8Array.of(
+    map ? 0xdf : 0xdd,
+    length >>> 24,
+    (length >>> 16) & 255,
+    (length >>> 8) & 255,
+    length & 255,
+  );
 }
 
 /** Split only between complete top-level records; length headers are independent. */
@@ -38,7 +51,7 @@ export interface ReusePack {
 
 async function resolveReuseAssetsDirectory(
   packDirectory: string,
-  manifest: GeneratedPackManifest
+  manifest: GeneratedPackManifest,
 ): Promise<string> {
   const localDirectory = join(packDirectory, 'assets', 'sha256');
   try {
@@ -60,11 +73,13 @@ async function resolveReuseAssetsDirectory(
   for (const page of manifest.recordPages) {
     const pageUrl = new URL(page.url, manifestUrl);
     if (
-      pageUrl.protocol !== 'file:'
-      || dirname(fileURLToPath(pageUrl)) !== assetsDirectory
-      || basename(fileURLToPath(pageUrl)) !== page.sha256
+      pageUrl.protocol !== 'file:' ||
+      dirname(fileURLToPath(pageUrl)) !== assetsDirectory ||
+      basename(fileURLToPath(pageUrl)) !== page.sha256
     ) {
-      throw new Error(`${packDirectory}: reusable record pages must resolve to one full-SHA object directory`);
+      throw new Error(
+        `${packDirectory}: reusable record pages must resolve to one full-SHA object directory`,
+      );
     }
   }
   await access(assetsDirectory);
@@ -72,17 +87,20 @@ async function resolveReuseAssetsDirectory(
 }
 
 export async function readReusePacks(paths: readonly string[]): Promise<ReusePack[]> {
-  return Promise.all(paths.map(async (path) => {
-    const packDirectory = resolve(path);
-    const manifest = JSON.parse(
-      await readFile(join(packDirectory, 'pack-manifest.json'), 'utf8')
-    ) as GeneratedPackManifest;
-    if (manifest.formatVersion !== 7) throw new Error(`${packDirectory}: reusable pack must use format 7`);
-    return {
-      manifest,
-      assetsDirectory: await resolveReuseAssetsDirectory(packDirectory, manifest)
-    };
-  }));
+  return Promise.all(
+    paths.map(async (path) => {
+      const packDirectory = resolve(path);
+      const manifest = JSON.parse(
+        await readFile(join(packDirectory, 'pack-manifest.json'), 'utf8'),
+      ) as GeneratedPackManifest;
+      if (manifest.formatVersion !== 7)
+        throw new Error(`${packDirectory}: reusable pack must use format 7`);
+      return {
+        manifest,
+        assetsDirectory: await resolveReuseAssetsDirectory(packDirectory, manifest),
+      };
+    }),
+  );
 }
 
 /** Freeze existing physical pages; later datasets select records without rewriting them. */
@@ -90,7 +108,7 @@ export async function buildRecordPages(
   assets: readonly ImmutableAsset[],
   directory: string,
   baseUrl: string,
-  reuse: readonly ReusePack[]
+  reuse: readonly ReusePack[],
 ): Promise<ImmutableAsset[]> {
   const locations = new Map<string, [string, number]>();
   const existing = new Map<string, { asset: ImmutableAsset; directory: string }>();
@@ -99,7 +117,8 @@ export async function buildRecordPages(
     for (const asset of pack.manifest.recordPages ?? []) {
       if (existing.has(asset.sha256)) continue;
       const compressed = await readFile(join(pack.assetsDirectory, asset.sha256));
-      if (compressed.length !== asset.bytes || digest(compressed) !== asset.sha256) throw new Error('Corrupt reusable record page');
+      if (compressed.length !== asset.bytes || digest(compressed) !== asset.sha256)
+        throw new Error('Corrupt reusable record page');
       const records = decodeRecordPage(gunzipSync(compressed));
       existingRecords.set(asset.sha256, records);
       records.forEach((record, index) => {
@@ -112,7 +131,7 @@ export async function buildRecordPages(
       ...(pack.manifest.goodsDetailShards ?? []),
       ...(pack.manifest.ingredientGroupShards ?? []),
       ...(pack.manifest.recipeShards ?? []),
-      ...(pack.manifest.specialDataShards ?? [])
+      ...(pack.manifest.specialDataShards ?? []),
     ];
     for (const logical of lazyAssets) {
       const family = logical.family;
@@ -124,8 +143,10 @@ export async function buildRecordPages(
         for (let index = first; index < first + count; index++) {
           const record = records[index];
           if (!record) throw new Error(`${logical.id}: reusable record selection is invalid`);
-          const key = family === 'goods-details' || family === 'ingredient-groups'
-            ? `${family}:${logical.id}:${digest(record)}` : `${family}:${digest(record)}`;
+          const key =
+            family === 'goods-details' || family === 'ingredient-groups'
+              ? `${family}:${logical.id}:${digest(record)}`
+              : `${family}:${digest(record)}`;
           if (!locations.has(key)) locations.set(key, [page.sha256, index]);
         }
       }
@@ -145,10 +166,18 @@ export async function buildRecordPages(
     const hash = digest(bytes);
     existingRecords.set(hash, pending.slice());
     await writeFile(join(directory, hash), bytes);
-    pages.set(hash, { id: `page-${hash}`, sha256: hash, bytes: bytes.length,
-      encoding: 'gzip', mediaType: 'application/msgpack', url: `${baseUrl.replace(/\/$/, '')}/assets/sha256/${hash}`,
+    pages.set(hash, {
+      id: `page-${hash}`,
+      sha256: hash,
+      bytes: bytes.length,
+      encoding: 'gzip',
+      mediaType: 'application/msgpack',
+      url: `${baseUrl.replace(/\/$/, '')}/assets/sha256/${hash}`,
       family: pendingFamily,
-      ...(pending.length === 1 && pendingSize > RECORD_PAGE_TARGET_BYTES ? { oversizedSingleton: true } : {}) });
+      ...(pending.length === 1 && pendingSize > RECORD_PAGE_TARGET_BYTES
+        ? { oversizedSingleton: true }
+        : {}),
+    });
     pendingKeys.forEach((key, index) => locations.set(key, [hash, index]));
     pending = [];
     pendingKeys = [];
@@ -167,8 +196,8 @@ export async function buildRecordPages(
     if (!reconstructed.equals(raw)) throw new Error(`${asset.id}: record encoding changed`);
     const isolated = family === 'goods-details' || family === 'ingredient-groups';
     if (isolated) await flush();
-    const recordKey = (record: Uint8Array) => isolated
-      ? `${family}:${asset.id}:${digest(record)}` : `${family}:${digest(record)}`;
+    const recordKey = (record: Uint8Array) =>
+      isolated ? `${family}:${asset.id}:${digest(record)}` : `${family}:${digest(record)}`;
     const hashes = records.map(recordKey);
     // Reuse is global within a load family. Common headers may be shared,
     // but no selection can pull lazy records into bootstrap pages.
@@ -190,8 +219,11 @@ export async function buildRecordPages(
   // A complete newer bootstrap must not inherit superseded records forever.
   // Replace only waste-bearing bootstrap pages when the startup byte budget
   // is exceeded; frozen predecessor pages and unrelated full pages stay intact.
-  const bootstrapKeys = new Set(plans.filter(({ asset }) => (asset.family ?? 'bootstrap') === 'bootstrap')
-    .flatMap(({ hashes }) => hashes));
+  const bootstrapKeys = new Set(
+    plans
+      .filter(({ asset }) => (asset.family ?? 'bootstrap') === 'bootstrap')
+      .flatMap(({ hashes }) => hashes),
+  );
   const bootstrapSelections = () => {
     const selected = new Map<string, Set<number>>();
     for (const key of bootstrapKeys) {
@@ -220,22 +252,35 @@ export async function buildRecordPages(
     selections = bootstrapSelections();
   }
   const physical = (hash: string) => pages.get(hash) ?? existing.get(hash)!.asset;
-  while ([...selections.keys()].reduce((sum, hash) => sum + physical(hash).bytes, 0) > 10 * 1024 * 1024) {
-    const candidates = [...selections].map(([hash, indexes]) => {
-      const records = existingRecords.get(hash)!;
-      const kept = [...indexes].sort((a, b) => a - b).map((index) => records[index]!);
-      const bytes = gzipSync(encode(kept), { level: 9 });
-      return { hash, kept, bytes, saved: physical(hash).bytes - bytes.length };
-    }).filter((candidate) => candidate.saved > 0).sort((a, b) => b.saved - a.saved);
+  while (
+    [...selections.keys()].reduce((sum, hash) => sum + physical(hash).bytes, 0) >
+    10 * 1024 * 1024
+  ) {
+    const candidates = [...selections]
+      .map(([hash, indexes]) => {
+        const records = existingRecords.get(hash)!;
+        const kept = [...indexes].sort((a, b) => a - b).map((index) => records[index]!);
+        const bytes = gzipSync(encode(kept), { level: 9 });
+        return { hash, kept, bytes, saved: physical(hash).bytes - bytes.length };
+      })
+      .filter((candidate) => candidate.saved > 0)
+      .sort((a, b) => b.saved - a.saved);
     const candidate = candidates[0];
     if (!candidate) break;
     const hash = digest(candidate.bytes);
     await writeFile(join(directory, hash), candidate.bytes);
     const asset = physical(candidate.hash);
-    pages.set(hash, { ...asset, id: `page-${hash}`, sha256: hash, bytes: candidate.bytes.length,
-      url: `${baseUrl.replace(/\/$/, '')}/assets/sha256/${hash}` });
+    pages.set(hash, {
+      ...asset,
+      id: `page-${hash}`,
+      sha256: hash,
+      bytes: candidate.bytes.length,
+      url: `${baseUrl.replace(/\/$/, '')}/assets/sha256/${hash}`,
+    });
     existingRecords.set(hash, candidate.kept);
-    candidate.kept.forEach((record, index) => locations.set(`bootstrap:${digest(record)}`, [hash, index]));
+    candidate.kept.forEach((record, index) =>
+      locations.set(`bootstrap:${digest(record)}`, [hash, index]),
+    );
     selections = bootstrapSelections();
   }
   const used = new Map<string, number>();
@@ -246,16 +291,26 @@ export async function buildRecordPages(
       if (!used.has(page)) used.set(page, used.size);
       const pageIndex = used.get(page)!;
       const previous = segments.at(-1);
-      if (previous && previous[0] === pageIndex && previous[1] + previous[2] === index) previous[2]++;
+      if (previous && previous[0] === pageIndex && previous[1] + previous[2] === index)
+        previous[2]++;
       else segments.push([pageIndex, index, 1]);
     }
-    Object.assign(asset, { segments: compactRecordPageSelections(segments), sha256: digest(raw), bytes: raw.length, encoding: 'identity', url: '' });
+    Object.assign(asset, {
+      segments: compactRecordPageSelections(segments),
+      sha256: digest(raw),
+      bytes: raw.length,
+      encoding: 'identity',
+      url: '',
+    });
   }
   for (const hash of used.keys()) {
     if (pages.has(hash)) continue;
     const source = existing.get(hash)!;
     await writeFile(join(directory, hash), await readFile(join(source.directory, hash)));
-    pages.set(hash, { ...source.asset, url: `${baseUrl.replace(/\/$/, '')}/assets/sha256/${hash}` });
+    pages.set(hash, {
+      ...source.asset,
+      url: `${baseUrl.replace(/\/$/, '')}/assets/sha256/${hash}`,
+    });
   }
   return [...used.keys()].map((hash) => pages.get(hash)!);
 }
@@ -265,7 +320,7 @@ const verifiedPages = new WeakMap<GeneratedPackManifest, Map<string, Promise<Uin
 export async function readLogicalAsset(
   asset: Pick<ImmutableAsset, 'id' | 'segments' | 'sha256' | 'url' | 'bytes' | 'encoding'>,
   manifest: GeneratedPackManifest,
-  directory: string
+  directory: string,
 ): Promise<Uint8Array> {
   if (!asset.segments) throw new Error(`${asset.id}: logical asset has no page selections`);
   let cache = verifiedPages.get(manifest);
@@ -283,7 +338,8 @@ export async function readLogicalAsset(
     if (!loaded) {
       loaded = (async () => {
         const bytes = await readFile(join(directory, hash));
-        if (bytes.length !== descriptor.bytes || digest(bytes) !== hash) throw new Error(`${hash}: corrupt record page`);
+        if (bytes.length !== descriptor.bytes || digest(bytes) !== hash)
+          throw new Error(`${hash}: corrupt record page`);
         return decodeRecordPage(gunzipSync(bytes));
       })();
       cache.set(key, loaded);
@@ -291,6 +347,7 @@ export async function readLogicalAsset(
     pages.set(index, await loaded);
   }
   const bytes = assembleRecordPages(asset, pages);
-  if (digest(bytes) !== asset.sha256) throw new Error(`${asset.id}: reconstructed integrity mismatch`);
+  if (digest(bytes) !== asset.sha256)
+    throw new Error(`${asset.id}: reconstructed integrity mismatch`);
   return bytes;
 }

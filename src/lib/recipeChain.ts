@@ -1,6 +1,12 @@
 import { searchWithExtras } from './recipeChainExtras';
 /** Dataset-derived incidence graph. Nodes keep exact IDs, including NBT and fluid identity. */
-export type ChainRecipe = [shard: number, record: number, inputs: number[], outputs: number[], tools: number[]];
+export type ChainRecipe = [
+  shard: number,
+  record: number,
+  inputs: number[],
+  outputs: number[],
+  tools: number[],
+];
 export interface ChainGraph {
   schemaVersion: 1;
   datasetId: string;
@@ -10,29 +16,79 @@ export interface ChainGraph {
   shards: string[];
   recipes: ChainRecipe[];
 }
-export interface ChainReference { shardId: string; record: number }
-export interface ChainPath { targetId: string; status: 'found' | 'not-found' | 'proof-limit' | 'search-limit'; steps: ChainReference[]; alternatives?: ChainReference[][]; limited?: boolean }
-export interface ChainSearchOptions { maxDepth: number; allowExtras: boolean; routeLimit?: number }
-export interface ChainProgress { visited: number; recipes: number }
+export interface ChainReference {
+  shardId: string;
+  record: number;
+}
+export interface ChainPath {
+  targetId: string;
+  status: 'found' | 'not-found' | 'proof-limit' | 'search-limit';
+  steps: ChainReference[];
+  alternatives?: ChainReference[][];
+  limited?: boolean;
+}
+export interface ChainSearchOptions {
+  maxDepth: number;
+  allowExtras: boolean;
+  routeLimit?: number;
+}
+export interface ChainProgress {
+  visited: number;
+  recipes: number;
+}
 
-export function validateChainGraph(value: unknown, datasetId: string, manifestSha256: string): ChainGraph {
+export function validateChainGraph(
+  value: unknown,
+  datasetId: string,
+  manifestSha256: string,
+): ChainGraph {
   const graph = value as ChainGraph;
-  if (!graph || graph.schemaVersion !== 1 || graph.datasetId !== datasetId || graph.manifestSha256 !== manifestSha256
-    || !Array.isArray(graph.ids) || !graph.ids.every((id) => typeof id === 'string')
-    || new Set(graph.ids).size !== graph.ids.length || !Array.isArray(graph.shards)
-    || !graph.shards.every((id) => typeof id === 'string') || new Set(graph.shards).size !== graph.shards.length
-    || !Array.isArray(graph.groups) || !Array.isArray(graph.recipes)) throw new Error('Invalid recipe chain index identity');
-  const node = (id: unknown) => Number.isSafeInteger(id) && Number(id) >= 0 && Number(id) < graph.ids.length;
+  if (
+    !graph ||
+    graph.schemaVersion !== 1 ||
+    graph.datasetId !== datasetId ||
+    graph.manifestSha256 !== manifestSha256 ||
+    !Array.isArray(graph.ids) ||
+    !graph.ids.every((id) => typeof id === 'string') ||
+    new Set(graph.ids).size !== graph.ids.length ||
+    !Array.isArray(graph.shards) ||
+    !graph.shards.every((id) => typeof id === 'string') ||
+    new Set(graph.shards).size !== graph.shards.length ||
+    !Array.isArray(graph.groups) ||
+    !Array.isArray(graph.recipes)
+  )
+    throw new Error('Invalid recipe chain index identity');
+  const node = (id: unknown) =>
+    Number.isSafeInteger(id) && Number(id) >= 0 && Number(id) < graph.ids.length;
   const nodes = (ids: unknown): ids is number[] => Array.isArray(ids) && ids.every(node);
   const groups = new Set<number>();
   for (const group of graph.groups) {
-    if (!Array.isArray(group) || group.length !== 2 || !node(group[0]) || !nodes(group[1]) || groups.has(group[0])) throw new Error('Invalid chain ingredient group');
+    if (
+      !Array.isArray(group) ||
+      group.length !== 2 ||
+      !node(group[0]) ||
+      !nodes(group[1]) ||
+      groups.has(group[0])
+    )
+      throw new Error('Invalid chain ingredient group');
     groups.add(group[0]);
   }
-  if (graph.groups.some(([, members]) => members.some((id) => groups.has(id)))) throw new Error('Nested chain ingredient group');
+  if (graph.groups.some(([, members]) => members.some((id) => groups.has(id))))
+    throw new Error('Nested chain ingredient group');
   for (const recipe of graph.recipes) {
-    if (!Array.isArray(recipe) || recipe.length !== 5 || !Number.isSafeInteger(recipe[0]) || recipe[0] < 0 || recipe[0] >= graph.shards.length
-      || !Number.isSafeInteger(recipe[1]) || recipe[1] < 0 || !nodes(recipe[2]) || !nodes(recipe[3]) || !nodes(recipe[4])) throw new Error('Invalid chain recipe reference');
+    if (
+      !Array.isArray(recipe) ||
+      recipe.length !== 5 ||
+      !Number.isSafeInteger(recipe[0]) ||
+      recipe[0] < 0 ||
+      recipe[0] >= graph.shards.length ||
+      !Number.isSafeInteger(recipe[1]) ||
+      recipe[1] < 0 ||
+      !nodes(recipe[2]) ||
+      !nodes(recipe[3]) ||
+      !nodes(recipe[4])
+    )
+      throw new Error('Invalid chain recipe reference');
   }
   return graph;
 }
@@ -46,22 +102,44 @@ export class RecipeChainGraph {
   constructor(private readonly graph: ChainGraph) {
     this.lookup = new Map(graph.ids.map((id, index) => [id, index]));
     this.members = new Map(graph.groups);
-    for (const [group, members] of graph.groups) for (const member of members) {
-      const groups = this.memberOf.get(member) ?? []; groups.push(group); this.memberOf.set(member, groups);
-    }
+    for (const [group, members] of graph.groups)
+      for (const member of members) {
+        const groups = this.memberOf.get(member) ?? [];
+        groups.push(group);
+        this.memberOf.set(member, groups);
+      }
     graph.recipes.forEach((recipe, index) => {
       if (!recipe[2].length || !recipe[3].length) return;
       for (const input of new Set([...recipe[2], ...recipe[4]])) {
-        const recipes = this.consumers.get(input) ?? []; recipes.push(index); this.consumers.set(input, recipes);
+        const recipes = this.consumers.get(input) ?? [];
+        recipes.push(index);
+        this.consumers.set(input, recipes);
       }
     });
   }
 
-  async search(inputs: string[], outputs: string[], options: ChainSearchOptions,
-    signal?: AbortSignal, onProgress?: (progress: ChainProgress) => void, excluded = new Set<number>(), enumerate = true): Promise<ChainPath[]> {
+  async search(
+    inputs: string[],
+    outputs: string[],
+    options: ChainSearchOptions,
+    signal?: AbortSignal,
+    onProgress?: (progress: ChainProgress) => void,
+    excluded = new Set<number>(),
+    enumerate = true,
+  ): Promise<ChainPath[]> {
     const maxDepth = Math.max(1, Math.min(32, Math.floor(options.maxDepth) || 12));
     const routeLimit = Math.max(1, Math.min(50, Math.floor(options.routeLimit ?? 10)));
-    if (options.allowExtras) return searchWithExtras(this.graph, { members: this.members, memberOf: this.memberOf, consumers: this.consumers }, inputs, outputs, maxDepth, routeLimit, signal, onProgress);
+    if (options.allowExtras)
+      return searchWithExtras(
+        this.graph,
+        { members: this.members, memberOf: this.memberOf, consumers: this.consumers },
+        inputs,
+        outputs,
+        maxDepth,
+        routeLimit,
+        signal,
+        onProgress,
+      );
     const depth = new Int16Array(this.graph.ids.length).fill(-1);
     const via = new Int32Array(this.graph.ids.length).fill(-1);
     const representative = new Int32Array(this.graph.ids.length).fill(-1);
@@ -71,7 +149,10 @@ export class RecipeChainGraph {
     let considered = 0;
     const mark = (id: number, level: number, recipe: number, actual = id) => {
       if (depth[id]! >= 0) return;
-      depth[id] = level; via[id] = recipe; representative[id] = actual; queue.push(id);
+      depth[id] = level;
+      via[id] = recipe;
+      representative[id] = actual;
+      queue.push(id);
     };
     const publish = (id: number, level: number, recipe: number) => {
       // A produced group can yield its alternatives. Merely accepting an item
@@ -81,9 +162,14 @@ export class RecipeChainGraph {
         for (const group of this.memberOf.get(member) ?? []) mark(group, level, recipe, member);
       }
     };
-    for (const id of inputs) { const node = this.lookup.get(id); if (node !== undefined) publish(node, 0, -1); }
+    for (const id of inputs) {
+      const node = this.lookup.get(id);
+      if (node !== undefined) publish(node, 0, -1);
+    }
     const targets = outputs.map((id) => this.lookup.get(id));
-    const active = () => { if (signal?.aborted) throw new DOMException('Search cancelled', 'AbortError'); };
+    const active = () => {
+      if (signal?.aborted) throw new DOMException('Search cancelled', 'AbortError');
+    };
     for (let head = 0; head < queue.length; head++) {
       active();
       if (targets.every((id) => id !== undefined && depth[id]! >= 0)) break;
@@ -95,8 +181,14 @@ export class RecipeChainGraph {
         const recipe = this.graph.recipes[index]!;
         if (options.allowExtras) {
           if (!recipe[2].includes(current)) continue; // Tools/circuits are not conversion sources.
-        } else if (![...recipe[2], ...recipe[4]].every((id) => depth[id]! >= 0 && depth[id]! <= depth[current]!)) continue;
-        fired[index] = 1; trigger[index] = current;
+        } else if (
+          ![...recipe[2], ...recipe[4]].every(
+            (id) => depth[id]! >= 0 && depth[id]! <= depth[current]!,
+          )
+        )
+          continue;
+        fired[index] = 1;
+        trigger[index] = current;
         for (const output of recipe[3]) publish(output, depth[current]! + 1, index);
       }
       if (head % 2048 === 0) {
@@ -109,7 +201,8 @@ export class RecipeChainGraph {
     const proofs = new Map<string, number[]>();
     const paths: ChainPath[] = outputs.map((targetId, targetIndex) => {
       const target = targets[targetIndex];
-      if (target === undefined || depth[target]! < 0) return { targetId, status: 'not-found', steps: [] };
+      if (target === undefined || depth[target]! < 0)
+        return { targetId, status: 'not-found', steps: [] };
       const steps = new Set<number>();
       const visit = (node: number): boolean => {
         const index = via[node]!;
@@ -126,10 +219,14 @@ export class RecipeChainGraph {
       };
       if (!visit(target)) return { targetId, status: 'proof-limit', steps: [] };
       proofs.set(targetId, [...steps]);
-      return { targetId, status: 'found', steps: [...steps].map((index) => {
-        const recipe = this.graph.recipes[index]!;
-        return { shardId: this.graph.shards[recipe[0]]!, record: recipe[1] };
-      }) };
+      return {
+        targetId,
+        status: 'found',
+        steps: [...steps].map((index) => {
+          const recipe = this.graph.recipes[index]!;
+          return { shardId: this.graph.shards[recipe[0]]!, record: recipe[1] };
+        }),
+      };
     });
     const recordIndices = new Map<string, Map<number, number>>();
     const recordIndex = (step: ChainReference) => {
@@ -143,29 +240,48 @@ export class RecipeChainGraph {
       }
       return records.get(step.record)!;
     };
-    if (enumerate) for (const path of paths) {
-      if (path.status !== 'found' || !path.steps.length) continue;
-      const routes = [path.steps];
-      const queue = [{ banned: excluded, proof: proofs.get(path.targetId) ?? [] }];
-      const seen = new Set<string>();
-      let attempts = 0;
-      for (let cursor = 0; cursor < queue.length && routes.length < routeLimit && attempts < routeLimit * 12; cursor++) {
-        const candidate = queue[cursor]!;
-        for (const banned of candidate.proof) {
-          if (routes.length >= routeLimit || attempts >= routeLimit * 12) break;
-          const exclusions = new Set([...candidate.banned, banned]);
-          const key = [...exclusions].sort((a, b) => a - b).join(',');
-          if (seen.has(key)) continue;
-          seen.add(key); attempts++; active();
-          const [alternative] = await this.search(inputs, [path.targetId], options, signal, onProgress, exclusions, false);
-          if (alternative?.status !== 'found') continue;
-          if (!routes.some((route) => JSON.stringify(route) === JSON.stringify(alternative.steps))) routes.push(alternative.steps);
-          const indices = alternative.steps.map(recordIndex);
-          queue.push({ banned: exclusions, proof: indices });
+    if (enumerate)
+      for (const path of paths) {
+        if (path.status !== 'found' || !path.steps.length) continue;
+        const routes = [path.steps];
+        const queue = [{ banned: excluded, proof: proofs.get(path.targetId) ?? [] }];
+        const seen = new Set<string>();
+        let attempts = 0;
+        for (
+          let cursor = 0;
+          cursor < queue.length && routes.length < routeLimit && attempts < routeLimit * 12;
+          cursor++
+        ) {
+          const candidate = queue[cursor]!;
+          for (const banned of candidate.proof) {
+            if (routes.length >= routeLimit || attempts >= routeLimit * 12) break;
+            const exclusions = new Set([...candidate.banned, banned]);
+            const key = [...exclusions].sort((a, b) => a - b).join(',');
+            if (seen.has(key)) continue;
+            seen.add(key);
+            attempts++;
+            active();
+            const [alternative] = await this.search(
+              inputs,
+              [path.targetId],
+              options,
+              signal,
+              onProgress,
+              exclusions,
+              false,
+            );
+            if (alternative?.status !== 'found') continue;
+            if (
+              !routes.some((route) => JSON.stringify(route) === JSON.stringify(alternative.steps))
+            )
+              routes.push(alternative.steps);
+            const indices = alternative.steps.map(recordIndex);
+            queue.push({ banned: exclusions, proof: indices });
+          }
         }
+        path.alternatives = routes.slice(1);
+        path.limited = true;
       }
-      path.alternatives = routes.slice(1); path.limited = true;
-    }
     return paths;
   }
 }

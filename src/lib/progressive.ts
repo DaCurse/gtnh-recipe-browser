@@ -14,7 +14,7 @@ export async function mapProgressively<T, R>(
   concurrency: number,
   mapper: (value: T, index: number) => Promise<R>,
   onResult?: (result: ProgressiveResult<R>) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<R[]> {
   if (!Number.isInteger(concurrency) || concurrency < 1) {
     throw new RangeError('Concurrency must be a positive integer');

@@ -2,9 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { recipeViewCount } from '../src/lib/recipeCounts';
 import type { CatalogEntry } from '../src/lib/types';
 
-const entry = { id: 'i:test:ore:0', productionCount: 0, usageCount: 7,
+const entry = {
+  id: 'i:test:ore:0',
+  productionCount: 0,
+  usageCount: 7,
   specialProductionCounts: { 'crop-breeding': 1, 'gt-ore-processing': 8 },
-  specialUsageCounts: { 'crop-output': 2, 'crop-breeding': 3 } } as unknown as CatalogEntry;
+  specialUsageCounts: { 'crop-output': 2, 'crop-breeding': 3 },
+} as unknown as CatalogEntry;
 
 describe('recipe direction counts', () => {
   it('counts special-only production and excludes disabled pages', () => {

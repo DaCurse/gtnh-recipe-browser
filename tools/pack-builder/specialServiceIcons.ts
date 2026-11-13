@@ -9,14 +9,15 @@ import type { SpecialData } from '../data-export/special';
  */
 export function repairSpecialServiceIcons(
   data: SpecialData,
-  repository: DecodedRepository
+  repository: DecodedRepository,
 ): SpecialData {
   const items = repository.items;
-  const worldgenChest = items.find((item) => (
-    item.mod.toLocaleLowerCase() === 'minecraft'
-    && item.internalName.toLocaleLowerCase() === 'chest'
-    && item.damage === 0
-  ));
+  const worldgenChest = items.find(
+    (item) =>
+      item.mod.toLocaleLowerCase() === 'minecraft' &&
+      item.internalName.toLocaleLowerCase() === 'chest' &&
+      item.damage === 0,
+  );
   const vendingMachine = items.find(isVendingMachineItem);
 
   let changed = false;
@@ -25,11 +26,12 @@ export function repairSpecialServiceIcons(
     // a stale sidecar value (not only an omitted one), otherwise rebuilding an
     // older export would preserve the first arbitrary referenced item as the
     // tab sprite forever.
-    const anchoredGoodsId = icon.id === 'service:worldgen'
-      ? worldgenChest?.id
-      : icon.id === 'service:vending'
-        ? vendingMachine?.id
-        : undefined;
+    const anchoredGoodsId =
+      icon.id === 'service:worldgen'
+        ? worldgenChest?.id
+        : icon.id === 'service:vending'
+          ? vendingMachine?.id
+          : undefined;
     if (!anchoredGoodsId || icon.goodsId === anchoredGoodsId) return icon;
     changed = true;
     return { ...icon, goodsId: anchoredGoodsId };
@@ -39,10 +41,10 @@ export function repairSpecialServiceIcons(
 
 /** Exported for focused tests without exposing the decoded item model. */
 export function isVendingMachineItem(item: DecodedItem): boolean {
-  return item.mod.toLocaleLowerCase() === 'gregtech'
-    && item.internalName.toLocaleLowerCase() === 'gt.blockmachines'
-    && (
-      item.unlocalizedName.toLocaleLowerCase().endsWith('.multimachine.vendingmachine')
-      || item.name.toLocaleLowerCase() === 'vending machine'
-    );
+  return (
+    item.mod.toLocaleLowerCase() === 'gregtech' &&
+    item.internalName.toLocaleLowerCase() === 'gt.blockmachines' &&
+    (item.unlocalizedName.toLocaleLowerCase().endsWith('.multimachine.vendingmachine') ||
+      item.name.toLocaleLowerCase() === 'vending machine')
+  );
 }

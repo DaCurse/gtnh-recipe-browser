@@ -2,24 +2,31 @@
 import { prunePublishedObjects } from './prune';
 import { publishCatalogOrder } from '../catalog-order';
 import { ensureChainIndex, pruneChainIndexes } from '../chain-index';
-import { access, copyFile, cp, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises';
+import {
+  access,
+  copyFile,
+  cp,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  writeFile,
+} from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
 import { createHash } from 'node:crypto';
 import type { GeneratedPackManifest, ImmutableAsset } from '../pack-builder/manifest';
 import { verifyPack } from '../pack-builder/verifier';
 import { retireCompanionReleases } from '../pack-builder/companionRelease';
 import { recordPageSelections } from '../../src/lib/recordPages';
-import {
-  assertSharedLayoutExtension,
-  type SharedPrefixLayout
-} from '../pack-builder/sharedLayout';
+import { assertSharedLayoutExtension, type SharedPrefixLayout } from '../pack-builder/sharedLayout';
 import {
   argumentsMap,
   assertPathMissing,
   assertImmutableManifestBytes,
   requiredArgument,
   withPublishedVersion,
-  type VersionsIndex
+  type VersionsIndex,
 } from './lib';
 
 const args = argumentsMap(process.argv.slice(2));
@@ -29,7 +36,10 @@ const mode = args.get('mode') ?? 'publish';
 const replaceExisting = args.get('replace') === 'true';
 const rolloutArgument = args.get('rollout-epoch');
 const rolloutEpoch = rolloutArgument === undefined ? undefined : Number(rolloutArgument);
-if (rolloutEpoch !== undefined && (mode !== 'activate' || !Number.isSafeInteger(rolloutEpoch) || rolloutEpoch <= 0)) {
+if (
+  rolloutEpoch !== undefined &&
+  (mode !== 'activate' || !Number.isSafeInteger(rolloutEpoch) || rolloutEpoch <= 0)
+) {
   throw new Error('--rollout-epoch requires --mode activate and a positive integer');
 }
 if (mode !== 'stage' && mode !== 'activate' && mode !== 'publish') {
@@ -38,7 +48,9 @@ if (mode !== 'stage' && mode !== 'activate' && mode !== 'publish') {
 const sourceManifestBytes = await readFile(join(packDirectory, 'pack-manifest.json'));
 const manifest = JSON.parse(sourceManifestBytes.toString('utf8')) as GeneratedPackManifest;
 if (manifest.formatVersion !== 7) {
-  throw new Error(`Unsupported generated pack format ${manifest.formatVersion}; only format 7 is publishable`);
+  throw new Error(
+    `Unsupported generated pack format ${manifest.formatVersion}; only format 7 is publishable`,
+  );
 }
 await verifyPack({ packDirectory });
 
@@ -60,13 +72,22 @@ function catalogPhysicalBytes(): number {
   for (const asset of manifest.catalogAssets) {
     for (const segment of recordPageSelections(asset)) {
       const pageIndex = segment[0];
-      if (!Number.isSafeInteger(pageIndex) || pageIndex < 0 || pageIndex >= manifest.recordPages.length) {
-        throw new Error(`${asset.id}: catalog segment references invalid record page ${String(pageIndex)}`);
+      if (
+        !Number.isSafeInteger(pageIndex) ||
+        pageIndex < 0 ||
+        pageIndex >= manifest.recordPages.length
+      ) {
+        throw new Error(
+          `${asset.id}: catalog segment references invalid record page ${String(pageIndex)}`,
+        );
       }
       pageIndexes.add(pageIndex);
     }
   }
-  return [...pageIndexes].reduce((total, pageIndex) => total + manifest.recordPages[pageIndex]!.bytes, 0);
+  return [...pageIndexes].reduce(
+    (total, pageIndex) => total + manifest.recordPages[pageIndex]!.bytes,
+    0,
+  );
 }
 
 async function publishSharedObjects(): Promise<void> {
@@ -124,20 +145,20 @@ async function assertImmutableDestination(): Promise<void> {
   } catch (error) {
     throw new Error(
       `Cannot replace dataset ${manifest.datasetId}: its immutable destination has no readable manifest`,
-      { cause: error }
+      { cause: error },
     );
   }
   assertImmutableManifestBytes(existingManifestBytes, sourceManifestBytes, manifest.datasetId);
 }
 
 function prefixLayoutFromManifest(
-  value: GeneratedPackManifest['sharedLayout']
+  value: GeneratedPackManifest['sharedLayout'],
 ): SharedPrefixLayout {
   if (!value?.prefixes) throw new Error('Manifest is missing its published prefix layout');
   return {
     schemaVersion: value.schemaVersion,
     targets: value.targets,
-    ...value.prefixes
+    ...value.prefixes,
   };
 }
 
@@ -165,9 +186,9 @@ async function assertPublishedLayoutLineage(): Promise<void> {
       assertSharedLayoutExtension(prefixLayoutFromManifest(existing.sharedLayout), nextLayout);
     } catch (error) {
       throw new Error(
-        `Format-7 layout for ${manifest.datasetId} is not an append-only extension of ${existing.datasetId}: `
-          + `${error instanceof Error ? error.message : String(error)}`,
-        { cause: error }
+        `Format-7 layout for ${manifest.datasetId} is not an append-only extension of ${existing.datasetId}: ` +
+          `${error instanceof Error ? error.message : String(error)}`,
+        { cause: error },
       );
     }
   }
@@ -181,7 +202,6 @@ async function verifyPublishedManifest(destinationDirectory: string): Promise<vo
   }
   await verifyPack({ packDirectory: destinationDirectory, assetDirectory: globalAssets });
 }
-
 
 let previousDirectory: string | undefined;
 if (mode === 'stage' || mode === 'publish') {
@@ -229,55 +249,83 @@ if (await pathExists(catalogOrderPath)) {
 
 if (mode === 'stage') {
   const { count: prunedSharedObjects } = await prunePublishedObjects(repositoryRoot);
-  console.log(JSON.stringify({
-    datasetId: manifest.datasetId,
-    destination,
-    staged: true,
-    prunedSharedObjects
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        datasetId: manifest.datasetId,
+        destination,
+        staged: true,
+        prunedSharedObjects,
+      },
+      null,
+      2,
+    ),
+  );
   process.exit(0);
 }
 
-const versions = await pathExists(versionsPath)
-  ? JSON.parse(await readFile(versionsPath, 'utf8')) as VersionsIndex
-  : { schemaVersion: 1, generatedAt: '', versions: [] } as VersionsIndex;
-const replacedDatasetIds = mode === 'activate'
-  ? versions.versions
-    .filter((candidate) => candidate.gtnhVersion === manifest.gtnhVersion
-      && candidate.datasetId !== manifest.datasetId)
-    .map((candidate) => candidate.datasetId)
-  : [];
+const versions = (await pathExists(versionsPath))
+  ? (JSON.parse(await readFile(versionsPath, 'utf8')) as VersionsIndex)
+  : ({ schemaVersion: 1, generatedAt: '', versions: [] } as VersionsIndex);
+const replacedDatasetIds =
+  mode === 'activate'
+    ? versions.versions
+        .filter(
+          (candidate) =>
+            candidate.gtnhVersion === manifest.gtnhVersion &&
+            candidate.datasetId !== manifest.datasetId,
+        )
+        .map((candidate) => candidate.datasetId)
+    : [];
 const now = new Date().toISOString();
-const next = withPublishedVersion(versions, {
-  datasetId: manifest.datasetId,
-  gtnhVersion: manifest.gtnhVersion,
-  revision: manifest.revision,
-  publishedAt: now,
-  packManifestUrl: `./data/${basename(destination)}/pack-manifest.json`,
-  catalogBytes: catalogPhysicalBytes(),
-  offlineBytes: manifest.totals.offlineBytes
-}, now, rolloutEpoch);
+const next = withPublishedVersion(
+  versions,
+  {
+    datasetId: manifest.datasetId,
+    gtnhVersion: manifest.gtnhVersion,
+    revision: manifest.revision,
+    publishedAt: now,
+    packManifestUrl: `./data/${basename(destination)}/pack-manifest.json`,
+    catalogBytes: catalogPhysicalBytes(),
+    offlineBytes: manifest.totals.offlineBytes,
+  },
+  now,
+  rolloutEpoch,
+);
 const temporaryVersions = `${versionsPath}.tmp-${process.pid}`;
 await writeFile(temporaryVersions, `${JSON.stringify(next, null, 2)}\n`, { flag: 'wx' });
 await rename(temporaryVersions, versionsPath);
-await pruneChainIndexes(resolve(publicData, '..'), next.versions.map(version=>version.datasetId));
+await pruneChainIndexes(
+  resolve(publicData, '..'),
+  next.versions.map((version) => version.datasetId),
+);
 for (const datasetId of replacedDatasetIds) {
   // A replacement release is immutable while staged, then the superseded
   // revision is removed only after the new version index is atomically active.
   // Dataset IDs come from the validated index and are joined beneath public/data.
   const retiredDirectory = resolve(publicData, datasetId);
-  if (dirname(retiredDirectory) !== resolve(publicData)) throw new Error(`Retired dataset escapes public/data: ${datasetId}`);
+  if (dirname(retiredDirectory) !== resolve(publicData))
+    throw new Error(`Retired dataset escapes public/data: ${datasetId}`);
   await rm(retiredDirectory, { recursive: true, force: true });
 }
 for (const file of ['high-resolution-icons.json', 'ore-diagrams.json', 'catalog-order.json']) {
-  await retireCompanionReleases(join(repositoryRoot, 'src/lib/generated', file), replacedDatasetIds,
-    join(repositoryRoot, 'assets/source', file.replace(/\.json$/, '')));
+  await retireCompanionReleases(
+    join(repositoryRoot, 'src/lib/generated', file),
+    replacedDatasetIds,
+    join(repositoryRoot, 'assets/source', file.replace(/\.json$/, '')),
+  );
 }
 const { count: prunedSharedObjects } = await prunePublishedObjects(repositoryRoot);
-console.log(JSON.stringify({
-  datasetId: manifest.datasetId,
-  destination,
-  versions: next.versions.map((version) => version.datasetId),
-  removedDatasets: replacedDatasetIds,
-  prunedSharedObjects
-}, null, 2));
+console.log(
+  JSON.stringify(
+    {
+      datasetId: manifest.datasetId,
+      destination,
+      versions: next.versions.map((version) => version.datasetId),
+      removedDatasets: replacedDatasetIds,
+      prunedSharedObjects,
+    },
+    null,
+    2,
+  ),
+);

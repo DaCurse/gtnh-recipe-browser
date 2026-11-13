@@ -13,7 +13,7 @@
     error = '',
     retry,
     entryById,
-    navigate
+    navigate,
   }: {
     selected: CatalogEntry;
     loading?: boolean;
@@ -25,12 +25,12 @@
 
   const iconEntry = $derived(
     (selected.kind === 'oreDict' || selected.kind === 'itemGroup') && selected.members?.length
-    ? entryById.get(selected.members[$oreCycle % selected.members.length]) ?? selected
-    : selected);
+      ? (entryById.get(selected.members[$oreCycle % selected.members.length]) ?? selected)
+      : selected,
+  );
   const tooltip = new CatalogTooltipHover();
   const touch = new ItemTouch();
   const tooltipAction = 'Left-click: Recipes · Right-click: Usages';
-
 </script>
 
 <div class="item-head" class:compact={selected.tooltipLayout === 'compact'}>
@@ -48,8 +48,13 @@
         {@const member = entryById.get(memberId)}
         {#if member}
           <button
-            use:touch.action={{ key: member.id, entry: member, activate: (entry) => navigate(entry.id, 'recipes'),
-              navigate, clearHover: () => tooltip.clear() }}
+            use:touch.action={{
+              key: member.id,
+              entry: member,
+              activate: (entry) => navigate(entry.id, 'recipes'),
+              navigate,
+              clearHover: () => tooltip.clear(),
+            }}
             aria-label={`${member.name}: left-click for recipes, right-click for usages`}
             onpointerenter={(event) => tooltip.pointer(event, member)}
             onpointermove={(event) => tooltip.pointer(event)}
@@ -64,14 +69,13 @@
               event.preventDefault();
               tooltip.clear();
               navigate(member.id, 'usages');
-            }}
-          ><ItemIcon entry={member} size={52} /></button>
+            }}><ItemIcon entry={member} size={52} /></button
+          >
         {/if}
       {/each}
     </div>
   </div>
 {/if}
-
 
 {#if tooltip.entry}
   <FloatingCatalogTooltip

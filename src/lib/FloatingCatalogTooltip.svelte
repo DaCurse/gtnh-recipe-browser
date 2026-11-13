@@ -11,7 +11,7 @@
     action,
     notes,
     interactive = false,
-    anchor
+    anchor,
   }: {
     entry: CatalogEntry;
     x: number;
@@ -25,6 +25,14 @@
 
   const detail = useCatalogEntry(() => entry.id);
 </script>
+
 <FloatingTooltip {x} {y} {interactive} {anchor}>
-  <CatalogTooltipContent entry={detail.entry ?? entry} loading={detail.loading} error={detail.error} retry={() => detail.retry()} {action} {notes} />
+  <CatalogTooltipContent
+    entry={detail.entry ?? entry}
+    loading={detail.loading}
+    error={detail.error}
+    retry={() => detail.retry()}
+    {action}
+    {notes}
+  />
 </FloatingTooltip>

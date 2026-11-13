@@ -1,0 +1,300 @@
+@media (max-width: 800px) {
+  .header-links {
+    display: none;
+  }
+  main {
+    display: block;
+    overflow: hidden;
+  }
+  .app-shell {
+    height: 100dvh;
+  }
+  aside {
+    height: 100%;
+    border: 0;
+  }
+  .sidebar-resizer {
+    display: none;
+  }
+  .detail {
+    display: none;
+    height: 100%;
+    padding: 12px 14px 60px;
+  }
+  .detail.mobile-visible {
+    display: block;
+  }
+  .mobile-hidden {
+    display: none;
+  }
+  .search-wrap {
+    margin: 12px;
+    height: 48px;
+  }
+  .result-bar {
+    min-height: 38px;
+    padding: 0 14px;
+  }
+  .item-grid {
+    display: flex;
+    flex-direction: column;
+    padding: 0;
+    gap: 0;
+  }
+  .item-more {
+    width: calc(100% - 24px);
+    margin: 12px;
+    flex: none;
+  }
+  .item-tile {
+    flex: none;
+    min-height: 91px;
+    width: 100%;
+    padding: 12px 12px;
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr) 24px;
+    align-items: center;
+    gap: 12px;
+    border: 0;
+    border-bottom: 1px solid #303337;
+    border-radius: 0;
+    text-align: left;
+  }
+  .item-tile:hover,
+  .item-tile.active {
+    background: #25272a;
+    border-color: #303337;
+  }
+  .item-summary {
+    gap: 4px;
+  }
+  .item-summary strong {
+    font-size: 14px;
+    font-weight: 650;
+    color: #eceef0;
+  }
+  .item-summary small {
+    font-size: 10px;
+    color: #858a8f;
+    letter-spacing: 0.2px;
+  }
+  .tooltip-preview {
+    display: block;
+    max-height: 2.8em;
+    margin-top: 2px;
+    overflow: hidden;
+    color: #aca1ab;
+    font:
+      400 18px/24px Minecraft,
+      ui-monospace,
+      monospace;
+    text-shadow: 2px 2px #342c34;
+    white-space: normal;
+  }
+  .tooltip-preview .minecraft-line {
+    min-height: 1.4em;
+  }
+  .tooltip-preview b {
+    margin-right: 5px;
+    color: #fff;
+    font: 400 18px/24px Minecraft;
+    text-shadow: 2px 2px #342c34;
+  }
+  .row-arrow {
+    display: block;
+    color: #777c81;
+    font-size: 25px;
+  }
+  .back {
+    display: flex;
+  }
+  .item-head {
+    gap: 12px;
+  }
+  .item-overview {
+    width: calc(100% - 100px);
+  }
+  .minecraft-tooltip {
+    max-height: none;
+    padding: 6px 10px 8px;
+    font-size: 15px;
+  }
+  .tooltip-header {
+    font-size: 17px;
+  }
+  .tooltip-debug {
+    font-size: 10px;
+  }
+  .view-tabs {
+    margin-top: 20px;
+    position: sticky;
+    top: -12px;
+    z-index: 3;
+    background: #191b1e;
+  }
+  .type-row {
+    position: sticky;
+    top: 35px;
+    z-index: 3;
+    background: #191b1e;
+    padding: 10px 0;
+    margin: 0 auto 8px;
+  }
+  .type-row button.machine-tab,
+  .type-row button.special-tab {
+    width: 86px;
+    height: 88px;
+    flex-basis: 86px;
+  }
+  .pane-toolbar {
+    display: block;
+  }
+  .pane-toolbar .export-actions {
+    margin-top: 8px;
+    justify-content: flex-start;
+  }
+  .recipe-list {
+    grid-template-columns: 1fr;
+  }
+  .recipe-list article {
+    max-width: 600px;
+    width: 100%;
+    margin: auto;
+  }
+  .no-recipes,
+  .recipe-loading {
+    padding: 42px 12px;
+  }
+  .recipe-loading.partial {
+    padding: 16px 12px;
+  }
+  .recipe-pagination {
+    grid-template-columns: 1fr 1fr;
+  }
+  .recipe-pagination span {
+    grid-column: 1/-1;
+    grid-row: 1;
+  }
+  aside footer {
+    min-height: 72px;
+    padding: 5px 14px;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: center;
+    gap: 2px;
+  }
+  .mobile-sidebar-links {
+    display: flex;
+    justify-content: space-between;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner,
+  .mini-spinner {
+    animation-duration: 1.8s;
+  }
+}
+
+.recipe-loading.recipe-progress {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 6px 10px;
+  padding: 12px;
+}
+.recipe-progress .spinner {
+  width: 16px;
+  height: 16px;
+}
+.recipe-loading.recipe-progress b {
+  margin: 0;
+}
+.recipe-progress small {
+  flex-basis: 100%;
+}
+
+.primary-nav {
+  display: flex;
+  flex: none;
+  min-height: 50px;
+  gap: 6px;
+  padding: 0 24px;
+  background: #191c20;
+  border-bottom: 1px solid #343a42;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.primary-nav a {
+  min-height: 42px;
+  display: flex;
+  flex: none;
+  align-items: center;
+  padding: 0 14px;
+  color: #a0a9b4;
+  font-size: 13px;
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+}
+.primary-nav a:hover {
+  color: #eef3f9;
+  background: #ffffff08;
+}
+.primary-nav a[aria-current='page'] {
+  color: #e6effb;
+  border-bottom-color: #a8bfdc;
+}
+@media (max-width: 800px) {
+  .primary-nav {
+    min-height: 54px;
+    padding: 0 8px;
+  }
+}
+
+/* Shared native NEI shell for ordinary recipes and special handler pages. */
+.nei-panel {
+  border: 6px solid transparent;
+  border-image: url('/assets/machine-ui/nei-panel.png') 2 fill stretch;
+  image-rendering: pixelated;
+  overflow: hidden;
+  color: var(--recipe-text);
+  text-shadow: var(--recipe-shadow);
+}
+
+/* Touch holds open inspection dialogs; their text should not become a selection. */
+@media (any-pointer: coarse) {
+  :is(
+    [data-touch-item],
+    .item-action-dialog,
+    .ore-choice,
+    .special-choice,
+    .crafter-modal,
+    .variant-picker
+  ),
+  :is(
+      [data-touch-item],
+      .item-action-dialog,
+      .ore-choice,
+      .special-choice,
+      .crafter-modal,
+      .variant-picker
+    )
+    *:not(input):not(textarea) {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  .variant-picker input,
+  .variant-picker textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+.feature-loading {
+  display: grid;
+  place-items: center;
+  grid-template-columns: 1fr;
+  flex: 1;
+  min-height: 0;
+}

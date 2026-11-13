@@ -13,7 +13,7 @@
     frame = true,
     bare = false,
     renderScale = 1,
-    frozen
+    frozen,
   }: {
     entry: CatalogBrowseEntry;
     exactEntries: ReadonlyMap<string, CatalogEntry>;
@@ -32,7 +32,7 @@
 
   $effect(() => {
     if (entry.variantKind === 'single' || !visible) return;
-    return oreCycle.subscribe((value) => cycle = value);
+    return oreCycle.subscribe((value) => (cycle = value));
   });
 
   onMount(() => {
@@ -41,9 +41,12 @@
       return;
     }
     const root = element.closest('.item-grid');
-    const observer = new IntersectionObserver(([observed]) => {
-      visible = observed?.isIntersecting ?? false;
-    }, { root, rootMargin: '120px 0px' });
+    const observer = new IntersectionObserver(
+      ([observed]) => {
+        visible = observed?.isIntersecting ?? false;
+      },
+      { root, rootMargin: '120px 0px' },
+    );
     observer.observe(element);
     return () => observer.disconnect();
   });

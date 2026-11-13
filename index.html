@@ -4,33 +4,125 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#17181b" />
-    <meta name="description" content="Search GregTech: New Horizons recipes, items, fluids, and machine usages. Find recipes by ingredients, explore production chains, and browse the GTNH 2.9.0 questbook." />
+    <meta
+      name="description"
+      content="Search GregTech: New Horizons recipes, items, fluids, and machine usages. Find recipes by ingredients, explore production chains, and browse the GTNH 2.9.0 questbook."
+    />
     <link rel="canonical" href="https://dacurse.github.io/gtnh-recipe-browser/" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="GT: New Horizons Recipe Browser" />
     <meta property="og:title" content="GT: New Horizons Recipe Browser — Your Pocket NEI" />
-    <meta property="og:description" content="Search GTNH recipes and machine usages, find recipes by ingredients, explore production chains across versions, and browse the GTNH 2.9.0 questbook." />
+    <meta
+      property="og:description"
+      content="Search GTNH recipes and machine usages, find recipes by ingredients, explore production chains across versions, and browse the GTNH 2.9.0 questbook."
+    />
     <meta property="og:url" content="https://dacurse.github.io/gtnh-recipe-browser/" />
-    <meta property="og:image" content="https://dacurse.github.io/gtnh-recipe-browser/assets/gtnh-logo.png" />
+    <meta
+      property="og:image"
+      content="https://dacurse.github.io/gtnh-recipe-browser/assets/gtnh-logo.png"
+    />
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content="GT: New Horizons Recipe Browser" />
-    <meta name="twitter:description" content="GregTech: New Horizons recipes, ingredient search, production chains, and a questbook browser." />
-    <meta name="twitter:image" content="https://dacurse.github.io/gtnh-recipe-browser/assets/gtnh-logo.png" />
-    <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"GT: New Horizons Recipe Browser","alternateName":["Your Pocket NEI","GTNH Recipe Browser"],"url":"https://dacurse.github.io/gtnh-recipe-browser/","description":"Search GregTech: New Horizons recipes, machine usages, ingredients, production chains, and the GTNH 2.9.0 questbook.","applicationCategory":"GameApplication","operatingSystem":"Any","isAccessibleForFree":true}</script>
+    <meta
+      name="twitter:description"
+      content="GregTech: New Horizons recipes, ingredient search, production chains, and a questbook browser."
+    />
+    <meta
+      name="twitter:image"
+      content="https://dacurse.github.io/gtnh-recipe-browser/assets/gtnh-logo.png"
+    />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "GT: New Horizons Recipe Browser",
+        "alternateName": ["Your Pocket NEI", "GTNH Recipe Browser"],
+        "url": "https://dacurse.github.io/gtnh-recipe-browser/",
+        "description": "Search GregTech: New Horizons recipes, machine usages, ingredients, production chains, and the GTNH 2.9.0 questbook.",
+        "applicationCategory": "GameApplication",
+        "operatingSystem": "Any",
+        "isAccessibleForFree": true
+      }
+    </script>
+    <link
+      rel="preload"
+      href="./assets/minecraft-pixel.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <link
+      rel="preload"
+      href="./assets/minecraft-pixel-bold.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
+    <style>
+      html,
+      body {
+        margin: 0;
+        background: #111214;
+        color: #e7e9eb;
+      }
+      #app {
+        min-height: 100vh;
+        min-height: 100dvh;
+      }
+      .startup-nav {
+        display: none;
+      }
+      html[data-startup-tools] .startup-nav {
+        display: block;
+        flex: none;
+        height: 50px;
+        border-bottom: 1px solid #343a42;
+      }
+      html[data-startup-tools] [data-startup-shell] .landing {
+        visibility: hidden;
+      }
+      @media (max-width: 800px) {
+        html[data-startup-tools] .startup-nav {
+          height: 54px;
+        }
+      }
+    </style>
+    <script>
+      if (
+        new URLSearchParams(location.search).has('item') ||
+        new URLSearchParams(location.search).has('page')
+      )
+        document.documentElement.setAttribute('data-startup-tools', '');
+    </script>
     <link rel="icon" href="./favicon.ico" sizes="any" />
     <link rel="apple-touch-icon" href="./assets/gtnh-logo-192.png" />
     <title>GT: New Horizons Recipe Browser — Your Pocket NEI</title>
   </head>
   <body class="mc-theme">
     <div id="app">
+      <!--startup-shell-->
       <main>
         <p>GT: New Horizons Recipe Browser</p>
         <h1>Your Pocket NEI</h1>
-        <p>A quick, out-of-game recipe browser for GregTech: New Horizons. Browse items and machine recipes across versions, and explore the GTNH 2.9.0 questbook.</p>
-        <p>Find recipes from a subset of inputs and outputs, or explore recipe chains between ingredients and products. Save a dataset for offline browsing and export recipe data as JSON.</p>
-        <nav aria-label="Recipe tools"><a href="./?page=items">Open item catalogue</a> · <a href="./?page=finder">Recipe finder</a> · <a href="./?page=finder&amp;finder-mode=chain">Recipe chains</a></nav>
-        <p>Loading the interactive browser. JavaScript is required to search the recipe datasets.</p>
+        <p>
+          A quick, out-of-game recipe browser for GregTech: New Horizons. Browse items and machine
+          recipes across versions, and explore the GTNH 2.9.0 questbook.
+        </p>
+        <p>
+          Find recipes from a subset of inputs and outputs, or explore recipe chains between
+          ingredients and products. Save a dataset for offline browsing and export recipe data as
+          JSON.
+        </p>
+        <nav aria-label="Recipe tools">
+          <a href="./?page=items">Open item catalogue</a> ·
+          <a href="./?page=finder">Recipe finder</a> ·
+          <a href="./?page=finder&amp;finder-mode=chain">Recipe chains</a>
+        </nav>
+        <p>
+          Loading the interactive browser. JavaScript is required to search the recipe datasets.
+        </p>
       </main>
+      <!--/startup-shell-->
     </div>
     <script type="module" src="/src/main.ts"></script>
   </body>

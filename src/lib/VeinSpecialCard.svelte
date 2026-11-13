@@ -10,11 +10,15 @@
     type SpecialGoods as SpecialGoodsValue,
     type SpecialRecord,
     type SpecialResolver,
-    type VeinSpecialPayload
+    type VeinSpecialPayload,
   } from './specialData';
   import type { RecipeView } from './types';
 
-  let { record, resolve, navigate }: {
+  let {
+    record,
+    resolve,
+    navigate,
+  }: {
     record: SpecialRecord;
     resolve: SpecialResolver;
     navigate: (id: string, view: RecipeView) => void;
@@ -36,16 +40,18 @@
     ['primary', 'Primary'],
     ['secondary', 'Secondary'],
     ['between', 'Between'],
-    ['sporadic', 'Sporadic']
+    ['sporadic', 'Sporadic'],
   ] as const;
 
   const payload = $derived(record.payload as VeinSpecialPayload);
   const rawPayload = $derived(record.payload as unknown as RawValue);
   const category = $derived(specialCategory(record.category) ?? record.category);
   const smallOre = $derived(category === 'gtSmallOre');
-  const rawLayers = $derived(Array.isArray(rawPayload.layers)
-    ? rawPayload.layers.filter((value): value is RawValue => isRecord(value))
-    : []);
+  const rawLayers = $derived(
+    Array.isArray(rawPayload.layers)
+      ? rawPayload.layers.filter((value): value is RawValue => isRecord(value))
+      : [],
+  );
 
   function isRecord(value: unknown): value is RawValue {
     return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -80,27 +86,30 @@
           ? layer.ores
           : [];
     const material = stringValue(layer.material);
-    const dictionary = canonicalOreDictionary(layer.oreDictionaryId ?? layer.oreDictionary)
-      ?? materialOreDictionary(material);
-    return toSpecialGoodsList(rawValues).map((goods) => dictionary
-      ? { ...goods, oreDictionaryId: dictionary }
-      : goods).slice(0, 1);
+    const dictionary =
+      canonicalOreDictionary(layer.oreDictionaryId ?? layer.oreDictionary) ??
+      materialOreDictionary(material);
+    return toSpecialGoodsList(rawValues)
+      .map((goods) => (dictionary ? { ...goods, oreDictionaryId: dictionary } : goods))
+      .slice(0, 1);
   }
 
   function layerRole(layer: RawValue): string | undefined {
     return stringValue(layer.role ?? layer.name)?.toLocaleLowerCase();
   }
 
-  const layers = $derived(LAYER_ROLES.map(([role, label]): LayerRow => {
-    const layer = rawLayers.find((candidate) => layerRole(candidate) === role);
-    const material = layer ? stringValue(layer.material) : undefined;
-    return {
-      role,
-      label,
-      goods: layer ? layerGoods(layer) : [],
-      material
-    };
-  }));
+  const layers = $derived(
+    LAYER_ROLES.map(([role, label]): LayerRow => {
+      const layer = rawLayers.find((candidate) => layerRole(candidate) === role);
+      const material = layer ? stringValue(layer.material) : undefined;
+      return {
+        role,
+        label,
+        goods: layer ? layerGoods(layer) : [],
+        material,
+      };
+    }),
+  );
 
   function dimensionId(value: unknown): string | undefined {
     if (typeof value === 'string' || typeof value === 'number') return String(value);
@@ -110,12 +119,17 @@
 
   function rawDimensions(): RawValue[] {
     if (!Array.isArray(rawPayload.dimensions)) return [];
-    return rawPayload.dimensions.flatMap((value) => {
-      const id = dimensionId(value);
-      if (!id) return [];
-      return [isRecord(value) ? { ...value, id } : { id }];
-    }).sort((left, right) => gtDimensionDisplayOrder(String(left.id))
-      - gtDimensionDisplayOrder(String(right.id)) || String(left.id).localeCompare(String(right.id)));
+    return rawPayload.dimensions
+      .flatMap((value) => {
+        const id = dimensionId(value);
+        if (!id) return [];
+        return [isRecord(value) ? { ...value, id } : { id }];
+      })
+      .sort(
+        (left, right) =>
+          gtDimensionDisplayOrder(String(left.id)) - gtDimensionDisplayOrder(String(right.id)) ||
+          String(left.id).localeCompare(String(right.id)),
+      );
   }
 
   function chanceForDimension(id: string, raw: RawValue): number | undefined {
@@ -126,43 +140,52 @@
   }
 
   function displayGoodsId(id: string, raw: RawValue): string | undefined {
-    const explicitMap = isRecord(rawPayload.dimensionGoodsIds) ? rawPayload.dimensionGoodsIds : undefined;
+    const explicitMap = isRecord(rawPayload.dimensionGoodsIds)
+      ? rawPayload.dimensionGoodsIds
+      : undefined;
     const explicit = stringValue(raw.goodsId ?? raw.displayGoodsId ?? explicitMap?.[id]);
     return gtDimensionDisplayGoodsId(id, resolve, explicit);
   }
 
-  const dimensions = $derived(rawDimensions().map((raw): DimensionRow => {
-    const id = String(raw.id);
-    const goodsId = displayGoodsId(id, raw);
-    const rawChance = smallOre ? undefined : chanceForDimension(id, raw);
-    // GTNEIOrePlugin supplies a normalized probability for each dimension.
-    // Raw legacy weights are intentionally not rendered as percentages: the
-    // denominator is the sum of every vein in that dimension and cannot be
-    // recovered from one old record.
-    const chance = rawChance !== undefined && rawChance >= 0 && rawChance <= 1
-      ? rawChance
-      : undefined;
-    return {
-      id,
-      goods: goodsId ? [{ goodsId, chance }] : []
-    };
-  }));
+  const dimensions = $derived(
+    rawDimensions().map((raw): DimensionRow => {
+      const id = String(raw.id);
+      const goodsId = displayGoodsId(id, raw);
+      const rawChance = smallOre ? undefined : chanceForDimension(id, raw);
+      // GTNEIOrePlugin supplies a normalized probability for each dimension.
+      // Raw legacy weights are intentionally not rendered as percentages: the
+      // denominator is the sum of every vein in that dimension and cannot be
+      // recovered from one old record.
+      const chance =
+        rawChance !== undefined && rawChance >= 0 && rawChance <= 1 ? rawChance : undefined;
+      return {
+        id,
+        goods: goodsId ? [{ goodsId, chance }] : [],
+      };
+    }),
+  );
 
-  function firstGoods(value: unknown, material?: string, dictionaryId?: unknown): SpecialGoodsValue[] {
+  function firstGoods(
+    value: unknown,
+    material?: string,
+    dictionaryId?: unknown,
+  ): SpecialGoodsValue[] {
     const dictionary = canonicalOreDictionary(dictionaryId) ?? materialOreDictionary(material);
-    return toSpecialGoodsList(value).slice(0, 1).map((goods) => dictionary
-      ? { ...goods, oreDictionaryId: dictionary }
-      : goods);
+    return toSpecialGoodsList(value)
+      .slice(0, 1)
+      .map((goods) => (dictionary ? { ...goods, oreDictionaryId: dictionary } : goods));
   }
 
-  const smallOreGoods = $derived(firstGoods(
-    rawPayload.representativeOres ?? rawPayload.ores ?? [],
-    stringValue(rawPayload.material),
-    rawPayload.oreDictionaryId ?? rawPayload.oreDictionary
-  ));
-  const smallOreDrops = $derived(toSpecialDrops(
-    rawPayload.potentialDrops ?? rawPayload.drops ?? []
-  ));
+  const smallOreGoods = $derived(
+    firstGoods(
+      rawPayload.representativeOres ?? rawPayload.ores ?? [],
+      stringValue(rawPayload.material),
+      rawPayload.oreDictionaryId ?? rawPayload.oreDictionary,
+    ),
+  );
+  const smallOreDrops = $derived(
+    toSpecialDrops(rawPayload.potentialDrops ?? rawPayload.drops ?? []),
+  );
 
   function statRange(min: number | undefined, max: number | undefined): string {
     if (min === undefined && max === undefined) return '';
@@ -173,7 +196,7 @@
 
   function resolvedName(goods: SpecialGoodsValue[], fallback: string): string {
     const id = goods[0]?.alternatives?.[0] ?? goods[0]?.goodsId;
-    return id ? resolve(id)?.name ?? goods[0]?.label ?? fallback : fallback;
+    return id ? (resolve(id)?.name ?? goods[0]?.label ?? fallback) : fallback;
   }
 </script>
 
@@ -181,16 +204,29 @@
   <div class="ore-stat-card small-ore-card">
     <section class="ore-primary-stat">
       {#if smallOreGoods.length}
-        <SpecialGoods goods={smallOreGoods} resolve={resolve} {navigate} horizontal hideLabels showAmounts={false} showChance={false} />
+        <SpecialGoods
+          goods={smallOreGoods}
+          {resolve}
+          {navigate}
+          horizontal
+          hideLabels
+          showAmounts={false}
+          showChance={false}
+        />
       {/if}
       <div class="ore-primary-copy">
         <b>{resolvedName(smallOreGoods, humanizeGtOreName(record.title))}</b>
-        <span>Height {statRange(numberValue(payload.minHeight ?? rawPayload.minY), numberValue(payload.maxHeight ?? rawPayload.maxY)) || '—'}</span>
+        <span
+          >Height {statRange(
+            numberValue(payload.minHeight ?? rawPayload.minY),
+            numberValue(payload.maxHeight ?? rawPayload.maxY),
+          ) || '—'}</span
+        >
         <span>{numberValue(payload.amount ?? rawPayload.amount) ?? '—'} per chunk</span>
       </div>
     </section>
     {#if smallOreDrops.length}
-      <SpecialGoods goods={smallOreDrops} resolve={resolve} {navigate} joined label="Drops" />
+      <SpecialGoods goods={smallOreDrops} {resolve} {navigate} joined label="Drops" />
     {/if}
     {#if dimensions.length}
       <section class="generated-world">
@@ -199,7 +235,15 @@
           {#each dimensions as dimension, index (`${dimension.id}:${index}`)}
             <div class="dimension-slot" aria-label={dimension.id}>
               {#if dimension.goods.length}
-                <SpecialGoods goods={dimension.goods} resolve={resolve} {navigate} horizontal hideLabels showAmounts={false} showChance={false} />
+                <SpecialGoods
+                  goods={dimension.goods}
+                  {resolve}
+                  {navigate}
+                  horizontal
+                  hideLabels
+                  showAmounts={false}
+                  showChance={false}
+                />
               {/if}
             </div>
           {/each}
@@ -213,7 +257,15 @@
       {#each layers as layer, index (`${layer.role}:${index}`)}
         <div class="layer-row">
           {#if layer.goods.length}
-            <SpecialGoods goods={layer.goods} resolve={resolve} {navigate} horizontal hideLabels showAmounts={false} showChance={false} />
+            <SpecialGoods
+              goods={layer.goods}
+              {resolve}
+              {navigate}
+              horizontal
+              hideLabels
+              showAmounts={false}
+              showChance={false}
+            />
           {:else}
             <div class="empty-slot" aria-hidden="true">—</div>
           {/if}
@@ -232,7 +284,14 @@
           {#each dimensions as dimension, index (`${dimension.id}:${index}`)}
             <div class="dimension-slot" aria-label={dimension.id}>
               {#if dimension.goods.length}
-                <SpecialGoods goods={dimension.goods} resolve={resolve} {navigate} horizontal hideLabels showAmounts={false} />
+                <SpecialGoods
+                  goods={dimension.goods}
+                  {resolve}
+                  {navigate}
+                  horizontal
+                  hideLabels
+                  showAmounts={false}
+                />
               {:else}
                 <div class="empty-slot" aria-hidden="true">—</div>
               {/if}
@@ -242,35 +301,174 @@
       </section>
     {/if}
     <div class="vein-stats">
-      <span><b>Height</b>{statRange(numberValue(payload.minHeight ?? rawPayload.minY), numberValue(payload.maxHeight ?? rawPayload.maxY)) || '—'}</span>
+      <span
+        ><b>Height</b>{statRange(
+          numberValue(payload.minHeight ?? rawPayload.minY),
+          numberValue(payload.maxHeight ?? rawPayload.maxY),
+        ) || '—'}</span
+      >
       <span><b>Weight</b>{numberValue(payload.weight ?? rawPayload.weight) ?? '—'}</span>
     </div>
   </div>
 {/if}
 
 <style>
-  .ore-stat-card { display:flex; flex-direction:column; gap:13px; min-width:0; }
-  .layer-list { display:flex; flex-direction:column; gap:5px; }
-  .layer-row { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:10px; min-height:48px; padding:4px 7px; border:0; border-radius:0; background:transparent; }
-  .layer-row :global(.special-goods) { width:48px; }
-  .layer-row :global(.special-goods-grid) { width:48px; }
-  .layer-copy,.ore-primary-copy { display:flex; flex-direction:column; min-width:0; gap:3px; }
-  .layer-copy b,.ore-primary-copy b { color:var(--recipe-text); font:18px/24px Minecraft,monospace; overflow-wrap:anywhere; }
-  .layer-copy span,.ore-primary-copy span { color:var(--recipe-text); font:16px/1.3 Minecraft,monospace; overflow-wrap:anywhere; }
-  .generated-world { display:flex; flex-direction:column; gap:6px; padding-top:2px; min-width:0; }
-  .generated-world-label { color:var(--recipe-text); font:18px/24px Minecraft,monospace; font-weight:700; letter-spacing:.03em; }
-  .dimension-caption { color:var(--recipe-text); font:9px/13px Minecraft,monospace; line-height:1.25; }
-  .dimension-list { display:flex; align-items:flex-start; gap:3px; min-width:0; max-width:100%; overflow-x:auto; overscroll-behavior-inline:contain; padding:2px 2px 5px; scrollbar-width:thin; }
-  .dimension-slot { flex:0 0 48px; width:48px; min-height:48px; display:grid; place-items:center; }
-  .dimension-slot :global(.special-goods),.dimension-slot :global(.special-goods-grid) { width:48px; }
-  .empty-slot { width:48px; height:48px; display:grid; place-items:center; border:1px dashed #545960; border-radius:0; color:#82878c; font-size:20px; }
-  .ore-primary-stat { display:grid; grid-template-columns:48px minmax(0,1fr); align-items:center; gap:10px; padding:5px 7px; border:0; border-radius:0; background:transparent; }
-  .ore-primary-stat :global(.special-goods-grid) { width:48px; }
-  .ore-primary-copy span { color:var(--recipe-text); }
-  .vein-stats { display:flex; flex-wrap:wrap; gap:7px; padding-top:3px; border-top:1px solid #3b3f44; }
-  .vein-stats span { display:flex; flex-direction:column; gap:2px; min-width:95px; padding:7px 9px; border:0; border-radius:0; background:transparent; color:var(--recipe-text); font:18px/24px Minecraft,monospace; }
-  .vein-stats b { color:var(--recipe-text); font:9px/13px Minecraft,monospace; letter-spacing:.05em; text-transform:uppercase; }
-  @media (max-width:520px) {
-    .layer-row,.ore-primary-stat { grid-template-columns:48px minmax(0,1fr); padding-inline:4px; gap:7px; }
+  .ore-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 13px;
+    min-width: 0;
+  }
+  .layer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .layer-row {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 4px 7px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .layer-row :global(.special-goods) {
+    width: 48px;
+  }
+  .layer-row :global(.special-goods-grid) {
+    width: 48px;
+  }
+  .layer-copy,
+  .ore-primary-copy {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: 3px;
+  }
+  .layer-copy b,
+  .ore-primary-copy b {
+    color: var(--recipe-text);
+    font:
+      18px/24px Minecraft,
+      monospace;
+    overflow-wrap: anywhere;
+  }
+  .layer-copy span,
+  .ore-primary-copy span {
+    color: var(--recipe-text);
+    font:
+      16px/1.3 Minecraft,
+      monospace;
+    overflow-wrap: anywhere;
+  }
+  .generated-world {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding-top: 2px;
+    min-width: 0;
+  }
+  .generated-world-label {
+    color: var(--recipe-text);
+    font:
+      18px/24px Minecraft,
+      monospace;
+    font-weight: 700;
+    letter-spacing: 0.03em;
+  }
+  .dimension-caption {
+    color: var(--recipe-text);
+    font:
+      9px/13px Minecraft,
+      monospace;
+    line-height: 1.25;
+  }
+  .dimension-list {
+    display: flex;
+    align-items: flex-start;
+    gap: 3px;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    padding: 2px 2px 5px;
+    scrollbar-width: thin;
+  }
+  .dimension-slot {
+    flex: 0 0 48px;
+    width: 48px;
+    min-height: 48px;
+    display: grid;
+    place-items: center;
+  }
+  .dimension-slot :global(.special-goods),
+  .dimension-slot :global(.special-goods-grid) {
+    width: 48px;
+  }
+  .empty-slot {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border: 1px dashed #545960;
+    border-radius: 0;
+    color: #82878c;
+    font-size: 20px;
+  }
+  .ore-primary-stat {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    align-items: center;
+    gap: 10px;
+    padding: 5px 7px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .ore-primary-stat :global(.special-goods-grid) {
+    width: 48px;
+  }
+  .ore-primary-copy span {
+    color: var(--recipe-text);
+  }
+  .vein-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+    padding-top: 3px;
+    border-top: 1px solid #3b3f44;
+  }
+  .vein-stats span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 95px;
+    padding: 7px 9px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+    color: var(--recipe-text);
+    font:
+      18px/24px Minecraft,
+      monospace;
+  }
+  .vein-stats b {
+    color: var(--recipe-text);
+    font:
+      9px/13px Minecraft,
+      monospace;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  @media (max-width: 520px) {
+    .layer-row,
+    .ore-primary-stat {
+      grid-template-columns: 48px minmax(0, 1fr);
+      padding-inline: 4px;
+      gap: 7px;
+    }
   }
 </style>

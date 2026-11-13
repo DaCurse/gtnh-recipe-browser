@@ -11,7 +11,7 @@ import {
   specialSearchText,
   toSpecialGoods,
   toSpecialGoodsList,
-  type SpecialRecord
+  type SpecialRecord,
 } from '../src/lib/specialData';
 
 describe('NEI special browser presentation', () => {
@@ -35,10 +35,18 @@ describe('NEI special browser presentation', () => {
   });
 
   it('maps directional lookup IDs to their individual NEI tabs', () => {
-    expect(specialLookupMatchesView('special:crop:cropsnh-rubyne:recipes', 'crop-output')).toBe(true);
-    expect(specialLookupMatchesView('special:pool:cropsnh-gray:usages', 'mutation-pool')).toBe(true);
-    expect(specialLookupMatchesView('special:ore-processing:iron:recipes', 'gt-ore-processing')).toBe(true);
-    expect(specialLookupMatchesView('special:crop:cropsnh-rubyne:recipes', 'gt-ore-processing')).toBe(false);
+    expect(specialLookupMatchesView('special:crop:cropsnh-rubyne:recipes', 'crop-output')).toBe(
+      true,
+    );
+    expect(specialLookupMatchesView('special:pool:cropsnh-gray:usages', 'mutation-pool')).toBe(
+      true,
+    );
+    expect(
+      specialLookupMatchesView('special:ore-processing:iron:recipes', 'gt-ore-processing'),
+    ).toBe(true);
+    expect(
+      specialLookupMatchesView('special:crop:cropsnh-rubyne:recipes', 'gt-ore-processing'),
+    ).toBe(false);
   });
 
   it('keeps the unreliable ore-processing view disabled', () => {
@@ -59,20 +67,21 @@ describe('NEI special browser presentation', () => {
   });
 
   it('resolves GTNEIOrePlugin dimension-display aliases to real catalog goods', () => {
-    const resolver = (id: string) => /blockDimensionDisplay_(?:Ow|Ga|Ne):0$/.test(id)
-      ? { id, kind: 'item', name: id, mod: 'gtneioreplugin' } as never
-      : undefined;
+    const resolver = (id: string) =>
+      /blockDimensionDisplay_(?:Ow|Ga|Ne):0$/.test(id)
+        ? ({ id, kind: 'item', name: id, mod: 'gtneioreplugin' } as never)
+        : undefined;
     expect(gtDimensionDisplayGoodsId('Overworld', resolver)).toBe(
-      'i:gtneioreplugin:blockDimensionDisplay_Ow:0'
+      'i:gtneioreplugin:blockDimensionDisplay_Ow:0',
     );
     expect(gtDimensionDisplayGoodsId('ganymed', resolver)).toBe(
-      'i:gtneioreplugin:blockDimensionDisplay_Ga:0'
+      'i:gtneioreplugin:blockDimensionDisplay_Ga:0',
     );
     expect(gtDimensionDisplayGoodsId('0', resolver)).toBe(
-      'i:gtneioreplugin:blockDimensionDisplay_Ow:0'
+      'i:gtneioreplugin:blockDimensionDisplay_Ow:0',
     );
     expect(gtDimensionDisplayGoodsId('-1', resolver)).toBe(
-      'i:gtneioreplugin:blockDimensionDisplay_Ne:0'
+      'i:gtneioreplugin:blockDimensionDisplay_Ne:0',
     );
   });
 
@@ -82,7 +91,7 @@ describe('NEI special browser presentation', () => {
       expect(source).toContain(label);
     }
     expect(source).toContain('dimensionGoodsIds');
-    expect(source).toContain('overflow-x:auto');
+    expect(source).toMatch(/overflow-x:\s*auto/);
     expect(source).toContain('goods: goodsId ? [{ goodsId, chance }] : []');
     expect(source).toContain('Chances per ore chunk');
     expect(source).not.toContain('dimension-copy');
@@ -95,7 +104,7 @@ describe('NEI special browser presentation', () => {
     const variants = await readFile('src/lib/VariantPicker.svelte', 'utf8');
     expect(browser).toContain('class="machine-tab"');
     expect(browser).toContain('<small class:single-word={!/\\s/.test(tab)}>{tab}</small>');
-    expect(variants).toContain(".filter(Boolean).join(' · ')");
+    expect(variants).toMatch(/\.filter\(Boolean\)\s*\.join\(' · '\)/);
   });
 
   it('keeps the all-category export beside the direction tabs', async () => {
@@ -107,41 +116,50 @@ describe('NEI special browser presentation', () => {
     expect(categoryExport).toBeLessThan(machineTabs);
     expect(browser).toContain('const paneExportLabel = $derived');
     expect(browser).toContain("'Export data'");
-    expect(browser).toContain('<pre class="export-filter">"{exportQuery(exportPrompt)}"</pre>');
-    expect(browser).toContain('Would you like to download only matching records or all records in this view?');
-    expect(browser).toContain('oninput={(event) => updateRecipeQuery((event.currentTarget as HTMLInputElement).value)}');
+    expect(browser).toMatch(
+      /<pre class="export-filter">\s*"\{exportQuery\(\s*exportPrompt,?\s*\)\}"\s*<\/pre>/,
+    );
+    expect(browser).toContain(
+      'Would you like to download only matching records or all records in this view?',
+    );
+    expect(browser).toContain(
+      'oninput={(event) => updateRecipeQuery((event.currentTarget as HTMLInputElement).value)}',
+    );
   });
 
   it('does not carry a special tab into another item or recipe direction', async () => {
     const state = await readFile('src/lib/recipeBrowserState.svelte.ts', 'utf8');
     expect(state).toContain('private lastRecipeContextKey: string | undefined;');
-    expect(state).toContain("const contextKey = `${mode}:${selected.id}`;");
+    expect(state).toContain('const contextKey = `${mode}:${selected.id}`;');
     expect(state).toContain("this.specialType = '';");
     expect(state).toContain("this.specialQuery = '';");
     expect(state).toContain("this.specialFilter = '';");
   });
 
   it('normalizes object-shaped crop soil references without stringifying objects', () => {
-    expect(toSpecialGoodsList([
+    expect(
+      toSpecialGoodsList([
+        { goodsId: 'i:minecraft:stone:0' },
+        { id: 'i:minecraft:dirt:0', label: 'Dirt' },
+      ]),
+    ).toEqual([
       { goodsId: 'i:minecraft:stone:0' },
-      { id: 'i:minecraft:dirt:0', label: 'Dirt' }
-    ])).toEqual([
-      { goodsId: 'i:minecraft:stone:0' },
-      { goodsId: 'i:minecraft:dirt:0', label: 'Dirt' }
+      { goodsId: 'i:minecraft:dirt:0', label: 'Dirt' },
     ]);
   });
 
   it('keeps special goods annotations available to the shared tooltip path', () => {
-    expect(toSpecialGoods({
-      goodsId: 'i:minecraft:iron_ingot:0',
+    expect(
+      toSpecialGoods({
+        goodsId: 'i:minecraft:iron_ingot:0',
+        estimatedAmount: 2,
+        tooltipNotes: ['Estimated amount: 2'],
+      }),
+    ).toMatchObject({
       estimatedAmount: 2,
-      tooltipNotes: ['Estimated amount: 2']
-    })).toMatchObject({
-      estimatedAmount: 2,
-      tooltipNotes: ['Estimated amount: 2']
+      tooltipNotes: ['Estimated amount: 2'],
     });
   });
-
 
   it('retains category payload fields in search text', () => {
     const record: SpecialRecord = {
@@ -152,8 +170,8 @@ describe('NEI special browser presentation', () => {
         lpCost: 12_000,
         ritual: 'Meteor Ritual',
         requirements: ['Moon dimension'],
-        outputs: []
-      }
+        outputs: [],
+      },
     };
     const text = specialSearchText(record);
     expect(text).toContain('12000');
@@ -171,8 +189,8 @@ describe('NEI special browser presentation', () => {
     expect(source).toContain('wrapLabels = false');
     expect(source).toContain('class:wrap-labels={wrapLabels}');
     expect(source).toContain('.special-goods.wrap-labels .special-goods-grid');
-    expect(source).toContain('text-overflow:clip;');
-    expect(source).toContain('font-weight:400;');
+    expect(source).toMatch(/text-overflow:\s*clip;/);
+    expect(source).toMatch(/font-weight:\s*400;/);
     const lootSource = await readFile('src/lib/LootBagSpecialCard.svelte', 'utf8');
     expect(lootSource).toContain('joined label="Drops"');
   });
@@ -215,10 +233,9 @@ describe('NEI special browser presentation', () => {
     const tooltipSource = await readFile('src/lib/CatalogTooltip.svelte', 'utf8');
     expect(goodsSource).toContain('notes={tooltipNotes}');
     expect(floatingSource).toContain('<CatalogTooltipContent');
-    expect(floatingSource).toContain('{action} {notes}');
+    expect(floatingSource).toMatch(/\{action\}\s+\{notes\}/);
     expect(contentSource).toContain('<CatalogTooltip {entry} {action} {notes} />');
     expect(tooltipSource).toContain('notes?: readonly string[];');
     expect(tooltipSource).toContain('class="tooltip-notes"');
   });
-
 });

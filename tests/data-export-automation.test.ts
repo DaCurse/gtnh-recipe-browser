@@ -5,13 +5,15 @@ describe('unattended NESQL export overlay', () => {
   it('is opt-in and drives a disposable integrated client without UI automation', async () => {
     const source = await readFile(
       'tools/data-export/overlay/ExportAutomationController.java',
-      'utf8'
+      'utf8',
     );
 
     expect(source).toContain('nesql.automation.enabled');
     expect(source).toContain('nesql.automation.seed');
     expect(source).toContain('8675309');
-    expect(source).toContain('"  \\"worldSeed\\": " + worldSeed');
+    expect(source.replace(/\s+/g, '')).toContain(
+      '"  \\"worldSeed\\": " + worldSeed'.replace(/\s+/g, ''),
+    );
     expect(source).toContain('if (!Boolean.parseBoolean');
     expect(source).toContain('minecraft.launchIntegratedServer');
     expect(source).toContain('minecraft.isIntegratedServerRunning()');
@@ -26,7 +28,7 @@ describe('unattended NESQL export overlay', () => {
   it('normalizes static player state and emits a durable terminal status', async () => {
     const source = await readFile(
       'tools/data-export/overlay/ExportAutomationController.java',
-      'utf8'
+      'utf8',
     );
 
     expect(source).toContain('/tc research ');
@@ -42,10 +44,7 @@ describe('unattended NESQL export overlay', () => {
   });
 
   it('keeps the upstream exporter immutable through a disposable patch', async () => {
-    const patch = await readFile(
-      'tools/data-export/patches/export-automation.patch',
-      'utf8'
-    );
+    const patch = await readFile('tools/data-export/patches/export-automation.patch', 'utf8');
 
     expect(patch).toContain('ExportAutomationController.install()');
     expect(patch).not.toContain('nesql-exporter@ShadowTheAge/');

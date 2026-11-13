@@ -8,7 +8,9 @@ function argument(name: string): string | undefined {
 
 const packDirectory = argument('pack');
 if (!packDirectory) {
-  console.error('Usage: npm run verify-pack -- --pack <directory> [--asset-directory <directory>] [--data <data.bin>] [--layout <shared-layout.json>] [--atlas <atlas.webp>] [--special-data <browser-nei-special.json>] [--machine-crafters <machine-crafters.json>] [--sprite-samples <count>]');
+  console.error(
+    'Usage: npm run verify-pack -- --pack <directory> [--asset-directory <directory>] [--data <data.bin>] [--layout <shared-layout.json>] [--atlas <atlas.webp>] [--special-data <browser-nei-special.json>] [--machine-crafters <machine-crafters.json>] [--sprite-samples <count>]',
+  );
   process.exit(2);
 }
 
@@ -21,10 +23,12 @@ try {
     atlasPath: argument('atlas'),
     specialDataPath: argument('special-data'),
     machineCraftersPath: argument('machine-crafters'),
-    spriteSamples: argument('sprite-samples') ? Number.parseInt(argument('sprite-samples')!, 10) : undefined
+    spriteSamples: argument('sprite-samples')
+      ? Number.parseInt(argument('sprite-samples')!, 10)
+      : undefined,
   });
   console.log(JSON.stringify(result, null, 2));
 } catch (error) {
-  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  console.error(error instanceof Error ? (error.stack ?? error.message) : String(error));
   process.exitCode = 1;
 }

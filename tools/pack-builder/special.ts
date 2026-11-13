@@ -11,18 +11,12 @@ import {
   canonicalizeSpecialData,
   serializeSpecialData,
   specialGoodsIds,
-  type SpecialData
+  type SpecialData,
 } from '../data-export/special';
 
-export {
-  SPECIAL_CATEGORY_IDS,
-  buildSpecialViewTypes
-} from '../data-export/special';
+export { SPECIAL_CATEGORY_IDS, buildSpecialViewTypes } from '../data-export/special';
 
-export type {
-  SpecialData,
-  SpecialRecord
-} from '../data-export/special';
+export type { SpecialData, SpecialRecord } from '../data-export/special';
 
 /** Name used by the pack builder for the canonical sidecar type. */
 export type BrowserNeiSpecialData = SpecialData;
@@ -33,7 +27,8 @@ export function parseBrowserNeiSpecial(value: unknown): SpecialData {
     try {
       return canonicalizeSpecialData(JSON.parse(value) as unknown);
     } catch (error) {
-      if (error instanceof SyntaxError) throw new Error(`Special data JSON: ${error.message}`, { cause: error });
+      if (error instanceof SyntaxError)
+        throw new Error(`Special data JSON: ${error.message}`, { cause: error });
       throw error;
     }
   }
@@ -55,7 +50,7 @@ export function canonicalSpecialDataJson(data: SpecialData): string {
 /** Reject every sidecar goods reference absent from processed format-v5 goods. */
 export function validateSpecialGoodsReferences(
   data: SpecialData,
-  goodsIds: ReadonlySet<string>
+  goodsIds: ReadonlySet<string>,
 ): void {
   const missing = specialGoodsIds(data).filter((id) => !goodsIds.has(id));
   if (missing.length > 0) {

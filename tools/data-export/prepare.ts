@@ -8,7 +8,7 @@ import {
   assertPathMissing,
   requiredArgument,
   sha256File,
-  type ExportSession
+  type ExportSession,
 } from './lib';
 import { getDirectExportProfile, type DirectExportProfile } from './direct-export';
 import { configureUnattendedClient } from './client-options';
@@ -24,7 +24,8 @@ function output(command: string, args: string[], cwd?: string): string {
 }
 
 function metadataContainsPin(value: unknown, modId: string, version: string): boolean {
-  if (Array.isArray(value)) return value.some((entry) => metadataContainsPin(entry, modId, version));
+  if (Array.isArray(value))
+    return value.some((entry) => metadataContainsPin(entry, modId, version));
   if (!value || typeof value !== 'object') return false;
   const object = value as Record<string, unknown>;
   if (object.modid === modId && object.version === version) return true;
@@ -34,7 +35,7 @@ function metadataContainsPin(value: unknown, modId: string, version: string): bo
 async function extractPinnedRuntimeJars(
   archivePath: string,
   workDirectory: string,
-  profile: DirectExportProfile
+  profile: DirectExportProfile,
 ): Promise<string> {
   const runtimeJarsDirectory = join(workDirectory, 'runtime-jars');
   await mkdir(runtimeJarsDirectory, { recursive: true });
@@ -45,7 +46,7 @@ async function extractPinnedRuntimeJars(
   } catch (error) {
     throw new Error(
       `Official archive is missing one or more exact pinned mod jars: ${String(error)}`,
-      { cause: error }
+      { cause: error },
     );
   }
   for (const mod of profile.runtimeMods) {
@@ -56,7 +57,7 @@ async function extractPinnedRuntimeJars(
     } catch (error) {
       throw new Error(
         `Pinned runtime jar ${mod.jarName} has no readable mcmod.info: ${String(error)}`,
-        { cause: error }
+        { cause: error },
       );
     }
     let metadata: unknown;
@@ -65,12 +66,12 @@ async function extractPinnedRuntimeJars(
     } catch (error) {
       throw new Error(
         `Pinned runtime jar ${mod.jarName} has invalid mcmod.info: ${String(error)}`,
-        { cause: error }
+        { cause: error },
       );
     }
     if (!metadataContainsPin(metadata, mod.modId, mod.version)) {
       throw new Error(
-        `Pinned runtime jar ${mod.jarName} does not declare ${mod.modId} ${mod.version}`
+        `Pinned runtime jar ${mod.jarName} does not declare ${mod.modId} ${mod.version}`,
       );
     }
   }
@@ -82,7 +83,9 @@ function gradlePath(path: string): string {
 }
 
 async function onlyDirectory(directory: string): Promise<string> {
-  const entries = (await readdir(directory, { withFileTypes: true })).filter((entry) => entry.isDirectory());
+  const entries = (await readdir(directory, { withFileTypes: true })).filter((entry) =>
+    entry.isDirectory(),
+  );
   if (entries.length !== 1) {
     throw new Error(`Expected one top-level instance directory, found ${entries.length}`);
   }
@@ -94,7 +97,7 @@ async function builtJar(libs: string, classifier?: string): Promise<string> {
     if (!name.endsWith('.jar')) return false;
     if (classifier) return name.endsWith(`-${classifier}.jar`);
     return !['-deps.jar', '-dev.jar', '-sources.jar', '-sql.jar'].some((suffix) =>
-      name.endsWith(suffix)
+      name.endsWith(suffix),
     );
   });
   if (jars.length !== 1) {
@@ -129,35 +132,37 @@ const profile = getDirectExportProfile(gtnhVersion);
 // half-prepared instance behind.
 const specialProviderSource = join(
   repositoryRoot,
-  'tools/data-export/overlay/RuntimeSpecialAdapter.java'
+  'tools/data-export/overlay/RuntimeSpecialAdapter.java',
 );
 let specialProviderDetails: string;
 try {
   specialProviderDetails = await readFile(specialProviderSource, 'utf8');
 } catch {
   throw new Error(
-    'Cannot prepare the direct GTNH export: the maintained live NEI special-data provider is missing at '
-      + `${specialProviderSource}. The current overlay supplies only the SPI and cannot emit the ten requested `
-      + 'live categories (CropsNH crop-output/mutation-pool/crop-breeding; GT ore vein/small ore/processing; '
-      + 'BloodMagic meteor-ritual; EnhancedLootBags loot-bag; VendingMachine vending-trade; Forge/Roguelike/'
-      + `Twilight worldgen-loot). Add and compile that provider against the pinned ${gtnhVersion} runtime jars `
-      + 'before preparing a disposable instance.'
+    'Cannot prepare the direct GTNH export: the maintained live NEI special-data provider is missing at ' +
+      `${specialProviderSource}. The current overlay supplies only the SPI and cannot emit the ten requested ` +
+      'live categories (CropsNH crop-output/mutation-pool/crop-breeding; GT ore vein/small ore/processing; ' +
+      'BloodMagic meteor-ritual; EnhancedLootBags loot-bag; VendingMachine vending-trade; Forge/Roguelike/' +
+      `Twilight worldgen-loot). Add and compile that provider against the pinned ${gtnhVersion} runtime jars ` +
+      'before preparing a disposable instance.',
   );
 }
 if (!specialProviderDetails.includes('implements NeiSpecialOverlay.Adapter')) {
   throw new Error(
-    'Cannot prepare the direct GTNH export: the maintained NEI special-data provider is not a compiled '
-      + `NeiSpecialOverlay.Adapter at ${specialProviderSource}; refusing to create a guaranteed-broken instance.`
+    'Cannot prepare the direct GTNH export: the maintained NEI special-data provider is not a compiled ' +
+      `NeiSpecialOverlay.Adapter at ${specialProviderSource}; refusing to create a guaranteed-broken instance.`,
   );
 }
 const workDirectory = resolve(args.get('work-dir') ?? `.export-work/${gtnhVersion}`);
-const instanceDirectory = resolve(args.get('instance-dir') ?? join(workDirectory, 'client-instance'));
+const instanceDirectory = resolve(
+  args.get('instance-dir') ?? join(workDirectory, 'client-instance'),
+);
 const sessionPath = join(workDirectory, 'export-session.json');
 const archiveStat = await stat(archivePath);
 const archiveSha256 = await sha256File(archivePath);
 if (archiveStat.size !== profile.bytes || archiveSha256 !== profile.sha256) {
   throw new Error(
-    `Official archive mismatch: received ${archiveStat.size} bytes / ${archiveSha256}`
+    `Official archive mismatch: received ${archiveStat.size} bytes / ${archiveSha256}`,
   );
 }
 
@@ -170,97 +175,102 @@ const exporterRoot = join(repositoryRoot, 'nesql-exporter@ShadowTheAge');
 const patchedExporter = join(workDirectory, 'nesql-exporter');
 await cp(exporterRoot, patchedExporter, {
   recursive: true,
-  filter: (source) => basename(source) !== '.git'
+  filter: (source) => basename(source) !== '.git',
 });
 const patchPath = join(repositoryRoot, 'tools/data-export/patches/combined-tooltips.patch');
 run('patch', ['--dry-run', '--batch', '-p1', '-i', patchPath], patchedExporter);
 run('patch', ['--batch', '-p1', '-i', patchPath], patchedExporter);
 const specialOverlayPatch = join(
   repositoryRoot,
-  'tools/data-export/patches/nei-special-overlay.patch'
+  'tools/data-export/patches/nei-special-overlay.patch',
 );
 run('patch', ['--dry-run', '--batch', '-p1', '-i', specialOverlayPatch], patchedExporter);
 run('patch', ['--batch', '-p1', '-i', specialOverlayPatch], patchedExporter);
 const exportAutomationPatch = join(
   repositoryRoot,
-  'tools/data-export/patches/export-automation.patch'
+  'tools/data-export/patches/export-automation.patch',
 );
 run('patch', ['--dry-run', '--batch', '-p1', '-i', exportAutomationPatch], patchedExporter);
 run('patch', ['--batch', '-p1', '-i', exportAutomationPatch], patchedExporter);
 
 const providerTarget = join(
   patchedExporter,
-  'src/main/java/com/github/dcysteine/nesql/exporter/special/RuntimeSpecialAdapter.java'
+  'src/main/java/com/github/dcysteine/nesql/exporter/special/RuntimeSpecialAdapter.java',
 );
 await cp(specialProviderSource, providerTarget);
-await cp(join(repositoryRoot, 'tools/data-export/overlay/RuntimeQuestItems.java'),
-  join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/special/RuntimeQuestItems.java'));
+await cp(
+  join(repositoryRoot, 'tools/data-export/overlay/RuntimeQuestItems.java'),
+  join(
+    patchedExporter,
+    'src/main/java/com/github/dcysteine/nesql/exporter/special/RuntimeQuestItems.java',
+  ),
+);
 const automationControllerSource = join(
   repositoryRoot,
-  'tools/data-export/overlay/ExportAutomationController.java'
+  'tools/data-export/overlay/ExportAutomationController.java',
 );
 const automationControllerTarget = join(
   patchedExporter,
-  'src/main/java/com/github/dcysteine/nesql/exporter/main/ExportAutomationController.java'
+  'src/main/java/com/github/dcysteine/nesql/exporter/main/ExportAutomationController.java',
 );
 await cp(automationControllerSource, automationControllerTarget);
 const serviceLoaderPath = join(
   patchedExporter,
-  'src/main/resources/META-INF/services/com.github.dcysteine.nesql.exporter.special.NeiSpecialOverlay$Adapter'
+  'src/main/resources/META-INF/services/com.github.dcysteine.nesql.exporter.special.NeiSpecialOverlay$Adapter',
 );
 await mkdir(dirname(serviceLoaderPath), { recursive: true });
 await writeFile(
   serviceLoaderPath,
   'com.github.dcysteine.nesql.exporter.special.RuntimeSpecialAdapter\n',
-  'utf8'
+  'utf8',
 );
 
 const buildPath = join(patchedExporter, 'build.gradle.kts');
 const buildBeforeRuntimeJars = await readFile(buildPath, 'utf8');
-const runtimeCompileOnly = profile.runtimeMods.map(
-  (mod) => `    compileOnly(files("${gradlePath(join(runtimeJarsDirectory, mod.jarName))}"))`
-).join('\n');
+const runtimeCompileOnly = profile.runtimeMods
+  .map((mod) => `    compileOnly(files("${gradlePath(join(runtimeJarsDirectory, mod.jarName))}"))`)
+  .join('\n');
 const dependencyOverrides = profile.compileDependencyOverrides?.length
-  ? `\nconfigurations.configureEach { resolutionStrategy.force(${profile.compileDependencyOverrides.map(value => JSON.stringify(value)).join(', ')}) }\n`
+  ? `\nconfigurations.configureEach { resolutionStrategy.force(${profile.compileDependencyOverrides.map((value) => JSON.stringify(value)).join(', ')}) }\n`
   : '';
 await writeFile(
   buildPath,
   `${buildBeforeRuntimeJars}\n// Exact GTNH ${gtnhVersion} jars used by RuntimeSpecialAdapter.\ndependencies {\n${runtimeCompileOnly}\n}\n${dependencyOverrides}`,
-  'utf8'
+  'utf8',
 );
 const patchedBuild = await readFile(buildPath, 'utf8');
 const patchedItem = await readFile(
   join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/sql/base/item/Item.java'),
-  'utf8'
+  'utf8',
 );
 const patchedQuestFactory = await readFile(
   join(
     patchedExporter,
-    'src/main/java/com/github/dcysteine/nesql/exporter/plugin/quest/factory/QuestFactory.java'
+    'src/main/java/com/github/dcysteine/nesql/exporter/plugin/quest/factory/QuestFactory.java',
   ),
-  'utf8'
+  'utf8',
 );
 const patchedItemFactory = await readFile(
   join(
     patchedExporter,
-    'src/main/java/com/github/dcysteine/nesql/exporter/plugin/base/factory/ItemFactory.java'
+    'src/main/java/com/github/dcysteine/nesql/exporter/plugin/base/factory/ItemFactory.java',
   ),
-  'utf8'
+  'utf8',
 );
 const patchedRenderJob = await readFile(
   join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/render/RenderJob.java'),
-  'utf8'
+  'utf8',
 );
 const patchedSpecialOverlay = await readFile(
   join(
     patchedExporter,
-    'src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java'
+    'src/main/java/com/github/dcysteine/nesql/exporter/special/NeiSpecialOverlay.java',
   ),
-  'utf8'
+  'utf8',
 );
 const patchedMain = await readFile(
   join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/main/Main.java'),
-  'utf8'
+  'utf8',
 );
 const copiedProvider = await readFile(providerTarget, 'utf8');
 const copiedAutomationController = await readFile(automationControllerTarget, 'utf8');
@@ -284,7 +294,9 @@ if (
   !serviceLoader.includes('RuntimeSpecialAdapter') ||
   !patchedBuild.includes(`Exact GTNH ${gtnhVersion} jars used by RuntimeSpecialAdapter`)
 ) {
-  throw new Error('Exporter compatibility or NEI special-data overlay did not produce the expected source');
+  throw new Error(
+    'Exporter compatibility or NEI special-data overlay did not produce the expected source',
+  );
 }
 // Do not leave a Gradle daemon/worker behind after the disposable exporter
 // build; the one-command orchestrator must be safe to retry in the same host.
@@ -293,7 +305,10 @@ run('bash', ['./gradlew', '--no-daemon', 'build'], patchedExporter);
 const libs = join(patchedExporter, 'build/libs');
 const mainJar = await builtJar(libs);
 const dependenciesJar = await builtJar(libs, 'deps');
-const instanceStaging = join(dirname(instanceDirectory), `.${basename(instanceDirectory)}.preparing-${process.pid}`);
+const instanceStaging = join(
+  dirname(instanceDirectory),
+  `.${basename(instanceDirectory)}.preparing-${process.pid}`,
+);
 await mkdir(instanceStaging, { recursive: true });
 let instanceFinalized = false;
 try {
@@ -317,7 +332,7 @@ const instanceConfig = await readFile(instanceConfigPath, 'utf8');
 await writeFile(
   instanceConfigPath,
   instanceConfig.replace(/^name=.*$/m, `name=GTNH ${gtnhVersion} NESQL Export`),
-  'utf8'
+  'utf8',
 );
 const modsDirectory = join(instanceDirectory, '.minecraft/mods');
 await configureUnattendedClient(join(instanceDirectory, '.minecraft'));
@@ -338,7 +353,7 @@ const session: ExportSession = {
   archive: {
     path: archivePath,
     bytes: archiveStat.size,
-    sha256: archiveSha256
+    sha256: archiveSha256,
   },
   exporter: {
     repository: 'https://github.com/ShadowTheAge/nesql-exporter',
@@ -349,19 +364,19 @@ const session: ExportSession = {
     mainJar: basename(mainJar),
     mainJarSha256: await sha256File(mainJar),
     dependenciesJar: basename(dependenciesJar),
-    dependenciesJarSha256: await sha256File(dependenciesJar)
+    dependenciesJarSha256: await sha256File(dependenciesJar),
   },
   processor: {
     repository: 'https://github.com/ShadowTheAge/gtnh',
     commit: output('git', ['rev-parse', 'HEAD'], join(repositoryRoot, 'gtnh@ShadowTheAge')),
     patchSha256: await sha256File(
-      join(repositoryRoot, 'tools/data-export/patches/processor-2.9.patch')
-    )
+      join(repositoryRoot, 'tools/data-export/patches/processor-2.9.patch'),
+    ),
   },
   toolchains: {
     java: output('java', ['--version']).split('\n')[0]!,
-    dotnetSdk: output('dotnet', ['--version'])
-  }
+    dotnetSdk: output('dotnet', ['--version']),
+  },
 };
 await writeFile(sessionPath, `${JSON.stringify(session, null, 2)}\n`, { flag: 'wx' });
 console.log(JSON.stringify({ session: sessionPath, instance: instanceDirectory }, null, 2));

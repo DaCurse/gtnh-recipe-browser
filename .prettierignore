@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.export-work/
+.pack-output/
+public/data/
+public/quests/
+public/assets/
+assets/source/
+src/lib/generated/
+tests/fixtures/
+gtnh@ShadowTheAge/
+nesql-exporter@ShadowTheAge/
+package-lock.json
+*.patch

@@ -14,10 +14,17 @@ export function useCatalogEntry(id: () => string | undefined) {
   const getSource = getContext<(() => EntrySource | null) | undefined>(sourceContext);
   const source = $derived(getSource?.());
   const entryId = $derived(id());
-  let result = $state.raw<{ id: string; source: EntrySource; entry?: CatalogEntry; error?: string }>();
+  let result = $state.raw<{
+    id: string;
+    source: EntrySource;
+    entry?: CatalogEntry;
+    error?: string;
+  }>();
   let attempt = $state(0);
   const active = $derived(Boolean(source && entryId && !entryId.startsWith('special:')));
-  const current = $derived(result && result.id === entryId && result.source === source ? result : undefined);
+  const current = $derived(
+    result && result.id === entryId && result.source === source ? result : undefined,
+  );
   $effect(() => {
     void attempt;
     const repository = source;
@@ -27,20 +34,36 @@ export function useCatalogEntry(id: () => string | undefined) {
     const load = async () => {
       try {
         const entry = await repository.entryFor(requestedId, controller.signal);
-        if (!controller.signal.aborted) result = { id: requestedId, source: repository, entry: entry ? { ...entry } : undefined };
+        if (!controller.signal.aborted)
+          result = { id: requestedId, source: repository, entry: entry ? { ...entry } : undefined };
       } catch (error) {
-        if (!controller.signal.aborted) result = { id: requestedId, source: repository,
-          error: error instanceof Error ? error.message : String(error) };
+        if (!controller.signal.aborted)
+          result = {
+            id: requestedId,
+            source: repository,
+            error: error instanceof Error ? error.message : String(error),
+          };
       }
     };
     void load();
     return () => controller.abort();
   });
   return {
-    get entry() { return current?.entry; },
-    get active() { return active; },
-    get loading() { return active && !current; },
-    get error() { return current?.error ?? ''; },
-    retry() { result = undefined; attempt += 1; }
+    get entry() {
+      return current?.entry;
+    },
+    get active() {
+      return active;
+    },
+    get loading() {
+      return active && !current;
+    },
+    get error() {
+      return current?.error ?? '';
+    },
+    retry() {
+      result = undefined;
+      attempt += 1;
+    },
   };
 }

@@ -34,3 +34,14 @@ resolution item atlases; optimize the small header image independently. GitHub
 Pages HTTP cache policy cannot be changed by adding a Netlify `_headers` file.
 Report Lighthouse scores only after a fresh run; automated accessibility checks
 do not replace keyboard, focus and graphical-background contrast review.
+
+## First document paint
+
+The Vite startup HTML plugin renders `StartupShell.svelte` through Svelte's
+server renderer. It composes the existing header and landing components with
+empty catalogue data, so static markup and interactive geometry share one source.
+Tool deep links hide landing content and reserve navigation space before mounting.
+Regular and bold Minecraft fonts are preloaded with matching anonymous CORS mode.
+Finder and Questbook modules load only on entry, with a bounded loading region.
+The dataset download policy is unchanged. The temporary SSR server disables file
+watching and uses a separate cache so private export workspaces are not scanned.

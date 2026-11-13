@@ -23,8 +23,8 @@ const repository = decodeFormat5(data);
 const atlasImage = await sharp(atlas).ensureAlpha().raw().toBuffer({ resolveWithObject: true });
 if (atlasImage.info.width !== ATLAS_COLUMNS * SPRITE_SIZE || atlasImage.info.channels !== 4) {
   throw new Error(
-    `Unexpected atlas shape ${atlasImage.info.width}x${atlasImage.info.height}`
-    + ` with ${atlasImage.info.channels} channels`
+    `Unexpected atlas shape ${atlasImage.info.width}x${atlasImage.info.height}` +
+      ` with ${atlasImage.info.channels} channels`,
   );
 }
 
@@ -51,61 +51,63 @@ function spriteAudit(items: typeof repository.items): {
 
 const ichoriumBlade = repository.items.find(
   (item) =>
-    item.mod.toLowerCase() === 'gregtech'
-    && item.internalName === 'gt.metaitem.02'
-    && item.damage === 16978
-    && item.name.toLowerCase().includes('ichorium')
+    item.mod.toLowerCase() === 'gregtech' &&
+    item.internalName === 'gt.metaitem.02' &&
+    item.damage === 16978 &&
+    item.name.toLowerCase().includes('ichorium'),
 );
 if (!ichoriumBlade) throw new Error('Could not find the representative Ichorium turbine blade');
 
 const turbines = repository.items.filter(
   (item) =>
-    item.mod.toLowerCase() === 'gregtech'
-    && item.internalName === 'gt.metatool.01'
-    && [170, 172, 174, 176].includes(item.damage)
-    && (item.tooltip ?? '').toLowerCase().includes('ichorium')
+    item.mod.toLowerCase() === 'gregtech' &&
+    item.internalName === 'gt.metatool.01' &&
+    [170, 172, 174, 176].includes(item.damage) &&
+    (item.tooltip ?? '').toLowerCase().includes('ichorium'),
 );
 if (turbines.length !== 4) {
   throw new Error(`Expected four Ichorium turbine sizes, found ${turbines.length}`);
 }
 const comparisonTurbine = repository.items.find(
   (item) =>
-    item.mod.toLowerCase() === 'gregtech'
-    && item.internalName === 'gt.metatool.01'
-    && item.damage === 170
-    && (item.tooltip ?? '').includes('Steel:')
+    item.mod.toLowerCase() === 'gregtech' &&
+    item.internalName === 'gt.metatool.01' &&
+    item.damage === 170 &&
+    (item.tooltip ?? '').includes('Steel:'),
 );
 if (!comparisonTurbine) throw new Error('Could not find a second real small-turbine variant');
 
 const effectTooltipItem = repository.items.find(
   (item) =>
-    item.internalName === 'alchemyFlask'
-    && item.nbt !== null
-    && (item.tooltip ?? '').includes('Flight (7:06)')
+    item.internalName === 'alchemyFlask' &&
+    item.nbt !== null &&
+    (item.tooltip ?? '').includes('Flight (7:06)'),
 );
 if (!effectTooltipItem) {
-  throw new Error('Could not find a representative item whose final tooltip line is a potion effect');
+  throw new Error(
+    'Could not find a representative item whose final tooltip line is a potion effect',
+  );
 }
 
-const ironOre = repository.items.find(
-  (item) => item.id === 'i:gregtech:gt.blockores2:32'
-);
+const ironOre = repository.items.find((item) => item.id === 'i:gregtech:gt.blockores2:32');
 if (!ironOre) throw new Error('Could not find the representative GregTech Iron Ore');
-const ironOreDictionaries = repository.oreDictionaries.filter(
-  (dictionary) => dictionary.itemIds.includes(ironOre.id)
+const ironOreDictionaries = repository.oreDictionaries.filter((dictionary) =>
+  dictionary.itemIds.includes(ironOre.id),
 );
 for (const expected of ['o:oreIron', 'o:oreAnyIron']) {
   if (!ironOreDictionaries.some((dictionary) => dictionary.id === expected)) {
     throw new Error(`Iron Ore is missing named dictionary ${expected}`);
   }
 }
-const anonymousIronGroup = repository.ingredientGroups.find(
-  (group) => group.itemIds.includes(ironOre.id)
+const anonymousIronGroup = repository.ingredientGroups.find((group) =>
+  group.itemIds.includes(ironOre.id),
 );
-if (!anonymousIronGroup) throw new Error('Could not find an anonymous recipe group containing Iron Ore');
-const anonymousIronRecipe = repository.recipes.find(
-  (recipe) => recipe.inputs.some((input) =>
-    input.kind === 'itemGroup' && input.goodsId === anonymousIronGroup.id)
+if (!anonymousIronGroup)
+  throw new Error('Could not find an anonymous recipe group containing Iron Ore');
+const anonymousIronRecipe = repository.recipes.find((recipe) =>
+  recipe.inputs.some(
+    (input) => input.kind === 'itemGroup' && input.goodsId === anonymousIronGroup.id,
+  ),
 );
 if (!anonymousIronRecipe) {
   throw new Error('Could not find a recipe referencing the anonymous Iron Ore group');
@@ -119,18 +121,21 @@ if (recipes.length < 4) {
 
 const searchableGtTools = repository.items.filter(
   (item) =>
-    item.searchable
-    && item.mod.toLowerCase() === 'gregtech'
-    && item.internalName === 'gt.metatool.01'
+    item.searchable &&
+    item.mod.toLowerCase() === 'gregtech' &&
+    item.internalName === 'gt.metatool.01',
 );
 const wrenchNames = ['Wrench (LV)', 'Wrench (MV)', 'Wrench (HV)'];
 const gtToolSpriteAudit = spriteAudit(searchableGtTools);
 const wrenchSpriteAudit = Object.fromEntries(
-  wrenchNames.map((name) => [name, spriteAudit(searchableGtTools.filter((item) => item.name === name))])
+  wrenchNames.map((name) => [
+    name,
+    spriteAudit(searchableGtTools.filter((item) => item.name === name)),
+  ]),
 );
 if (
-  gtToolSpriteAudit.transparent > 0
-  || Object.values(wrenchSpriteAudit).some((audit) => audit.transparent > 0)
+  gtToolSpriteAudit.transparent > 0 ||
+  Object.values(wrenchSpriteAudit).some((audit) => audit.transparent > 0)
 ) {
   throw new Error('GT tool sprite audit found transparent retained variants');
 }
@@ -140,17 +145,17 @@ const fixture = {
   source: {
     formatVersion: repository.formatVersion,
     dataSha256: sha256(data),
-    atlasSha256: sha256(atlas)
+    atlasSha256: sha256(atlas),
   },
   counts: {
     items: repository.items.length,
     fluids: repository.fluids.length,
     recipes: repository.recipes.length,
-    searchableGtTools: searchableGtTools.length
+    searchableGtTools: searchableGtTools.length,
   },
   spriteAudit: {
     searchableGtTools: gtToolSpriteAudit,
-    wrenches: wrenchSpriteAudit
+    wrenches: wrenchSpriteAudit,
   },
   ichoriumBlade,
   turbines,
@@ -160,7 +165,7 @@ const fixture = {
   ironOreDictionaries,
   anonymousIronGroup,
   anonymousIronRecipe,
-  recipes
+  recipes,
 };
 await writeFile(outputPath, `${JSON.stringify(fixture, null, 2)}\n`, { flag: 'wx' });
 console.log(JSON.stringify({ output: outputPath, counts: fixture.counts }, null, 2));

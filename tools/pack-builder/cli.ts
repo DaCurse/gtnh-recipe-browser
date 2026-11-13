@@ -22,12 +22,26 @@ function parseArguments(args: string[]): BuildPackOptions {
     values.set(key.slice(2), value);
   }
   const required = (key: string) => values.get(key) ?? usage();
-  const supported = new Set(['data', 'atlas', 'gtnh-version', 'revision', 'output', 'dataset-id',
-    'display-name', 'base-url', 'special-data', 'machine-crafters', 'layout', 'reuse-packs', 'format-version']);
+  const supported = new Set([
+    'data',
+    'atlas',
+    'gtnh-version',
+    'revision',
+    'output',
+    'dataset-id',
+    'display-name',
+    'base-url',
+    'special-data',
+    'machine-crafters',
+    'layout',
+    'reuse-packs',
+    'format-version',
+  ]);
   for (const key of values.keys()) {
     if (!supported.has(key)) throw new Error(`Unknown option --${key}`);
   }
-  if (values.has('format-version')) throw new Error('The pack builder emits format 7 only; --format-version is obsolete');
+  if (values.has('format-version'))
+    throw new Error('The pack builder emits format 7 only; --format-version is obsolete');
   if (!values.has('layout')) throw new Error('--layout is required');
   return {
     dataPath: required('data'),
@@ -41,19 +55,25 @@ function parseArguments(args: string[]): BuildPackOptions {
     specialDataPath: values.get('special-data'),
     machineCraftersPath: values.get('machine-crafters'),
     layoutPath: values.get('layout'),
-    reusePacks: values.get('reuse-packs')?.split(',')
+    reusePacks: values.get('reuse-packs')?.split(','),
   };
 }
 
 try {
   const result = await buildPack(parseArguments(process.argv.slice(2)));
-  console.log(JSON.stringify({
-    manifest: result.manifestPath,
-    datasetId: result.manifest.datasetId,
-    assets: result.manifest.totals.assets,
-    offlineBytes: result.manifest.totals.offlineBytes
-  }, null, 2));
+  console.log(
+    JSON.stringify(
+      {
+        manifest: result.manifestPath,
+        datasetId: result.manifest.datasetId,
+        assets: result.manifest.totals.assets,
+        offlineBytes: result.manifest.totals.offlineBytes,
+      },
+      null,
+      2,
+    ),
+  );
 } catch (error) {
-  console.error(error instanceof Error ? error.stack ?? error.message : String(error));
+  console.error(error instanceof Error ? (error.stack ?? error.message) : String(error));
   process.exitCode = 1;
 }

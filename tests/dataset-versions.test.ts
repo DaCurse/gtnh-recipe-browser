@@ -7,7 +7,7 @@ import {
   preferredDatasetId,
   startupDatasetSelection,
   replacementDatasetActive,
-  reconcileDatasetVersions
+  reconcileDatasetVersions,
 } from '../src/lib/datasetVersions';
 import type { DatasetState, DatasetVersion } from '../src/lib/types';
 
@@ -16,7 +16,7 @@ function version(datasetId: string, gtnhVersion = '2.9.0-beta-2'): DatasetVersio
     datasetId,
     gtnhVersion,
     revision: datasetId.split('-r').at(-1) ?? datasetId,
-    packManifestUrl: `./data/${datasetId}/pack-manifest.json`
+    packManifestUrl: `./data/${datasetId}/pack-manifest.json`,
   };
 }
 
@@ -32,33 +32,40 @@ function stored(datasetId: string, active = false): DatasetState {
     totalBytes: 100,
     active,
     assetHashes: [],
-    updatedAt: 1
+    updatedAt: 1,
   };
 }
 
 describe('dataset revision availability', () => {
   it('transfers active state when a semantic version gets a new dataset ID', () => {
     expect(replacementDatasetActive(undefined, [{ active: true }], [{ active: true }])).toBe(true);
-    expect(replacementDatasetActive(undefined, [{ active: false }], [{ active: false }])).toBe(true);
-    expect(replacementDatasetActive(undefined, [{ active: false }], [{ active: true }])).toBe(false);
-    expect(replacementDatasetActive({ active: false }, [{ active: true }], [{ active: true }])).toBe(false);
+    expect(replacementDatasetActive(undefined, [{ active: false }], [{ active: false }])).toBe(
+      true,
+    );
+    expect(replacementDatasetActive(undefined, [{ active: false }], [{ active: true }])).toBe(
+      false,
+    );
+    expect(
+      replacementDatasetActive({ active: false }, [{ active: true }], [{ active: true }]),
+    ).toBe(false);
   });
 
   it('detects legacy cache rows generically, regardless of their old pack format', () => {
     const current = stored('current', true);
     const missingMarker = { ...stored('old-missing-marker'), cacheVersion: undefined };
-    const oldCacheVersion = { ...stored('old-cache-version'), cacheVersion: CURRENT_DATASET_CACHE_VERSION - 1 };
+    const oldCacheVersion = {
+      ...stored('old-cache-version'),
+      cacheVersion: CURRENT_DATASET_CACHE_VERSION - 1,
+    };
 
     expect(isLegacyDatasetState(current)).toBe(false);
     expect(isLegacyDatasetState(missingMarker)).toBe(true);
     expect(isLegacyDatasetState(oldCacheVersion)).toBe(true);
-    expect(legacyDatasetStatesFor(
-      [current, missingMarker, oldCacheVersion],
-      current.gtnhVersion
-    ).map((state) => state.datasetId)).toEqual([
-      'old-missing-marker',
-      'old-cache-version'
-    ]);
+    expect(
+      legacyDatasetStatesFor([current, missingMarker, oldCacheVersion], current.gtnhVersion).map(
+        (state) => state.datasetId,
+      ),
+    ).toEqual(['old-missing-marker', 'old-cache-version']);
   });
 
   it('automatically selects the published replacement for a stale active revision', () => {
@@ -82,10 +89,13 @@ describe('dataset revision availability', () => {
     const managed = reconcileDatasetVersions([latest], [oldDataset]);
 
     expect(managed).toHaveLength(2);
-    expect(managed.find(({ version }) => version.datasetId === oldDataset.datasetId))
-      .toMatchObject({ stale: true, newRevisionAvailable: false });
-    expect(managed.find(({ version }) => version.datasetId === latest.datasetId))
-      .toMatchObject({ stale: false, newRevisionAvailable: true });
+    expect(managed.find(({ version }) => version.datasetId === oldDataset.datasetId)).toMatchObject(
+      { stale: true, newRevisionAvailable: false },
+    );
+    expect(managed.find(({ version }) => version.datasetId === latest.datasetId)).toMatchObject({
+      stale: false,
+      newRevisionAvailable: true,
+    });
     expect(hasRevisionUpdate([latest], [oldDataset], oldDataset.datasetId)).toBe(true);
   });
 
@@ -104,38 +114,52 @@ describe('dataset revision availability', () => {
     const stillPublishedOldRevision = version(oldDataset.datasetId);
     const managed = reconcileDatasetVersions(
       [latest, stillPublishedOldRevision],
-      [oldDataset, latestState]
+      [oldDataset, latestState],
     );
 
-    expect(managed.find(({ version }) => version.datasetId === latest.datasetId))
-      .toMatchObject({ stale: false, newRevisionAvailable: false });
-    expect(hasRevisionUpdate(
-      [latest, stillPublishedOldRevision],
-      [oldDataset, latestState],
-      latest.datasetId
-    )).toBe(false);
+    expect(managed.find(({ version }) => version.datasetId === latest.datasetId)).toMatchObject({
+      stale: false,
+      newRevisionAvailable: false,
+    });
+    expect(
+      hasRevisionUpdate(
+        [latest, stillPublishedOldRevision],
+        [oldDataset, latestState],
+        latest.datasetId,
+      ),
+    ).toBe(false);
   });
 });
-
 
 describe('startup rollout', () => {
   const beta = version('2.9.0-beta-3-v7-current', '2.9.0-beta-3');
   const rc = version('2.9.0-RC-1-v7-current', '2.9.0-RC-1');
   const active = { ...stored(beta.datasetId, true), gtnhVersion: beta.gtnhVersion };
-  const index = { schemaVersion: 1, versions: [rc, beta], rollout: { epoch: 2, targetDatasetId: rc.datasetId } };
+  const index = {
+    schemaVersion: 1,
+    versions: [rc, beta],
+    rollout: { epoch: 2, targetDatasetId: rc.datasetId },
+  };
 
   it('migrates saved active URLs once and preserves later manual choices', () => {
-    expect(startupDatasetSelection(index, [active], beta.datasetId, 1))
-      .toEqual({ datasetId: rc.datasetId, rolloutEpoch: 2 });
-    expect(startupDatasetSelection(index, [active], beta.datasetId, 2))
-      .toEqual({ datasetId: beta.datasetId, rolloutEpoch: undefined });
-    expect(startupDatasetSelection(index, [active], undefined, undefined).datasetId).toBe(rc.datasetId);
+    expect(startupDatasetSelection(index, [active], beta.datasetId, 1)).toEqual({
+      datasetId: rc.datasetId,
+      rolloutEpoch: 2,
+    });
+    expect(startupDatasetSelection(index, [active], beta.datasetId, 2)).toEqual({
+      datasetId: beta.datasetId,
+      rolloutEpoch: undefined,
+    });
+    expect(startupDatasetSelection(index, [active], undefined, undefined).datasetId).toBe(
+      rc.datasetId,
+    );
   });
 
   it('honors another explicit link and acknowledges its choice only after success', () => {
     const old = version('old', '2.8.0');
-    expect(startupDatasetSelection({ ...index, versions: [rc, beta, old] }, [active], old.datasetId, 1))
-      .toEqual({ datasetId: old.datasetId, rolloutEpoch: 2 });
+    expect(
+      startupDatasetSelection({ ...index, versions: [rc, beta, old] }, [active], old.datasetId, 1),
+    ).toEqual({ datasetId: old.datasetId, rolloutEpoch: 2 });
     expect(startupDatasetSelection(index, [active], beta.datasetId, 1).rolloutEpoch).toBe(2);
   });
 
@@ -147,7 +171,13 @@ describe('startup rollout', () => {
   });
 
   it('ignores invalid or unpublished rollout targets', () => {
-    expect(startupDatasetSelection({ ...index, rollout: { epoch: 3, targetDatasetId: 'missing' } }, [active], undefined, 1))
-      .toEqual({ datasetId: beta.datasetId, rolloutEpoch: undefined });
+    expect(
+      startupDatasetSelection(
+        { ...index, rollout: { epoch: 3, targetDatasetId: 'missing' } },
+        [active],
+        undefined,
+        1,
+      ),
+    ).toEqual({ datasetId: beta.datasetId, rolloutEpoch: undefined });
   });
 });

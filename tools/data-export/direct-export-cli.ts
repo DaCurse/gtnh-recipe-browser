@@ -45,7 +45,7 @@ function usage(): string {
     '  --poll-interval <ms>      Status polling interval (default: 1000)',
     '  --jvm-arg <argument>      Extra JVM argument (repeatable)',
     '',
-    'The orchestrator verifies the official archive byte size and SHA-256 before preparing the disposable client.'
+    'The orchestrator verifies the official archive byte size and SHA-256 before preparing the disposable client.',
   ].join('\n');
 }
 
@@ -57,7 +57,8 @@ function takeValue(args: string[], index: number, flag: string): [string, number
 
 function numberValue(value: string, flag: string): number {
   const result = Number(value);
-  if (!Number.isInteger(result) || result <= 0) throw new Error(`${flag} must be a positive integer`);
+  if (!Number.isInteger(result) || result <= 0)
+    throw new Error(`${flag} must be a positive integer`);
   return result;
 }
 
@@ -66,7 +67,7 @@ function parseCli(args: string[]): CliOptions {
     help: false,
     xvfbArgs: ['-a', '--server-args=-screen 0 1280x720x24'],
     useXvfb: process.platform !== 'win32',
-    jvmArgs: []
+    jvmArgs: [],
   };
   for (let index = 0; index < args.length; index++) {
     const flag = args[index]!;
@@ -78,7 +79,10 @@ function parseCli(args: string[]): CliOptions {
       result.useXvfb = false;
       continue;
     }
-    if (flag === '--windowed') { result.windowless = false; continue; }
+    if (flag === '--windowed') {
+      result.windowless = false;
+      continue;
+    }
     let value: string;
     if (flag === '--version') {
       [value, index] = takeValue(args, index, flag);
@@ -101,7 +105,8 @@ function parseCli(args: string[]): CliOptions {
     } else if (flag === '--reuse-packs') {
       [value, index] = takeValue(args, index, flag);
       result.reusePacks = value.split(',').map((path) => path.trim());
-      if (result.reusePacks.some((path) => !path)) throw new Error('--reuse-packs requires nonempty directories');
+      if (result.reusePacks.some((path) => !path))
+        throw new Error('--reuse-packs requires nonempty directories');
     } else if (flag === '--username') {
       [value, index] = takeValue(args, index, flag);
       result.username = value;
@@ -163,18 +168,25 @@ export async function runDirectExportCli(args: string[] = process.argv.slice(2))
     console.log(usage());
     return 0;
   }
-  if (!options.sharedLayoutPath) throw new Error('--shared-layout is required for the canonical pack');
+  if (!options.sharedLayoutPath)
+    throw new Error('--shared-layout is required for the canonical pack');
   const result = await orchestrateDirectExport(options);
-  process.stdout.write(`${JSON.stringify({
-    profile: result.profile.version,
-    archive: result.archive.path,
-    session: result.sessionPath,
-    pack: result.processResult.packDirectory,
-    result: result.resultPath,
-    status: result.statusFile,
-    launcherStatus: result.launcherStatusFile,
-    automationStatus: result.automationStatusFile
-  }, null, 2)}\n`);
+  process.stdout.write(
+    `${JSON.stringify(
+      {
+        profile: result.profile.version,
+        archive: result.archive.path,
+        session: result.sessionPath,
+        pack: result.processResult.packDirectory,
+        result: result.resultPath,
+        status: result.statusFile,
+        launcherStatus: result.launcherStatusFile,
+        automationStatus: result.automationStatusFile,
+      },
+      null,
+      2,
+    )}\n`,
+  );
   return 0;
 }
 
@@ -186,6 +198,6 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
     (error: unknown) => {
       console.error(error instanceof Error ? error.message : error);
       process.exitCode = 1;
-    }
+    },
   );
 }

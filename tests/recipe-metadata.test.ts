@@ -3,7 +3,7 @@ import {
   formatCircuitConflicts,
   formatGtMetadata,
   hasRelevantPower,
-  voltageTierName
+  voltageTierName,
 } from '../src/lib/recipeMetadata';
 
 describe('GT recipe metadata', () => {
@@ -14,8 +14,9 @@ describe('GT recipe metadata', () => {
   it('formats known flags and preserves unknown metadata', () => {
     expect(formatGtMetadata({ key: 'cleanroom', value: 1 })).toBe('Requires cleanroom');
     expect(formatGtMetadata({ key: 'cleanroom', value: 0 })).toBeNull();
-    expect(formatGtMetadata({ key: 'coil_heat', value: 10800 }))
-      .toBe('Heat: 10800K (Awakened Draconium)');
+    expect(formatGtMetadata({ key: 'coil_heat', value: 10800 })).toBe(
+      'Heat: 10800K (Awakened Draconium)',
+    );
     expect(formatGtMetadata({ key: 'custom_rule', value: 2500 })).toBe('custom_rule: 2.5k');
   });
 
@@ -29,7 +30,6 @@ describe('GT recipe metadata', () => {
     expect(voltageTierName(7)).toBe('UV');
     expect(formatCircuitConflicts(0)).toBe('No recipe conflicts');
     expect(formatCircuitConflicts(1 << 2)).toBe('Recipe conflicts on circuit #2');
-    expect(formatCircuitConflicts((1 << 1) | (1 << 4)))
-      .toBe('Recipe conflicts on circuits #1, #4');
+    expect(formatCircuitConflicts((1 << 1) | (1 << 4))).toBe('Recipe conflicts on circuits #1, #4');
   });
 });

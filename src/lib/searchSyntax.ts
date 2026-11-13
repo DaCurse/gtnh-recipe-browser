@@ -5,7 +5,10 @@ interface SearchTerm {
   value: string;
   pattern: string;
 }
-interface SearchSpan { text: string; format: string }
+interface SearchSpan {
+  text: string;
+  format: string;
+}
 export interface SearchExpression {
   clauses: SearchTerm[][];
   spans: SearchSpan[];
@@ -16,8 +19,8 @@ export interface SearchExpression {
 const providers: Record<string, { field: SearchField; format: string }> = {
   '@': { field: 'mod', format: 'd' },
   '#': { field: 'tooltip', format: 'e' },
-  '$': { field: 'ore', format: 'b' },
-  '&': { field: 'identifier', format: '6' }
+  $: { field: 'ore', format: 'b' },
+  '&': { field: 'identifier', format: '6' },
 };
 
 /** One lexer supplies both matching and lossless input highlighting. */
@@ -34,8 +37,17 @@ export function parseSearchExpression(source: string): SearchExpression {
   };
   while (index < source.length) {
     const character = source[index]!;
-    if (/\s/.test(character)) { append(character); index++; continue; }
-    if (character === '|') { append(character, '7'); clauses.push([]); index++; continue; }
+    if (/\s/.test(character)) {
+      append(character);
+      index++;
+      continue;
+    }
+    if (character === '|') {
+      append(character, '7');
+      clauses.push([]);
+      index++;
+      continue;
+    }
     let negated = false;
     if (character === '!' || character === '-') {
       negated = true;
@@ -45,7 +57,10 @@ export function parseSearchExpression(source: string): SearchExpression {
     const provider = providers[source[index] ?? ''];
     const field = provider?.field ?? 'any';
     const format = provider?.format ?? '';
-    if (provider) { append(source[index]!, format); index++; }
+    if (provider) {
+      append(source[index]!, format);
+      index++;
+    }
     let value = '';
     let quoted = false;
     while (index < source.length) {
@@ -71,11 +86,15 @@ export function parseSearchExpression(source: string): SearchExpression {
       if (field === 'ore') needsOreDictionary = true;
     }
   }
-  return { clauses: clauses.filter(clause => clause.length > 0), spans, needsOreDictionary };
+  return { clauses: clauses.filter((clause) => clause.length > 0), spans, needsOreDictionary };
 }
 
 function normalizePattern(value: string): string {
-  return value.normalize('NFKD').toLocaleLowerCase().replace(/[^a-z0-9@:+.*?-]+/g, ' ').trim();
+  return value
+    .normalize('NFKD')
+    .toLocaleLowerCase()
+    .replace(/[^a-z0-9@:+.*?-]+/g, ' ')
+    .trim();
 }
 
 /** NEI extended mode: ? consumes one character, * consumes one or more.
@@ -90,9 +109,12 @@ function patternMatches(text: string, pattern: string): boolean {
     next[0] = 1; // Search anywhere within the field, like Pattern.find().
     for (let index = 1; index <= pattern.length; index++) {
       const token = pattern[index - 1]!;
-      next[index] = token === '*'
-        ? (previous[index - 1]! | previous[index]!)
-        : token === '?' || token === character ? previous[index - 1]! : 0;
+      next[index] =
+        token === '*'
+          ? previous[index - 1]! | previous[index]!
+          : token === '?' || token === character
+            ? previous[index - 1]!
+            : 0;
     }
     if (next[pattern.length]) return true;
     previous = next;
@@ -102,10 +124,15 @@ function patternMatches(text: string, pattern: string): boolean {
 
 export function searchExpressionMatches(
   expression: Pick<SearchExpression, 'clauses'>,
-  fields: Record<SearchField, readonly string[]>
+  fields: Record<SearchField, readonly string[]>,
 ): boolean {
-  return expression.clauses.length === 0 || expression.clauses.some(clause => clause.every(term => {
-    const matches = fields[term.field].some(text => patternMatches(text, term.pattern));
-    return term.negated ? !matches : matches;
-  }));
+  return (
+    expression.clauses.length === 0 ||
+    expression.clauses.some((clause) =>
+      clause.every((term) => {
+        const matches = fields[term.field].some((text) => patternMatches(text, term.pattern));
+        return term.negated ? !matches : matches;
+      }),
+    )
+  );
 }

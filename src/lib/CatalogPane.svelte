@@ -9,7 +9,12 @@
   import ProjectLinks from './ProjectLinks.svelte';
   import VariantPicker from './VariantPicker.svelte';
   import { resolveCatalogVariant } from './catalogVariants';
-  import { buildCatalogSearchDocuments, catalogDocumentMatches, parseCatalogSearchQuery, type CatalogSearchDocument } from './catalogSearch';
+  import {
+    buildCatalogSearchDocuments,
+    catalogDocumentMatches,
+    parseCatalogSearchQuery,
+    type CatalogSearchDocument,
+  } from './catalogSearch';
   import { compareCatalogOrder } from './catalogOrder';
   import HighlightedSearchInput from './HighlightedSearchInput.svelte';
   import SearchGuide from './SearchGuide.svelte';
@@ -70,9 +75,11 @@
   let tooltipX = $state(0);
   let tooltipY = $state(0);
   const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
-  const visibleEntries = $derived(searchIds
-    .map((id) => entryById.get(id))
-    .filter((entry): entry is CatalogBrowseEntry => entry !== undefined));
+  const visibleEntries = $derived(
+    searchIds
+      .map((id) => entryById.get(id))
+      .filter((entry): entry is CatalogBrowseEntry => entry !== undefined),
+  );
 
   $effect(() => {
     void query;
@@ -90,7 +97,10 @@
     const term = analyticsSearch(query);
     const context = searchContext;
     const count = searchTotal;
-    if (!term) { reportedSearch = ''; return; }
+    if (!term) {
+      reportedSearch = '';
+      return;
+    }
     if (searchPending || searchLoadingMore) return;
     const timer = window.setTimeout(() => {
       const key = `${context}:${term}`;
@@ -118,8 +128,14 @@
     const worker = searchWorker;
     const nextCatalog = searchableCatalog;
     const getDocuments = loadSearchDocuments;
-    const includeOreDictionary = needsOreDictionary || (initializedCatalog === nextCatalog && initializedOreDictionary);
-    if (!worker || !searchRequested || (initializedCatalog === nextCatalog && initializedOreDictionary === includeOreDictionary)) return;
+    const includeOreDictionary =
+      needsOreDictionary || (initializedCatalog === nextCatalog && initializedOreDictionary);
+    if (
+      !worker ||
+      !searchRequested ||
+      (initializedCatalog === nextCatalog && initializedOreDictionary === includeOreDictionary)
+    )
+      return;
     initializedCatalog = nextCatalog;
     initializedOreDictionary = includeOreDictionary;
     const generation = ++searchGeneration;
@@ -150,7 +166,7 @@
             generation,
             documents: nextDocuments.slice(start, end),
             completed: end,
-            total: nextDocuments.length
+            total: nextDocuments.length,
           });
         } else {
           worker.postMessage({
@@ -160,7 +176,9 @@
               id: entry.id,
               name: entry.name,
               mod: entry.mod,
-              kind: entry.kind, numericId: entry.numericId, damage: entry.damage,
+              kind: entry.kind,
+              numericId: entry.numericId,
+              damage: entry.damage,
               members: entry.variantIds.map((id) => {
                 const member = exactEntryById.get(id)!;
                 return {
@@ -169,12 +187,12 @@
                   mod: member.mod,
                   variantLabel: entry.variantLabels?.[id],
                   rawTooltip: member.rawTooltip,
-                  oreDictionaryIds: member.oreDictionaryIds
+                  oreDictionaryIds: member.oreDictionaryIds,
                 };
-              })
+              }),
             })),
             completed: end,
-            total: nextCatalog.length
+            total: nextCatalog.length,
           });
         }
         await new Promise((resolve) => window.setTimeout(resolve, 0));
@@ -183,8 +201,9 @@
         worker.postMessage({ type: 'finish', generation });
       }
     };
-    void initialize().catch(error => {
-      if (generation === searchGeneration && worker === searchWorker) handleSearchWorkerFailure(error);
+    void initialize().catch((error) => {
+      if (generation === searchGeneration && worker === searchWorker)
+        handleSearchWorkerFailure(error);
     });
   });
 
@@ -196,16 +215,19 @@
     searchPending = true;
     const request = ++searchRequest;
     searchLoadingMore = false;
-    const timeout = window.setTimeout(() => {
-      worker.postMessage({
-        type: 'search',
-        generation: searchGeneration,
-        id: request,
-        query: nextQuery,
-        offset: 0,
-        limit: 60
-      });
-    }, nextQuery ? 80 : 0);
+    const timeout = window.setTimeout(
+      () => {
+        worker.postMessage({
+          type: 'search',
+          generation: searchGeneration,
+          id: request,
+          query: nextQuery,
+          offset: 0,
+          limit: 60,
+        });
+      },
+      nextQuery ? 80 : 0,
+    );
     return () => window.clearTimeout(timeout);
   });
 
@@ -229,7 +251,11 @@
     const expression = parseCatalogSearchQuery(nextQuery);
     const documents = loadSearchDocuments
       ? await loadSearchDocuments(expression.needsOreDictionary)
-      : buildCatalogSearchDocuments(searchableCatalog, [...exactEntryById.values()], exactEntryById);
+      : buildCatalogSearchDocuments(
+          searchableCatalog,
+          [...exactEntryById.values()],
+          exactEntryById,
+        );
     if (request !== searchRequest) return;
     const matches: CatalogSearchDocument[] = [];
     for (let start = 0; start < documents.length; start += 1_000) {
@@ -242,7 +268,7 @@
       if (request !== searchRequest) return;
     }
     matches.sort(compareCatalogOrder);
-    const ids = matches.map(match => match.id);
+    const ids = matches.map((match) => match.id);
     if (request !== searchRequest) return;
     fallbackIds = ids;
     searchIds = ids.slice(0, 60);
@@ -317,16 +343,19 @@
       id: searchRequest,
       query,
       offset: searchIds.length,
-      limit: 60
+      limit: 60,
     });
   }
 
   function loadMoreItems(node: HTMLElement) {
     if (!('IntersectionObserver' in window)) return;
     const root = node.closest('.item-grid');
-    const observer = new IntersectionObserver((entries) => {
-      if (entries.some((entry) => entry.isIntersecting)) requestMoreItems();
-    }, { root, rootMargin: '400px 0px' });
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) requestMoreItems();
+      },
+      { root, rootMargin: '400px 0px' },
+    );
     observer.observe(node);
     return { destroy: () => observer.disconnect() };
   }
@@ -380,26 +409,27 @@
       // Use the default width when storage is unavailable.
     }
     const worker = new Worker(new URL('../workers/search.worker.ts', import.meta.url), {
-      type: 'module'
+      type: 'module',
     });
     searchWorker = worker;
-    worker.onmessage = (event: MessageEvent<
-      | { type: 'ready'; generation: number }
-      | { type: 'progress'; generation: number; completed: number; total: number }
-      | {
-          type: 'results';
-          generation: number;
-          id: number;
-          offset: number;
-          total: number;
-          ids: string[];
-        }
-    >) => {
+    worker.onmessage = (
+      event: MessageEvent<
+        | { type: 'ready'; generation: number }
+        | { type: 'progress'; generation: number; completed: number; total: number }
+        | {
+            type: 'results';
+            generation: number;
+            id: number;
+            offset: number;
+            total: number;
+            ids: string[];
+          }
+      >,
+    ) => {
       if (event.data.generation !== searchGeneration) return;
       if (event.data.type === 'progress') {
-        searchInitProgress = event.data.total > 0
-          ? Math.round(event.data.completed / event.data.total * 100)
-          : 100;
+        searchInitProgress =
+          event.data.total > 0 ? Math.round((event.data.completed / event.data.total) * 100) : 100;
         return;
       }
       if (event.data.type === 'ready') {
@@ -408,9 +438,7 @@
         return;
       }
       if (event.data.id !== searchRequest || !query.trim()) return;
-      searchIds = event.data.offset === 0
-        ? event.data.ids
-        : [...searchIds, ...event.data.ids];
+      searchIds = event.data.offset === 0 ? event.data.ids : [...searchIds, ...event.data.ids];
       searchTotal = event.data.total;
       searchPending = false;
       searchLoadingMore = false;
@@ -439,7 +467,7 @@
       label="Search catalog"
     />
     {#if query}
-      <button class="clear-search" onclick={() => query = ''} aria-label="Clear search">
+      <button class="clear-search" onclick={() => (query = '')} aria-label="Clear search">
         <svg viewBox="0 0 24 24" aria-hidden="true">
           <path d="m7 7 10 10M17 7 7 17"></path>
         </svg>
@@ -448,17 +476,31 @@
     <kbd>Ctrl K</kbd>
   </div>
   <div class="result-bar">
-    <span>{searchPending && !searchReady
-      ? `PREPARING ITEMS & FLUIDS${searchInitProgress ? ` · ${searchInitProgress}%` : ''}`
-      : `${searchTotal.toLocaleString()} ITEMS & FLUIDS`}</span>
+    <span
+      >{searchPending && !searchReady
+        ? `PREPARING ITEMS & FLUIDS${searchInitProgress ? ` · ${searchInitProgress}%` : ''}`
+        : `${searchTotal.toLocaleString()} ITEMS & FLUIDS`}</span
+    >
     <span class="search-tools">
       {#if searchPending}<span class="mini-spinner" aria-label="Searching"></span>{/if}
-      <button class="search-help" bind:this={guideOpener} onclick={() => { guideOpen = true; trackEvent('search_help_opened', { search_context: searchContext }); }}>Search syntax</button>
+      <button
+        class="search-help"
+        bind:this={guideOpener}
+        onclick={() => {
+          guideOpen = true;
+          trackEvent('search_help_opened', { search_context: searchContext });
+        }}>Search syntax</button
+      >
     </span>
   </div>
   {#if searchWorkerError}
-    <div class="search-fallback-note" role="status">{searchLoadError || searchWorkerError}
-      {#if searchLoadError}<button onclick={() => { void fallbackSearch(query, ++searchRequest); }}>Retry</button>{/if}
+    <div class="search-fallback-note" role="status">
+      {searchLoadError || searchWorkerError}
+      {#if searchLoadError}<button
+          onclick={() => {
+            void fallbackSearch(query, ++searchRequest);
+          }}>Retry</button
+        >{/if}
     </div>
   {/if}
   <div class="item-grid">
@@ -473,13 +515,18 @@
           class:active={entry.variantIds.includes(selected.id)}
           class="item-tile"
           aria-label={entry.name}
-          use:touch.action={{ key: entry.id, entry: resolveCatalogVariant(entry, exactEntryById, $oreCycle),
-            enabled: searchContext === 'catalog', clearHover: hideTooltip,
-            activate: (item) => entry.variantKind !== 'single' ? openVariant(entry, false) : select(item.id),
+          use:touch.action={{
+            key: entry.id,
+            entry: resolveCatalogVariant(entry, exactEntryById, $oreCycle),
+            enabled: searchContext === 'catalog',
+            clearHover: hideTooltip,
+            activate: (item) =>
+              entry.variantKind !== 'single' ? openVariant(entry, false) : select(item.id),
             hold: (item) => {
               if (entry.variantKind !== 'single') openVariant(entry, true);
               else if (navigate) openItemActions(item, navigate);
-            } }}
+            },
+          }}
           onpointerenter={(event) => showPointerTooltip(event, entry)}
           onpointermove={movePointerTooltip}
           onpointerleave={hideTooltip}
@@ -500,9 +547,7 @@
           />
           <span class="item-summary">
             <strong>{entry.name}</strong>
-            <small>{entry.variantKind !== 'single'
-              ? variantSummary(entry)
-              : entry.kind}</small>
+            <small>{entry.variantKind !== 'single' ? variantSummary(entry) : entry.kind}</small>
             <span class="tooltip-preview">
               {#if entry.formula}<b>{entry.formula}</b>{/if}
               <MinecraftText
@@ -515,7 +560,9 @@
           <span class="row-arrow">›</span>
         </button>
       {:else}
-        <div class="catalog-empty"><b>No matches</b><span>Try fewer terms or another @mod filter.</span></div>
+        <div class="catalog-empty">
+          <b>No matches</b><span>Try fewer terms or another @mod filter.</span>
+        </div>
       {/each}
       {#if visibleEntries.length < searchTotal}
         <button class="mc-button item-more" use:loadMoreItems onclick={requestMoreItems}>
@@ -541,8 +588,8 @@
     onpointermove={moveResize}
     onpointerup={stopResize}
     onpointercancel={stopResize}
-    onkeydown={resizeWithKeyboard}
-  ><span></span></button>
+    onkeydown={resizeWithKeyboard}><span></span></button
+  >
 </aside>
 
 {#if tooltipEntry}
@@ -560,7 +607,7 @@
     members={variantGroup.variantIds
       .map((id) => exactEntryById.get(id))
       .filter((entry): entry is CatalogEntry => entry !== undefined)}
-    close={() => variantGroup = undefined}
+    close={() => (variantGroup = undefined)}
     select={(id) => {
       variantGroup = undefined;
       const entry = exactEntryById.get(id);
@@ -570,14 +617,48 @@
   />
 {/if}
 
+{#if guideOpen}<SearchGuide close={() => (guideOpen = false)} opener={guideOpener} />{/if}
+
 <style>
-  .search-tools { display:flex; align-items:center; gap:8px; }
-  .search-help { border:0; background:none; padding:7px 0 7px 7px; color:#959a9f; font-size:11px; font-weight:400; white-space:nowrap; text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
-  .search-help:hover { color:#d1d5d9; }
-  .search-fallback-note button { margin-left:6px; border:0; background:none; color:inherit; font:inherit; text-decoration:underline; cursor:pointer; }
+  .search-tools {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .search-help {
+    border: 0;
+    background: none;
+    padding: 7px 0 7px 7px;
+    color: #959a9f;
+    font-size: 11px;
+    font-weight: 400;
+    white-space: nowrap;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+    cursor: pointer;
+  }
+  .search-help:hover {
+    color: #d1d5d9;
+  }
+  .search-fallback-note button {
+    margin-left: 6px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-decoration: underline;
+    cursor: pointer;
+  }
 
-  .catalog-empty { grid-column:1/-1; padding:60px 20px; text-align:center; color:#858a8f; }
-  .catalog-empty b, .catalog-empty span { display:block; margin:8px; }
+  .catalog-empty {
+    grid-column: 1/-1;
+    padding: 60px 20px;
+    text-align: center;
+    color: #858a8f;
+  }
+  .catalog-empty b,
+  .catalog-empty span {
+    display: block;
+    margin: 8px;
+  }
 </style>
-
-{#if guideOpen}<SearchGuide close={() => guideOpen = false} opener={guideOpener} />{/if}

@@ -21,47 +21,123 @@ describe('canonical format-7 generated packs', () => {
         { kind: 'core', logicalId: 'catalog-core', ingredientGroups: [], serviceItemIds: [] },
         { kind: 'recipeTypes', logicalId: 'catalog-recipe-types', recipeTypes: [] },
         { kind: 'recipeRemaps', logicalId: 'catalog-recipe-remaps', obsoleteRecipeRemaps: {} },
-        { kind: 'specialMetadata', logicalId: 'catalog-special-metadata', specialViewTypes: [], specialServiceIcons: [] },
-        { kind: 'goods', logicalId: 'catalog-goods-root', prefix: '', goods: [{ id: goodsId, name: 'Shared fixture', icon: null }] },
-        { kind: 'goodsSearch', logicalId: 'catalog-goods-search-root', prefix: '', goods: [{ id: goodsId, tooltipId: null }], tooltips: [] },
-        { kind: 'goodsDetails', logicalId: 'goods-details-root', prefix: '', goods: [{ id: goodsId, productionShards: [], usageShards: [] }] }
+        {
+          kind: 'specialMetadata',
+          logicalId: 'catalog-special-metadata',
+          specialViewTypes: [],
+          specialServiceIcons: [],
+        },
+        {
+          kind: 'goods',
+          logicalId: 'catalog-goods-root',
+          prefix: '',
+          goods: [{ id: goodsId, name: 'Shared fixture', icon: null }],
+        },
+        {
+          kind: 'goodsSearch',
+          logicalId: 'catalog-goods-search-root',
+          prefix: '',
+          goods: [{ id: goodsId, tooltipId: null }],
+          tooltips: [],
+        },
+        {
+          kind: 'goodsDetails',
+          logicalId: 'goods-details-root',
+          prefix: '',
+          goods: [{ id: goodsId, productionShards: [], usageShards: [] }],
+        },
       ];
-      const assets = await Promise.all(values.map(async (value) => {
-        const bytes = gzipSync(encode({ schemaVersion: 6, ...value }), { level: 9 });
-        const sha256 = createHash('sha256').update(bytes).digest('hex');
-        await writeFile(join(directory, sha256), bytes);
-        return { id: value.logicalId, logicalId: value.logicalId, url: '../../assets/sha256/' + sha256,
-          bytes: bytes.length, sha256, encoding: 'gzip' as const, mediaType: 'application/msgpack',
-          family: value.kind === 'goodsDetails' ? 'goods-details' as const : 'bootstrap' as const,
-          kind: value.kind === 'goodsDetails' ? 'goodsDetails' : 'catalog', role: value.kind, part: 0,
-          goodsCount: value.kind === 'goodsSearch' ? 0 : value.goods?.length ?? 0, recordCount: value.goods?.length ?? 0,
-          prefix: 'prefix' in value ? value.prefix : undefined };
-      }));
+      const assets = await Promise.all(
+        values.map(async (value) => {
+          const bytes = gzipSync(encode({ schemaVersion: 6, ...value }), { level: 9 });
+          const sha256 = createHash('sha256').update(bytes).digest('hex');
+          await writeFile(join(directory, sha256), bytes);
+          return {
+            id: value.logicalId,
+            logicalId: value.logicalId,
+            url: '../../assets/sha256/' + sha256,
+            bytes: bytes.length,
+            sha256,
+            encoding: 'gzip' as const,
+            mediaType: 'application/msgpack',
+            family:
+              value.kind === 'goodsDetails' ? ('goods-details' as const) : ('bootstrap' as const),
+            kind: value.kind === 'goodsDetails' ? 'goodsDetails' : 'catalog',
+            role: value.kind,
+            part: 0,
+            goodsCount: value.kind === 'goodsSearch' ? 0 : (value.goods?.length ?? 0),
+            recordCount: value.goods?.length ?? 0,
+            prefix: 'prefix' in value ? value.prefix : undefined,
+          };
+        }),
+      );
       const recordPages = await buildRecordPages(assets, directory, '../..', []);
-      const targets = { recipes: 1024, goods: 1024, goodsMetadata: 1024, special: 1024, oreDictionaries: 1024 };
+      const targets = {
+        recipes: 1024,
+        goods: 1024,
+        goodsMetadata: 1024,
+        special: 1024,
+        oreDictionaries: 1024,
+      };
       const prefixes = { recipeTypes: {}, goods: [''], oreDictionaries: [''], specialViews: {} };
-      const manifest = { formatVersion: 7, datasetId: 'fixture-v7', gtnhVersion: 'fixture',
-        revision: 'shared', displayName: 'Fixture', assetStore: 'global-sha256',
-        source: { formatVersion: 5, dataSha256: 'fixture', atlasSha256: 'fixture', specialDataSha256: undefined as string | undefined },
-        sharedLayout: { schemaVersion: 1, targets, prefixes,
-          layoutSha256: sharedPrefixLayoutFingerprint({ schemaVersion: 1, targets, ...prefixes }) },
+      const manifest = {
+        formatVersion: 7,
+        datasetId: 'fixture-v7',
+        gtnhVersion: 'fixture',
+        revision: 'shared',
+        displayName: 'Fixture',
+        assetStore: 'global-sha256',
+        source: {
+          formatVersion: 5,
+          dataSha256: 'fixture',
+          atlasSha256: 'fixture',
+          specialDataSha256: undefined as string | undefined,
+        },
+        sharedLayout: {
+          schemaVersion: 1,
+          targets,
+          prefixes,
+          layoutSha256: sharedPrefixLayoutFingerprint({ schemaVersion: 1, targets, ...prefixes }),
+        },
         catalogAssets: assets.filter((asset) => asset.family === 'bootstrap'),
         goodsDetailShards: assets.filter((asset) => asset.family === 'goods-details'),
-        ingredientGroupShards: [], recipeShards: [], specialDataShards: [], iconSheets: [], recordPages,
-        totals: { assets: recordPages.length, offlineBytes: recordPages.reduce((sum, asset) => sum + asset.bytes, 0),
-          searchableEntries: 1, recipes: 0, specialRecords: 0 } };
+        ingredientGroupShards: [],
+        recipeShards: [],
+        specialDataShards: [],
+        iconSheets: [],
+        recordPages,
+        totals: {
+          assets: recordPages.length,
+          offlineBytes: recordPages.reduce((sum, asset) => sum + asset.bytes, 0),
+          searchableEntries: 1,
+          recipes: 0,
+          specialRecords: 0,
+        },
+      };
       const manifestPath = join(root, 'pack-manifest.json');
       await writeFile(manifestPath, JSON.stringify(manifest));
-      await expect(verifyPack({ packDirectory: root })).resolves.toMatchObject({ assets: 2, goods: 1, recipes: 0 });
-      const specialInput = parseBrowserNeiSpecial(await readFile('tests/fixtures/nei-special-v1/browser-nei-special.json'));
+      await expect(verifyPack({ packDirectory: root })).resolves.toMatchObject({
+        assets: 2,
+        goods: 1,
+        recipes: 0,
+      });
+      const specialInput = parseBrowserNeiSpecial(
+        await readFile('tests/fixtures/nei-special-v1/browser-nei-special.json'),
+      );
       const specialDataPath = join(root, 'special.json');
       await writeFile(specialDataPath, JSON.stringify(specialInput, null, 3));
-      manifest.source.specialDataSha256 = createHash('sha256').update(canonicalSpecialDataJson(specialInput)).digest('hex');
+      manifest.source.specialDataSha256 = createHash('sha256')
+        .update(canonicalSpecialDataJson(specialInput))
+        .digest('hex');
       await writeFile(manifestPath, JSON.stringify(manifest));
-      await expect(verifyPack({ packDirectory: root, specialDataPath })).resolves.toMatchObject({ assets: 2 });
+      await expect(verifyPack({ packDirectory: root, specialDataPath })).resolves.toMatchObject({
+        assets: 2,
+      });
       specialInput.records[0]!.searchText += ' changed';
       await writeFile(specialDataPath, JSON.stringify(specialInput));
-      await expect(verifyPack({ packDirectory: root, specialDataPath })).rejects.toThrow('Special input SHA-256');
+      await expect(verifyPack({ packDirectory: root, specialDataPath })).rejects.toThrow(
+        'Special input SHA-256',
+      );
       manifest.recordPages.find((page) => page.family === 'goods-details')!.family = 'bootstrap';
       await writeFile(manifestPath, JSON.stringify(manifest));
       await expect(verifyPack({ packDirectory: root })).rejects.toThrow('load-family boundary');

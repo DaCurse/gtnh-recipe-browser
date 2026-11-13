@@ -65,10 +65,14 @@ export function canonicalVariantNbt(value: string | null | undefined): string | 
 function nbtFieldMap(value: string | null | undefined): Map<string, string> {
   const canonical = canonicalVariantNbt(value);
   if (!canonical) return new Map();
-  return new Map(splitNbtFields(canonical.slice(1, -1)).flatMap((field) => {
-    const separator = field.indexOf(':');
-    return separator > 0 ? [[field.slice(0, separator).trim(), field.slice(separator + 1).trim()] as const] : [];
-  }));
+  return new Map(
+    splitNbtFields(canonical.slice(1, -1)).flatMap((field) => {
+      const separator = field.indexOf(':');
+      return separator > 0
+        ? [[field.slice(0, separator).trim(), field.slice(separator + 1).trim()] as const]
+        : [];
+    }),
+  );
 }
 
 /** Short, human-readable state for CropsNH stacks whose tooltip omits NBT stats. */
@@ -76,7 +80,11 @@ export function variantNbtLabel(entry: Pick<CatalogEntry, 'mod' | 'nbt'>): strin
   if (entry.mod.toLocaleLowerCase() !== 'cropsnh') return undefined;
   const fields = nbtFieldMap(entry.nbt);
   if (!fields.has('crop')) return undefined;
-  const stats = [['gr', 'Growth'], ['ga', 'Gain'], ['re', 'Resistance']]
+  const stats = [
+    ['gr', 'Growth'],
+    ['ga', 'Gain'],
+    ['re', 'Resistance'],
+  ]
     .filter(([key]) => fields.has(key))
     .map(([, label]) => label);
   return `${fields.has('scan') ? 'Analyzed' : 'Unanalyzed'} · ${stats.length > 0 ? stats.join(' · ') : 'Stats not recorded'}`;
@@ -96,14 +104,19 @@ function duplicateVariantKey(entry: CatalogEntry): string | undefined {
     entry.internalName,
     entry.damage,
     entry.rawTooltip,
-    nbt
+    nbt,
   ]);
 }
 
 function variantRichness(entry: CatalogEntry): number {
-  return (entry.specialProductionCount ?? 0) + (entry.specialUsageCount ?? 0) * 2
-    + (entry.specialProductionLookupIds?.length ?? 0) + (entry.specialUsageLookupIds?.length ?? 0) * 2
-    + (entry.productionCount ?? 0) + (entry.usageCount ?? 0);
+  return (
+    (entry.specialProductionCount ?? 0) +
+    (entry.specialUsageCount ?? 0) * 2 +
+    (entry.specialProductionLookupIds?.length ?? 0) +
+    (entry.specialUsageLookupIds?.length ?? 0) * 2 +
+    (entry.productionCount ?? 0) +
+    (entry.usageCount ?? 0)
+  );
 }
 
 /**
@@ -114,11 +127,12 @@ function variantRichness(entry: CatalogEntry): number {
  */
 function cropsNhVisibleVariantKey(entry: CatalogEntry): string | undefined {
   if (
-    entry.kind !== 'item'
-    || entry.mod.toLocaleLowerCase() !== 'cropsnh'
-    || entry.internalName !== 'genericSeed'
-    || !entry.nbt
-  ) return undefined;
+    entry.kind !== 'item' ||
+    entry.mod.toLocaleLowerCase() !== 'cropsnh' ||
+    entry.internalName !== 'genericSeed' ||
+    !entry.nbt
+  )
+    return undefined;
   const crop = entry.nbt.match(/(?:^|[,{}]\s*)crop\s*:\s*"([^"]+)"/i)?.[1]?.toLocaleLowerCase();
   if (!crop) return undefined;
   return JSON.stringify([
@@ -128,7 +142,7 @@ function cropsNhVisibleVariantKey(entry: CatalogEntry): string | undefined {
     entry.mod,
     entry.internalName,
     entry.damage,
-    entry.rawTooltip
+    entry.rawTooltip,
   ]);
 }
 
@@ -144,23 +158,25 @@ export function deduplicateVariantMembers(entries: readonly CatalogEntry[]): Ded
   return [...groups.values()]
     .sort((left, right) => left.firstIndex - right.firstIndex)
     .map((group) => ({
-      entry: [...group.entries].sort((left, right) =>
-        variantRichness(right) - variantRichness(left) || left.id.localeCompare(right.id))[0]!,
-      duplicateCount: group.entries.length
+      entry: [...group.entries].sort(
+        (left, right) =>
+          variantRichness(right) - variantRichness(left) || left.id.localeCompare(right.id),
+      )[0]!,
+      duplicateCount: group.entries.length,
     }));
 }
 
 function variantFamily(entry: CatalogEntry): VariantFamily | null {
   if (
-    entry.kind === 'item'
-    && (entry.nbt || entry.variantNbtKey)
-    && entry.internalName
-    && entry.damage !== undefined
+    entry.kind === 'item' &&
+    (entry.nbt || entry.variantNbtKey) &&
+    entry.internalName &&
+    entry.damage !== undefined
   ) {
     return {
       key: `${entry.kind}\u0000${entry.internalName}\u0000${entry.damage}`,
       kind: 'exact',
-      order: 0
+      order: 0,
     };
   }
 
@@ -170,7 +186,7 @@ function variantFamily(entry: CatalogEntry): VariantFamily | null {
     key: ore.familyKey,
     kind: 'gtOre',
     label: ore.hostStone,
-    order: ore.order
+    order: ore.order,
   };
 }
 
@@ -180,10 +196,13 @@ function stableGroupId(key: string): string {
 
 export function buildCatalogBrowseEntries(entries: CatalogEntry[]): CatalogBrowseEntry[] {
   const searchable = entries.filter((entry) => entry.searchable !== false);
-  const families = new Map<string, {
-    kind: VariantFamily['kind'];
-    members: Array<{ entry: CatalogEntry; label?: string; order: number }>;
-  }>();
+  const families = new Map<
+    string,
+    {
+      kind: VariantFamily['kind'];
+      members: Array<{ entry: CatalogEntry; label?: string; order: number }>;
+    }
+  >();
   const result: CatalogBrowseEntry[] = [];
 
   for (const entry of searchable) {
@@ -193,7 +212,7 @@ export function buildCatalogBrowseEntries(entries: CatalogEntry[]): CatalogBrows
         ...entry,
         variantIds: [entry.id],
         variantCount: 1,
-        variantKind: 'single'
+        variantKind: 'single',
       });
       continue;
     }
@@ -201,16 +220,17 @@ export function buildCatalogBrowseEntries(entries: CatalogEntry[]): CatalogBrows
     grouped.members.push({
       entry,
       label: family.label,
-      order: family.order
+      order: family.order,
     });
     families.set(family.key, grouped);
   }
 
   for (const [key, family] of families) {
-    family.members.sort((left, right) =>
-      left.order - right.order
-      || left.entry.name.localeCompare(right.entry.name)
-      || left.entry.id.localeCompare(right.entry.id)
+    family.members.sort(
+      (left, right) =>
+        left.order - right.order ||
+        left.entry.name.localeCompare(right.entry.name) ||
+        left.entry.id.localeCompare(right.entry.id),
     );
     const representative = family.members[0]!.entry;
     if (family.members.length === 1) {
@@ -218,14 +238,14 @@ export function buildCatalogBrowseEntries(entries: CatalogEntry[]): CatalogBrows
         ...representative,
         variantIds: [representative.id],
         variantCount: 1,
-        variantKind: 'single'
+        variantKind: 'single',
       });
       continue;
     }
     const variantLabels = Object.fromEntries(
       family.members
         .filter((member) => member.label !== undefined)
-        .map((member) => [member.entry.id, member.label!])
+        .map((member) => [member.entry.id, member.label!]),
     );
     result.push({
       ...representative,
@@ -238,7 +258,7 @@ export function buildCatalogBrowseEntries(entries: CatalogEntry[]): CatalogBrows
       variantIds: family.members.map((member) => member.entry.id),
       variantCount: family.members.length,
       variantKind: family.kind,
-      variantLabels: Object.keys(variantLabels).length > 0 ? variantLabels : undefined
+      variantLabels: Object.keys(variantLabels).length > 0 ? variantLabels : undefined,
     });
   }
 
@@ -248,7 +268,7 @@ export function buildCatalogBrowseEntries(entries: CatalogEntry[]): CatalogBrows
 export function resolveCatalogVariant(
   entry: CatalogBrowseEntry,
   exactEntries: ReadonlyMap<string, CatalogEntry>,
-  cycle: number
+  cycle: number,
 ): CatalogEntry {
   if (entry.variantKind === 'single' || entry.variantIds.length === 0) return entry;
   const variantId = entry.variantIds[cycle % entry.variantIds.length];

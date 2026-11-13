@@ -4,7 +4,9 @@ import { join } from 'node:path';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
 import { unreferencedSharedObjectNames } from './lib';
 
-export async function prunePublishedObjects(repositoryRoot: string): Promise<{ count: number; bytes: number }> {
+export async function prunePublishedObjects(
+  repositoryRoot: string,
+): Promise<{ count: number; bytes: number }> {
   const publicData = join(repositoryRoot, 'public/data');
   const globalAssets = join(repositoryRoot, 'public/assets/sha256');
   const manifests: GeneratedPackManifest[] = [];
@@ -23,21 +25,33 @@ export async function prunePublishedObjects(repositoryRoot: string): Promise<{ c
   }
   const companions: Array<{ datasetId: string; assets: Array<{ sha256: string }> }> = [];
   const archivedCompanions: string[] = [];
-  for (const directory of ['assets/source/high-resolution-icons/releases', 'assets/source/ore-diagrams/releases', 'assets/source/catalog-order/releases']) {
-    const files = await readdir(join(repositoryRoot, directory)).catch(error => {
+  for (const directory of [
+    'assets/source/high-resolution-icons/releases',
+    'assets/source/ore-diagrams/releases',
+    'assets/source/catalog-order/releases',
+  ]) {
+    const files = await readdir(join(repositoryRoot, directory)).catch((error) => {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
       return [] as string[];
     });
-    archivedCompanions.push(...files.filter(file => file.endsWith('.json')).map(file => join(directory, file)));
+    archivedCompanions.push(
+      ...files.filter((file) => file.endsWith('.json')).map((file) => join(directory, file)),
+    );
   }
-  for (const path of ['assets/source/high-resolution-icons/provenance.json', 'assets/source/ore-diagrams/provenance.json',
-    ...archivedCompanions]) {
+  for (const path of [
+    'assets/source/high-resolution-icons/provenance.json',
+    'assets/source/ore-diagrams/provenance.json',
+    ...archivedCompanions,
+  ]) {
     const companion = JSON.parse(await readFile(join(repositoryRoot, path), 'utf8')) as {
-      datasetId: string; baseManifestSha256: string; assets: Array<{ sha256: string }>;
+      datasetId: string;
+      baseManifestSha256: string;
+      assets: Array<{ sha256: string }>;
     };
     const digest = manifestDigests.get(companion.datasetId);
     if (!digest) continue;
-    if (digest !== companion.baseManifestSha256) throw new Error(`Companion does not match its immutable dataset: ${path}`);
+    if (digest !== companion.baseManifestSha256)
+      throw new Error(`Companion does not match its immutable dataset: ${path}`);
     companions.push(companion);
   }
   const objectEntries = await readdir(globalAssets, { withFileTypes: true });
@@ -47,7 +61,7 @@ export async function prunePublishedObjects(repositoryRoot: string): Promise<{ c
   const unreferenced = unreferencedSharedObjectNames(
     objectEntries.map((entry) => entry.name),
     manifests,
-    companions
+    companions,
   );
   let bytes = 0;
   for (const name of unreferenced) {

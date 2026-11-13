@@ -11,9 +11,11 @@
   import RecipeBrowser from './lib/RecipeBrowser.svelte';
   import ProjectLinks from './lib/ProjectLinks.svelte';
   import LandingPage from './lib/LandingPage.svelte';
-  import RecipeFinder from './lib/RecipeFinder.svelte';
+  let finderModule: Promise<typeof import('./lib/RecipeFinder.svelte')> | undefined;
+  const loadFinder = () => (finderModule ??= import('./lib/RecipeFinder.svelte'));
   import FeatureLink from './lib/FeatureLink.svelte';
-  import QuestBrowser from './lib/questbook/QuestBrowser.svelte';
+  let questModule: Promise<typeof import('./lib/questbook/QuestBrowser.svelte')> | undefined;
+  const loadQuests = () => (questModule ??= import('./lib/questbook/QuestBrowser.svelte'));
   import QuestPreviewLayer from './lib/questbook/QuestPreviewLayer.svelte';
   import { keyboardModifiers, updateKeyboardModifiers } from './lib/keyboardModifiers.svelte';
   import QuestVersionPicker from './lib/questbook/QuestVersionPicker.svelte';
@@ -37,17 +39,27 @@
     recipeViewFromUrl,
     recipeViewUrlValue,
     specialNavigationFromUrl,
-    specialNavigationUrl
+    specialNavigationUrl,
   } from './lib/navigation';
   import type { CatalogEntry, RecipeView, SpecialScope } from './lib/types';
 
   let datasetLoadSequence = 0;
   let repository = $state<DatasetRepository | null>(null);
-  provideCatalogEntrySource(() => questsOpen && questbook.repository ? questbook.repository : repository);
+  provideCatalogEntrySource(() =>
+    questsOpen && questbook.repository ? questbook.repository : repository,
+  );
   $effect(() => {
     void repository;
-    void selectedId; void landingOpen; void finderOpen; void questsOpen; void detailsOpen; void query;
-    untrack(() => { clearItemTouch(); itemTouchState.menu = undefined; });
+    void selectedId;
+    void landingOpen;
+    void finderOpen;
+    void questsOpen;
+    void detailsOpen;
+    void query;
+    untrack(() => {
+      clearItemTouch();
+      itemTouchState.menu = undefined;
+    });
   });
   let datasetVersion = $state('…');
   let datasetStatus = $state<'loading' | 'ready' | 'error'>('loading');
@@ -65,19 +77,39 @@
   let finderDiscovered = $state(false);
   let questsOpen = $state(new URLSearchParams(location.search).get('page') === 'quests');
   let questsDiscovered = $state(false);
-  function showQuests(destination?: { id:string; version:string; chapter?:string }) {
-    const returnTo=location.href;
+  function showQuests(destination?: { id: string; version: string; chapter?: string }) {
+    const returnTo = location.href;
     questsDiscovered = true;
-    try { localStorage.setItem('gtnh-quests-discovered', '1'); } catch { /* Optional discovery state. */ }
-    landingOpen = false; finderOpen = false; questsOpen = true; detailsOpen = false; query = ''; recipeQuery = '';
-    if(destination) { questbook.questId=destination.id;questbook.chapterId=destination.chapter ?? ''; }
-    const url=questbook.url(location.href);
-    if(destination) url.searchParams.set('quest-version',destination.version);
-    history.pushState({ route: 'quests', ...(destination ? {questReturnTo:returnTo} : {}) }, '', url);
+    try {
+      localStorage.setItem('gtnh-quests-discovered', '1');
+    } catch {
+      /* Optional discovery state. */
+    }
+    landingOpen = false;
+    finderOpen = false;
+    questsOpen = true;
+    detailsOpen = false;
+    query = '';
+    recipeQuery = '';
+    if (destination) {
+      questbook.questId = destination.id;
+      questbook.chapterId = destination.chapter ?? '';
+    }
+    const url = questbook.url(location.href);
+    if (destination) url.searchParams.set('quest-version', destination.version);
+    history.pushState(
+      { route: 'quests', ...(destination ? { questReturnTo: returnTo } : {}) },
+      '',
+      url,
+    );
   }
   function acknowledgeFinder() {
     finderDiscovered = true;
-    try { localStorage.setItem('gtnh-finder-discovered', '1'); } catch { /* Storage is optional. */ }
+    try {
+      localStorage.setItem('gtnh-finder-discovered', '1');
+    } catch {
+      /* Storage is optional. */
+    }
   }
   function showLanding() {
     landingOpen = true;
@@ -112,7 +144,7 @@
   let sidebarWidth = $state(410);
   let sidebarResizing = $state(false);
   let searchInput = $state<HTMLInputElement>();
-  const selection = useCatalogEntry(() => detailsOpen ? selectedId : undefined);
+  const selection = useCatalogEntry(() => (detailsOpen ? selectedId : undefined));
   const itemDataLoading = $derived(selection.loading);
   const itemDataError = $derived(selection.error);
 
@@ -126,27 +158,29 @@
   const specialContextViewType = $derived(
     specialScope === 'all'
       ? repository?.specialViewTypes.find((viewType) => viewType.id === specialType)
-      : undefined
+      : undefined,
   );
   const specialContextServiceIcon = $derived(
     specialContextViewType?.serviceIconId
-      ? repository?.specialServiceIcons.find((icon) => icon.id === specialContextViewType.serviceIconId)
-      : undefined
+      ? repository?.specialServiceIcons.find(
+          (icon) => icon.id === specialContextViewType.serviceIconId,
+        )
+      : undefined,
   );
   const specialContextIconEntry = $derived(
     specialContextServiceIcon?.goodsId
       ? entryById.get(specialContextServiceIcon.goodsId)
-      : undefined
+      : undefined,
   );
   const itemOverviewSelected = $derived(
     selected && specialContextViewType
       ? createSpecialContextEntry(
-        selected,
-        specialContextViewType,
-        specialContextServiceIcon,
-        specialContextIconEntry
-      )
-      : selected
+          selected,
+          specialContextViewType,
+          specialContextServiceIcon,
+          specialContextIconEntry,
+        )
+      : selected,
   );
 
   $effect(() => {
@@ -169,28 +203,47 @@
     if (!navigationUrlReady) return;
     const linkedItem = new URLSearchParams(location.search).get('item');
     const itemPage = detailsOpen || (!repository && Boolean(linkedItem));
-    const screen = landingOpen ? 'landing' : questsOpen ? 'quests' : finderOpen ? finderMode === 'chain' ? 'chain' : 'finder' : itemPage ? 'item' : 'catalog';
-    const key = [screen, screen === 'item' ? selectedId || linkedItem : '', screen === 'item' ? mode : ''].join('|');
+    const screen = landingOpen
+      ? 'landing'
+      : questsOpen
+        ? 'quests'
+        : finderOpen
+          ? finderMode === 'chain'
+            ? 'chain'
+            : 'finder'
+          : itemPage
+            ? 'item'
+            : 'catalog';
+    const key = [
+      screen,
+      screen === 'item' ? selectedId || linkedItem : '',
+      screen === 'item' ? mode : '',
+    ].join('|');
     if (key !== analyticsPage) {
       analyticsPage = key;
-      trackEvent('$pageview', repository ? { screen, dataset_version: repository.gtnhVersion } : { screen });
+      trackEvent(
+        '$pageview',
+        repository ? { screen, dataset_version: repository.gtnhVersion } : { screen },
+      );
     }
     if (screen === 'item' && detailsOpen && selected && repository) {
       const itemKey = [repository.datasetId, selected.id, mode].join('|');
       if (itemKey === analyticsItem) return;
       analyticsItem = itemKey;
-      trackEvent('item_viewed', { item_id: selected.id, item_name: selected.name, view: mode, dataset_version: repository.gtnhVersion });
+      trackEvent('item_viewed', {
+        item_id: selected.id,
+        item_name: selected.name,
+        view: mode,
+        dataset_version: repository.gtnhVersion,
+      });
     } else analyticsItem = '';
   });
 
   const datasetManager = new DatasetManagerState({
     getRepository: () => repository,
     validateRepository,
-    loadDataset: (version, preserveSelection) => loadDataset(
-      version.datasetId,
-      preserveSelection,
-      version.gtnhVersion
-    )
+    loadDataset: (version, preserveSelection) =>
+      loadDataset(version.datasetId, preserveSelection, version.gtnhVersion),
   });
   function select(id: string, push = true, nextMode: RecipeView = 'recipes') {
     landingOpen = false;
@@ -284,7 +337,7 @@
         field.remove();
       }
       errorCopied = true;
-      window.setTimeout(() => errorCopied = false, 1800);
+      window.setTimeout(() => (errorCopied = false), 1800);
     } catch {
       errorCopied = false;
     }
@@ -301,9 +354,12 @@
     datasetVersion = loaded.gtnhVersion;
     const linkedId = new URLSearchParams(location.search).get('item');
     const preferredId = preserveSelection ? selectedId : linkedId;
-    selectedId = preferredId && loaded.entries.some((entry) => entry.id === preferredId)
-      ? preferredId
-      : loaded.entries.find((entry) => entry.searchable !== false)?.id ?? loaded.entries[0]?.id ?? '';
+    selectedId =
+      preferredId && loaded.entries.some((entry) => entry.id === preferredId)
+        ? preferredId
+        : (loaded.entries.find((entry) => entry.searchable !== false)?.id ??
+          loaded.entries[0]?.id ??
+          '');
     if (preserveSelection && preferredId !== selectedId) detailsOpen = false;
     if (!preserveSelection) detailsOpen = Boolean(linkedId && linkedId === selectedId);
     const linkedSpecial = specialNavigationFromUrl(location.href);
@@ -334,13 +390,12 @@
   async function loadDataset(
     targetDatasetId?: string,
     preserveSelection = false,
-    expectedVersion?: string
+    expectedVersion?: string,
   ): Promise<boolean> {
     const analyticsStarted = performance.now();
     datasetLoadSequence++;
-    const linkedDatasetId = targetDatasetId
-      ?? new URLSearchParams(location.search).get('version')
-      ?? undefined;
+    const linkedDatasetId =
+      targetDatasetId ?? new URLSearchParams(location.search).get('version') ?? undefined;
     loadTargetDatasetId = linkedDatasetId;
     loadTargetVersion = expectedVersion;
     loadPreserveSelection = preserveSelection;
@@ -362,22 +417,30 @@
           datasetStage = stage;
         },
         previousRepository ?? undefined,
-        targetDatasetId === undefined
+        targetDatasetId === undefined,
       );
       validateRepository(loaded);
       await loaded.activate();
       await applyRepository(loaded, preserveSelection);
-      clearIconSheetCache(new Set(
-        loaded.entries
-          .map((entry) => entry.icon?.sha256)
-          .filter((sha256): sha256 is string => sha256 !== undefined)
-      ), loaded.datasetId);
+      clearIconSheetCache(
+        new Set(
+          loaded.entries
+            .map((entry) => entry.icon?.sha256)
+            .filter((sha256): sha256 is string => sha256 !== undefined),
+        ),
+        loaded.datasetId,
+      );
       datasetStatus = 'ready';
-      trackEvent('dataset_loaded', { dataset_version: loaded.gtnhVersion, duration_ms: Math.round(performance.now() - analyticsStarted) });
+      trackEvent('dataset_loaded', {
+        dataset_version: loaded.gtnhVersion,
+        duration_ms: Math.round(performance.now() - analyticsStarted),
+      });
       await datasetManager.refreshAvailability();
       return true;
     } catch (error) {
-      trackEvent('dataset_load_failed', { duration_ms: Math.round(performance.now() - analyticsStarted) });
+      trackEvent('dataset_load_failed', {
+        duration_ms: Math.round(performance.now() - analyticsStarted),
+      });
       console.error('Unable to load the GTNH dataset', error);
       datasetError = diagnostic(error);
       datasetStatus = 'error';
@@ -387,10 +450,25 @@
 
   onMount(() => {
     const params = new URLSearchParams(location.search);
-    try { finderDiscovered = localStorage.getItem('gtnh-finder-discovered') === '1'; } catch { /* Storage is optional. */ }
-    try { questsDiscovered = localStorage.getItem('gtnh-quests-discovered') === '1'; } catch { /* Storage is optional. */ }
+    try {
+      finderDiscovered = localStorage.getItem('gtnh-finder-discovered') === '1';
+    } catch {
+      /* Storage is optional. */
+    }
+    try {
+      questsDiscovered = localStorage.getItem('gtnh-quests-discovered') === '1';
+    } catch {
+      /* Storage is optional. */
+    }
     questsOpen = params.get('page') === 'quests';
-    if (questsOpen) { questsDiscovered = true; try { localStorage.setItem('gtnh-quests-discovered', '1'); } catch { /* Optional discovery. */ } }
+    if (questsOpen) {
+      questsDiscovered = true;
+      try {
+        localStorage.setItem('gtnh-quests-discovered', '1');
+      } catch {
+        /* Optional discovery. */
+      }
+    }
     landingOpen = isLanding(params);
     finderMode = params.get('finder-mode') === 'chain' ? 'chain' : 'recipes';
     const linkedFinder = finderFromUrl(params);
@@ -407,7 +485,11 @@
       const currentParams = new URLSearchParams(location.search);
       landingOpen = isLanding(currentParams);
       questsOpen = currentParams.get('page') === 'quests';
-      if (questsOpen) { finderOpen = false; detailsOpen = false; return; }
+      if (questsOpen) {
+        finderOpen = false;
+        detailsOpen = false;
+        return;
+      }
       finderMode = currentParams.get('finder-mode') === 'chain' ? 'chain' : 'recipes';
       const currentFinder = finderFromUrl(currentParams);
       finderOpen = currentFinder !== null;
@@ -437,7 +519,10 @@
       if (event.ctrlKey && event.key.toLowerCase() === 'k') {
         event.preventDefault();
         const modalInput = document.querySelector<HTMLInputElement>('dialog[open] input');
-        if (modalInput) { modalInput.focus(); return; }
+        if (modalInput) {
+          modalInput.focus();
+          return;
+        }
         if (finderOpen || landingOpen || questsOpen) {
           showItemList();
           void tick().then(() => searchInput?.focus());
@@ -455,31 +540,34 @@
     document.addEventListener('visibilitychange', handleVisibilityChange);
     const availabilityTimer = window.setInterval(
       () => void datasetManager.refreshAvailability(),
-      15 * 60 * 1_000
+      15 * 60 * 1_000,
     );
     let disposed = false;
-    void initializeShellUpdate().then(async () => {
-      const startupSequence = datasetLoadSequence + 1;
-      // Do not delay cached browsing while the current network policy arrives.
-      const rollout = DatasetRepository.startupRollout(params.get('version') ?? undefined)
-        .catch(() => undefined);
-      if (!await loadDataset()) return;
-      const initialRepository = repository;
-      const decision = await rollout;
-      if (disposed || !decision || !repository || datasetStatus !== 'ready') return;
-      if (datasetLoadSequence !== startupSequence || repository !== initialRepository) {
-        // A successful manual switch while the request was pending wins this epoch.
-        await repository.acknowledgeRollout(decision.rolloutEpoch);
-        return;
-      }
-      if (decision.datasetId === repository.datasetId) {
-        await repository.acknowledgeRollout(decision.rolloutEpoch);
-        return;
-      }
-      // Startup loading preserves the item and falls back to the usable active
-      // cache without acknowledging the epoch if the new bootstrap is unavailable.
-      await loadDataset(undefined, true, decision.gtnhVersion);
-    }).catch((error: unknown) => console.warn('Background dataset rollout unavailable', error));
+    void initializeShellUpdate()
+      .then(async () => {
+        const startupSequence = datasetLoadSequence + 1;
+        // Do not delay cached browsing while the current network policy arrives.
+        const rollout = DatasetRepository.startupRollout(params.get('version') ?? undefined).catch(
+          () => undefined,
+        );
+        if (!(await loadDataset())) return;
+        const initialRepository = repository;
+        const decision = await rollout;
+        if (disposed || !decision || !repository || datasetStatus !== 'ready') return;
+        if (datasetLoadSequence !== startupSequence || repository !== initialRepository) {
+          // A successful manual switch while the request was pending wins this epoch.
+          await repository.acknowledgeRollout(decision.rolloutEpoch);
+          return;
+        }
+        if (decision.datasetId === repository.datasetId) {
+          await repository.acknowledgeRollout(decision.rolloutEpoch);
+          return;
+        }
+        // Startup loading preserves the item and falls back to the usable active
+        // cache without acknowledging the epoch if the new bootstrap is unavailable.
+        await loadDataset(undefined, true, decision.gtnhVersion);
+      })
+      .catch((error: unknown) => console.warn('Background dataset rollout unavailable', error));
     return () => {
       disposed = true;
       removeEventListener('popstate', handlePopState);
@@ -490,8 +578,24 @@
   });
 </script>
 
-<svelte:window onkeydown={updateKeyboardModifiers} onkeyup={updateKeyboardModifiers} onpointermove={updateKeyboardModifiers} onpointerdown={updateKeyboardModifiers} onblur={() => keyboardModifiers.shift = false} />
-<svelte:head><title>{questsOpen ? 'Questbook Browser - GT: New Horizons Recipe Browser' : finderOpen ? 'Recipe finder - GT: New Horizons Recipe Browser' : itemOverviewSelected && detailsOpen ? `${itemOverviewSelected.name} - GT: New Horizons Recipe Browser` : 'GT: New Horizons Recipe Browser — Your Pocket NEI'}</title></svelte:head>
+<svelte:window
+  onkeydown={updateKeyboardModifiers}
+  onkeyup={updateKeyboardModifiers}
+  onpointermove={updateKeyboardModifiers}
+  onpointerdown={updateKeyboardModifiers}
+  onblur={() => (keyboardModifiers.shift = false)}
+/>
+<svelte:head
+  ><title
+    >{questsOpen
+      ? 'Questbook Browser - GT: New Horizons Recipe Browser'
+      : finderOpen
+        ? 'Recipe finder - GT: New Horizons Recipe Browser'
+        : itemOverviewSelected && detailsOpen
+          ? `${itemOverviewSelected.name} - GT: New Horizons Recipe Browser`
+          : 'GT: New Horizons Recipe Browser — Your Pocket NEI'}</title
+  ></svelte:head
+>
 
 <div class="app-shell">
   <QuestPreviewLayer />
@@ -506,21 +610,76 @@
   />
 
   {#if !landingOpen}
-  <nav class="primary-nav" aria-label="Main navigation">
-    <FeatureLink label="Items" icon={`${import.meta.env.BASE_URL}assets/navigation/items.png`} href={catalogUrl(navigationBase).href} active={!finderOpen && !questsOpen} onclick={() => showItemList()} />
-    <FeatureLink label="Recipe Finder" shortLabel="Finder" icon={`${import.meta.env.BASE_URL}assets/navigation/finder.png`} href={finderUrl(navigationBase, finderConstraints, finderMode).href} active={finderOpen} undiscovered={!finderDiscovered} onclick={() => { acknowledgeFinder(); if (!finderOpen) showFinder(); }} />
-    <FeatureLink label="Questbook Browser" shortLabel="Quests" icon={`${import.meta.env.BASE_URL}assets/navigation/quests.png`} href={questbook.url(navigationBase).href} active={questsOpen} undiscovered={!questsDiscovered} onclick={() => { if (!questsOpen) showQuests(); }} />
-    {#if questsOpen}<QuestVersionPicker recipeVersion={datasetVersion} />{/if}
-  </nav>
-
+    <nav class="primary-nav" aria-label="Main navigation">
+      <FeatureLink
+        label="Items"
+        icon={`${import.meta.env.BASE_URL}assets/navigation/items.png`}
+        href={catalogUrl(navigationBase).href}
+        active={!finderOpen && !questsOpen}
+        onclick={() => showItemList()}
+      />
+      <FeatureLink
+        label="Recipe Finder"
+        shortLabel="Finder"
+        icon={`${import.meta.env.BASE_URL}assets/navigation/finder.png`}
+        href={finderUrl(navigationBase, finderConstraints, finderMode).href}
+        active={finderOpen}
+        undiscovered={!finderDiscovered}
+        onclick={() => {
+          acknowledgeFinder();
+          if (!finderOpen) showFinder();
+        }}
+      />
+      <FeatureLink
+        label="Questbook Browser"
+        shortLabel="Quests"
+        icon={`${import.meta.env.BASE_URL}assets/navigation/quests.png`}
+        href={questbook.url(navigationBase).href}
+        active={questsOpen}
+        undiscovered={!questsDiscovered}
+        onclick={() => {
+          if (!questsOpen) showQuests();
+        }}
+      />
+      {#if questsOpen}<QuestVersionPicker recipeVersion={datasetVersion} />{/if}
+    </nav>
   {/if}
 
   {#if landingOpen}
-    <LandingPage exactEntries={entryById} families={repository?.browseEntries ?? []} loading={datasetStatus === 'loading'} progress={datasetProgress} itemsUrl={catalogUrl(navigationBase).href} finderHref={finderUrl(navigationBase, { inputs: [], outputs: [] }).href}
-      questHref={questbook.url(navigationBase).href} {finderDiscovered} {questsDiscovered} openQuests={showQuests}
-      openItems={() => showItemList(true)} openFinder={() => showFinder({ inputs: [], outputs: [] })} navigate={(id, view) => select(id, true, view)} />
+    <LandingPage
+      exactEntries={entryById}
+      families={repository?.browseEntries ?? []}
+      loading={datasetStatus === 'loading'}
+      progress={datasetProgress}
+      itemsUrl={catalogUrl(navigationBase).href}
+      finderHref={finderUrl(navigationBase, { inputs: [], outputs: [] }).href}
+      questHref={questbook.url(navigationBase).href}
+      {finderDiscovered}
+      {questsDiscovered}
+      openQuests={showQuests}
+      openItems={() => showItemList(true)}
+      openFinder={() => showFinder({ inputs: [], outputs: [] })}
+      navigate={(id, view) => select(id, true, view)}
+    />
   {:else if questsOpen}
-    <QuestBrowser recipeVersion={datasetVersion} navigate={(id, view) => { if (datasetStatus === 'ready' && !entryById.has(id)) return false; select(id, true, view); return true; }} />
+    {#await loadQuests()}
+      <main class="feature-loading" aria-label="Loading view" aria-busy="true">
+        <span class="spinner" aria-hidden="true"></span>
+      </main>
+    {:then view}
+      <view.default
+        recipeVersion={datasetVersion}
+        navigate={(id, view) => {
+          if (datasetStatus === 'ready' && !entryById.has(id)) return false;
+          select(id, true, view);
+          return true;
+        }}
+      />
+    {:catch}
+      <main class="feature-loading">
+        <p>This view could not load. <button onclick={() => location.reload()}>Reload</button></p>
+      </main>
+    {/await}
   {:else if datasetStatus !== 'ready'}
     <ApplicationState
       status={datasetStatus}
@@ -533,55 +692,79 @@
       {copyError}
     />
   {:else if finderOpen && repository}
-    <RecipeFinder {repository} mode={finderMode} setMode={(next) => { finderMode = next; showFinder(); }} constraints={finderConstraints} change={showFinder} navigate={(id, view) => select(id, true, view)} />
-  {:else if selected && repository}
-  <main class:home-view={!detailsOpen} class:resizing={sidebarResizing} style:--sidebar-width={`${sidebarWidth}px`}>
-    <CatalogPane
-      {selected}
-      {detailsOpen}
-      bind:query
-      bind:searchInput
-      catalog={repository.browseEntries}
-      entryById={repository.browseEntriesById}
-      exactEntryById={entryById}
-      loadSearchDocuments={(ore) => repository!.loadSearchDocuments(ore)}
-      bind:sidebarWidth
-      bind:sidebarResizing
-      select={(id) => select(id)}
-      navigate={(id, view) => select(id, true, view)}
-    />
-
-    <section class:mobile-visible={detailsOpen} class="detail">
-      <button class="mc-button back" onclick={() => showItemList()}>
-        <BackIcon />
-        Back to items
-      </button>
-      <ItemOverview
-        selected={itemOverviewSelected!}
-        loading={itemDataLoading}
-        error={itemDataError}
-        retry={() => selection.retry()}
-        {entryById}
-        navigate={(id, view) => select(id, true, view)}
-      />
-      <RecipeBrowser
+    {#await loadFinder()}
+      <main class="feature-loading" aria-label="Loading view" aria-busy="true">
+        <span class="spinner" aria-hidden="true"></span>
+      </main>
+    {:then view}
+      <view.default
         {repository}
-        {selected}
-        {mode}
-        {recipeQuery}
-        {specialType}
-        {specialScope}
-        active={detailsOpen}
-        {itemDataLoading}
-        {itemDataError}
-        setRecipeQuery={setRecipeQuery}
-        {setMode}
-        setSpecialNavigation={setSpecialNavigation}
+        mode={finderMode}
+        setMode={(next) => {
+          finderMode = next;
+          showFinder();
+        }}
+        constraints={finderConstraints}
+        change={showFinder}
         navigate={(id, view) => select(id, true, view)}
-        openQuest={(id, version, chapter) => showQuests({id,version,chapter})}
       />
-    </section>
-  </main>
+    {:catch}
+      <main class="feature-loading">
+        <p>This view could not load. <button onclick={() => location.reload()}>Reload</button></p>
+      </main>
+    {/await}
+  {:else if selected && repository}
+    <main
+      class:home-view={!detailsOpen}
+      class:resizing={sidebarResizing}
+      style:--sidebar-width={`${sidebarWidth}px`}
+    >
+      <CatalogPane
+        {selected}
+        {detailsOpen}
+        bind:query
+        bind:searchInput
+        catalog={repository.browseEntries}
+        entryById={repository.browseEntriesById}
+        exactEntryById={entryById}
+        loadSearchDocuments={(ore) => repository!.loadSearchDocuments(ore)}
+        bind:sidebarWidth
+        bind:sidebarResizing
+        select={(id) => select(id)}
+        navigate={(id, view) => select(id, true, view)}
+      />
+
+      <section class:mobile-visible={detailsOpen} class="detail">
+        <button class="mc-button back" onclick={() => showItemList()}>
+          <BackIcon />
+          Back to items
+        </button>
+        <ItemOverview
+          selected={itemOverviewSelected!}
+          loading={itemDataLoading}
+          error={itemDataError}
+          retry={() => selection.retry()}
+          {entryById}
+          navigate={(id, view) => select(id, true, view)}
+        />
+        <RecipeBrowser
+          {repository}
+          {selected}
+          {mode}
+          {recipeQuery}
+          {specialType}
+          {specialScope}
+          active={detailsOpen}
+          {itemDataLoading}
+          {itemDataError}
+          {setRecipeQuery}
+          {setMode}
+          {setSpecialNavigation}
+          navigate={(id, view) => select(id, true, view)}
+          openQuest={(id, version, chapter) => showQuests({ id, version, chapter })}
+        />
+      </section>
+    </main>
   {/if}
   {#if finderOpen && !landingOpen}
     <footer class="finder-mobile-footer"><ProjectLinks /></footer>
@@ -603,7 +786,7 @@
     physicalAssetCount={datasetManager.physicalAssetCount}
     storageReport={datasetManager.storageReport}
     persistentStorage={datasetManager.persistentStorage}
-    close={() => datasetManager.open = false}
+    close={() => (datasetManager.open = false)}
     install={(version) => datasetManager.install(version)}
     cancelInstall={() => datasetManager.cancelInstall()}
     switchDataset={(version) => datasetManager.switchDataset(version)}
@@ -614,9 +797,25 @@
 <ItemTouchOverlay />
 
 <style>
-  .finder-mobile-footer { display:none; }
-  @media(max-width:800px) {
-    .finder-mobile-footer { display:flex; flex:none; justify-content:center; padding:4px 12px; border-top:1px solid #343a42; }
+  .finder-mobile-footer {
+    display: none;
   }
-  .primary-nav { font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif; font-weight: 600; }
+  @media (max-width: 800px) {
+    .finder-mobile-footer {
+      display: flex;
+      flex: none;
+      justify-content: center;
+      padding: 4px 12px;
+      border-top: 1px solid #343a42;
+    }
+  }
+  .primary-nav {
+    font-family:
+      ui-sans-serif,
+      system-ui,
+      -apple-system,
+      'Segoe UI',
+      sans-serif;
+    font-weight: 600;
+  }
 </style>

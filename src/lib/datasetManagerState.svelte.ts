@@ -8,14 +8,14 @@ import {
   listDatasets,
   removeDataset,
   requestPersistentStorage,
-  storageIsPersistent
+  storageIsPersistent,
 } from './storage';
 import type {
   DatasetState,
   DatasetStorageReport,
   DatasetVersion,
   ManagedDataset,
-  OfflineInstallProgress
+  OfflineInstallProgress,
 } from './types';
 
 interface DatasetManagerCallbacks {
@@ -57,7 +57,7 @@ export class DatasetManagerState {
     untrackedBytes: 0,
     sharedAssets: 0,
     untrackedAssets: 0,
-    byDataset: {}
+    byDataset: {},
   });
   persistentStorage = $state<boolean>();
   private installController: AbortController | null = null;
@@ -90,7 +90,7 @@ export class DatasetManagerState {
         listDatasets(),
         estimateStorage(),
         storageIsPersistent(),
-        cachedAssetSizes()
+        cachedAssetSizes(),
       ]);
       this.availableDatasets = versions;
       this.datasetRecords = records;
@@ -123,7 +123,7 @@ export class DatasetManagerState {
       const [versions, records, assetSizes] = await Promise.all([
         DatasetRepository.availableVersions(),
         listDatasets(),
-        cachedAssetSizes()
+        cachedAssetSizes(),
       ]);
       this.availableDatasets = versions;
       this.datasetRecords = records;
@@ -143,9 +143,10 @@ export class DatasetManagerState {
     this.installController = controller;
     try {
       const repository = this.callbacks.getRepository();
-      const installer = repository?.datasetId === version.datasetId
-        ? repository
-        : await DatasetRepository.load(version.datasetId, undefined, repository ?? undefined);
+      const installer =
+        repository?.datasetId === version.datasetId
+          ? repository
+          : await DatasetRepository.load(version.datasetId, undefined, repository ?? undefined);
       const remainingBytes = await installer.uncachedOfflineBytes();
       const estimate = await estimateStorage();
       this.storageUsage = estimate.usage;
@@ -154,8 +155,8 @@ export class DatasetManagerState {
       if (shortfall !== undefined && shortfall > 0) {
         const availableBytes = Math.max(0, estimate.quota! - estimate.usage!);
         throw new Error(
-          `Not enough browser storage. ${formatBytes(remainingBytes)} is still required, `
-          + `but only ${formatBytes(availableBytes)} is estimated available.`
+          `Not enough browser storage. ${formatBytes(remainingBytes)} is still required, ` +
+            `but only ${formatBytes(availableBytes)} is estimated available.`,
         );
       }
       const persisted = await requestPersistentStorage();
@@ -203,13 +204,17 @@ export class DatasetManagerState {
   async deleteDataset(state: DatasetState) {
     if (this.installingDatasetId === state.datasetId) return;
     const repository = this.callbacks.getRepository();
-    const currentNote = repository?.datasetId === state.datasetId
-      ? ' The currently open catalog will continue working until this page is reloaded.'
-      : '';
-    if (!confirm(
-      `Delete locally stored data for GTNH ${state.gtnhVersion} `
-      + `(revision ${state.revision.slice(0, 8)})?${currentNote}`
-    )) return;
+    const currentNote =
+      repository?.datasetId === state.datasetId
+        ? ' The currently open catalog will continue working until this page is reloaded.'
+        : '';
+    if (
+      !confirm(
+        `Delete locally stored data for GTNH ${state.gtnhVersion} ` +
+          `(revision ${state.revision.slice(0, 8)})?${currentNote}`,
+      )
+    )
+      return;
     this.error = '';
     try {
       await removeDataset(state.datasetId);

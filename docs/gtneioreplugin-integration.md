@@ -43,7 +43,7 @@ The browser keeps the semantic records rather than NEI screenshots:
   material. Vein-level height and random weight are shown below the layers.
 - Vein dimension entries use the plugin's display block. For each dimension,
   a vein chance is the vein's `randomWeight / sum(randomWeight for all veins
-  enabled in that dimension)`, not the raw weight rendered as a percentage.
+enabled in that dimension)`, not the raw weight rendered as a percentage.
   Dimension-specific height overrides remain attached to that entry.
 - A small ore shows the small-ore block (with its ore-dictionary group when
   one exists), height, amount per chunk, then potential drops, then generated
@@ -58,4 +58,3 @@ handler and its helper/wrapper types, then mirror the handler's item lookup,
 tooltip calculation, and ordering in the exporter and a focused browser
 renderer. Keep the raw registry fields in the sidecar so a later page can be
 added without another runtime export.
-

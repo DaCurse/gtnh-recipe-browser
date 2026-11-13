@@ -17,7 +17,7 @@ import {
   type DirectExportProfile,
   type DirectExportStatus,
   type PrepareContext,
-  type ProcessContext
+  type ProcessContext,
 } from '../tools/data-export/direct-export';
 import type { ExportSession } from '../tools/data-export/lib';
 
@@ -37,12 +37,14 @@ function tinyProfile(content: string): DirectExportProfile {
     bytes: Buffer.byteLength(content),
     sha256: digest(content),
     sourcePage: 'https://example.test/profile',
-    runtimeMods: [{
-      jarName: 'test.jar',
-      modId: 'test',
-      version: '1.0.0',
-      sourceName: 'Test'
-    }]
+    runtimeMods: [
+      {
+        jarName: 'test.jar',
+        modId: 'test',
+        version: '1.0.0',
+        sourceName: 'Test',
+      },
+    ],
   };
 }
 
@@ -50,7 +52,7 @@ function sessionFor(
   profile: DirectExportProfile,
   archivePath: string,
   workDirectory: string,
-  instanceDirectory: string
+  instanceDirectory: string,
 ): ExportSession {
   return {
     schemaVersion: 1,
@@ -61,7 +63,7 @@ function sessionFor(
     archive: {
       path: archivePath,
       bytes: profile.bytes,
-      sha256: profile.sha256
+      sha256: profile.sha256,
     },
     exporter: {
       repository: 'test',
@@ -70,10 +72,10 @@ function sessionFor(
       mainJar: 'test.jar',
       mainJarSha256: 'test',
       dependenciesJar: 'test-deps.jar',
-      dependenciesJarSha256: 'test'
+      dependenciesJarSha256: 'test',
     },
     processor: { repository: 'test', commit: 'test', patchSha256: 'test' },
-    toolchains: { java: 'test', dotnetSdk: 'test' }
+    toolchains: { java: 'test', dotnetSdk: 'test' },
   };
 }
 
@@ -97,7 +99,7 @@ function fakeResolution(instanceDirectory: string) {
       uuid: '00000000-0000-3000-8000-000000000000',
       accessToken: '0',
       userProperties: '{}',
-      userType: 'legacy'
+      userType: 'legacy',
     },
     assetIndex: {
       id: 'test',
@@ -105,21 +107,23 @@ function fakeResolution(instanceDirectory: string) {
       sha1: digest('assets'),
       bytes: 6,
       objects: [],
-      assetsDirectory: join(instanceDirectory, '.minecraft', 'assets')
-    }
+      assetsDirectory: join(instanceDirectory, '.minecraft', 'assets'),
+    },
   };
 }
 
-const publicTypeCoverage: [
-  CommandInvocation,
-  CommandRunner,
-  PrepareContext,
-  ProcessContext,
-  DirectExportDependencies,
-  AutomationStatus,
-  DirectExportPhase,
-  DirectExportStatus
-] | undefined = undefined;
+const publicTypeCoverage:
+  | [
+      CommandInvocation,
+      CommandRunner,
+      PrepareContext,
+      ProcessContext,
+      DirectExportDependencies,
+      AutomationStatus,
+      DirectExportPhase,
+      DirectExportStatus,
+    ]
+  | undefined = undefined;
 
 void publicTypeCoverage;
 
@@ -127,9 +131,10 @@ describe('direct export orchestration', () => {
   it('pins the reviewed current client profile', () => {
     expect(getDirectExportProfile('2.9.0-beta-2').version).toBe('2.9.0-beta-2');
     expect(DIRECT_EXPORT_PROFILES['2.9.0-beta-2']).toMatchObject({
-      clientUrl: 'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip',
+      clientUrl:
+        'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip',
       bytes: 680333339,
-      sha256: 'adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee'
+      sha256: 'adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee',
     });
     expect(getDirectExportProfile('2.9.0-RC-1')).toMatchObject({
       bytes: 727184781,
@@ -139,17 +144,18 @@ describe('direct export orchestration', () => {
         expect.objectContaining({ modId: 'cropsnh', version: '2.0.129' }),
         expect.objectContaining({ modId: 'enhancedlootbags', version: '1.3.5' }),
         expect.objectContaining({ modId: 'neicustomdiagram', version: '1.8.35' }),
-        expect.objectContaining({ modId: 'TwilightForest', version: '2.7.42' })
-      ])
+        expect.objectContaining({ modId: 'TwilightForest', version: '2.7.42' }),
+      ]),
     });
     expect(getDirectExportProfile('2.9.0-beta-3')).toMatchObject({
-      clientUrl: 'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-3_Java_17-26.zip',
+      clientUrl:
+        'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-3_Java_17-26.zip',
       bytes: 719551573,
       sha256: 'f814cca68c7d4be529ce1247c5dcc9d665a65e7136a885b69f52175a4e0c8aed',
       runtimeMods: expect.arrayContaining([
         expect.objectContaining({ modId: 'gregtech', version: '5.09.54.133' }),
-        expect.objectContaining({ modId: 'cropsnh', version: '2.0.114' })
-      ])
+        expect.objectContaining({ modId: 'cropsnh', version: '2.0.114' }),
+      ]),
     });
   });
 
@@ -158,13 +164,17 @@ describe('direct export orchestration', () => {
     try {
       const statusPath = join(root, 'automation.json');
       await writeFile(statusPath, JSON.stringify({ schemaVersion: 1, phase: 'complete' }));
-      const result = await monitorAutomationExport(statusPath, Promise.resolve({
-        schemaVersion: 1,
-        state: 'exited',
-        exitCode: 0,
-        signal: null,
-        updatedAt: new Date().toISOString()
-      }), { timeoutMs: 100, pollIntervalMs: 1 });
+      const result = await monitorAutomationExport(
+        statusPath,
+        Promise.resolve({
+          schemaVersion: 1,
+          state: 'exited',
+          exitCode: 0,
+          signal: null,
+          updatedAt: new Date().toISOString(),
+        }),
+        { timeoutMs: 100, pollIntervalMs: 1 },
+      );
       expect(result.automation.phase).toBe('complete');
       expect(result.launcher.exitCode).toBe(0);
     } finally {
@@ -181,7 +191,7 @@ describe('direct export orchestration', () => {
       await writeFile(sourcePath, content);
       const first = await ensurePinnedArchive(profile, {
         cacheDirectory: join(root, 'cache'),
-        sourcePath
+        sourcePath,
       });
       expect(first.reused).toBe(false);
       expect(first.bytes).toBe(content.length);
@@ -191,10 +201,12 @@ describe('direct export orchestration', () => {
       await expect(readFile(second.path, 'utf8')).resolves.toBe(content);
 
       const badProfile = { ...profile, sha256: digest('different') };
-      await expect(ensurePinnedArchive(badProfile, {
-        cacheDirectory: join(root, 'bad-cache'),
-        sourcePath
-      })).rejects.toThrow(/archive mismatch/);
+      await expect(
+        ensurePinnedArchive(badProfile, {
+          cacheDirectory: join(root, 'bad-cache'),
+          sourcePath,
+        }),
+      ).rejects.toThrow(/archive mismatch/);
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -203,28 +215,46 @@ describe('direct export orchestration', () => {
   it('checks prepared-session jar filenames within the disposable mods directory before retrying launch', async () => {
     const root = await mkdtemp(join(tmpdir(), 'gtnh-prepared-retry-'));
     try {
-      const content = 'synthetic archive', profile = tinyProfile(content);
-      const sourcePath = join(root, 'source.zip'), cacheDirectory = join(root, 'cache');
+      const content = 'synthetic archive',
+        profile = tinyProfile(content);
+      const sourcePath = join(root, 'source.zip'),
+        cacheDirectory = join(root, 'cache');
       await writeFile(sourcePath, content);
       const archive = await ensurePinnedArchive(profile, { cacheDirectory, sourcePath });
-      const workDirectory = join(root, 'work'), instanceDirectory = join(workDirectory, 'client-instance');
+      const workDirectory = join(root, 'work'),
+        instanceDirectory = join(workDirectory, 'client-instance');
       const mods = join(instanceDirectory, '.minecraft/mods');
       await mkdir(mods, { recursive: true });
       const session = sessionFor(profile, archive.path, workDirectory, instanceDirectory);
-      for (const filename of [session.exporter.mainJar, session.exporter.dependenciesJar]) await writeFile(join(mods, filename), filename);
+      for (const filename of [session.exporter.mainJar, session.exporter.dependenciesJar])
+        await writeFile(join(mods, filename), filename);
       session.exporter.mainJarSha256 = digest(session.exporter.mainJar);
       session.exporter.dependenciesJarSha256 = digest(session.exporter.dependenciesJar);
       const preparedSessionPath = join(workDirectory, 'export-session.json');
       await writeFile(preparedSessionPath, JSON.stringify(session));
-      const options = { profile, workDirectory, cacheDirectory, preparedSessionPath,
-        sharedLayoutPath: join(root, 'layout.json'), dependencies: {
-          prepare: async () => { throw new Error('Unexpected rebuild'); },
-          resolveRuntime: async () => { throw new Error('Reached runtime resolution'); }
-        } };
+      const options = {
+        profile,
+        workDirectory,
+        cacheDirectory,
+        preparedSessionPath,
+        sharedLayoutPath: join(root, 'layout.json'),
+        dependencies: {
+          prepare: async () => {
+            throw new Error('Unexpected rebuild');
+          },
+          resolveRuntime: async () => {
+            throw new Error('Reached runtime resolution');
+          },
+        },
+      };
       await expect(orchestrateDirectExport(options)).rejects.toThrow('Reached runtime resolution');
       await writeFile(join(mods, session.exporter.mainJar), 'modified jar');
-      await expect(orchestrateDirectExport(options)).rejects.toThrow('Prepared exporter artifact changed');
-    } finally { await rm(root, { recursive: true, force: true }); }
+      await expect(orchestrateDirectExport(options)).rejects.toThrow(
+        'Prepared exporter artifact changed',
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 
   it('prepares, launches, monitors separate statuses, then processes the export', async () => {
@@ -237,16 +267,22 @@ describe('direct export orchestration', () => {
       const workDirectory = join(root, 'work');
       const statusDirectory = join(root, 'status');
       await mkdir(statusDirectory, { recursive: true });
-      await writeFile(join(statusDirectory, 'launcher.json'), JSON.stringify({
-        schemaVersion: 1,
-        state: 'failed',
-        exitCode: 1
-      }));
-      await writeFile(join(statusDirectory, 'automation.json'), JSON.stringify({
-        schemaVersion: 1,
-        phase: 'failed',
-        message: 'stale controller failure'
-      }));
+      await writeFile(
+        join(statusDirectory, 'launcher.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          state: 'failed',
+          exitCode: 1,
+        }),
+      );
+      await writeFile(
+        join(statusDirectory, 'automation.json'),
+        JSON.stringify({
+          schemaVersion: 1,
+          phase: 'failed',
+          message: 'stale controller failure',
+        }),
+      );
       let prepared = false;
       let processed = false;
       const cacheDirectory = join(root, 'cache');
@@ -259,7 +295,7 @@ describe('direct export orchestration', () => {
         'assets',
         'objects',
         seededHash.slice(0, 2),
-        seededHash
+        seededHash,
       );
       await mkdir(dirname(seededCachePath), { recursive: true });
       await writeFile(seededCachePath, seededContent);
@@ -286,22 +322,32 @@ describe('direct export orchestration', () => {
               const preparedWork = args[args.indexOf('--work-dir') + 1]!;
               const instanceDirectory = args[args.indexOf('--instance-dir') + 1]!;
               await mkdir(instanceDirectory, { recursive: true });
-              const quests = join(instanceDirectory, '.minecraft/config/betterquesting/DefaultQuests');
+              const quests = join(
+                instanceDirectory,
+                '.minecraft/config/betterquesting/DefaultQuests',
+              );
               await mkdir(quests, { recursive: true });
-              await writeFile(join(quests, 'test.json'), JSON.stringify({ 'icon:10': { 'id:8': 'minecraft:stone', 'Count:3': 1 } }));
-              await writeFile(join(preparedWork, 'export-session.json'), JSON.stringify(
-                sessionFor(profile, archivePath, preparedWork, instanceDirectory)
-              ));
+              await writeFile(
+                join(quests, 'test.json'),
+                JSON.stringify({ 'icon:10': { 'id:8': 'minecraft:stone', 'Count:3': 1 } }),
+              );
+              await writeFile(
+                join(preparedWork, 'export-session.json'),
+                JSON.stringify(sessionFor(profile, archivePath, preparedWork, instanceDirectory)),
+              );
               return;
             }
             if (args.some((argument) => argument.replaceAll('\\', '/').endsWith('/process.ts'))) {
               processed = true;
               expect(args[args.indexOf('--reuse-packs') + 1]).toBe(join(root, 'previous-pack'));
               const processedWork = args[args.indexOf('--work-dir') + 1]!;
-              await writeFile(join(processedWork, 'process-result.json'), JSON.stringify({
-                pack: join(processedWork, 'pack'),
-                datasetId: 'test'
-              }));
+              await writeFile(
+                join(processedWork, 'process-result.json'),
+                JSON.stringify({
+                  pack: join(processedWork, 'pack'),
+                  datasetId: 'test',
+                }),
+              );
               return;
             }
             throw new Error(`Unexpected command: ${args.join(' ')}`);
@@ -310,13 +356,12 @@ describe('direct export orchestration', () => {
           launchRuntime: async (plan, launchOptions) => {
             const launchConfig = launchOptions!;
             const assetDirectorRoot = join(plan.gameDirectory, 'assets', 'asset_director');
-            await expect(readFile(join(
-              assetDirectorRoot,
-              'assets',
-              'objects',
-              seededHash.slice(0, 2),
-              seededHash
-            ), 'utf8')).resolves.toBe(seededContent);
+            await expect(
+              readFile(
+                join(assetDirectorRoot, 'assets', 'objects', seededHash.slice(0, 2), seededHash),
+                'utf8',
+              ),
+            ).resolves.toBe(seededContent);
             expect(plan.command[0]).toBe('xvfb-run');
             expect(plan.command).toContain('/usr/bin/java');
             expect(plan.command).toContain('example.Main');
@@ -326,7 +371,9 @@ describe('direct export orchestration', () => {
             expect(plan.jvmArgs).toContain('-Dnesql.automation.enabled=true');
             expect(plan.jvmArgs).toContain('-Dnesql.automation.repository=test-export');
             expect(plan.jvmArgs).toContain('-Dnesql.automation.world=test-world');
-            expect(plan.jvmArgs.some((arg) => arg.startsWith('-Dnesql.automation.status='))).toBe(true);
+            expect(plan.jvmArgs.some((arg) => arg.startsWith('-Dnesql.automation.status='))).toBe(
+              true,
+            );
             expect(plan.statusFile).toBe(launchConfig.statusFile);
             await expect(readFile(launchConfig.statusFile!)).rejects.toThrow();
             await expect(readFile(join(statusDirectory, 'automation.json'))).rejects.toThrow();
@@ -336,54 +383,77 @@ describe('direct export orchestration', () => {
               assetDirectorRoot,
               'assets',
               'objects',
-              persistedHash.slice(0, 2)
+              persistedHash.slice(0, 2),
             );
             await mkdir(persistedDirectory, { recursive: true });
             await writeFile(join(persistedDirectory, persistedHash), persistedContent);
             await writeFile(join(persistedDirectory, `${persistedHash}.part`), 'partial');
             await writeFile(join(persistedDirectory, '0'.repeat(40)), 'invalid digest');
-            await writeFile(`${launchConfig.statusFile!}.tmp`, JSON.stringify({
-              schemaVersion: 1,
-              state: 'exited',
-              exitCode: 0,
-              updatedAt: new Date().toISOString()
-            }));
+            await writeFile(
+              `${launchConfig.statusFile!}.tmp`,
+              JSON.stringify({
+                schemaVersion: 1,
+                state: 'exited',
+                exitCode: 0,
+                updatedAt: new Date().toISOString(),
+              }),
+            );
             await rename(`${launchConfig.statusFile!}.tmp`, launchConfig.statusFile!);
-            await writeFile(join(statusDirectory, 'automation.json.tmp'), JSON.stringify({
-              schemaVersion: 1,
-              phase: 'complete',
-              message: 'done',
-              updatedAt: new Date().toISOString()
-            }));
-            await rename(join(statusDirectory, 'automation.json.tmp'), join(statusDirectory, 'automation.json'));
+            await writeFile(
+              join(statusDirectory, 'automation.json.tmp'),
+              JSON.stringify({
+                schemaVersion: 1,
+                phase: 'complete',
+                message: 'done',
+                updatedAt: new Date().toISOString(),
+              }),
+            );
+            await rename(
+              join(statusDirectory, 'automation.json.tmp'),
+              join(statusDirectory, 'automation.json'),
+            );
             return {
               schemaVersion: 1,
               state: 'exited' as const,
               exitCode: 0,
               signal: null,
-              updatedAt: new Date().toISOString()
+              updatedAt: new Date().toISOString(),
             };
-          }
-        }
+          },
+        },
       });
       expect(prepared).toBe(true);
       expect(processed).toBe(true);
       expect(result.statusFile).not.toBe(result.launcherStatusFile);
       expect(result.statusFile).not.toBe(result.automationStatusFile);
       expect(result.launcherStatusFile).not.toBe(result.automationStatusFile);
-      await expect(readFile(result.statusFile, 'utf8')).resolves.toMatch(/"phase"\s*:\s*"complete"/);
-      await expect(readFile(result.automationStatusFile, 'utf8')).resolves.toMatch(/"phase"\s*:\s*"complete"/);
+      await expect(readFile(result.statusFile, 'utf8')).resolves.toMatch(
+        /"phase"\s*:\s*"complete"/,
+      );
+      await expect(readFile(result.automationStatusFile, 'utf8')).resolves.toMatch(
+        /"phase"\s*:\s*"complete"/,
+      );
       const persistedContent = 'persisted asset';
       const persistedHash = sha1Digest(persistedContent);
-      const sharedAssetRoot = join(cacheDirectory, 'asset-director', profile.sha256, 'assets', 'objects');
-      await expect(readFile(join(sharedAssetRoot, seededHash.slice(0, 2), seededHash), 'utf8'))
-        .resolves.toBe(seededContent);
-      await expect(readFile(join(sharedAssetRoot, persistedHash.slice(0, 2), persistedHash), 'utf8'))
-        .resolves.toBe(persistedContent);
-      await expect(readFile(join(sharedAssetRoot, persistedHash.slice(0, 2), `${persistedHash}.part`)))
-        .rejects.toThrow();
-      await expect(readFile(join(sharedAssetRoot, persistedHash.slice(0, 2), '0'.repeat(40))))
-        .rejects.toThrow();
+      const sharedAssetRoot = join(
+        cacheDirectory,
+        'asset-director',
+        profile.sha256,
+        'assets',
+        'objects',
+      );
+      await expect(
+        readFile(join(sharedAssetRoot, seededHash.slice(0, 2), seededHash), 'utf8'),
+      ).resolves.toBe(seededContent);
+      await expect(
+        readFile(join(sharedAssetRoot, persistedHash.slice(0, 2), persistedHash), 'utf8'),
+      ).resolves.toBe(persistedContent);
+      await expect(
+        readFile(join(sharedAssetRoot, persistedHash.slice(0, 2), `${persistedHash}.part`)),
+      ).rejects.toThrow();
+      await expect(
+        readFile(join(sharedAssetRoot, persistedHash.slice(0, 2), '0'.repeat(40))),
+      ).rejects.toThrow();
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -400,73 +470,92 @@ describe('direct export orchestration', () => {
       const statusDirectory = join(root, 'status');
       const cacheDirectory = join(root, 'cache');
       let processed = false;
-      await expect(orchestrateDirectExport({
-        profile,
-        cacheDirectory,
-        sharedLayoutPath: join(root, 'layout.json'),
-        archiveSourcePath: sourcePath,
-        workDirectory,
-        statusFile: join(statusDirectory, 'orchestrator.json'),
-        launcherStatusFile: join(statusDirectory, 'launcher.json'),
-        automationStatusFile: join(statusDirectory, 'automation.json'),
-        automationTimeoutMs: 100,
-        pollIntervalMs: 1,
-        dependencies: {
-          prepare: async ({ archive, workDirectory: preparedWork, instanceDirectory }) => {
-            await mkdir(instanceDirectory, { recursive: true });
-            await writeFile(join(preparedWork, 'export-session.json'), JSON.stringify(
-              sessionFor(profile, archive.path, preparedWork, instanceDirectory)
-            ));
+      await expect(
+        orchestrateDirectExport({
+          profile,
+          cacheDirectory,
+          sharedLayoutPath: join(root, 'layout.json'),
+          archiveSourcePath: sourcePath,
+          workDirectory,
+          statusFile: join(statusDirectory, 'orchestrator.json'),
+          launcherStatusFile: join(statusDirectory, 'launcher.json'),
+          automationStatusFile: join(statusDirectory, 'automation.json'),
+          automationTimeoutMs: 100,
+          pollIntervalMs: 1,
+          dependencies: {
+            prepare: async ({ archive, workDirectory: preparedWork, instanceDirectory }) => {
+              await mkdir(instanceDirectory, { recursive: true });
+              await writeFile(
+                join(preparedWork, 'export-session.json'),
+                JSON.stringify(sessionFor(profile, archive.path, preparedWork, instanceDirectory)),
+              );
+            },
+            resolveRuntime: async ({ root: runtimeRoot }) => fakeResolution(runtimeRoot),
+            launchRuntime: async (plan, launchOptions) => {
+              const persistedContent = 'failure asset';
+              const persistedHash = sha1Digest(persistedContent);
+              const persistedDirectory = join(
+                plan.gameDirectory,
+                'assets',
+                'asset_director',
+                'assets',
+                'objects',
+                persistedHash.slice(0, 2),
+              );
+              await mkdir(persistedDirectory, { recursive: true });
+              await writeFile(join(persistedDirectory, persistedHash), persistedContent);
+              await writeFile(join(persistedDirectory, `${persistedHash}.part`), 'partial');
+              await writeFile(
+                launchOptions!.statusFile!,
+                JSON.stringify({
+                  schemaVersion: 1,
+                  state: 'exited',
+                  exitCode: 0,
+                  updatedAt: new Date().toISOString(),
+                }),
+              );
+              await writeFile(
+                join(statusDirectory, 'automation.json'),
+                JSON.stringify({
+                  schemaVersion: 1,
+                  phase: 'failed',
+                  message: 'synthetic controller failure',
+                  updatedAt: new Date().toISOString(),
+                }),
+              );
+              return {
+                schemaVersion: 1,
+                state: 'exited' as const,
+                exitCode: 0,
+                signal: null,
+                updatedAt: new Date().toISOString(),
+              };
+            },
+            process: async () => {
+              processed = true;
+            },
           },
-          resolveRuntime: async ({ root: runtimeRoot }) => fakeResolution(runtimeRoot),
-          launchRuntime: async (plan, launchOptions) => {
-            const persistedContent = 'failure asset';
-            const persistedHash = sha1Digest(persistedContent);
-            const persistedDirectory = join(
-              plan.gameDirectory,
-              'assets',
-              'asset_director',
-              'assets',
-              'objects',
-              persistedHash.slice(0, 2)
-            );
-            await mkdir(persistedDirectory, { recursive: true });
-            await writeFile(join(persistedDirectory, persistedHash), persistedContent);
-            await writeFile(join(persistedDirectory, `${persistedHash}.part`), 'partial');
-            await writeFile(launchOptions!.statusFile!, JSON.stringify({
-              schemaVersion: 1,
-              state: 'exited',
-              exitCode: 0,
-              updatedAt: new Date().toISOString()
-            }));
-            await writeFile(join(statusDirectory, 'automation.json'), JSON.stringify({
-              schemaVersion: 1,
-              phase: 'failed',
-              message: 'synthetic controller failure',
-              updatedAt: new Date().toISOString()
-            }));
-            return {
-              schemaVersion: 1,
-              state: 'exited' as const,
-              exitCode: 0,
-              signal: null,
-              updatedAt: new Date().toISOString()
-            };
-          },
-          process: async () => {
-            processed = true;
-          }
-        }
-      })).rejects.toThrow(/ExportAutomationController failed/);
+        }),
+      ).rejects.toThrow(/ExportAutomationController failed/);
       expect(processed).toBe(false);
-      await expect(readFile(join(statusDirectory, 'orchestrator.json'), 'utf8')).resolves.toMatch(/"phase"\s*:\s*"failed"/);
+      await expect(readFile(join(statusDirectory, 'orchestrator.json'), 'utf8')).resolves.toMatch(
+        /"phase"\s*:\s*"failed"/,
+      );
       const persistedContent = 'failure asset';
       const persistedHash = sha1Digest(persistedContent);
-      const sharedFailureRoot = join(cacheDirectory, 'asset-director', profile.sha256, 'assets', 'objects');
-      await expect(readFile(join(sharedFailureRoot, persistedHash.slice(0, 2), persistedHash), 'utf8'))
-        .resolves.toBe(persistedContent);
-      await expect(readFile(join(sharedFailureRoot, persistedHash.slice(0, 2), `${persistedHash}.part`)))
-        .rejects.toThrow();
+      const sharedFailureRoot = join(
+        cacheDirectory,
+        'asset-director',
+        profile.sha256,
+        'assets',
+        'objects',
+      );
+      await expect(
+        readFile(join(sharedFailureRoot, persistedHash.slice(0, 2), persistedHash), 'utf8'),
+      ).resolves.toBe(persistedContent);
+      await expect(
+        readFile(join(sharedFailureRoot, persistedHash.slice(0, 2), `${persistedHash}.part`)),
+      ).rejects.toThrow();
     } finally {
       await rm(root, { recursive: true, force: true });
     }

@@ -1,72 +1,166 @@
 /* Opt-in chrome: item slots, recipe diagrams and clear/close icons keep their own surfaces.
    The theme selector lets this shared theme override older component button paint. */
-:root .mc-theme :is(button,a).mc-button,
+:root .mc-theme :is(button, a).mc-button,
 :root .mc-theme .mc-button-surface {
-  --mc-button-image:url('/assets/machine-ui/button-normal.png');
-  --mc-button-text:#bfbfbf;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:8px;
-  min-width:max-content;
-  min-height:40px;
-  max-width:100%;
-  padding:4px 14px;
-  border:4px solid transparent;
-  border-image:var(--mc-button-image) 2 fill / 4px / 0 stretch;
-  border-radius:0;
-  background:none;
-  box-shadow:none;
-  color:var(--mc-button-text);
-  font:400 18px/22px Minecraft,monospace;
-  letter-spacing:0;
-  text-align:center;
-  white-space:nowrap;
-  text-decoration:none;
-  text-shadow:2px 2px #222;
-  image-rendering:pixelated;
-  cursor:pointer;
-  filter:none;
-  transition:none;
+  --mc-button-image: url('/assets/machine-ui/button-normal.png');
+  --mc-button-text: #bfbfbf;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: max-content;
+  min-height: 40px;
+  max-width: 100%;
+  padding: 4px 14px;
+  border: 4px solid transparent;
+  border-image: var(--mc-button-image) 2 fill / 4px / 0 stretch;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--mc-button-text);
+  font:
+    400 18px/22px Minecraft,
+    monospace;
+  letter-spacing: 0;
+  text-align: center;
+  white-space: nowrap;
+  text-decoration: none;
+  text-shadow: 2px 2px #222;
+  image-rendering: pixelated;
+  cursor: pointer;
+  filter: none;
+  transition: none;
 }
-:root .mc-theme .mc-button-surface { cursor:default; }
-:root .mc-theme .mc-button.primary { --mc-button-text:#e2d4ab; }
-:root .mc-theme .mc-button.delete { --mc-button-text:#efb0a8; }
-:root .mc-theme :is(button,a).mc-button.wrap { min-width:0; white-space:normal; text-align:left; justify-content:flex-start; }
-:root .mc-theme :is(button,a).mc-button:is(.active,[aria-current='page'],[aria-pressed='true']) {
-  --mc-button-image:url('/assets/machine-ui/button-hover.png');
-  --mc-button-text:#efc62f;
+:root .mc-theme .mc-button-surface {
+  cursor: default;
 }
-:root .mc-theme :is(button,a).mc-button:is(:hover,:focus-visible):not(:disabled) {
-  --mc-button-image:url('/assets/machine-ui/button-hover.png');
-  --mc-button-text:#efc62f;
-  color:var(--mc-button-text);
-  filter:none;
+:root .mc-theme .mc-button.primary {
+  --mc-button-text: #e2d4ab;
 }
-:root .mc-theme :is(button,a).mc-button:focus-visible { outline:2px solid #efc62f; outline-offset:2px; }
+:root .mc-theme .mc-button.delete {
+  --mc-button-text: #efb0a8;
+}
+:root .mc-theme :is(button, a).mc-button.wrap {
+  min-width: 0;
+  white-space: normal;
+  text-align: left;
+  justify-content: flex-start;
+}
+:root .mc-theme :is(button, a).mc-button:is(.active, [aria-current='page'], [aria-pressed='true']) {
+  --mc-button-image: url('/assets/machine-ui/button-hover.png');
+  --mc-button-text: #efc62f;
+}
+:root .mc-theme :is(button, a).mc-button:is(:hover, :focus-visible):not(:disabled) {
+  --mc-button-image: url('/assets/machine-ui/button-hover.png');
+  --mc-button-text: #efc62f;
+  color: var(--mc-button-text);
+  filter: none;
+}
+:root .mc-theme :is(button, a).mc-button:focus-visible {
+  outline: 2px solid #efc62f;
+  outline-offset: 2px;
+}
 :root .mc-theme button.mc-button:disabled {
-  --mc-button-image:url('/assets/machine-ui/button-disabled.png');
-  --mc-button-text:#888;
-  color:var(--mc-button-text);
-  opacity:1;
-  cursor:not-allowed;
+  --mc-button-image: url('/assets/machine-ui/button-disabled.png');
+  --mc-button-text: #888;
+  color: var(--mc-button-text);
+  opacity: 1;
+  cursor: not-allowed;
 }
-:root .mc-theme .mc-button.version { display:block; min-width:190px; padding:3px 30px 3px 10px; text-align:left; }
-:root .mc-theme .mc-button.version .version-title { font:400 18px/22px Minecraft,monospace; }
-:root .mc-theme .mc-button.version small { font:400 9px/13px Minecraft,monospace; margin-top:0; }
-:root .mc-theme .mc-button.version:is(:hover,:focus-visible) :is(.version-title,small) { color:inherit; }
-:root .mc-theme .mc-button.category-export { width:auto; min-width:max-content; flex-basis:auto; }
-:root .mc-theme .view-tabs { gap:4px; padding:4px 0; }
-:root .mc-theme .view-tabs .mc-button > span { background:none; padding:0; color:inherit; font:400 12px/16px Minecraft,monospace; text-shadow:1px 1px #222; }
-:root .mc-theme .primary-nav { padding-top:5px; padding-bottom:5px; background:transparent; }
-:root .mc-theme .finder-modes { gap:4px; padding:0; border:0; border-radius:0; background:none; }
-:root .mc-theme :is(.dataset-actions,.choice-actions,.crafter-option>span,.special-choice-option>span) { flex-wrap:wrap; }
-@media(max-width:800px) {
-  :root .mc-theme .primary-nav .mc-button { font-size:13px; line-height:18px; padding:4px 6px; min-width:0; gap:4px; }
-  :root .mc-theme :is(button,a).mc-button { min-height:44px; }
-  :root .mc-theme .ore-production-note button.mc-button { display:inline; min-width:0; min-height:0; padding:1px 5px; border-width:2px; border-image-width:2px; font:inherit; line-height:inherit; text-shadow:none; white-space:normal; overflow-wrap:anywhere; vertical-align:baseline; }
-  :root .mc-theme .mc-button.version { min-width:0; }
-  :root .mc-theme .type-row { top:41px; }
-  :root .mc-theme :is(.view-tabs,.type-row) { background-color:#111214; background-image:var(--page-background); }
-  :root .mc-theme .dataset-actions .active-label { width:100%; min-height:20px; padding:0; justify-content:flex-start; }
+:root .mc-theme .mc-button.version {
+  display: block;
+  min-width: 190px;
+  padding: 3px 30px 3px 10px;
+  text-align: left;
+}
+:root .mc-theme .mc-button.version .version-title {
+  font:
+    400 18px/22px Minecraft,
+    monospace;
+}
+:root .mc-theme .mc-button.version small {
+  font:
+    400 9px/13px Minecraft,
+    monospace;
+  margin-top: 0;
+}
+:root .mc-theme .mc-button.version:is(:hover, :focus-visible) :is(.version-title, small) {
+  color: inherit;
+}
+:root .mc-theme .mc-button.category-export {
+  width: auto;
+  min-width: max-content;
+  flex-basis: auto;
+}
+:root .mc-theme .view-tabs {
+  gap: 4px;
+  padding: 4px 0;
+}
+:root .mc-theme .view-tabs .mc-button > span {
+  background: none;
+  padding: 0;
+  color: inherit;
+  font:
+    400 12px/16px Minecraft,
+    monospace;
+  text-shadow: 1px 1px #222;
+}
+:root .mc-theme .primary-nav {
+  padding-top: 5px;
+  padding-bottom: 5px;
+  background: transparent;
+}
+:root .mc-theme .finder-modes {
+  gap: 4px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+:root
+  .mc-theme
+  :is(.dataset-actions, .choice-actions, .crafter-option > span, .special-choice-option > span) {
+  flex-wrap: wrap;
+}
+@media (max-width: 800px) {
+  :root .mc-theme .primary-nav .mc-button {
+    font-size: 13px;
+    line-height: 18px;
+    padding: 4px 6px;
+    min-width: 0;
+    gap: 4px;
+  }
+  :root .mc-theme :is(button, a).mc-button {
+    min-height: 44px;
+  }
+  :root .mc-theme .ore-production-note button.mc-button {
+    display: inline;
+    min-width: 0;
+    min-height: 0;
+    padding: 1px 5px;
+    border-width: 2px;
+    border-image-width: 2px;
+    font: inherit;
+    line-height: inherit;
+    text-shadow: none;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    vertical-align: baseline;
+  }
+  :root .mc-theme .mc-button.version {
+    min-width: 0;
+  }
+  :root .mc-theme .type-row {
+    top: 41px;
+  }
+  :root .mc-theme :is(.view-tabs, .type-row) {
+    background-color: #111214;
+    background-image: var(--page-background);
+  }
+  :root .mc-theme .dataset-actions .active-label {
+    width: 100%;
+    min-height: 20px;
+    padding: 0;
+    justify-content: flex-start;
+  }
 }

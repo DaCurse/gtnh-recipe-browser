@@ -4,7 +4,7 @@ import {
   recipeSearchTerms,
   type RecipeSearchCatalogEntry,
   type RecipeSearchDocument,
-  type RecipeSearchRecord
+  type RecipeSearchRecord,
 } from '../lib/recipeSearch';
 
 type WorkerRequest =
@@ -34,7 +34,7 @@ let searchToken = 0;
 function sortedRecords(): RecipeSearchRecord[] {
   if (recordsDirty) {
     records = [...recordsById.values()].sort(
-      (left, right) => left.order - right.order || left.id.localeCompare(right.id)
+      (left, right) => left.order - right.order || left.id.localeCompare(right.id),
     );
     recordsDirty = false;
   }
@@ -47,7 +47,7 @@ function yieldToNewerRequests(): Promise<void> {
 
 async function search(
   request: Extract<WorkerRequest, { type: 'search' }>,
-  token: number
+  token: number,
 ): Promise<void> {
   const source = sortedRecords();
   const terms = recipeSearchTerms(request.query);
@@ -84,7 +84,7 @@ async function search(
     generation: request.generation,
     id: request.id,
     total,
-    ids
+    ids,
   });
 }
 

@@ -2,12 +2,22 @@
   import { onMount } from 'svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import ItemActionDialog from './ItemActionDialog.svelte';
-  import { clearItemTouch, consumeItemTouchEvent, itemTouchState, loadItemTouchTutorial, resetItemTouchEvents } from './itemTouch.svelte';
+  import {
+    clearItemTouch,
+    consumeItemTouchEvent,
+    itemTouchState,
+    loadItemTouchTutorial,
+    resetItemTouchEvents,
+  } from './itemTouch.svelte';
 
-  const tutorialHint = $derived([
-    !itemTouchState.tutorial.opened ? 'Tap item again to open' : '',
-    !itemTouchState.tutorial.held ? 'Hold for actions' : ''
-  ].filter(Boolean).join(' · '));
+  const tutorialHint = $derived(
+    [
+      !itemTouchState.tutorial.opened ? 'Tap item again to open' : '',
+      !itemTouchState.tutorial.held ? 'Hold for actions' : '',
+    ]
+      .filter(Boolean)
+      .join(' · '),
+  );
 
   onMount(() => {
     loadItemTouchTutorial();
@@ -15,15 +25,24 @@
       resetItemTouchEvents(event);
       const target = event.target;
       if (!(target instanceof Node)) return;
-      if (itemTouchState.session?.node.contains(target) || target instanceof Element && target.closest('.touch-tooltip')) return;
+      if (
+        itemTouchState.session?.node.contains(target) ||
+        (target instanceof Element && target.closest('.touch-tooltip'))
+      )
+        return;
       clearItemTouch();
     };
     const scroll = (event: Event) => {
       if (event.target instanceof Element && event.target.closest('.touch-tooltip')) return;
       clearItemTouch();
     };
-    const key = (event: KeyboardEvent) => { if (event.key === 'Escape') clearItemTouch(); };
-    const leave = () => { clearItemTouch(); itemTouchState.menu = undefined; };
+    const key = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') clearItemTouch();
+    };
+    const leave = () => {
+      clearItemTouch();
+      itemTouchState.menu = undefined;
+    };
     window.addEventListener('pointerdown', outside, true);
     window.addEventListener('click', consumeItemTouchEvent, true);
     window.addEventListener('contextmenu', consumeItemTouchEvent, true);
@@ -45,11 +64,16 @@
 </script>
 
 {#if itemTouchState.session?.preview}
-  <FloatingCatalogTooltip entry={itemTouchState.session.entry}
-    x={itemTouchState.session.anchor.right} y={itemTouchState.session.anchor.bottom}
-    anchor={itemTouchState.session.anchor} interactive notes={itemTouchState.session.notes}
-    action={tutorialHint} />
+  <FloatingCatalogTooltip
+    entry={itemTouchState.session.entry}
+    x={itemTouchState.session.anchor.right}
+    y={itemTouchState.session.anchor.bottom}
+    anchor={itemTouchState.session.anchor}
+    interactive
+    notes={itemTouchState.session.notes}
+    action={tutorialHint}
+  />
 {/if}
 {#if itemTouchState.menu}
-  <ItemActionDialog {...itemTouchState.menu} close={() => itemTouchState.menu = undefined} />
+  <ItemActionDialog {...itemTouchState.menu} close={() => (itemTouchState.menu = undefined)} />
 {/if}

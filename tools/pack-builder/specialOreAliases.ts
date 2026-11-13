@@ -3,7 +3,7 @@ import type {
   DecodedGoodsBase,
   DecodedItem,
   DecodedOreDictionary,
-  DecodedRepository
+  DecodedRepository,
 } from './model';
 import type { SpecialData, SpecialRecord } from '../data-export/special';
 
@@ -25,7 +25,7 @@ const GT_PROCESSING_GROUP_PREFIXES = [
   'gemChipped',
   'gemFlawed',
   'gemFlawless',
-  'gemExquisite'
+  'gemExquisite',
 ] as const;
 
 const GT_ORE_CATEGORIES = new Set(['gt-ore-vein', 'gt-small-ore']);
@@ -50,15 +50,18 @@ function recordMaterials(record: SpecialRecord): string[] {
 
 function isGtHostOre(entry: DecodedGoodsBase | undefined): entry is DecodedItem {
   const item = entry as DecodedItem | undefined;
-  return item?.kind === 'item'
-    && item.mod.toLocaleLowerCase() === 'gregtech'
-    && /^gt\.blockores\d*$/i.test(item.internalName);
+  return (
+    item?.kind === 'item' &&
+    item.mod.toLocaleLowerCase() === 'gregtech' &&
+    /^gt\.blockores\d*$/i.test(item.internalName)
+  );
 }
 
 function groupMap(repository: DecodedRepository): Map<string, IngredientGroup> {
   return new Map(
-    [...repository.oreDictionaries, ...repository.ingredientGroups]
-      .map((group) => [group.id.toLocaleLowerCase(), group] as const)
+    [...repository.oreDictionaries, ...repository.ingredientGroups].map(
+      (group) => [group.id.toLocaleLowerCase(), group] as const,
+    ),
   );
 }
 
@@ -71,11 +74,11 @@ function groupMap(repository: DecodedRepository): Map<string, IngredientGroup> {
  */
 export function expandGtOreSpecialData(
   data: SpecialData,
-  repository: DecodedRepository
+  repository: DecodedRepository,
 ): SpecialData {
   const groups = groupMap(repository);
   const goodsById = new Map(
-    [...repository.items, ...repository.fluids].map((entry) => [entry.id, entry] as const)
+    [...repository.items, ...repository.fluids].map((entry) => [entry.id, entry] as const),
   );
 
   const records = data.records.map((record) => {
@@ -100,7 +103,7 @@ export function expandGtOreSpecialData(
     const addedAliases = sortedAliases.filter((goodsId) => !record.goodsIds.includes(goodsId));
     const expanded: SpecialRecord = {
       ...record,
-      goodsIds: sortedAliases
+      goodsIds: sortedAliases,
     };
     for (const key of ['productionGoodsIds', 'usageGoodsIds'] as const) {
       const value = record[key];

@@ -1,7 +1,13 @@
 import { trackEvent } from './analytics';
 import { onMount, untrack } from 'svelte';
 import { recipeViewCount } from './recipeCounts';
-import { loadOreDiagramIndex, oreDiagramMatches, oreSceneBounds, type OreDiagramIndex, type OreScene } from './oreDiagram';
+import {
+  loadOreDiagramIndex,
+  oreDiagramMatches,
+  oreSceneBounds,
+  type OreDiagramIndex,
+  type OreScene,
+} from './oreDiagram';
 import { RECIPE_UI_SCALE } from './machineUi';
 import { toRecipeSearchCatalogEntry, toRecipeSearchRecord } from './recipeSearch';
 import {
@@ -14,7 +20,7 @@ import {
   type SpecialLoadProgress,
   type SpecialRecord,
   type SpecialViewType,
-  type SpecialRepository
+  type SpecialRepository,
 } from './specialData';
 import type { DatasetRepository } from './dataset';
 import type { CatalogEntry, Recipe, RecipeView, SpecialScope } from './types';
@@ -55,7 +61,9 @@ export class RecipeBrowserState {
   specialFilter = $state('');
   readonly recipePageSize = 20;
   private oreColumns = $state(1);
-  get specialPageSize(): number { return this.specialType === 'gt-ore-processing' ? this.oreColumns : 20; }
+  get specialPageSize(): number {
+    return this.specialType === 'gt-ore-processing' ? this.oreColumns : 20;
+  }
   get oreCardWidth(): number {
     return this.specialRecords.reduce((width, record) => {
       const scene = (record.payload as { nativeScene?: OreScene }).nativeScene;
@@ -64,7 +72,8 @@ export class RecipeBrowserState {
   }
   setOreColumns(columns: number) {
     if (columns === this.oreColumns) return;
-    if (this.specialType === 'gt-ore-processing') this.specialPage = Math.floor(this.specialPage * this.oreColumns / columns);
+    if (this.specialType === 'gt-ore-processing')
+      this.specialPage = Math.floor((this.specialPage * this.oreColumns) / columns);
     this.oreColumns = columns;
   }
 
@@ -87,10 +96,13 @@ export class RecipeBrowserState {
   private recipeSearchRequest = 0;
   private specialAbortController: AbortController | null = null;
   private specialRequest = 0;
-  private specialCache = new Map<string, {
-    records: SpecialRecord[];
-    totalShards: number;
-  }>();
+  private specialCache = new Map<
+    string,
+    {
+      records: SpecialRecord[];
+      totalShards: number;
+    }
+  >();
   /**
    * The selected goods and top-level direction are the context for both
    * normal recipes and NEI special pages.  A special tab is a local choice
@@ -120,10 +132,8 @@ export class RecipeBrowserState {
     $effect(() => {
       const externalSpecialType = this.context.specialType?.() ?? '';
       const externalSpecialScope = this.context.specialScope?.() ?? 'item';
-      if (
-        externalSpecialType === this.specialType
-        && externalSpecialScope === this.specialScope
-      ) return;
+      if (externalSpecialType === this.specialType && externalSpecialScope === this.specialScope)
+        return;
       this.specialType = externalSpecialType;
       this.specialScope = externalSpecialType ? externalSpecialScope : 'item';
       this.specialQuery = '';
@@ -135,18 +145,24 @@ export class RecipeBrowserState {
     $effect(() => {
       const nextQuery = this.recipeQuery;
       this.recipeDebouncePending = nextQuery !== this.recipeFilter;
-      const timeout = window.setTimeout(() => {
-        this.recipeFilter = nextQuery;
-        this.recipeDebouncePending = false;
-      }, nextQuery ? 100 : 0);
+      const timeout = window.setTimeout(
+        () => {
+          this.recipeFilter = nextQuery;
+          this.recipeDebouncePending = false;
+        },
+        nextQuery ? 100 : 0,
+      );
       return () => window.clearTimeout(timeout);
     });
 
     $effect(() => {
       const nextQuery = this.specialQuery;
-      const timeout = window.setTimeout(() => {
-        this.specialFilter = nextQuery;
-      }, nextQuery ? 100 : 0);
+      const timeout = window.setTimeout(
+        () => {
+          this.specialFilter = nextQuery;
+        },
+        nextQuery ? 100 : 0,
+      );
       return () => window.clearTimeout(timeout);
     });
 
@@ -170,7 +186,7 @@ export class RecipeBrowserState {
         query,
         recipeType,
         offset: page * this.recipePageSize,
-        limit: this.recipePageSize
+        limit: this.recipePageSize,
       });
     });
 
@@ -215,19 +231,29 @@ export class RecipeBrowserState {
 
   get specialTypes(): SpecialViewType[] {
     const repository = specialRepository(this.context.repository());
-    const serviceIcons = new Map((repository.specialServiceIcons ?? []).map((icon) => [icon.id, icon]));
+    const serviceIcons = new Map(
+      (repository.specialServiceIcons ?? []).map((icon) => [icon.id, icon]),
+    );
     const mode = this.context.mode();
-    return [...(repository.specialViewTypes ?? []), ...(this.context.extraSpecial?.()?.specialViewTypes ?? [])]
+    return [
+      ...(repository.specialViewTypes ?? []),
+      ...(this.context.extraSpecial?.()?.specialViewTypes ?? []),
+    ]
       .map((viewType) => ({
         ...viewType,
-        iconId: (viewType.id === 'gt-ore-processing' ? this.oreDiagramIndex?.iconId : undefined) ?? viewType.iconId
-          ?? (viewType.serviceIconId ? serviceIcons.get(viewType.serviceIconId)?.goodsId : undefined),
-        glyph: viewType.glyph
-          ?? serviceIcons.get(viewType.serviceIconId ?? '')?.label.slice(0, 1)
+        iconId:
+          (viewType.id === 'gt-ore-processing' ? this.oreDiagramIndex?.iconId : undefined) ??
+          viewType.iconId ??
+          (viewType.serviceIconId ? serviceIcons.get(viewType.serviceIconId)?.goodsId : undefined),
+        glyph: viewType.glyph ?? serviceIcons.get(viewType.serviceIconId ?? '')?.label.slice(0, 1),
       }))
       .filter((viewType) => viewType.id.length > 0)
-      .filter((viewType) => isSpecialViewEnabled(viewType.id)
-        || (viewType.id === 'gt-ore-processing' && this.oreDiagramIndex?.datasetId === this.context.repository().datasetId))
+      .filter(
+        (viewType) =>
+          isSpecialViewEnabled(viewType.id) ||
+          (viewType.id === 'gt-ore-processing' &&
+            this.oreDiagramIndex?.datasetId === this.context.repository().datasetId),
+      )
       .filter(() => mode !== 'machineUsages')
       .filter((viewType) => {
         const count = this.specialCount(mode, viewType.id);
@@ -242,19 +268,25 @@ export class RecipeBrowserState {
   }
 
   specialProvider(viewType = this.specialType): SpecialRepository {
-    const extra=this.context.extraSpecial?.();
-    return extra?.specialViewTypes?.some(type=>type.id===viewType) ? extra : specialRepository(this.context.repository());
+    const extra = this.context.extraSpecial?.();
+    return extra?.specialViewTypes?.some((type) => type.id === viewType)
+      ? extra
+      : specialRepository(this.context.repository());
   }
 
   get visibleSpecialRecords(): SpecialRecord[] {
     const terms = this.specialFilter.toLocaleLowerCase().split(/\s+/).filter(Boolean);
-    const filtered = terms.length === 0
-      ? this.specialRecords
-      : this.specialRecords.filter((record) => {
-        const text = specialSearchText(record);
-        return terms.every((term) => text.includes(term));
-      });
-    return filtered.slice(this.specialPage * this.specialPageSize, (this.specialPage + 1) * this.specialPageSize);
+    const filtered =
+      terms.length === 0
+        ? this.specialRecords
+        : this.specialRecords.filter((record) => {
+            const text = specialSearchText(record);
+            return terms.every((term) => text.includes(term));
+          });
+    return filtered.slice(
+      this.specialPage * this.specialPageSize,
+      (this.specialPage + 1) * this.specialPageSize,
+    );
   }
 
   get specialSearchTotal(): number {
@@ -303,7 +335,10 @@ export class RecipeBrowserState {
   }
 
   get showingSpecial(): boolean {
-    return this.specialType.length > 0 && this.specialTypes.some((viewType) => viewType.id === this.specialType);
+    return (
+      this.specialType.length > 0 &&
+      this.specialTypes.some((viewType) => viewType.id === this.specialType)
+    );
   }
 
   get showingGlobalSpecial(): boolean {
@@ -312,19 +347,29 @@ export class RecipeBrowserState {
 
   recipeCount(view: RecipeView): number | undefined {
     const selected = this.context.selected();
-    return recipeViewCount(selected, view, this.loadedRecipeCounts[`${selected.id}:${view}`],
-      oreDiagramMatches(this.oreDiagramIndex, selected, view).length);
+    return recipeViewCount(
+      selected,
+      view,
+      this.loadedRecipeCounts[`${selected.id}:${view}`],
+      oreDiagramMatches(this.oreDiagramIndex, selected, view).length,
+    );
   }
 
   specialCount(view: RecipeView, viewType = this.specialType): number | undefined {
     if (!viewType) return undefined;
     const selected = this.context.selected();
-    const loadedCount = this.loadedSpecialCounts[`${this.context.repository().datasetId}:${selected.id}:${view}:${viewType}`];
+    const loadedCount =
+      this.loadedSpecialCounts[
+        `${this.context.repository().datasetId}:${selected.id}:${view}:${viewType}`
+      ];
     if (loadedCount !== undefined) return loadedCount;
-    const extra=this.context.extraSpecial?.();
-    if(extra?.specialViewTypes?.some(type=>type.id===viewType)) return extra.countFor?.(selected.id,view,viewType) ?? 0;
-    if (viewType === 'gt-ore-processing') return oreDiagramMatches(this.oreDiagramIndex, selected, view).length;
-    const counts = view === 'recipes' ? selected.specialProductionCounts : selected.specialUsageCounts;
+    const extra = this.context.extraSpecial?.();
+    if (extra?.specialViewTypes?.some((type) => type.id === viewType))
+      return extra.countFor?.(selected.id, view, viewType) ?? 0;
+    if (viewType === 'gt-ore-processing')
+      return oreDiagramMatches(this.oreDiagramIndex, selected, view).length;
+    const counts =
+      view === 'recipes' ? selected.specialProductionCounts : selected.specialUsageCounts;
     if (counts) return counts[viewType] ?? 0;
     const declared = selected as CatalogEntry & {
       specialProductionCount?: number;
@@ -332,19 +377,21 @@ export class RecipeBrowserState {
       specialProductionLookupIds?: string[];
       specialUsageLookupIds?: string[];
     };
-    const lookupIds = view === 'recipes'
-      ? declared.specialProductionLookupIds
-      : view === 'usages'
-        ? declared.specialUsageLookupIds
-        : undefined;
+    const lookupIds =
+      view === 'recipes'
+        ? declared.specialProductionLookupIds
+        : view === 'usages'
+          ? declared.specialUsageLookupIds
+          : undefined;
     if (lookupIds !== undefined) {
       return lookupIds.filter((lookupId) => specialLookupMatchesView(lookupId, viewType)).length;
     }
-    const declaredCount = view === 'recipes'
-      ? declared.specialProductionCount
-      : view === 'usages'
-        ? declared.specialUsageCount
-        : undefined;
+    const declaredCount =
+      view === 'recipes'
+        ? declared.specialProductionCount
+        : view === 'usages'
+          ? declared.specialUsageCount
+          : undefined;
     return declaredCount;
   }
 
@@ -353,7 +400,7 @@ export class RecipeBrowserState {
     requestAnimationFrame(() => {
       document.querySelector('.recipe-search-block, .recipe-list')?.scrollIntoView({
         block: 'start',
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     });
   }
@@ -363,7 +410,7 @@ export class RecipeBrowserState {
     requestAnimationFrame(() => {
       document.querySelector('.recipe-search-block, .recipe-list')?.scrollIntoView({
         block: 'start',
-        behavior: 'smooth'
+        behavior: 'smooth',
       });
     });
   }
@@ -443,7 +490,8 @@ export class RecipeBrowserState {
     this.recipeLoading = true;
     this.recipeError = '';
     try {
-      if (this.oreDiagramIndex?.datasetId !== repository.datasetId) this.oreDiagramIndex = undefined;
+      if (this.oreDiagramIndex?.datasetId !== repository.datasetId)
+        this.oreDiagramIndex = undefined;
       const pendingIndex = loadOreDiagramIndex(repository.datasetId).catch(() => undefined);
       const entry = repository.entryFor(entryId, controller.signal);
       if (this.specialType === 'gt-ore-processing') {
@@ -452,7 +500,9 @@ export class RecipeBrowserState {
       } else {
         await entry;
         // Ordinary recipe chunks must not wait for an optional diagram index.
-        void pendingIndex.then(index => { if (request === this.recipeRequest) this.oreDiagramIndex = index; });
+        void pendingIndex.then((index) => {
+          if (request === this.recipeRequest) this.oreDiagramIndex = index;
+        });
       }
     } catch (error) {
       if (error instanceof DOMException && error.name === 'AbortError') return;
@@ -505,7 +555,7 @@ export class RecipeBrowserState {
           this.specialRecords = [];
           this.loadedSpecialCounts = {
             ...this.loadedSpecialCounts,
-            [cacheKey]: 0
+            [cacheKey]: 0,
           };
         } else {
           const cached = this.specialCache.get(cacheKey);
@@ -519,11 +569,8 @@ export class RecipeBrowserState {
               specialRepo,
               view,
               specialType,
-              (progress) => this.applySpecialProgress(
-                progress,
-                specialRequest
-              ),
-              specialController.signal
+              (progress) => this.applySpecialProgress(progress, specialRequest),
+              specialController.signal,
             );
           } else {
             loaded = await (itemLoader as NonNullable<typeof itemLoader>).call(
@@ -531,25 +578,32 @@ export class RecipeBrowserState {
               entryId,
               view,
               specialType,
-              (progress) => this.applySpecialProgress(
-                progress,
-                specialRequest
-              ),
-              specialController.signal
+              (progress) => this.applySpecialProgress(progress, specialRequest),
+              specialController.signal,
             );
           }
           if (specialRequest !== this.specialRequest || request !== this.recipeRequest) return;
-          const ordered = [...loaded].sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
+          const ordered = [...loaded].sort(
+            (left, right) =>
+              (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id),
+          );
           const totalShards = this.specialTotalShards;
           this.specialCache.set(cacheKey, { records: ordered, totalShards });
           this.specialRecords = ordered;
           this.loadedSpecialCounts = {
             ...this.loadedSpecialCounts,
-            [cacheKey]: ordered.length
+            [cacheKey]: ordered.length,
           };
           this.specialTotalShards = Math.max(this.specialTotalShards, 1);
           this.specialLoadedShards = this.specialTotalShards;
-          trackEvent('special_viewed', {special_type:specialType,scope:specialScope,view,item_name:this.context.selected().name,dataset_version:repository.gtnhVersion,record_count:ordered.length});
+          trackEvent('special_viewed', {
+            special_type: specialType,
+            scope: specialScope,
+            view,
+            item_name: this.context.selected().name,
+            dataset_version: repository.gtnhVersion,
+            record_count: ordered.length,
+          });
         }
         if (specialScope === 'item' && this.specialRecords.length === 0) {
           this.specialType = '';
@@ -559,31 +613,33 @@ export class RecipeBrowserState {
         }
         return;
       }
-      const loaded = await repository.recipesFor(entryId, view, ({
-        loadedShards,
-        totalShards,
-        batch
-      }) => {
-        if (request !== this.recipeRequest) return;
-        this.recipeLoadedShards = loadedShards;
-        this.recipeTotalShards = totalShards;
-        if (batch.length > 0) {
-          const next = [...this.allRecipes, ...batch]
-            .sort((left, right) => (left.order ?? 0) - (right.order ?? 0));
-          this.allRecipes = next;
-          this.appendRecipeSearch(batch);
-          this.loadedRecipeCounts = {
-            ...this.loadedRecipeCounts,
-            [`${entryId}:${view}`]: next.length
-          };
-          if (!this.type) this.type = next[0]?.type ?? '';
-        }
-      }, controller.signal);
+      const loaded = await repository.recipesFor(
+        entryId,
+        view,
+        ({ loadedShards, totalShards, batch }) => {
+          if (request !== this.recipeRequest) return;
+          this.recipeLoadedShards = loadedShards;
+          this.recipeTotalShards = totalShards;
+          if (batch.length > 0) {
+            const next = [...this.allRecipes, ...batch].sort(
+              (left, right) => (left.order ?? 0) - (right.order ?? 0),
+            );
+            this.allRecipes = next;
+            this.appendRecipeSearch(batch);
+            this.loadedRecipeCounts = {
+              ...this.loadedRecipeCounts,
+              [`${entryId}:${view}`]: next.length,
+            };
+            if (!this.type) this.type = next[0]?.type ?? '';
+          }
+        },
+        controller.signal,
+      );
       if (request === this.recipeRequest) {
         this.allRecipes = loaded;
         this.loadedRecipeCounts = {
           ...this.loadedRecipeCounts,
-          [`${entryId}:${view}`]: loaded.length
+          [`${entryId}:${view}`]: loaded.length,
         };
         if (!this.type) this.type = loaded[0]?.type ?? '';
         if (loaded.length === 0) {
@@ -616,16 +672,14 @@ export class RecipeBrowserState {
     }
   }
 
-  private applySpecialProgress(
-    progress: SpecialLoadProgress,
-    request: number
-  ) {
+  private applySpecialProgress(progress: SpecialLoadProgress, request: number) {
     if (request !== this.specialRequest) return;
     this.specialLoadedShards = progress.loadedShards;
     this.specialTotalShards = progress.totalShards;
     if (progress.batch.length === 0) return;
-    const next = [...this.specialRecords, ...progress.batch]
-      .sort((left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id));
+    const next = [...this.specialRecords, ...progress.batch].sort(
+      (left, right) => (left.order ?? 0) - (right.order ?? 0) || left.id.localeCompare(right.id),
+    );
     this.specialRecords = next;
   }
 
@@ -652,7 +706,7 @@ export class RecipeBrowserState {
     this.recipeWorkerPending = false;
     this.recipeSearchWorker?.postMessage({
       type: 'reset',
-      generation: this.recipeSearchGeneration
+      generation: this.recipeSearchGeneration,
     });
   }
 
@@ -660,37 +714,44 @@ export class RecipeBrowserState {
     if (batch.length === 0) return;
     const recipes = batch.map(toRecipeSearchRecord);
     const catalog = [];
-    for (const recipe of recipes) for (const id of recipe.ingredientIds) {
-      if (this.recipeCatalogSent.has(id)) continue;
-      const entry = this.context.catalogEntry(id);
-      if (entry) catalog.push(toRecipeSearchCatalogEntry(entry));
-      this.recipeCatalogSent.add(id);
-    }
-    if (catalog.length) this.recipeSearchWorker?.postMessage({
-      type: 'appendCatalog', generation: this.recipeSearchGeneration, catalog
-    });
+    for (const recipe of recipes)
+      for (const id of recipe.ingredientIds) {
+        if (this.recipeCatalogSent.has(id)) continue;
+        const entry = this.context.catalogEntry(id);
+        if (entry) catalog.push(toRecipeSearchCatalogEntry(entry));
+        this.recipeCatalogSent.add(id);
+      }
+    if (catalog.length)
+      this.recipeSearchWorker?.postMessage({
+        type: 'appendCatalog',
+        generation: this.recipeSearchGeneration,
+        catalog,
+      });
     this.recipeSearchWorker?.postMessage({
-      type: 'append', generation: this.recipeSearchGeneration, recipes
+      type: 'append',
+      generation: this.recipeSearchGeneration,
+      recipes,
     });
     this.recipeIndexRevision += 1;
   }
 
   private mountWorker(): () => void {
-    const worker = new Worker(
-      new URL('../workers/recipeSearch.worker.ts', import.meta.url),
-      { type: 'module' }
-    );
+    const worker = new Worker(new URL('../workers/recipeSearch.worker.ts', import.meta.url), {
+      type: 'module',
+    });
     this.recipeSearchWorker = worker;
-    worker.onmessage = (event: MessageEvent<
-      | { type: 'catalogReady'; generation: number }
-      | {
-          type: 'results';
-          generation: number;
-          id: number;
-          total: number;
-          ids: string[];
-        }
-    >) => {
+    worker.onmessage = (
+      event: MessageEvent<
+        | { type: 'catalogReady'; generation: number }
+        | {
+            type: 'results';
+            generation: number;
+            id: number;
+            total: number;
+            ids: string[];
+          }
+      >,
+    ) => {
       if (event.data.type === 'catalogReady') {
         if (event.data.generation === this.recipeSearchGeneration) {
           this.recipeSearchReady = true;
@@ -698,10 +759,11 @@ export class RecipeBrowserState {
         return;
       }
       if (
-        event.data.type !== 'results'
-        || event.data.generation !== this.recipeSearchGeneration
-        || event.data.id !== this.recipeSearchRequest
-      ) return;
+        event.data.type !== 'results' ||
+        event.data.generation !== this.recipeSearchGeneration ||
+        event.data.id !== this.recipeSearchRequest
+      )
+        return;
       this.recipeSearchIds = event.data.ids;
       this.recipeSearchTotalValue = event.data.total;
       this.recipeWorkerPending = false;
