@@ -26,6 +26,7 @@ import { nbtIdentity } from '../../src/lib/nbt';
 import { itemNavigationResolver } from '../../src/lib/itemNavigation';
 import { writeQuestLinks } from './links';
 import { writeNavigationIcons } from './navigationIcons';
+import { writeQuestFrames } from './frames';
 import { decodeFormat5 } from '../pack-builder/decoder';
 import { exportedQuestItems, questStackIdentity } from './exportedItems';
 
@@ -282,43 +283,11 @@ for (const entry of variants.values()) {
 const assets = join(publicRoot, 'quests/assets');
 await mkdir(assets, { recursive: true });
 const midnightRoot = join(modpackPath, 'config/betterquesting/resources/midnight');
-const [midnight] = JSON.parse(await readFile(join(midnightRoot, 'bq_themes.json'), 'utf8'));
-const frameSizes = new Map(
-  chapters.flatMap((chapter) =>
-    chapter.quests.map(
-      (placement) => [`${placement.width}x${placement.height}`, placement] as const,
-    ),
-  ),
+await writeQuestFrames(
+  midnightRoot,
+  assets,
+  chapters.flatMap((chapter) => chapter.quests),
 );
-for (const [name, key] of [
-  ['normal', 'quest_norm_0'],
-  ['main', 'quest_main_0'],
-] as const) {
-  const texture = midnight.textures[`betterquesting:${key}`];
-  const [left, top, width, height] = texture.bounds as number[];
-  const borders = texture.padding as number[];
-  if (
-    texture.sliceMode !== 1 ||
-    width !== 24 ||
-    height !== 24 ||
-    !borders.every((value) => value === borders[0])
-  ) {
-    throw new Error(`Unsupported Midnight quest frame geometry: ${key}`);
-  }
-  const source = await sharp(join(midnightRoot, texture.atlas.split(':')[1]))
-    .extract({ left: left!, top: top!, width, height })
-    .png()
-    .toBuffer();
-  await writeFile(join(assets, `quest-${name}.png`), source);
-  for (const [size, placement] of frameSizes) {
-    // Scale the complete frame so its outline and transparent cutouts stay
-    // together. Slicing through this artwork's corners exposes a rectangular fill.
-    await sharp(source)
-      .resize(placement.width, placement.height, { kernel: 'nearest' })
-      .png()
-      .toFile(join(assets, `quest-${name}-${size}.png`));
-  }
-}
 await copyFile(join(modpackPath, 'LICENSE'), join(assets, 'GTNH-Modpack-LICENSE.txt'));
 // Native checkbox cross and open-eye visibility control, from PresetIcon.
 const editorIcons = await readFile(

@@ -69,8 +69,9 @@
 }
 :root .mc-theme .mc-button.version {
   display: block;
-  min-width: 190px;
-  padding: 3px 30px 3px 10px;
+  min-width: 0;
+  min-height: 40px;
+  padding: 3px 24px 3px 8px;
   text-align: left;
 }
 :root .mc-theme .mc-button.version .version-title {
@@ -78,23 +79,15 @@
     400 18px/22px Minecraft,
     monospace;
 }
-:root .mc-theme .mc-button.version small {
-  font:
-    400 9px/13px Minecraft,
-    monospace;
-  margin-top: 0;
-}
-:root .mc-theme .mc-button.version:is(:hover, :focus-visible) :is(.version-title, small) {
-  color: inherit;
-}
-:root .mc-theme .mc-button.category-export {
-  width: auto;
-  min-width: max-content;
-  flex-basis: auto;
-}
 :root .mc-theme .view-tabs {
   gap: 4px;
   padding: 4px 0;
+}
+:root .mc-theme .view-tabs .mc-button {
+  min-width: 0;
+  padding: 4px 10px;
+  font-size: 16px;
+  gap: 5px;
 }
 :root .mc-theme .view-tabs .mc-button > span {
   background: none;
@@ -105,10 +98,10 @@
     monospace;
   text-shadow: 1px 1px #222;
 }
-:root .mc-theme .primary-nav {
-  padding-top: 5px;
-  padding-bottom: 5px;
-  background: transparent;
+:root .mc-theme .primary-nav .mc-button {
+  min-height: 40px;
+  padding: 4px 10px;
+  font-size: 16px;
 }
 :root .mc-theme .finder-modes {
   gap: 4px;
@@ -163,4 +156,133 @@
     padding: 0;
     justify-content: flex-start;
   }
+}
+
+:root .mc-theme .mc-button.reshuffle {
+  min-width: 40px;
+  width: 40px;
+  padding: 4px;
+  flex: none;
+}
+
+:root .mc-theme .mc-button-surface.sort-select {
+  min-width: 0;
+  min-height: 32px;
+  padding: 0 5px;
+  font:
+    400 14px/20px Minecraft,
+    monospace;
+  text-align: left;
+}
+:root .mc-theme .mc-button.reshuffle {
+  min-height: 32px;
+  min-width: 32px;
+  width: 32px;
+}
+
+/* A paginated catalogue spans the grid; long counts must not widen its tracks. */
+:root .mc-theme .mc-button.item-more {
+  min-width: 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+:root .mc-theme .mc-button.catalog-action {
+  min-width: 0;
+  min-height: 32px;
+  width: 100%;
+  padding: 2px 4px;
+  font:
+    400 12px/18px Minecraft,
+    monospace;
+  text-shadow: 1px 1px #222;
+}
+
+@media (max-width: 600px) {
+  :root .mc-theme .primary-nav .mc-button {
+    width: 36px;
+    min-width: 36px;
+    min-height: 36px;
+    padding: 3px;
+  }
+  :root .mc-theme .mc-button.version {
+    min-height: 36px;
+    padding: 3px 16px 3px 5px;
+  }
+  :root .mc-theme .mc-button.version .version-title {
+    font:
+      400 14px/20px Minecraft,
+      monospace;
+    gap: 3px;
+  }
+  .primary-nav {
+    gap: 3px;
+  }
+}
+
+@media (max-width: 600px) {
+  :root .mc-theme .view-tabs .mc-button {
+    flex: 0 1 auto;
+    padding: 4px 6px;
+    gap: 3px;
+    font:
+      400 12px/18px Minecraft,
+      monospace;
+    white-space: normal;
+  }
+  :root .mc-theme .view-tabs .mc-button > span {
+    font:
+      400 9px/13px Minecraft,
+      monospace;
+  }
+}
+
+:root .mc-theme .manager .mc-button.compact {
+  min-height: 34px;
+  padding: 3px 8px;
+  font:
+    400 14px/20px Minecraft,
+    monospace;
+}
+@media (min-width: 360px) and (max-width: 600px) {
+  :root .mc-theme .primary-nav .mc-button {
+    width: auto;
+    min-width: 0;
+    gap: 3px;
+    padding: 3px 3px;
+    font:
+      400 12px/18px Minecraft,
+      monospace;
+  }
+  .primary-nav img {
+    width: 16px;
+    height: 16px;
+  }
+}
+
+:root .mc-theme .mc-button.map-control {
+  width: 32px;
+  min-width: 32px;
+  min-height: 32px;
+  height: 32px;
+  padding: 3px;
+  gap: 0;
+}
+
+:root .mc-theme .mc-button.quest-result-action {
+  min-width: 0;
+  min-height: 32px;
+  padding: 3px 7px;
+  font:
+    400 12px/18px Minecraft,
+    monospace;
+}
+
+:root .mc-theme .mc-button.category-export {
+  min-width: 32px;
+  width: 32px;
+  min-height: 32px;
+  height: 32px;
+  padding: 3px;
+  flex: none;
 }

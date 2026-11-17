@@ -1,7 +1,9 @@
 <script lang="ts">
+  import { onMount, untrack } from 'svelte';
+  import { trackEvent } from '../analytics';
   import QuestIcon from './QuestIcon.svelte';
   import { questbook } from './state.svelte';
-  import { placementVisible, questBounds, questEdges } from './layout';
+  import { focusedQuestCamera, placementVisible, questBounds, questEdges } from './layout';
   import { plainQuestText } from './text';
   import type { QuestChapter } from './types';
   import type { QuestRepository } from './repository';
@@ -22,6 +24,54 @@
     clearPreview: () => void;
     pointerKind: (event: PointerEvent) => void;
   } = $props();
+  let container: HTMLElement;
+  let fullscreenRoot: HTMLElement;
+  let manualFullscreen = $state(false);
+  let landscape = $state(false);
+  let landscapeDismissed = $state(false);
+  const fullscreen = $derived(manualFullscreen || (landscape && !landscapeDismissed));
+  async function toggleFullscreen() {
+    clearPreview();
+    const entering = !fullscreen;
+    manualFullscreen = entering;
+    landscapeDismissed = !entering;
+    trackEvent('quest_map_fullscreen', { enabled: entering, trigger: 'button' });
+    fullscreenRoot = container.closest<HTMLElement>('.app-shell') ?? container;
+    if (!entering && document.fullscreenElement === fullscreenRoot) await document.exitFullscreen();
+    else if (entering && fullscreenRoot.requestFullscreen) {
+      try {
+        await fullscreenRoot.requestFullscreen();
+      } catch {
+        /* Full-viewport layout works without browser fullscreen support. */
+      }
+    }
+  }
+  onMount(() => {
+    const orientation = window.matchMedia(
+      '(orientation: landscape) and (max-height: 500px) and (pointer: coarse)',
+    );
+    const changed = () => {
+      landscape = orientation.matches;
+      landscapeDismissed = false;
+      clearPreview();
+      if (landscape) trackEvent('quest_map_fullscreen', { enabled: true, trigger: 'landscape' });
+    };
+    const fullscreenChanged = () => {
+      if (!document.fullscreenElement && manualFullscreen) {
+        manualFullscreen = false;
+        landscapeDismissed = true;
+      }
+    };
+    changed();
+    orientation.addEventListener('change', changed);
+    document.addEventListener('fullscreenchange', fullscreenChanged);
+    return () => {
+      orientation.removeEventListener('change', changed);
+      document.removeEventListener('fullscreenchange', fullscreenChanged);
+      if (document.fullscreenElement === fullscreenRoot)
+        void document.exitFullscreen().catch(() => {});
+    };
+  });
   let element: HTMLDivElement;
   let width = $state(0),
     height = $state(0);
@@ -32,13 +82,42 @@
   let suppressClickUntil = 0;
   const bounds = $derived(questBounds(chapter));
   const edges = $derived(questEdges(chapter, repository.quests));
+  let previousWidth = 0,
+    previousHeight = 0;
   $effect(() => {
-    if (!width || !height || initialized) return;
-    camera = questbook.cameras.get(chapter.id) ?? fitted();
-    initialized = true;
+    if (!width || !height) return;
+    if (!initialized) {
+      camera = questbook.cameras.get(chapter.id) ?? fitted();
+      initialized = true;
+    } else if (previousWidth && previousHeight) {
+      untrack(() => {
+        camera = {
+          ...camera,
+          x: camera.x + (width - previousWidth) / 2,
+          y: camera.y + (height - previousHeight) / 2,
+        };
+      });
+    }
+    previousWidth = width;
+    previousHeight = height;
   });
   $effect(() => {
     if (initialized) questbook.cameras.set(chapter.id, { ...camera });
+  });
+  let highlighted = $state('');
+  $effect(() => {
+    const request = questbook.focusRequest;
+    if (!request || request.chapterId !== chapter.id || !width || !height) return;
+    const placement = chapter.quests.find((placement) => placement.id === request.id);
+    if (!placement) return;
+    camera = focusedQuestCamera(placement, width, height);
+    highlighted = request.id;
+    questbook.focusRequest = undefined;
+  });
+  $effect(() => {
+    if (!highlighted) return;
+    const timer = setTimeout(() => (highlighted = ''), 3500);
+    return () => clearTimeout(timer);
   });
   function fitted() {
     const zoom = Math.max(
@@ -117,6 +196,10 @@
     if (!pointers.size) dragging = false;
   }
   function key(event: KeyboardEvent) {
+    if (event.key === 'Escape' && fullscreen) {
+      void toggleFullscreen();
+      return;
+    }
     const moves: Record<string, [number, number]> = {
       ArrowLeft: [48, 0],
       ArrowRight: [-48, 0],
@@ -145,24 +228,61 @@
   }
 </script>
 
-<section class="quest-canvas-area" aria-label={`${plainQuestText(chapter.name)} quest layout`}>
-  <div class="canvas-tools">
-    <button class="mc-button" aria-label="Zoom out" onclick={() => zoomTo(camera.zoom / 1.25)}
-      >−</button
-    >
-    <span>{Math.round(camera.zoom * 100)}%</span>
-    <button class="mc-button" aria-label="Zoom in" onclick={() => zoomTo(camera.zoom * 1.25)}
-      >+</button
+<svelte:window
+  onkeydown={(event) => {
+    if (event.key === 'Escape' && fullscreen && event.target !== element) void toggleFullscreen();
+  }}
+/>
+
+<section
+  class="quest-canvas-area"
+  class:fullscreen
+  bind:this={container}
+  aria-label={`${plainQuestText(chapter.name)} quest layout`}
+>
+  <div class="canvas-tools" role="group" aria-label="Quest map controls">
+    <button
+      class="mc-button map-control"
+      title="Zoom out"
+      aria-label="Zoom out"
+      onclick={() => zoomTo(camera.zoom / 1.25)}
+      ><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12" /></svg></button
     >
     <button
-      class="mc-button"
+      class="mc-button map-control"
+      title="Zoom in"
+      aria-label="Zoom in"
+      onclick={() => zoomTo(camera.zoom * 1.25)}
+      ><svg viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12M10 4v12" /></svg></button
+    >
+    <button
+      class="mc-button map-control"
+      title={`Fit chapter · ${Math.round(camera.zoom * 100)}%`}
+      aria-label="Fit chapter"
       onclick={() => {
         camera = fitted();
         clearPreview();
-      }}>Fit</button
+      }}
+      ><svg viewBox="0 0 20 20" aria-hidden="true"
+        ><path d="M3 7V3h4m6 0h4v4m0 6v4h-4m-6 0H3v-4M7 10h6m-3-3v6" /></svg
+      ></button
     >
-    <small><i></i>Direct <i class="implicit"></i>Implicit</small>
+    <button
+      class="mc-button map-control"
+      title={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+      aria-label={fullscreen ? 'Exit fullscreen' : 'Fullscreen'}
+      aria-pressed={fullscreen}
+      onclick={toggleFullscreen}
+      ><svg viewBox="0 0 20 20" aria-hidden="true"
+        ><path
+          d={fullscreen
+            ? 'M3 7h4V3m6 0v4h4m0 6h-4v4m-6 0v-4H3'
+            : 'M3 7V3h4m6 0h4v4m0 6v4h-4m-6 0H3v-4'}
+        /></svg
+      ></button
+    >
   </div>
+  <small class="canvas-legend"><i></i>Direct <i class="implicit"></i>Implicit</small>
   <!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions (The map implements pan/zoom keyboard controls and contains native quest buttons.) -->
   <div
     class="quest-canvas"
@@ -210,6 +330,7 @@
             class="quest-node"
             class:main-quest={quest.main}
             class:secret={quest.secret}
+            class:located={highlighted === quest.id}
             data-quest={quest.id}
             aria-label={`${plainQuestText(quest.name)}${quest.secret ? ' (Secret quest)' : ''}`}
             style:left={`${placement.x}px`}
@@ -217,6 +338,7 @@
             style:width={`${placement.width}px`}
             style:height={`${placement.height}px`}
             style:--quest-frame={`url('${new URL(`${import.meta.env.BASE_URL}quests/assets/quest-${quest.main ? 'main' : 'normal'}-${placement.width}x${placement.height}.png`, location.href).href}')`}
+            style:--quest-highlight-frame={`url('${new URL(`${import.meta.env.BASE_URL}quests/assets/quest-${quest.main ? 'main' : 'normal'}-highlight-${placement.width}x${placement.height}.png`, location.href).href}')`}
             onpointerenter={(event) => {
               if (!dragging) preview(quest.id, event);
             }}
@@ -260,30 +382,49 @@
     flex: 1;
     flex-direction: column;
     min-height: 0;
+    min-width: 0;
+    position: relative;
+    overflow: hidden;
+    background-color: #111214;
+    background-image: var(--page-background);
+  }
+  .quest-canvas-area.fullscreen {
+    position: fixed;
+    inset: 0;
+    width: 100%;
+    height: 100dvh;
+    z-index: 30;
   }
   .canvas-tools {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    z-index: 2;
     display: flex;
-    gap: 6px;
+    gap: 3px;
     align-items: center;
-    padding: 8px 14px;
-    border-bottom: 1px solid #373a3e;
-    color: #a3a7ac;
-    font-size: 12px;
   }
-  .canvas-tools button {
-    min-width: 34px;
-    min-height: 32px;
+  .canvas-tools svg {
+    width: 16px;
+    height: 16px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
   }
-  .canvas-tools > span {
-    min-width: 42px;
-    text-align: center;
-  }
-  small {
-    margin-left: auto;
+  .canvas-legend {
+    position: absolute;
+    left: 10px;
+    bottom: 8px;
+    z-index: 2;
     display: flex;
     align-items: center;
     gap: 5px;
-    font-size: 11px;
+    padding: 4px 6px;
+    background: #111214cc;
+    border-radius: 2px;
+    color: #9b9fa5;
+    font-size: 10px;
+    pointer-events: none;
   }
   i {
     width: 14px;
@@ -296,7 +437,9 @@
   }
   .quest-canvas {
     flex: 1;
-    min-height: 240px;
+    min-height: 0;
+    width: 100%;
+    height: 100%;
     overflow: hidden;
     position: relative;
     cursor: grab;
@@ -324,7 +467,7 @@
   .implicit line {
     stroke: #777;
   }
-  path {
+  .quest-connections path {
     fill: #000;
     opacity: 0.25;
   }
@@ -350,6 +493,25 @@
     filter: brightness(0.5);
     pointer-events: none;
   }
+  .quest-node.located::before {
+    background-image: var(--quest-highlight-frame);
+    animation: quest-locate-pulse 700ms ease-in-out 5;
+    filter: brightness(1);
+  }
+  @keyframes quest-locate-pulse {
+    0%,
+    100% {
+      filter: brightness(1);
+    }
+    50% {
+      filter: brightness(0);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .quest-node.located::before {
+      animation: none;
+    }
+  }
   .quest-node :global(.quest-icon) {
     position: absolute;
     left: 50%;
@@ -374,17 +536,20 @@
     filter: drop-shadow(1px 1px #000);
   }
   .canvas-hint {
-    text-align: center;
-    font-size: 11px;
-    color: #6f7780;
-    margin: 6px 0 8px;
+    position: absolute;
+    right: 10px;
+    bottom: 8px;
+    z-index: 2;
+    margin: 0;
+    padding: 4px 6px;
+    color: #858c94;
+    background: #111214cc;
+    font-size: 10px;
+    pointer-events: none;
   }
-  @media (max-width: 800px) {
-    .canvas-tools {
-      padding: 6px 10px;
-    }
-    small {
-      font-size: 10px;
+  @media (max-width: 600px), (max-height: 500px) {
+    .canvas-hint {
+      display: none;
     }
   }
 </style>

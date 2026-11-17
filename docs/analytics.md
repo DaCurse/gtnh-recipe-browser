@@ -38,6 +38,10 @@ The following event/property combinations support further saved insights:
 | ----------------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------- |
 | How many visits and visitors?             | Web Analytics using `$pageview`                                         | Date, referrer, device; `screen` for app section                                    |
 | What gets searched?                       | `catalog_search` total events                                           | `query`; filter `search_context` to `catalog`, `finder_input`, or `finder_output`   |
+| Which quests are located on the map?      | `quest_located`                                                         | `quest_id`, `quest_name`, `chapter_id`, `quest_version`                             |
+| Is the quest map used fullscreen?         | `quest_map_fullscreen`                                                  | `enabled`; `trigger` (`button` or `landscape`)                                      |
+| Which catalogue sort is preferred?        | `catalog_sort_changed`                                                  | `sort`, `reshuffle`, `search_context`                                               |
+| Which catalogue layout is preferred?      | `catalog_layout_changed`                                                | `layout` (`list` or `grid`); `search_context`                                       |
 | Is the search guide used?                 | `search_help_opened`                                                    | `search_context`                                                                    |
 | Which items get inspected?                | `item_viewed`                                                           | `item_name`, optionally `item_id`, `view`, `dataset_version`                        |
 | Which finder ingredients are popular?     | `finder_ingredient_added`                                               | `ingredient_name`, `side`, `mode`                                                   |

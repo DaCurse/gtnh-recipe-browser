@@ -1,0 +1,34 @@
+{
+  "renderer": "GTNewHorizons/BetterQuesting",
+  "rendererCommit": "81109f73cdeee72b26035d7937a170830a5074bf",
+  "method": "GuiQuestLines.highlightButton",
+  "zoom": 2,
+  "colors": [
+    "#000000",
+    "#FFBF00"
+  ],
+  "pulsePeriodMs": 700,
+  "processing": "Nearest-neighbour frame scaling, then original OpenGL RGB multiplication; alpha unchanged.",
+  "frames": {
+    "normal": {
+      "resource": "midnight:textures/gui/midnight_gui.png",
+      "bounds": [
+        0,
+        104,
+        24,
+        24
+      ],
+      "atlasSha256": "abf927bd51b1bd0608b10be30c67833ad28b6c124a1bb064b89c08046616c1b7"
+    },
+    "main": {
+      "resource": "midnight:textures/gui/midnight_gui.png",
+      "bounds": [
+        24,
+        104,
+        24,
+        24
+      ],
+      "atlasSha256": "abf927bd51b1bd0608b10be30c67833ad28b6c124a1bb064b89c08046616c1b7"
+    }
+  }
+}

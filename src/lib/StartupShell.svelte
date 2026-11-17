@@ -13,7 +13,6 @@
     showHome={noop}
     openDatasetManager={noop}
   />
-  <div class="startup-nav" aria-hidden="true"></div>
   <LandingPage
     assetBase="./"
     exactEntries={new Map()}

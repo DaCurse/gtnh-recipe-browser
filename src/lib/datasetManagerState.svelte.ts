@@ -48,8 +48,6 @@ export class DatasetManagerState {
   installProgress = $state<OfflineInstallProgress>();
   storageUsage = $state<number>();
   storageQuota = $state<number>();
-  physicalAssetBytes = $state(0);
-  physicalAssetCount = $state(0);
   storageReport = $state<DatasetStorageReport>({
     logicalBytes: 0,
     referencedBytes: 0,
@@ -114,8 +112,6 @@ export class DatasetManagerState {
 
   private applyStorageReport(records: DatasetState[], assetSizes: ReadonlyMap<string, number>) {
     this.storageReport = calculateDatasetStorageReport(records, assetSizes);
-    this.physicalAssetBytes = [...assetSizes.values()].reduce((total, bytes) => total + bytes, 0);
-    this.physicalAssetCount = assetSizes.size;
   }
 
   async refreshAvailability() {

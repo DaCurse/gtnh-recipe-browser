@@ -18,7 +18,6 @@
   const loadQuests = () => (questModule ??= import('./lib/questbook/QuestBrowser.svelte'));
   import QuestPreviewLayer from './lib/questbook/QuestPreviewLayer.svelte';
   import { keyboardModifiers, updateKeyboardModifiers } from './lib/keyboardModifiers.svelte';
-  import QuestVersionPicker from './lib/questbook/QuestVersionPicker.svelte';
   import { questbook } from './lib/questbook/state.svelte';
   import ItemTouchOverlay from './lib/ItemTouchOverlay.svelte';
   import { clearItemTouch, itemTouchState } from './lib/itemTouch.svelte';
@@ -599,7 +598,44 @@
 
 <div class="app-shell">
   <QuestPreviewLayer />
+  {#snippet navigation()}
+    {#if !landingOpen}
+      <nav class="primary-nav" aria-label="Main navigation">
+        <FeatureLink
+          label="Items"
+          icon={`${import.meta.env.BASE_URL}assets/navigation/items.png`}
+          href={catalogUrl(navigationBase).href}
+          active={!finderOpen && !questsOpen}
+          onclick={() => showItemList()}
+        />
+        <FeatureLink
+          label="Recipe Finder"
+          shortLabel="Finder"
+          icon={`${import.meta.env.BASE_URL}assets/navigation/finder.png`}
+          href={finderUrl(navigationBase, finderConstraints, finderMode).href}
+          active={finderOpen}
+          undiscovered={!finderDiscovered}
+          onclick={() => {
+            acknowledgeFinder();
+            if (!finderOpen) showFinder();
+          }}
+        />
+        <FeatureLink
+          label="Questbook Browser"
+          shortLabel="Quests"
+          icon={`${import.meta.env.BASE_URL}assets/navigation/quests.png`}
+          href={questbook.url(navigationBase).href}
+          active={questsOpen}
+          undiscovered={!questsDiscovered}
+          onclick={() => {
+            if (!questsOpen) showQuests();
+          }}
+        />
+      </nav>
+    {/if}
+  {/snippet}
   <AppHeader
+    {navigation}
     {datasetVersion}
     activeDataset={datasetManager.activeDataset}
     datasetUpdateAvailable={datasetManager.hasRevisionUpdate(repository?.datasetId)}
@@ -608,42 +644,6 @@
     showProjectLinks={!landingOpen}
     openDatasetManager={() => datasetManager.show()}
   />
-
-  {#if !landingOpen}
-    <nav class="primary-nav" aria-label="Main navigation">
-      <FeatureLink
-        label="Items"
-        icon={`${import.meta.env.BASE_URL}assets/navigation/items.png`}
-        href={catalogUrl(navigationBase).href}
-        active={!finderOpen && !questsOpen}
-        onclick={() => showItemList()}
-      />
-      <FeatureLink
-        label="Recipe Finder"
-        shortLabel="Finder"
-        icon={`${import.meta.env.BASE_URL}assets/navigation/finder.png`}
-        href={finderUrl(navigationBase, finderConstraints, finderMode).href}
-        active={finderOpen}
-        undiscovered={!finderDiscovered}
-        onclick={() => {
-          acknowledgeFinder();
-          if (!finderOpen) showFinder();
-        }}
-      />
-      <FeatureLink
-        label="Questbook Browser"
-        shortLabel="Quests"
-        icon={`${import.meta.env.BASE_URL}assets/navigation/quests.png`}
-        href={questbook.url(navigationBase).href}
-        active={questsOpen}
-        undiscovered={!questsDiscovered}
-        onclick={() => {
-          if (!questsOpen) showQuests();
-        }}
-      />
-      {#if questsOpen}<QuestVersionPicker recipeVersion={datasetVersion} />{/if}
-    </nav>
-  {/if}
 
   {#if landingOpen}
     <LandingPage
@@ -775,17 +775,14 @@
   <DatasetManager
     datasets={datasetManager.datasets}
     currentDatasetId={repository?.datasetId}
+    recipeVersion={datasetVersion}
     loading={datasetManager.loading}
     error={datasetManager.error}
     installingDatasetId={datasetManager.installingDatasetId}
     switchingDatasetId={datasetManager.switchingDatasetId}
     installProgress={datasetManager.installProgress}
     storageUsage={datasetManager.storageUsage}
-    storageQuota={datasetManager.storageQuota}
-    physicalAssetBytes={datasetManager.physicalAssetBytes}
-    physicalAssetCount={datasetManager.physicalAssetCount}
     storageReport={datasetManager.storageReport}
-    persistentStorage={datasetManager.persistentStorage}
     close={() => (datasetManager.open = false)}
     install={(version) => datasetManager.install(version)}
     cancelInstall={() => datasetManager.cancelInstall()}

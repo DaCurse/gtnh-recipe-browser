@@ -1,8 +1,10 @@
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import ProjectLinks from './ProjectLinks.svelte';
   import type { DatasetState } from './types';
 
   let {
+    navigation,
     datasetVersion,
     activeDataset,
     datasetUpdateAvailable,
@@ -11,6 +13,7 @@
     showHome,
     openDatasetManager,
   }: {
+    navigation?: Snippet;
     datasetVersion: string;
     activeDataset?: DatasetState;
     datasetUpdateAvailable: boolean;
@@ -26,6 +29,7 @@
     class="brand"
     href="./"
     title="Home"
+    aria-label="GTNH Recipe Browser home"
     onclick={(event) => {
       event.preventDefault();
       showHome();
@@ -34,39 +38,34 @@
     <span class="brand-cube"
       ><img src="./assets/gtnh-logo-header.webp" width="84" height="84" alt="" /></span
     >
-    <span><b>GTNH</b> <small>RECIPE BROWSER</small></span>
+    <span class="brand-title"><b>GTNH</b> <small>RECIPE BROWSER</small></span>
   </a>
-  <button
-    class:has-update={datasetUpdateAvailable}
-    class="mc-button version"
-    title="Open dataset manager"
-    onclick={openDatasetManager}
-  >
-    <span class="version-title">
-      <i></i> <span class="version-number">{datasetVersion}</span>
-      {#if datasetUpdateAvailable}
-        <span
-          class="revision-blip"
-          title="A newer published dataset revision is available for this GTNH version."
-        ></span>
-      {/if}
-    </span>
-    <small
-      >{datasetUpdateAvailable
-        ? 'New revision available'
-        : activeDataset?.status === 'complete'
-          ? 'Offline ready'
-          : activeDataset
-            ? 'Catalog cached'
-            : 'Online only'}</small
+  {#if navigation}{@render navigation()}{/if}
+  <div class="header-utilities">
+    {#if showProjectLinks}
+      <ProjectLinks variant="header-links" />
+    {/if}
+    <button
+      class:has-update={datasetUpdateAvailable}
+      class="mc-button version"
+      aria-label={`Dataset ${datasetVersion}. Open dataset manager`}
+      title={`Dataset ${datasetVersion} · ${datasetUpdateAvailable ? 'New revision available' : activeDataset?.status === 'complete' ? 'Offline ready' : activeDataset ? 'Catalog cached' : 'Online only'}`}
+      onclick={openDatasetManager}
     >
-    <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true">
-      <path d="m7 9 5 5 5-5"></path>
-    </svg>
-  </button>
-  {#if showProjectLinks}
-    <ProjectLinks variant="header-links" />
-  {/if}
+      <span class="version-title">
+        <span class="version-number">{datasetVersion}</span>
+        {#if datasetUpdateAvailable}
+          <span
+            class="revision-blip"
+            title="A newer published dataset revision is available for this GTNH version."
+          ></span>
+        {/if}
+      </span>
+      <svg class="chevron-icon" viewBox="0 0 24 24" aria-hidden="true">
+        <path d="m7 9 5 5 5-5"></path>
+      </svg>
+    </button>
+  </div>
 </header>
 
 {#if updateReady}
@@ -77,12 +76,12 @@
 
 <style>
   header {
-    height: 68px;
+    height: 60px;
     flex: none;
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+    display: flex;
+    gap: 12px;
     align-items: center;
-    padding: 0 24px;
+    padding: 0 16px;
     border-bottom: 1px solid #34373b;
     background: #17181be8;
     backdrop-filter: blur(15px);
@@ -129,10 +128,11 @@
     text-shadow: 2px 2px #342c34;
   }
   .version {
-    grid-column: 2;
-    min-width: 190px;
-    min-height: 48px;
-    padding: 6px 35px 6px 13px;
+    flex: none;
+    width: 118px;
+    min-width: 0;
+    min-height: 40px;
+    padding: 4px 26px 4px 8px;
     position: relative;
     border: 1px solid #3a3d42;
     border-radius: 8px;
@@ -140,29 +140,12 @@
     text-align: left;
     cursor: pointer;
   }
-  .version-title,
-  .version small {
-    display: block;
-  }
   .version .version-title {
     display: flex;
     align-items: center;
     gap: 6px;
     font-size: 13px;
     font-weight: 700;
-  }
-  .version small {
-    color: #969ba1;
-    font-size: 11px;
-    margin: 3px 0 0 14px;
-  }
-  .version i {
-    display: inline-block;
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: #63d17b;
-    box-shadow: 0 0 6px #39b85c;
   }
   .version-number {
     min-width: 0;
@@ -173,9 +156,6 @@
   .version.has-update {
     border-color: #746b3f;
     box-shadow: 0 0 0 1px #d9c4591c;
-  }
-  .version.has-update small {
-    color: #d8ca7c;
   }
   .revision-blip {
     display: inline-block;
@@ -214,49 +194,48 @@
     color: #17191b;
     cursor: pointer;
   }
-  @media (max-width: 800px) {
-    header {
-      padding: 0 12px;
-      height: 62px;
-      position: sticky;
-      top: 0;
-      display: flex;
-    }
-    .brand {
-      width: auto;
-      gap: 8px;
-    }
-    .brand span:last-child {
-      display: flex;
-    }
-    .brand b {
+  .header-utilities {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    flex: none;
+  }
+  @media (max-width: 1200px) {
+    :global(.header-utilities .header-links) {
       display: none;
-    }
-    .brand small {
-      margin: 0;
-      color: #c5c9cd;
-      font-size: 10px;
-      letter-spacing: 0.9px;
-      white-space: nowrap;
-    }
-    .version {
-      min-width: 0;
-      width: 190px;
-      flex: 0 1 190px;
-      margin-left: auto;
     }
   }
-  @media (max-width: 450px) {
+  @media (max-width: 800px) {
+    header {
+      padding: 0 8px;
+      gap: 6px;
+      height: 54px;
+      position: sticky;
+      top: 0;
+    }
+    :global(header .primary-nav) {
+      flex: 1;
+      justify-content: center;
+    }
+    .brand {
+      flex: none;
+    }
+    .brand span.brand-title {
+      display: none;
+    }
     .brand-cube {
-      width: 38px;
-      height: 38px;
-      flex-basis: 38px;
+      width: 32px;
+      height: 32px;
+      flex-basis: 32px;
     }
     .version {
-      padding-right: 38px;
+      width: 78px;
     }
-    .version small {
-      display: none;
+    .chevron-icon {
+      width: 14px;
+      height: 14px;
+      right: 4px;
     }
   }
 </style>

@@ -115,7 +115,7 @@ describe('NEI special browser presentation', () => {
     expect(categoryExport).toBeGreaterThan(viewTabs);
     expect(categoryExport).toBeLessThan(machineTabs);
     expect(browser).toContain('const paneExportLabel = $derived');
-    expect(browser).toContain("'Export data'");
+    expect(browser).toContain('aria-label={paneExportLabel}');
     expect(browser).toMatch(
       /<pre class="export-filter">\s*"\{exportQuery\(\s*exportPrompt,?\s*\)\}"\s*<\/pre>/,
     );

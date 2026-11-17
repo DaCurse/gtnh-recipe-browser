@@ -105,7 +105,7 @@
 </script>
 
 <main class="finder-page" aria-labelledby="finder-title">
-  <div class="finder-content" class:chain-mode={mode === 'chain'}>
+  <div class="finder-content">
     <div class="finder-heading">
       <div>
         <h1 id="finder-title">{mode === 'chain' ? 'Recipe chain' : 'Recipe finder'}</h1>
@@ -355,11 +355,6 @@
   .finder-content {
     max-width: 1120px;
     margin: auto;
-  }
-  @media (min-width: 1000px) {
-    .finder-content.chain-mode {
-      max-width: none;
-    }
   }
   .finder-heading,
   .side-heading,
@@ -638,9 +633,6 @@
     height: 100%;
     min-height: 0;
     border: 0;
-  }
-  .picker-catalog :global(.item-grid) {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
   }
   .picker-catalog :global(.sidebar-resizer) {
     display: none;

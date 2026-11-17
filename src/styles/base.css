@@ -58,14 +58,6 @@ button {
   flex-direction: column;
   overflow: hidden;
 }
-footer i {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #63d17b;
-  box-shadow: 0 0 6px #39b85c;
-}
 main {
   min-height: 0;
   display: grid;
@@ -80,9 +72,6 @@ main {
 }
 .home-view .detail {
   display: none;
-}
-.home-view .item-grid {
-  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
 }
 .home-view .sidebar-resizer {
   display: none;

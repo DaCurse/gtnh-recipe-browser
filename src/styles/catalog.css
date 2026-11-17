@@ -116,6 +116,8 @@ kbd {
 }
 .result-bar {
   display: flex;
+  flex-wrap: wrap;
+  column-gap: 8px;
   justify-content: space-between;
   align-items: center;
   min-height: 38px;
@@ -136,9 +138,10 @@ kbd {
   background: #28251a;
 }
 .item-grid {
+  min-width: 0;
   overflow: auto;
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
   align-content: start;
   padding: 11px;
   gap: 5px;
@@ -214,19 +217,151 @@ kbd {
   cursor: pointer;
 }
 aside footer {
+  display: none;
   margin-top: auto;
-  min-height: 42px;
   padding: 0 14px;
   border-top: 1px solid #34373a;
-  display: flex;
-  align-items: center;
-  color: #8b9095;
-  font-size: 11px;
 }
-.sidebar-status {
+.item-grid.list-view {
+  display: grid;
+  grid-template-columns: 1fr;
+  padding: 0;
+  gap: 0;
+}
+.item-grid.list-view .item-more {
+  width: calc(100% - 24px);
+  margin: 12px;
+  flex: none;
+}
+.item-grid.list-view .item-tile {
+  height: 96px;
+  flex: none;
+  min-height: 96px;
   width: 100%;
-  display: flex;
+  padding: 8px 12px;
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr) 24px;
   align-items: center;
-  justify-content: space-between;
-  gap: 10px;
+  gap: 16px;
+  border: 0;
+  border-bottom: 1px solid #303337;
+  border-radius: 0;
+  text-align: left;
+}
+.item-grid.list-view .item-tile:hover,
+.item-grid.list-view .item-tile.active {
+  background: #25272a;
+  border-color: #303337;
+}
+.item-grid.list-view .item-summary {
+  display: grid;
+  grid-template-rows: max-content minmax(0, 1fr) max-content;
+  height: 100%;
+  max-height: 100%;
+  min-height: 0;
+  gap: 3px;
+}
+.item-grid.list-view .item-summary.has-variants {
+  grid-template-rows: max-content max-content minmax(0, 1fr) max-content;
+}
+.item-grid.list-view .item-summary.no-description {
+  height: auto;
+  max-height: none;
+  grid-template-rows: none;
+  grid-auto-rows: max-content;
+  align-self: center;
+}
+.item-grid.list-view .item-summary strong {
+  font:
+    700 16px/20px Minecraft,
+    monospace;
+  color: #eceef0;
+  text-shadow: 2px 2px #222;
+}
+.item-grid.list-view .item-summary small {
+  font-size: 10px;
+  color: #858a8f;
+  letter-spacing: 0.2px;
+}
+.item-grid.list-view .tooltip-preview {
+  display: block;
+  max-height: 48px;
+  min-height: 0;
+  contain: paint;
+  margin-top: 2px;
+  overflow: hidden;
+  color: #aca1ab;
+  font:
+    400 16px/22px Minecraft,
+    ui-monospace,
+    monospace;
+  text-shadow: 2px 2px #342c34;
+  white-space: normal;
+}
+.item-grid.list-view .tooltip-preview .minecraft-line {
+  min-height: 22px;
+}
+.item-grid.list-view .tooltip-preview b {
+  margin-right: 5px;
+  color: #fff;
+  font: 400 16px/22px Minecraft;
+  text-shadow: 2px 2px #342c34;
+}
+.item-grid.list-view .row-arrow {
+  display: block;
+  color: #777c81;
+  font-size: 25px;
+}
+
+.item-mod {
+  display: none;
+}
+.item-grid.list-view .item-summary .item-mod {
+  display: block;
+  margin-top: 3px;
+  color: #5457fa;
+  text-transform: none;
+  font:
+    400 18px/22px Minecraft,
+    monospace;
+  text-shadow: 2px 2px #222;
+}
+
+.catalog-item {
+  min-width: 0;
+}
+.item-grid.grid-view .catalog-item .item-tile {
+  width: 100%;
+  height: 100%;
+}
+.item-grid.list-view .catalog-item {
+  border-bottom: 1px solid #303337;
+}
+.item-grid.list-view .catalog-item .item-tile {
+  border-bottom: 0;
+}
+.item-grid.list-view .catalog-item.with-actions {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 80px;
+  align-items: center;
+  padding-right: 10px;
+}
+.item-grid.list-view .catalog-item.with-actions .item-tile {
+  grid-template-columns: 58px minmax(0, 1fr);
+  padding-right: 8px;
+}
+.item-grid.list-view .catalog-item:is(:hover, .active) {
+  background: #25272a;
+}
+.catalog-item-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+@media (max-width: 800px), (pointer: coarse) {
+  .search-wrap kbd {
+    display: none;
+  }
 }

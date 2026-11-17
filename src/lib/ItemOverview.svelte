@@ -34,7 +34,7 @@
 </script>
 
 <div class="item-head" class:compact={selected.tooltipLayout === 'compact'}>
-  <ItemIcon entry={iconEntry} size={88} selected />
+  <ItemIcon entry={iconEntry} size={72} />
   <div class="item-overview">
     <CatalogTooltipContent entry={selected} {loading} {error} {retry} />
   </div>

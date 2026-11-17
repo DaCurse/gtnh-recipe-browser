@@ -7,7 +7,12 @@ import { parseQuestJson, questSnbt, readQuest } from '../tools/questbook/source'
 import { formatNbt, nbtIdentity } from '../src/lib/nbt';
 import { questLinkId, questUuid, questUrlId } from '../src/lib/questbook/types';
 import type { QuestPack, QuestChapter, QuestVersion } from '../src/lib/questbook/types';
-import { questBounds, questEdges, placementVisible } from '../src/lib/questbook/layout';
+import {
+  focusedQuestCamera,
+  questBounds,
+  questEdges,
+  placementVisible,
+} from '../src/lib/questbook/layout';
 import { plainQuestText, questText } from '../src/lib/questbook/text';
 import { parseMinecraftCodes } from '../src/lib/minecraftText';
 import sharp from 'sharp';
@@ -186,6 +191,49 @@ describe('quest text and canvas semantics', () => {
     expect(edges[0]).toMatchObject({ type: 'implicit', width: 8, x: -12, y: 12 });
     expect(placementVisible(chapter.quests[0], 0, 0, 1, 390, 800)).toBe(true);
     expect(placementVisible(chapter.quests[0], -1000, 0, 1, 390, 800)).toBe(false);
+  });
+});
+
+describe('quest search chapter navigation', () => {
+  it("centres the selected quest at the renderer's 2x zoom for portrait, landscape and offset slots", () => {
+    const placement = { id: 'target', x: -120, y: 640, width: 54, height: 48 };
+    for (const [width, height] of [
+      [390, 676],
+      [844, 390],
+      [1440, 800],
+    ]) {
+      const camera = focusedQuestCamera(placement, width!, height!);
+      expect(camera.zoom).toBe(2);
+      expect((placement.x + placement.width / 2) * camera.zoom + camera.x).toBe(width! / 2);
+      expect((placement.y + placement.height / 2) * camera.zoom + camera.y).toBe(height! / 2);
+      expect(placementVisible(placement, camera.x, camera.y, camera.zoom, width!, height!)).toBe(
+        true,
+      );
+    }
+  });
+  it('uses the native gold RGB multiply while preserving frame transparency', async () => {
+    for (const name of ['normal', 'main']) {
+      for (const size of ['24x24', '54x48']) {
+        const original = await sharp(`public/quests/assets/quest-${name}-${size}.png`)
+          .ensureAlpha()
+          .raw()
+          .toBuffer();
+        const highlighted = await sharp(`public/quests/assets/quest-${name}-highlight-${size}.png`)
+          .ensureAlpha()
+          .raw()
+          .toBuffer();
+        expect(highlighted.length).toBe(original.length);
+        for (let index = 0; index < original.length; index += 4) {
+          expect(highlighted[index + 3]).toBe(original[index + 3]);
+          if (!original[index + 3]) continue;
+          expect(highlighted[index]).toBe(original[index]);
+          expect(
+            Math.abs(highlighted[index + 1]! - (original[index + 1]! * 191) / 255),
+          ).toBeLessThanOrEqual(1);
+          expect(highlighted[index + 2]).toBe(0);
+        }
+      }
+    }
   });
 });
 

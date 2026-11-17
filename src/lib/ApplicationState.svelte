@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LoadingProgress from './LoadingProgress.svelte';
   let {
     status,
     stage,
@@ -22,16 +23,12 @@
 
 <main class="state-main">
   {#if status === 'loading'}
-    <section class="app-state" aria-live="polite">
-      <span class="spinner" aria-hidden="true"></span>
-      <h1>{loadingVersion ? `Loading GTNH ${loadingVersion} catalog` : 'Loading GTNH catalog'}</h1>
-      <p>{stage}</p>
-      <small class="loading-hint">The initial load may take a little while.</small>
-      <div class="load-progress" aria-label={`Catalog loading ${progress}%`}>
-        <span style:width={`${progress}%`}></span>
-      </div>
-      <small>{progress}%</small>
-    </section>
+    <LoadingProgress
+      title="Loading items…"
+      detail={loadingVersion ? `GTNH ${loadingVersion} · ${stage}` : stage}
+      {progress}
+      label="Item catalogue loading"
+    />
   {:else}
     <section class="app-state app-error" aria-live="assertive">
       <span class="error-mark" aria-hidden="true">!</span>
@@ -50,6 +47,9 @@
 
 <style>
   .state-main {
+    display: flex;
+    align-items: center;
+    justify-content: center;
     grid-template-columns: 1fr;
     place-items: center;
     overflow: auto;
@@ -75,17 +75,6 @@
     margin: 0;
     color: #9da2a7;
     line-height: 1.5;
-  }
-  .loading-hint {
-    margin-top: 8px;
-    color: #8e9398;
-  }
-  .app-state > small {
-    margin-top: 8px;
-    color: #8e9398;
-    font:
-      12px ui-monospace,
-      monospace;
   }
   .error-mark {
     display: grid;

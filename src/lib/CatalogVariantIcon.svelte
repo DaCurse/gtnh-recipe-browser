@@ -9,7 +9,6 @@
     entry,
     exactEntries,
     size = 56,
-    selected = false,
     frame = true,
     bare = false,
     renderScale = 1,
@@ -18,7 +17,6 @@
     entry: CatalogBrowseEntry;
     exactEntries: ReadonlyMap<string, CatalogEntry>;
     size?: number;
-    selected?: boolean;
     frame?: boolean;
     bare?: boolean;
     renderScale?: number;
@@ -59,7 +57,7 @@
   aria-hidden="true"
   bind:this={element}
 >
-  <ItemIcon entry={displayEntry} {size} {selected} {frame} {bare} {renderScale} />
+  <ItemIcon entry={displayEntry} {size} {frame} {bare} {renderScale} />
 </span>
 
 <style>

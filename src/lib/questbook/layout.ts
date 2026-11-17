@@ -61,3 +61,13 @@ export function placementVisible(
     (p.y + p.height) * zoom + y > -100
   );
 }
+
+/** GuiQuestLines.highlightButton: center the selected slot at 2x zoom. */
+export function focusedQuestCamera(placement: QuestPlacement, width: number, height: number) {
+  const zoom = 2;
+  return {
+    zoom,
+    x: width / 2 - (placement.x + placement.width / 2) * zoom,
+    y: height / 2 - (placement.y + placement.height / 2) * zoom,
+  };
+}

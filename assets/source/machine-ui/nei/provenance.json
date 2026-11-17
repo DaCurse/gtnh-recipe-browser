@@ -1,0 +1,18 @@
+{
+  "gtnhVersion": "2.9.0",
+  "neiVersion": "2.8.171-GTNH",
+  "jarSha256": "9a822134bda6cbaf4f414b825fc10dcde8e2944cc366f96df92420e54c88b5a3",
+  "resource": "assets/nei/textures/nei_sprites.png",
+  "textureSha256": "31c38f414ef425f654e09e4727e5395657f5e9c62b1a5431f129c9e470c0f28d",
+  "renderer": "GTNewHorizons/NotEnoughItems LayoutStyleMinecraft.init",
+  "referenceCommit": "0185cd64b10ed30af47d09e17d5e6062b09226f5",
+  "uvCrop": [
+    144,
+    12,
+    12,
+    12
+  ],
+  "textureScale": 2,
+  "outputSha256": "b5b624da45ac67bd68c6c78a34c79ca9f8da761b4435ce1216c1d03733184708",
+  "processing": "Exact source crop; unchanged pixels."
+}

@@ -26,13 +26,14 @@
   {href}
   aria-label={label}
   aria-current={active ? 'page' : undefined}
-  title={undiscovered ? 'New feature' : undefined}
+  title={undiscovered ? `${label} · New feature` : label}
   onclick={(event) => {
     event.preventDefault();
     onclick();
   }}
 >
   {#if icon}<img src={icon} alt="" width="24" height="24" />{/if}<span
+    class="feature-label"
     class:full-label={Boolean(shortLabel)}>{label}</span
   >{#if shortLabel}<span class="short-label" aria-hidden="true">{shortLabel}</span
     >{/if}{#if undiscovered}<span class="feature-blip" aria-hidden="true" title="New"></span>{/if}
@@ -55,7 +56,7 @@
       height: 16px;
     }
   }
-  @media (max-width: 800px) {
+  @media (max-width: 1100px) {
     .full-label {
       display: none;
     }
@@ -63,10 +64,20 @@
       display: inline;
     }
   }
+  @media (max-width: 359px) {
+    :global(.primary-nav) .feature-label,
+    :global(.primary-nav) .short-label {
+      display: none;
+    }
+    :global(.primary-nav) img {
+      width: 20px;
+      height: 20px;
+    }
+  }
   .feature-blip {
     position: absolute;
-    top: 5px;
-    right: 5px;
+    top: 2px;
+    right: 2px;
     width: 6px;
     height: 6px;
     border-radius: 50%;

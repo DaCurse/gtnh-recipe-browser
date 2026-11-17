@@ -118,6 +118,18 @@
   const recipeSearchTotal = $derived(browserState.recipeSearchTotal);
   const recipePageCount = $derived(browserState.recipePageCount);
   const recipeSearchPending = $derived(browserState.recipeSearchPending);
+  const paneExportAvailable = $derived(
+    !itemDataLoading &&
+      !browserState.itemDataLoading &&
+      !itemDataError &&
+      !browserState.recipeLoading &&
+      !browserState.specialLoading &&
+      !recipeSearchPending &&
+      !browserState.specialSearchPending &&
+      (browserState.showingSpecial
+        ? !browserState.specialError && visibleSpecialRecords.length > 0
+        : !browserState.recipeError && visibleRecipes.length > 0),
+  );
   const modeLabel = $derived(browserState.modeLabel);
   const categoryExportLabel = $derived(
     browserState.showingSpecial
@@ -323,7 +335,6 @@
       <svg class="export-icon" viewBox="0 0 24 24" aria-hidden="true">
         <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 20h14"></path>
       </svg>
-      <span>{categoryExportLabel}</span>
     </button>
   {/if}
 </nav>
@@ -454,25 +465,24 @@
     </div>
   {/if}
   <div class="export-actions">
-    <button
-      class="mc-button"
-      type="button"
-      onclick={() => requestExport('pane')}
-      disabled={itemDataLoading ||
-        Boolean(itemDataError) ||
-        exportWorking ||
-        browserState.recipeLoading ||
-        browserState.specialLoading}
-      title={paneExportLabel}
-      aria-label={paneExportLabel}
-    >
-      <svg class="export-icon" viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 20h14"></path>
-      </svg>
-      <span>{exportWorking ? 'Preparing JSON…' : 'Export data'}</span>
-    </button>
-    {#if exportError}<p class="export-error">Could not download JSON: {exportError}</p>{/if}
+    {#if paneExportAvailable}<button
+        class="quiet-export"
+        type="button"
+        onclick={() => requestExport('pane')}
+        disabled={itemDataLoading ||
+          Boolean(itemDataError) ||
+          exportWorking ||
+          browserState.recipeLoading ||
+          browserState.specialLoading}
+        title={paneExportLabel}
+        aria-label={paneExportLabel}
+      >
+        <svg class="export-icon" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 3v11m0 0 4-4m-4 4-4-4M5 20h14"></path>
+        </svg>
+      </button>{/if}
   </div>
+  {#if exportError}<p class="export-error">Could not download JSON: {exportError}</p>{/if}
 </div>
 
 <div

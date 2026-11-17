@@ -9,6 +9,7 @@ import {
 
 type WorkerRequest =
   | { type: 'init'; generation: number }
+  | { type: 'order'; generation: number; ids: string[] }
   | {
       type: 'append';
       generation: number;
@@ -33,6 +34,7 @@ type WorkerRequest =
       limit: number;
     };
 
+let ranks = new Map<string, number>();
 let generation = 0;
 let catalog: CatalogSearchDocument[] = [];
 let lastQuery: string | null = null;
@@ -61,7 +63,10 @@ async function search(
         if (token !== searchToken || request.generation !== generation) return;
       }
     }
-    matches.sort(compareCatalogOrder);
+    matches.sort(
+      (a, b) =>
+        (ranks.get(a.id) ?? Infinity) - (ranks.get(b.id) ?? Infinity) || compareCatalogOrder(a, b),
+    );
     if (token !== searchToken || request.generation !== generation) return;
     lastQuery = request.query;
     lastMatches = matches;
@@ -82,12 +87,19 @@ self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   if (request.type === 'init') {
     generation = request.generation;
     catalog = [];
+    ranks = new Map();
     lastQuery = null;
     lastMatches = [];
     searchToken += 1;
     return;
   }
   if (request.generation !== generation) return;
+  if (request.type === 'order') {
+    ranks = new Map(request.ids.map((id, index) => [id, index]));
+    lastQuery = null;
+    searchToken += 1;
+    return;
+  }
   if (request.type === 'append') {
     catalog.push(...request.catalog.map(buildCatalogSearchDocument));
     self.postMessage({

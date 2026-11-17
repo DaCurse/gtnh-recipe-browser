@@ -19,12 +19,12 @@
 .item-head {
   display: flex;
   align-items: flex-start;
-  gap: 20px;
+  gap: 16px;
   max-width: 1020px;
   margin: auto;
 }
 .item-overview {
-  width: min(720px, calc(100% - 108px));
+  width: min(720px, calc(100% - 88px));
   min-width: 0;
 }
 .item-head.compact .minecraft-tooltip {

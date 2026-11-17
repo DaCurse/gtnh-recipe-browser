@@ -1,11 +1,12 @@
 <script lang="ts">
-  import { ItemTouch, openItemActions } from './itemTouch.svelte';
+  import { ItemTouch, clearItemTouch, openItemActions } from './itemTouch.svelte';
   import type { RecipeView } from './types';
   import { onMount } from 'svelte';
   import { analyticsSearch, trackEvent } from './analytics';
   import CatalogVariantIcon from './CatalogVariantIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import MinecraftText from './MinecraftText.svelte';
+  import { minecraftHtmlPlainText } from './minecraftText';
   import ProjectLinks from './ProjectLinks.svelte';
   import VariantPicker from './VariantPicker.svelte';
   import { resolveCatalogVariant } from './catalogVariants';
@@ -15,7 +16,7 @@
     parseCatalogSearchQuery,
     type CatalogSearchDocument,
   } from './catalogSearch';
-  import { compareCatalogOrder } from './catalogOrder';
+  import { catalogSortOptions, isCatalogSort, sortCatalog, type CatalogSort } from './catalogSort';
   import HighlightedSearchInput from './HighlightedSearchInput.svelte';
   import SearchGuide from './SearchGuide.svelte';
   import { oreCycle } from './oreCycle';
@@ -51,6 +52,38 @@
     searchContext?: 'catalog' | 'finder_input' | 'finder_output';
   } = $props();
 
+  let layout = $state<'list' | 'grid'>(
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 800px)').matches
+      ? 'list'
+      : 'grid',
+  );
+  function setLayout(next: 'list' | 'grid') {
+    layout = next;
+    hideTooltip();
+    clearItemTouch();
+    try {
+      localStorage.setItem('gtnh-catalog-layout', next);
+    } catch {
+      // Keep the selection for this visit when storage is unavailable.
+    }
+    trackEvent('catalog_layout_changed', { layout: next, search_context: searchContext });
+  }
+
+  let sort = $state<CatalogSort>('mixed');
+  let shuffleSeed = $state(0);
+  function changeSort(next: CatalogSort, reshuffle = false) {
+    sort = next;
+    if (reshuffle) shuffleSeed = crypto.getRandomValues(new Uint32Array(1))[0]!;
+    hideTooltip();
+    clearItemTouch();
+    try {
+      localStorage.setItem('gtnh-catalog-sort', next);
+    } catch {
+      /* Keep in-memory preference. */
+    }
+    trackEvent('catalog_sort_changed', { sort: next, reshuffle, search_context: searchContext });
+  }
+
   let searchIds = $state<string[]>([]);
   let searchTotal = $state(0);
   let searchPending = $state(false);
@@ -66,15 +99,30 @@
   let tooltipEntry = $state<CatalogBrowseEntry>();
   let variantGroup = $state<CatalogBrowseEntry>();
   let variantActions = $state(false);
+  let variantView = $state<RecipeView>();
   const touch = new ItemTouch();
   function openVariant(entry: CatalogBrowseEntry, actions: boolean) {
     hideTooltip();
     variantActions = actions;
+    variantView = undefined;
     variantGroup = entry;
+  }
+  function openItemView(entry: CatalogBrowseEntry, view: RecipeView) {
+    const item = touch.frozen(entry.id) ?? resolveCatalogVariant(entry, exactEntryById, $oreCycle);
+    hideTooltip();
+    clearItemTouch();
+    if (entry.variantKind !== 'single') {
+      openVariant(entry, false);
+      variantView = view;
+    } else {
+      navigate?.(item.id, view);
+    }
   }
   let tooltipX = $state(0);
   let tooltipY = $state(0);
   const searchableCatalog = $derived(catalog.filter((entry) => entry.searchable !== false));
+  const orderedCatalog = $derived(sortCatalog(searchableCatalog, sort, shuffleSeed));
+  const orderRanks = $derived(new Map(orderedCatalog.map((entry, index) => [entry.id, index])));
   const visibleEntries = $derived(
     searchIds
       .map((id) => entryById.get(id))
@@ -113,7 +161,7 @@
 
   // Browsing the sorted catalog needs neither a search index nor a worker scan.
   $effect(() => {
-    const entries = searchableCatalog;
+    const entries = orderedCatalog;
     if (searchRequested) return;
     searchRequest += 1;
     const ids = entries.map((entry) => entry.id);
@@ -208,6 +256,17 @@
   });
 
   $effect(() => {
+    if (searchWorker && searchReady) {
+      searchWorker.postMessage({
+        type: 'order',
+        generation: searchGeneration,
+        ids: orderedCatalog.map((entry) => entry.id),
+      });
+    }
+  });
+
+  $effect(() => {
+    void orderedCatalog;
     const nextQuery = query;
     const worker = searchWorker;
     const ready = searchReady;
@@ -267,7 +326,7 @@
       await new Promise((resolve) => window.setTimeout(resolve, 0));
       if (request !== searchRequest) return;
     }
-    matches.sort(compareCatalogOrder);
+    matches.sort((a, b) => (orderRanks.get(a.id) ?? Infinity) - (orderRanks.get(b.id) ?? Infinity));
     const ids = matches.map((match) => match.id);
     if (request !== searchRequest) return;
     fallbackIds = ids;
@@ -286,6 +345,7 @@
   }
 
   $effect(() => {
+    void orderedCatalog;
     const nextQuery = query;
     if (!searchWorkerError || searchReady) return;
     const request = ++searchRequest;
@@ -316,6 +376,16 @@
     tooltipEntry = undefined;
   }
 
+  function hasDescription(entry: CatalogBrowseEntry): boolean {
+    if (entry.formula?.trim()) return true;
+    if (entry.formattedTooltip)
+      return entry.formattedTooltip.some((line) =>
+        line.segments.some((segment) => segment.text.trim()),
+      );
+    if (entry.rawTooltip !== undefined && entry.rawTooltip !== null)
+      return !!minecraftHtmlPlainText(entry.rawTooltip).trim();
+    return entry.tooltip.some((line) => line.trim());
+  }
   function variantSummary(entry: CatalogBrowseEntry): string {
     return entry.variantKind === 'gtOre'
       ? `${entry.variantCount.toLocaleString()} host-stone variants`
@@ -401,6 +471,11 @@
 
   onMount(() => {
     try {
+      shuffleSeed = crypto.getRandomValues(new Uint32Array(1))[0]!;
+      const storedSort = localStorage.getItem('gtnh-catalog-sort');
+      if (isCatalogSort(storedSort)) sort = storedSort;
+      const storedLayout = localStorage.getItem('gtnh-catalog-layout');
+      if (storedLayout === 'list' || storedLayout === 'grid') layout = storedLayout;
       const storedWidth = Number(localStorage.getItem('gtnh-sidebar-width'));
       if (Number.isFinite(storedWidth) && storedWidth > 0) {
         sidebarWidth = clampSidebarWidth(storedWidth);
@@ -475,14 +550,8 @@
     {/if}
     <kbd>Ctrl K</kbd>
   </div>
-  <div class="result-bar">
-    <span
-      >{searchPending && !searchReady
-        ? `PREPARING ITEMS & FLUIDS${searchInitProgress ? ` · ${searchInitProgress}%` : ''}`
-        : `${searchTotal.toLocaleString()} ITEMS & FLUIDS`}</span
-    >
-    <span class="search-tools">
-      {#if searchPending}<span class="mini-spinner" aria-label="Searching"></span>{/if}
+  <div class="sort-controls">
+    <div class="sort-bar">
       <button
         class="search-help"
         bind:this={guideOpener}
@@ -491,6 +560,67 @@
           trackEvent('search_help_opened', { search_context: searchContext });
         }}>Search syntax</button
       >
+      <span class="mc-button-surface sort-select">
+        <select
+          id="catalog-sort-{searchContext}"
+          aria-label="Sort items"
+          value={sort}
+          title={catalogSortOptions.find((option) => option.value === sort)?.description}
+          onchange={(event) => {
+            const value = event.currentTarget.value;
+            if (isCatalogSort(value)) changeSort(value);
+          }}
+        >
+          {#each catalogSortOptions as option (option.value)}
+            <option value={option.value} title={option.description}>{option.label}</option>
+          {/each}
+        </select>
+        <svg viewBox="0 0 16 16" aria-hidden="true"><path d="m4 6 4 4 4-4" /></svg>
+      </span>
+      <button
+        class="mc-button reshuffle"
+        aria-label={sort === 'shuffle' ? 'Reshuffle items' : 'Shuffle items'}
+        title={sort === 'shuffle' ? 'Reshuffle items' : 'Shuffle items'}
+        onclick={() => changeSort('shuffle', true)}
+      >
+        <svg viewBox="0 0 24 24" aria-hidden="true"
+          ><path
+            d="M4 6h3c4 0 6 12 10 12h3m-4-4 4 4-4 4M4 18h3c1.5 0 2.7-1.7 4-4m2-4c1.3-2.3 2.5-4 4-4h3m-4-4 4 4-4 4"
+          /></svg
+        >
+      </button>
+    </div>
+  </div>
+  <div class="result-bar">
+    <span
+      >{searchPending && !searchReady
+        ? `PREPARING ITEMS & FLUIDS${searchInitProgress ? ` · ${searchInitProgress}%` : ''}`
+        : `${searchTotal.toLocaleString()} ITEMS & FLUIDS`}</span
+    >
+    <span class="search-tools">
+      <span class="layout-switch" role="group" aria-label="Catalogue layout">
+        <button
+          aria-label="List view"
+          title="List view"
+          aria-pressed={layout === 'list'}
+          onclick={() => setLayout('list')}
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true"
+            ><path d="M3 4h2v2H3zM3 9h2v2H3zM3 14h2v2H3zM8 5h9M8 10h9M8 15h9" /></svg
+          >
+        </button>
+        <button
+          aria-label="Grid view"
+          title="Grid view"
+          aria-pressed={layout === 'grid'}
+          onclick={() => setLayout('grid')}
+        >
+          <svg viewBox="0 0 20 20" aria-hidden="true"
+            ><path d="M3 3h5v5H3zM12 3h5v5h-5zM3 12h5v5H3zM12 12h5v5h-5z" /></svg
+          >
+        </button>
+      </span>
+      {#if searchPending}<span class="mini-spinner" aria-label="Searching"></span>{/if}
     </span>
   </div>
   {#if searchWorkerError}
@@ -503,7 +633,7 @@
         >{/if}
     </div>
   {/if}
-  <div class="item-grid">
+  <div class="item-grid" class:list-view={layout === 'list'} class:grid-view={layout === 'grid'}>
     {#if searchPending && visibleEntries.length === 0}
       <div class="catalog-empty search-loading">
         <span class="spinner" aria-hidden="true"></span>
@@ -511,54 +641,83 @@
       </div>
     {:else}
       {#each visibleEntries as entry (entry.id)}
-        <button
-          class:active={entry.variantIds.includes(selected.id)}
-          class="item-tile"
-          aria-label={entry.name}
-          use:touch.action={{
-            key: entry.id,
-            entry: resolveCatalogVariant(entry, exactEntryById, $oreCycle),
-            enabled: searchContext === 'catalog',
-            clearHover: hideTooltip,
-            activate: (item) =>
-              entry.variantKind !== 'single' ? openVariant(entry, false) : select(item.id),
-            hold: (item) => {
-              if (entry.variantKind !== 'single') openVariant(entry, true);
-              else if (navigate) openItemActions(item, navigate);
-            },
-          }}
-          onpointerenter={(event) => showPointerTooltip(event, entry)}
-          onpointermove={movePointerTooltip}
-          onpointerleave={hideTooltip}
-          onfocus={(event) => showFocusTooltip(event, entry)}
-          onblur={hideTooltip}
-          onclick={() => {
-            hideTooltip();
-            if (entry.variantKind !== 'single') openVariant(entry, false);
-            else select(entry.variantIds[0]!);
-          }}
+        {@const description = hasDescription(entry)}
+        <div
+          class="catalog-item"
+          class:with-actions={layout === 'list' && searchContext === 'catalog' && !!navigate}
+          class:active={(detailsOpen || searchContext !== 'catalog') &&
+            entry.variantIds.includes(selected.id)}
         >
-          <CatalogVariantIcon
-            {entry}
-            exactEntries={exactEntryById}
-            size={56}
-            selected={entry.variantIds.includes(selected.id)}
-            frozen={touch.frozen(entry.id)}
-          />
-          <span class="item-summary">
-            <strong>{entry.name}</strong>
-            <small>{entry.variantKind !== 'single' ? variantSummary(entry) : entry.kind}</small>
-            <span class="tooltip-preview">
-              {#if entry.formula}<b>{entry.formula}</b>{/if}
-              <MinecraftText
-                lines={entry.formattedTooltip}
-                raw={entry.rawTooltip}
-                fallback={entry.tooltip}
-              />
+          <button
+            class:active={(detailsOpen || searchContext !== 'catalog') &&
+              entry.variantIds.includes(selected.id)}
+            class="item-tile"
+            aria-label={entry.name}
+            use:touch.action={{
+              key: entry.id,
+              entry: resolveCatalogVariant(entry, exactEntryById, $oreCycle),
+              enabled: searchContext === 'catalog',
+              clearHover: hideTooltip,
+              activate: (item) =>
+                entry.variantKind !== 'single' ? openVariant(entry, false) : select(item.id),
+              hold: (item) => {
+                if (entry.variantKind !== 'single') openVariant(entry, true);
+                else if (navigate) openItemActions(item, navigate);
+              },
+            }}
+            onpointerenter={(event) => showPointerTooltip(event, entry)}
+            onpointermove={movePointerTooltip}
+            onpointerleave={hideTooltip}
+            onfocus={(event) => showFocusTooltip(event, entry)}
+            onblur={hideTooltip}
+            onclick={() => {
+              hideTooltip();
+              if (entry.variantKind !== 'single') openVariant(entry, false);
+              else select(entry.variantIds[0]!);
+            }}
+          >
+            <CatalogVariantIcon
+              {entry}
+              exactEntries={exactEntryById}
+              size={56}
+              frozen={touch.frozen(entry.id)}
+            />
+            <span
+              class="item-summary"
+              class:has-variants={entry.variantKind !== 'single'}
+              class:no-description={!description}
+            >
+              <strong>{entry.name}</strong>
+              {#if entry.variantKind !== 'single'}<small>{variantSummary(entry)}</small>{/if}
+              {#if description}<span class="tooltip-preview">
+                  {#if entry.formula}<b>{entry.formula}</b>{/if}
+                  <MinecraftText
+                    lines={entry.formattedTooltip}
+                    raw={entry.rawTooltip}
+                    fallback={entry.tooltip}
+                  />
+                </span>
+              {/if}<small class="item-mod">{entry.mod}</small>
             </span>
-          </span>
-          <span class="row-arrow">›</span>
-        </button>
+            {#if layout !== 'list' || searchContext !== 'catalog' || !navigate}<span
+                class="row-arrow">›</span
+              >{/if}
+          </button>
+          {#if layout === 'list' && searchContext === 'catalog' && navigate}
+            <div class="catalog-item-actions">
+              <button
+                class="mc-button catalog-action"
+                aria-label="Recipes for {entry.name}"
+                onclick={() => openItemView(entry, 'recipes')}>Recipes</button
+              >
+              <button
+                class="mc-button catalog-action"
+                aria-label="Usages for {entry.name}"
+                onclick={() => openItemView(entry, 'usages')}>Usages</button
+              >
+            </div>
+          {/if}
+        </div>
       {:else}
         <div class="catalog-empty">
           <b>No matches</b><span>Try fewer terms or another @mod filter.</span>
@@ -574,10 +733,6 @@
     {/if}
   </div>
   <footer>
-    <div class="sidebar-status">
-      <span><i></i> Catalog ready</span>
-      <span>{searchableCatalog.length.toLocaleString()} families</span>
-    </div>
     <ProjectLinks variant="mobile-sidebar-links" />
   </footer>
   <button
@@ -611,7 +766,8 @@
     select={(id) => {
       variantGroup = undefined;
       const entry = exactEntryById.get(id);
-      if (variantActions && entry && navigate) openItemActions(entry, navigate);
+      if (variantView && navigate) navigate(id, variantView);
+      else if (variantActions && entry && navigate) openItemActions(entry, navigate);
       else select(id);
     }}
   />
@@ -620,6 +776,106 @@
 {#if guideOpen}<SearchGuide close={() => (guideOpen = false)} opener={guideOpener} />{/if}
 
 <style>
+  .sort-controls {
+    padding: 0 14px 6px;
+    flex: none;
+  }
+  .sort-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+  }
+  .sort-select {
+    position: relative;
+    display: flex;
+    align-items: center;
+    flex: none;
+    width: fit-content;
+    max-width: calc(100% - 90px);
+    min-width: 0;
+    border-radius: 0;
+    color: #d9dcdf;
+    font:
+      400 14px/20px Minecraft,
+      monospace;
+    text-shadow: 1px 1px #222;
+  }
+  .sort-select select {
+    appearance: none;
+    width: auto;
+    max-width: 100%;
+    min-width: 0;
+    min-height: 24px;
+    border: 0;
+    outline: 0;
+    padding: 2px 22px 2px 4px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    text-shadow: inherit;
+    cursor: pointer;
+  }
+  .sort-select option {
+    color: #d9dcdf;
+    background: #292b2e;
+    text-shadow: none;
+  }
+  .sort-select:focus-within {
+    border-color: #92999f;
+    outline: 1px solid #92999f;
+  }
+  .sort-select svg {
+    position: absolute;
+    right: 8px;
+    width: 16px;
+    height: 16px;
+    pointer-events: none;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+  }
+  .reshuffle svg {
+    width: 20px;
+    height: 20px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+    stroke-linecap: square;
+    stroke-linejoin: miter;
+  }
+  .layout-switch {
+    display: flex;
+    gap: 2px;
+  }
+  .layout-switch button {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 6px;
+    border: 1px solid transparent;
+    background: transparent;
+    color: #92979c;
+    cursor: pointer;
+    border-radius: 3px;
+  }
+  .layout-switch button:hover {
+    background: #303337;
+    color: #eee;
+  }
+  .layout-switch button[aria-pressed='true'] {
+    background: #34383c;
+    border-color: #636970;
+    color: #eee;
+  }
+  .layout-switch svg {
+    width: 18px;
+    height: 18px;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.5;
+  }
   .search-tools {
     display: flex;
     align-items: center;
@@ -628,7 +884,8 @@
   .search-help {
     border: 0;
     background: none;
-    padding: 7px 0 7px 7px;
+    padding: 7px 0;
+    margin-right: auto;
     color: #959a9f;
     font-size: 11px;
     font-weight: 400;

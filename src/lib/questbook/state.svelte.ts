@@ -1,4 +1,5 @@
 import { trackEvent } from '../analytics';
+import { questAnalyticsProperties } from './analytics';
 import { loadQuestbook, questVersions, type QuestRepository } from './repository';
 import type { QuestVersion } from './types';
 import { questLinkId, questUrlId } from './types';
@@ -27,6 +28,8 @@ class QuestbookState {
   chapterId = $state('');
   questId = $state('');
   query = $state('');
+  focusRequest = $state<{ id: string; chapterId: string; sequence: number }>();
+  private focusSequence = 0;
   searchLimit = $state(60);
   readonly cameras = new Map<string, QuestCamera>();
   private generation = 0;
@@ -128,6 +131,18 @@ class QuestbookState {
     this.query = '';
     this.write();
   }
+  locate(id: string): void {
+    const chapters = this.repository?.memberships.get(id);
+    const chapter = chapters?.find((chapter) => chapter.id === this.chapterId) ?? chapters?.[0];
+    const quest = this.repository?.quests.get(id);
+    if (!chapter || !quest || !this.repository) return;
+    this.chapterId = chapter.id;
+    this.questId = '';
+    this.query = '';
+    this.focusRequest = { id, chapterId: chapter.id, sequence: ++this.focusSequence };
+    trackEvent('quest_located', questAnalyticsProperties(quest, this.repository, chapter.id));
+    this.write();
+  }
   open(id: string): void {
     if (!this.repository?.quests.has(id)) return;
     const returnTo = location.href;
@@ -157,8 +172,9 @@ class QuestbookState {
     this.chapterId = '';
     this.query = '';
     this.cameras.clear();
+    const viewingQuests = new URL(location.href).searchParams.get('page') === 'quests';
     await this.load(recipeVersion, version);
-    this.write();
+    if (viewingQuests) this.write();
   }
 }
 export const questbook = new QuestbookState();

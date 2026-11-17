@@ -63,7 +63,9 @@
     "test:recipe-finder": "node tools/test-recipe-finder.mjs",
     "test:recipe-streaming": "node tools/test-recipe-streaming.mjs",
     "format": "prettier --write . && python -m ruff format tools",
-    "format:check": "prettier --check . && python -m ruff format --check tools"
+    "format:check": "prettier --check . && python -m ruff format --check tools",
+    "ui:nei": "python tools/machine-ui-export/nei.py",
+    "ui:quest-frames": "tsx tools/questbook/frames-cli.ts"
   },
   "dependencies": {
     "@msgpack/msgpack": "^3.1.3",

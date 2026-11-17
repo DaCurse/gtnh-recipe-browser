@@ -1,4 +1,5 @@
 <script lang="ts">
+  import LoadingProgress from '../LoadingProgress.svelte';
   import { trackEvent, analyticsSearch } from '../analytics';
   import { questAnalyticsProperties } from './analytics';
   import { onMount } from 'svelte';
@@ -104,19 +105,11 @@
 
 <section class="questbook-browser" aria-label="Questbook Browser">
   {#if questbook.status === 'loading' || questbook.status === 'idle'}
-    <div class="quest-loading" role="status">
-      <h1>Loading questbook</h1>
-      <div
-        class="load-progress"
-        role="progressbar"
-        aria-label="Questbook loading"
-        aria-valuemin="0"
-        aria-valuemax="100"
-        aria-valuenow={questbook.progress}
-      >
-        <span style:width={`${questbook.progress}%`}></span>
-      </div>
-    </div>
+    <LoadingProgress
+      title="Loading questbook…"
+      progress={questbook.progress}
+      label="Questbook loading"
+    />
   {:else if questbook.status === 'error'}
     <div class="quest-loading" role="alert">
       <h1>Questbook could not be loaded</h1>
@@ -181,33 +174,40 @@
             <div class="quest-search-results" aria-label="Quest search results">
               <h1>{matches.length.toLocaleString()} quests</h1>
               {#each matches.slice(0, questbook.searchLimit) as result (result.id)}
-                <button
-                  class="quest-search-result mc-button wrap"
-                  data-quest={result.id}
-                  aria-label={plainQuestText(result.name)}
-                  onpointerdown={pointerKind}
-                  onpointerenter={(event) => pointerPreview(result.id, event)}
-                  onpointermove={(event) => pointerPreview(result.id, event)}
-                  onpointerleave={(event) => {
-                    if (event.pointerType !== 'touch') clearPreview();
-                  }}
-                  onfocus={(event) => focusQuest(result.id, event)}
-                  onblur={clearPreview}
-                  onclick={(event) => activate(result.id, event)}
-                >
-                  <QuestIcon
-                    entry={repository.items.get(result.icon.goodsId)}
-                    entries={repository.items}
-                    size={40}
-                  /><span
-                    ><QuestText text={result.name} /><small
-                      >{repository.memberships
-                        .get(result.id)
-                        ?.map((line) => plainQuestText(line.name))
-                        .join(' · ') ?? 'Unassigned'}{result.secret ? ' · Secret' : ''}</small
-                    ></span
-                  >
-                </button>
+                <article class="quest-search-result" data-quest={result.id}>
+                  <div class="quest-result-info">
+                    <QuestIcon
+                      entry={repository.items.get(result.icon.goodsId)}
+                      entries={repository.items}
+                      size={40}
+                    />
+                    <span
+                      ><QuestText text={result.name} /><small
+                        >{repository.memberships
+                          .get(result.id)
+                          ?.map((line) => plainQuestText(line.name))
+                          .join(' · ') ?? 'Unassigned'}{result.secret ? ' · Secret' : ''}</small
+                      ></span
+                    >
+                  </div>
+                  <div class="quest-result-actions">
+                    <button
+                      class="mc-button quest-result-action"
+                      aria-label={`Open quest: ${plainQuestText(result.name)}`}
+                      onclick={() => openQuest(result.id)}>Open quest</button
+                    >
+                    <button
+                      class="mc-button quest-result-action"
+                      aria-label={`Show in chapter: ${plainQuestText(result.name)}`}
+                      disabled={!repository.memberships.get(result.id)?.length}
+                      onclick={() => {
+                        clearPreview();
+                        sidebarOpen = false;
+                        questbook.locate(result.id);
+                      }}>Show in chapter</button
+                    >
+                  </div>
+                </article>
               {:else}<p>No matching quests.</p>{/each}
               {#if matches.length > questbook.searchLimit}<button
                   class="mc-button more-quests"
@@ -336,22 +336,34 @@
     margin-bottom: 18px;
   }
   .quest-search-result {
-    width: 100%;
     display: flex;
     align-items: center;
-    gap: 14px;
-    padding: 10px 12px;
-    text-align: left;
-    margin-bottom: 8px;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 0;
+    border-bottom: 1px solid #30343a;
   }
-  .quest-search-result > span {
+  .quest-result-info {
+    display: flex;
+    align-items: center;
+    gap: 12px;
     min-width: 0;
   }
-  .quest-search-result small {
+  .quest-result-info > span {
+    min-width: 0;
+  }
+  .quest-result-info small {
     display: block;
     margin-top: 4px;
     font-size: 11px;
     color: #929ba7;
+  }
+  .quest-result-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 5px;
+    justify-content: flex-end;
+    flex: none;
   }
   .more-quests {
     padding: 10px 18px;
@@ -436,6 +448,15 @@
     }
     .quest-search-results {
       padding: 14px 12px;
+    }
+    .quest-search-result {
+      align-items: stretch;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .quest-result-actions {
+      justify-content: flex-start;
+      padding-left: 52px;
     }
     .quest-search-result :global(.quest-text) {
       font-size: 16px;
