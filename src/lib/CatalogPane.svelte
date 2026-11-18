@@ -2,7 +2,7 @@
   import { ItemTouch, clearItemTouch, openItemActions } from './itemTouch.svelte';
   import type { RecipeView } from './types';
   import { onMount } from 'svelte';
-  import { analyticsSearch, trackEvent } from './analytics';
+  import { createSearchReporter, trackEvent } from './analytics';
   import CatalogVariantIcon from './CatalogVariantIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
   import MinecraftText from './MinecraftText.svelte';
@@ -140,24 +140,15 @@
   const needsOreDictionary = $derived(parseCatalogSearchQuery(query).needsOreDictionary);
   let guideOpen = $state(false);
   let guideOpener = $state<HTMLButtonElement>();
-  let reportedSearch = '';
-  $effect(() => {
-    const term = analyticsSearch(query);
-    const context = searchContext;
-    const count = searchTotal;
-    if (!term) {
-      reportedSearch = '';
-      return;
-    }
-    if (searchPending || searchLoadingMore) return;
-    const timer = window.setTimeout(() => {
-      const key = `${context}:${term}`;
-      if (reportedSearch === key) return;
-      reportedSearch = key;
-      trackEvent('catalog_search', { query: term, search_context: context, result_count: count });
-    }, 1200);
-    return () => window.clearTimeout(timer);
-  });
+  const reportSearch = createSearchReporter('catalog_search');
+  $effect(() =>
+    reportSearch(
+      query,
+      searchContext,
+      { search_context: searchContext, result_count: searchTotal },
+      !searchPending && !searchLoadingMore,
+    ),
+  );
 
   // Browsing the sorted catalog needs neither a search index nor a worker scan.
   $effect(() => {

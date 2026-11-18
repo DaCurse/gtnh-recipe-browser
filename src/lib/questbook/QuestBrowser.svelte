@@ -1,6 +1,6 @@
 <script lang="ts">
   import LoadingProgress from '../LoadingProgress.svelte';
-  import { trackEvent, analyticsSearch } from '../analytics';
+  import { trackEvent, createSearchReporter } from '../analytics';
   import { questAnalyticsProperties } from './analytics';
   import { onMount } from 'svelte';
   import { questPreview } from './preview.svelte';
@@ -25,7 +25,7 @@
     questbook.query.trim() && repository ? repository.search(questbook.query) : [],
   );
   let viewed = '';
-  let searched = '';
+  const reportSearch = createSearchReporter('quest_search');
   $effect(() => {
     if (questbook.status !== 'ready' || !repository) return;
     const key = `${questbook.version}:${quest?.id ?? chapter?.id ?? ''}:${Boolean(quest)}`;
@@ -40,22 +40,15 @@
         quest_count: chapter.quests.length,
       });
   });
-  $effect(() => {
-    const query = analyticsSearch(questbook.query);
-    const version = questbook.version;
-    const resultCount = matches.length;
-    if (!query || questbook.status !== 'ready') {
-      if (!query) searched = '';
-      return;
-    }
-    const key = `${version}:${query}`;
-    if (searched === key) return;
-    const timer = setTimeout(() => {
-      searched = key;
-      trackEvent('quest_search', { query, result_count: resultCount, quest_version: version });
-    }, 1200);
-    return () => clearTimeout(timer);
-  });
+  $effect(() =>
+    reportSearch(
+      questbook.query,
+      questbook.version,
+      { result_count: matches.length, quest_version: questbook.version },
+      questbook.status === 'ready',
+    ),
+  );
+
   function clearPreview() {
     questPreview.clear();
   }

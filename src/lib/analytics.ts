@@ -48,6 +48,25 @@ export function analyticsSearch(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, ' ').slice(0, MAX_SEARCH_LENGTH);
 }
 
+/** One reporter per search surface; cleanup cancels pending captures on edits or unmount. */
+export function createSearchReporter(event: 'catalog_search' | 'quest_search') {
+  let reported = '';
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  return (value: string, scope: string, properties: Properties, ready = true) => {
+    clearTimeout(timer);
+    const query = analyticsSearch(value);
+    if (!query) reported = '';
+    const key = JSON.stringify([scope, query]);
+    if (query && ready && reported !== key) {
+      timer = setTimeout(() => {
+        reported = key;
+        trackEvent(event, { ...properties, query });
+      }, 1500);
+    }
+    return () => clearTimeout(timer);
+  };
+}
+
 function enabled(): boolean {
   return (
     import.meta.env.PROD &&

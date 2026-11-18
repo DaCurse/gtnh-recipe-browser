@@ -21,6 +21,19 @@ pinned dashboards, each defaulting to the last 30 days:
   catalogue-load failures. Duration properties are milliseconds. Cached and cold
   loads are currently combined; these charts do not measure time spent reading.
 
+Content rankings show up to 1,000 distinct values rather than the original 15;
+any remaining values stay in Other. Recent search and item tables show the latest
+500 events within the dashboard dates. Recent searches include catalogue and
+finder contexts; popularity remains catalogue-only. All tables respect the
+selected dashboard date range. The dashboard defaults to 30 days.
+
+Search surfaces share a cancellable reporter: only nonempty normalized terms
+with settled results are captured after 1.5 seconds without changes. Equivalent
+consecutive terms are deduplicated per surface/version, and pending events are
+cancelled on edits, loading, or unmount. Finder/chain completion events describe
+completed, non-aborted searches; explicit clicks and item/quest navigation retain
+their existing immediate semantics rather than losing intentional actions.
+
 These native insights can be edited in PostHog. The starter dashboard is retained.
 Reports use captured anonymous-browser activity, not player progress or quest
 completion. Zero-result searches count settled search events, not unique people
@@ -74,7 +87,7 @@ supports approximate unique-visitor counts, not identification of a real person 
 ## Search and export semantics
 
 Catalog terms are lowercased, whitespace-normalized, limited to 120 characters, and recorded after
-1.2 seconds of settled results. Consecutive equivalent terms are deduplicated within the search view.
+1.5 seconds of settled results. Consecutive equivalent terms are deduplicated within the search view.
 Finder selections and completed searches record public game ingredient names. Shared URL searches
 also have named input/output properties in their completion events. Unknown URL ingredient IDs do
 not get copied as ingredient-name fallbacks. Counts describe usage from installation onward.
@@ -116,7 +129,7 @@ view uses its selected chapter when a quest appears in several chapters; lazy
 links and previews use the first known chapter. Existing ID-only preview events
 remain unchanged historically; new captures receive the readable context.
 
-Quest searches use the same 1.2-second settled-query and 120-character
+Quest searches use the same 1.5-second settled-query and 120-character
 normalization policy as catalogue searches. Quest/chapter views are deduplicated
 while the same entry stays open; browser history and deep links are covered.
 Mouse hovers, tooltip movement, panning/zooming, cancelled touch gestures and

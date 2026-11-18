@@ -25,6 +25,44 @@ afterEach(() => {
 });
 
 describe('focused analytics', () => {
+  it.each(['catalog_search', 'quest_search'] as const)(
+    'debounces %s edits, waits for results, deduplicates and cancels on unmount',
+    async (event) => {
+      const { createSearchReporter, initializeAnalytics } = await import('../src/lib/analytics');
+      initializeAnalytics();
+      await vi.runAllTimersAsync();
+      await vi.dynamicImportSettled();
+      const report = createSearchReporter(event);
+      report('i', 'catalog', { result_count: 10 });
+      await vi.advanceTimersByTimeAsync(700);
+      report('iron', 'catalog', { result_count: 4 });
+      await vi.advanceTimersByTimeAsync(1499);
+      expect(sdk.capture).not.toHaveBeenCalled();
+      report('iron', 'catalog', { result_count: 4 }, false);
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(sdk.capture).not.toHaveBeenCalled();
+      report('iron', 'catalog', { result_count: 3 });
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(sdk.capture).toHaveBeenCalledTimes(1);
+      expect(sdk.capture).toHaveBeenLastCalledWith(
+        event,
+        expect.objectContaining({ query: 'iron', result_count: 3 }),
+      );
+      report(' IRON ', 'catalog', { result_count: 3 });
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(sdk.capture).toHaveBeenCalledTimes(1);
+      const cancel = report('gold', 'catalog', { result_count: 2 });
+      cancel();
+      await vi.advanceTimersByTimeAsync(2000);
+      expect(sdk.capture).toHaveBeenCalledTimes(1);
+      report('', 'catalog', {});
+      report('iron', 'catalog', { result_count: 3 });
+      await vi.advanceTimersByTimeAsync(1500);
+      report('iron', 'finder_input', { result_count: 3 });
+      await vi.advanceTimersByTimeAsync(1500);
+      expect(sdk.capture).toHaveBeenCalledTimes(3);
+    },
+  );
   it('removes free text, exact selections, and fragments while keeping the navigation category', async () => {
     const { analyticsUrl, analyticsSearch } = await import('../src/lib/analytics');
     expect(analyticsUrl(location.href)).toBe(
