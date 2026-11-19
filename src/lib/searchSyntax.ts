@@ -1,3 +1,7 @@
+import { blockColors } from './blockColors';
+
+const colorIndexes = new Map<string, number>(blockColors.map((color, index) => [color, index]));
+
 type SearchField = 'any' | 'mod' | 'tooltip' | 'ore' | 'identifier' | 'color';
 interface SearchTerm {
   field: SearchField;
@@ -125,17 +129,31 @@ function patternMatches(text: string, pattern: string): boolean {
 
 export function searchExpressionMatches(
   expression: Pick<SearchExpression, 'clauses'>,
-  fields: Record<Exclude<SearchField, 'color'>, readonly string[]> & { color?: readonly string[] },
+  fields: Record<Exclude<SearchField, 'color'>, readonly string[]> & { colorScores?: string },
 ): boolean {
   return (
     expression.clauses.length === 0 ||
-    expression.clauses.some((clause) =>
-      clause.every((term) => {
-        const matches = (fields[term.field] ?? []).some((text) =>
-          term.field === 'color' ? text === term.pattern : patternMatches(text, term.pattern),
-        );
+    expression.clauses.some((clause) => {
+      const positiveColors = new Set(
+        clause
+          .filter(
+            (term) => term.field === 'color' && !term.negated && colorIndexes.has(term.pattern),
+          )
+          .map((term) => term.pattern),
+      );
+      // Keep each requested shade meaningful, while allowing palettes with many colors.
+      const positiveCutoff = Math.floor(5 / Math.sqrt(Math.max(1, positiveColors.size)));
+      return clause.every((term) => {
+        if (term.field === 'color') {
+          const index = colorIndexes.get(term.pattern);
+          const score =
+            index === undefined ? 0 : Number.parseInt(fields.colorScores?.[index] ?? '0', 16);
+          const cutoff = term.negated ? 5 : positiveCutoff;
+          return term.negated ? score < cutoff : score >= cutoff;
+        }
+        const matches = fields[term.field].some((text) => patternMatches(text, term.pattern));
         return term.negated ? !matches : matches;
-      }),
-    )
+      });
+    })
   );
 }

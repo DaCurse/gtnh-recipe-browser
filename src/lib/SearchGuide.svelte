@@ -64,6 +64,7 @@
       </div>
     {/each}
   </dl>
+  <p class="note">Combine colors like ~red ~pink to require both at a lower cutoff.</p>
   <p class="note">Block colors: {blockColors.join(', ')}.</p>
   <p class="note">Without a prefix, search names, tooltips and identifiers.</p>
 </dialog>

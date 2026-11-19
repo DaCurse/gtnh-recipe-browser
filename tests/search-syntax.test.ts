@@ -37,8 +37,8 @@ describe('NEI extended search syntax', () => {
       name: 'Wool',
       mod: 'Minecraft',
       members: [
-        { id: 'red', name: 'Red Wool', mod: 'Minecraft', colors: ['red', 'black'] },
-        { id: 'blue', name: 'Light Blue Wool', mod: 'Minecraft', colors: ['lightblue'] },
+        { id: 'red', name: 'Red Wool', mod: 'Minecraft', colorScores: '0000000000000573' },
+        { id: 'blue', name: 'Light Blue Wool', mod: 'Minecraft', colorScores: '000f000000000000' },
       ],
     });
     const colorMatches = (query: string) =>
@@ -46,6 +46,13 @@ describe('NEI extended search syntax', () => {
     expect(colorMatches('wool ~RED @minecraft')).toBe(true);
     expect(colorMatches('~lightblue wool')).toBe(true);
     expect(colorMatches('~red ~black')).toBe(true);
+    expect(colorMatches('~red ~black ~green')).toBe(true);
+    expect(colorMatches('~red ~black ~green ~purple')).toBe(false);
+    expect(colorMatches('~black')).toBe(false);
+    expect(colorMatches('~black ~black')).toBe(false);
+    expect(colorMatches('~black !~blue')).toBe(false);
+    expect(colorMatches('~black | ~blue')).toBe(false);
+    expect(colorMatches('~red ~lightblue')).toBe(false);
     expect(colorMatches('~blue')).toBe(false);
     expect(colorMatches('~red light')).toBe(false);
     expect(colorMatches('light !~red')).toBe(true);

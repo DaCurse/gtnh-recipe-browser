@@ -66,8 +66,8 @@ describe('lazy ore-dictionary search projection', () => {
     expect(catalogDocumentMatches(enriched[0]!, parseCatalogSearchQuery('ingotIron'))).toBe(false);
     expect(await repository.loadSearchDocuments()).toBe(base);
     expect(cache.write.mock.calls.map((call) => call[1])).toEqual([
-      'runtime-fixture:search-syntax-v3:base',
-      'runtime-fixture:search-syntax-v3:ore',
+      'runtime-fixture:search-syntax-v5:base',
+      'runtime-fixture:search-syntax-v5:ore',
     ]);
   });
   it('reuses persisted enriched documents without downloading membership again', async () => {
@@ -81,7 +81,7 @@ describe('lazy ore-dictionary search projection', () => {
     expect(fresh.groups).not.toHaveBeenCalled();
     expect(cache.read).toHaveBeenLastCalledWith(
       'search-fixture',
-      'runtime-fixture:search-syntax-v3:ore',
+      'runtime-fixture:search-syntax-v5:ore',
       1,
     );
   });

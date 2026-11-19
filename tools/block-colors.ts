@@ -4,7 +4,7 @@ import { readFile, readdir, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
 
 const palette = [
-  0xf5f5f5, 0xf9801d, 0xc74ebd, 0x3ab3da, 0xfed83d, 0x80c71f, 0xf38baa, 0x474f52, 0x9d9d97,
+  0xf5f5f5, 0xf9801d, 0xc74ebd, 0x6699d9, 0xfed83d, 0x80c71f, 0xf38baa, 0x474f52, 0x9d9d97,
   0x169c9c, 0x8932b8, 0x3c44aa, 0x835432, 0x5e7c16, 0xb02e26, 0x1d1d21,
 ];
 
@@ -23,7 +23,15 @@ for (let key = 0; key < nearest.length; key++) {
   const ranked = anchors
     .map((anchor, index) => ({
       index,
-      distance: Math.hypot(...anchor.map((channel, i) => channel - pixel[i]!)),
+      distance: Math.min(
+        Math.hypot(...anchor.map((channel, i) => channel - pixel[i]!)),
+        // Chromatic dyes also occur as muted materials. Keep their brightness and hue.
+        Math.hypot(
+          anchor[0]! - pixel[0]!,
+          anchor[1]! * 0.4 - pixel[1]!,
+          anchor[2]! * 0.4 - pixel[2]!,
+        ) + 8,
+      ),
     }))
     .sort((a, b) => a.distance - b.distance);
   const [best, next] = ranked;
@@ -66,9 +74,13 @@ export async function buildBlockColors(root = process.cwd()) {
               (data[offset + 2]! >> 3);
             const alpha = data[offset + 3]!;
             if (alpha >= 128) {
+              // Rendered cube sides are darker than the material. Give brighter
+              // visible faces more influence without dropping all shadow colors.
+              const brightness = (data[offset]! + 2 * data[offset + 1]! + data[offset + 2]!) / 4;
+              const weight = Math.round(alpha * (0.15 + (brightness / 255) ** 2));
               const share = runnerUpShare[key]!;
-              votes[nearest[key]!]! += alpha * (256 - share);
-              votes[runnerUp[key]!]! += alpha * share;
+              votes[nearest[key]!]! += weight * (256 - share);
+              votes[runnerUp[key]!]! += weight * share;
             }
           }
         const total = votes.reduce((sum, vote) => sum + vote, 0);
@@ -89,7 +101,10 @@ export async function buildBlockColors(root = process.cwd()) {
   await writeFile(
     join(root, 'src/lib/generated/block-colors.json'),
     JSON.stringify(
-      { profiles: [...profiles.keys()], sheets: Object.fromEntries(Object.entries(sheets).sort()) },
+      {
+        profiles: [...profiles.keys()].join(''),
+        sheets: Object.fromEntries(Object.entries(sheets).sort()),
+      },
       null,
       2,
     ) + '\n',
