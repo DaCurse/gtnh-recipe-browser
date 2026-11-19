@@ -11,6 +11,7 @@
     "dev": "vite",
     "dev:lan": "vite --host 0.0.0.0",
     "prune:legacy-data": "tsx tools/prune-legacy-data.ts",
+    "build:block-colors": "tsx tools/build-block-colors.ts",
     "build:catalog-order": "tsx tools/build-catalog-order.ts",
     "ui:thaumcraft": "python tools/machine-ui-export/thaumcraft.py",
     "ui:extract": "tsx tools/machine-ui-export/launch.ts",

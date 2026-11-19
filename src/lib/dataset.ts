@@ -254,7 +254,7 @@ export class DatasetRepository {
   loadSearchDocuments(includeOreDictionary = false): Promise<CatalogSearchDocument[]> {
     const existing = this.searchDocumentsPromises.get(includeOreDictionary);
     if (existing) return existing;
-    const cacheKey = `${this.runtimeCacheKey}:search-syntax-v1:${includeOreDictionary ? 'ore' : 'base'}`;
+    const cacheKey = `${this.runtimeCacheKey}:search-syntax-v3:${includeOreDictionary ? 'ore' : 'base'}`;
     const pending = (async () => {
       const cached = await getPreparedSearch(this.datasetId, cacheKey, this.browseEntries.length);
       if (cached) {

@@ -1,4 +1,4 @@
-type SearchField = 'any' | 'mod' | 'tooltip' | 'ore' | 'identifier';
+type SearchField = 'any' | 'mod' | 'tooltip' | 'ore' | 'identifier' | 'color';
 interface SearchTerm {
   field: SearchField;
   negated: boolean;
@@ -17,6 +17,7 @@ export interface SearchExpression {
 
 // GTNH NEI ItemInfo.addSearchProviders / SearchTextFormatter. See docs/search.md.
 const providers: Record<string, { field: SearchField; format: string }> = {
+  '~': { field: 'color', format: 'a' },
   '@': { field: 'mod', format: 'd' },
   '#': { field: 'tooltip', format: 'e' },
   $: { field: 'ore', format: 'b' },
@@ -124,13 +125,15 @@ function patternMatches(text: string, pattern: string): boolean {
 
 export function searchExpressionMatches(
   expression: Pick<SearchExpression, 'clauses'>,
-  fields: Record<SearchField, readonly string[]>,
+  fields: Record<Exclude<SearchField, 'color'>, readonly string[]> & { color?: readonly string[] },
 ): boolean {
   return (
     expression.clauses.length === 0 ||
     expression.clauses.some((clause) =>
       clause.every((term) => {
-        const matches = fields[term.field].some((text) => patternMatches(text, term.pattern));
+        const matches = (fields[term.field] ?? []).some((text) =>
+          term.field === 'color' ? text === term.pattern : patternMatches(text, term.pattern),
+        );
         return term.negated ? !matches : matches;
       }),
     )

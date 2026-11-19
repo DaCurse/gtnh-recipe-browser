@@ -31,6 +31,26 @@ const matches = (source: string) =>
   catalogDocumentMatches(document, parseCatalogSearchQuery(source));
 
 describe('NEI extended search syntax', () => {
+  it('matches the exact block color on the same variant as the other terms', () => {
+    const colored = buildCatalogSearchDocument({
+      id: 'family:wool',
+      name: 'Wool',
+      mod: 'Minecraft',
+      members: [
+        { id: 'red', name: 'Red Wool', mod: 'Minecraft', colors: ['red', 'black'] },
+        { id: 'blue', name: 'Light Blue Wool', mod: 'Minecraft', colors: ['lightblue'] },
+      ],
+    });
+    const colorMatches = (query: string) =>
+      catalogDocumentMatches(colored, parseCatalogSearchQuery(query));
+    expect(colorMatches('wool ~RED @minecraft')).toBe(true);
+    expect(colorMatches('~lightblue wool')).toBe(true);
+    expect(colorMatches('~red ~black')).toBe(true);
+    expect(colorMatches('~blue')).toBe(false);
+    expect(colorMatches('~red light')).toBe(false);
+    expect(colorMatches('light !~red')).toBe(true);
+    expect(matches('~gray')).toBe(false);
+  });
   it('combines case-insensitive field filters and both exclusion operators', () => {
     expect(matches('@GREG #"mining level" $craftingToolHardHammer &gregtech:hammer !rubber')).toBe(
       true,

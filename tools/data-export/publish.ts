@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { buildBlockColors } from '../block-colors';
 import { prunePublishedObjects } from './prune';
 import { publishCatalogOrder } from '../catalog-order';
 import { ensureChainIndex, pruneChainIndexes } from '../chain-index';
@@ -248,6 +249,7 @@ if (await pathExists(catalogOrderPath)) {
 }
 
 if (mode === 'stage') {
+  await buildBlockColors(repositoryRoot);
   const { count: prunedSharedObjects } = await prunePublishedObjects(repositoryRoot);
   console.log(
     JSON.stringify(
@@ -315,6 +317,7 @@ for (const file of ['high-resolution-icons.json', 'ore-diagrams.json', 'catalog-
     join(repositoryRoot, 'assets/source', file.replace(/\.json$/, '')),
   );
 }
+await buildBlockColors(repositoryRoot);
 const { count: prunedSharedObjects } = await prunePublishedObjects(repositoryRoot);
 console.log(
   JSON.stringify(

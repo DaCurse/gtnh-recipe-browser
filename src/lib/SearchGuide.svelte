@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { blockColors } from './blockColors';
   import { onMount } from 'svelte';
   import { parseSearchExpression } from './searchSyntax';
   let { close, opener }: { close: () => void; opener?: HTMLElement } = $props();
   let dialog: HTMLDialogElement;
   const examples: Array<[string, string]> = [
+    ['~lightblue', 'Find blocks with a substantial amount of this color in their icon.'],
     ['@gregtech', 'Limit results to a mod.'],
     ['#voltage', 'Search item tooltip text.'],
     ['$ingotIron', 'Search ore-dictionary names.'],
@@ -62,6 +64,7 @@
       </div>
     {/each}
   </dl>
+  <p class="note">Block colors: {blockColors.join(', ')}.</p>
   <p class="note">Without a prefix, search names, tooltips and identifiers.</p>
 </dialog>
 

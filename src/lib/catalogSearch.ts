@@ -1,3 +1,5 @@
+import { blockColors, colorScoreDigits } from './blockColors';
+import blockColorSheets from './generated/block-colors.json';
 import { minecraftHtmlPlainText } from './minecraftText';
 import { normalize } from './searchNormalization';
 import {
@@ -12,6 +14,7 @@ interface CatalogSearchMember {
   name: string;
   mod: string;
   variantLabel?: string;
+  colors?: readonly string[];
   rawTooltip?: string | null;
   oreDictionaryIds?: readonly string[];
 }
@@ -34,6 +37,7 @@ interface CatalogSearchMemberDocument {
   normalizedTooltip: string;
   normalizedTooltipBody: string;
   normalizedOreNames: string[];
+  colors?: readonly string[];
 }
 
 export interface CatalogSearchDocument {
@@ -47,6 +51,25 @@ export interface CatalogSearchDocument {
 }
 
 export type CatalogSearchQuery = SearchExpression;
+
+const sheetColors: Record<string, string> = blockColorSheets.sheets;
+
+function matchingBlockColors(entry: CatalogEntry): readonly string[] | undefined {
+  // Minecraft 1.7.10 reserves registry IDs below 4096 for blocks and their item forms.
+  if (entry.kind !== 'item' || entry.numericId === undefined || entry.numericId >= 4096) return;
+  const icon = entry.icon;
+  if (!icon?.sha256) return;
+  const scores = sheetColors[icon.sha256];
+  if (!scores) return;
+  const offset = icon.index * 3;
+  const code = [...scores.slice(offset, offset + 3)].reduce(
+    (value, digit) => value * 64 + colorScoreDigits.indexOf(digit),
+    0,
+  );
+  const profile = blockColorSheets.profiles[code];
+  // Five of fifteen quantized steps corresponds to at least 30% before rounding.
+  return blockColors.filter((_, index) => Number.parseInt(profile?.[index] ?? '0', 16) >= 5);
+}
 
 function buildCatalogSearchEntries(
   catalog: readonly CatalogBrowseEntry[],
@@ -74,6 +97,7 @@ function buildCatalogSearchEntries(
           mod: member.mod,
           variantLabel: entry.variantLabels?.[member.id],
           rawTooltip: member.rawTooltip,
+          colors: matchingBlockColors(member),
           oreDictionaryIds: oreDictionaryIds?.get(member.id) ?? member.oreDictionaryIds,
         })),
     }));
@@ -110,6 +134,7 @@ export function buildCatalogSearchDocument(entry: CatalogSearchEntry): CatalogSe
         normalizedVariantLabel: normalize(member.variantLabel ?? ''),
         normalizedTooltip: normalize(tooltip),
         normalizedTooltipBody: normalize(body),
+        colors: member.colors,
         normalizedOreNames: (member.oreDictionaryIds ?? []).map((id) =>
           normalize(id.replace(/^o:/, '')),
         ),
@@ -135,6 +160,7 @@ export function catalogDocumentMatches(
         member.normalizedVariantLabel,
         member.normalizedTooltip,
       ],
+      color: member.colors ?? [],
       mod: [member.normalizedMod],
       tooltip: [member.normalizedTooltipBody],
       ore: member.normalizedOreNames,
