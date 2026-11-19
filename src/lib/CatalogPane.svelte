@@ -2,7 +2,7 @@
   import { ItemTouch, clearItemTouch, openItemActions } from './itemTouch.svelte';
   import { keyboardModifiers } from './keyboardModifiers.svelte';
   import type { RecipeView } from './types';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { createSearchReporter, trackEvent } from './analytics';
   import CatalogVariantIcon from './CatalogVariantIcon.svelte';
   import FloatingCatalogTooltip from './FloatingCatalogTooltip.svelte';
@@ -99,6 +99,8 @@
   let searchRequest = 0;
   let searchGeneration = 0;
   let tooltipEntry = $state<CatalogBrowseEntry>();
+  let pinnedTooltipItem = $state<CatalogEntry>();
+  let leftPinnedTile = false;
   let variantGroup = $state<CatalogBrowseEntry>();
   let variantActions = $state(false);
   let variantView = $state<RecipeView>();
@@ -346,19 +348,20 @@
   });
 
   function showPointerTooltip(event: PointerEvent, entry: CatalogBrowseEntry) {
-    if (event.pointerType === 'touch') return;
+    if (event.pointerType === 'touch' || pinnedTooltipItem) return;
     tooltipEntry = entry;
     tooltipX = event.clientX;
     tooltipY = event.clientY;
   }
 
   function movePointerTooltip(event: PointerEvent) {
-    if (!tooltipEntry || event.pointerType === 'touch') return;
+    if (!tooltipEntry || pinnedTooltipItem || event.pointerType === 'touch') return;
     tooltipX = event.clientX;
     tooltipY = event.clientY;
   }
 
   function showFocusTooltip(event: FocusEvent, entry: CatalogBrowseEntry) {
+    if (pinnedTooltipItem) return;
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     tooltipEntry = entry;
     tooltipX = rect.right;
@@ -367,7 +370,27 @@
 
   function hideTooltip() {
     tooltipEntry = undefined;
+    pinnedTooltipItem = undefined;
+    leftPinnedTile = false;
   }
+
+  function leaveTooltipTile() {
+    if (pinnedTooltipItem) leftPinnedTile = true;
+    else hideTooltip();
+  }
+
+  $effect(() => {
+    const entry = tooltipEntry;
+    const pin = searchContext === 'catalog' && keyboardModifiers.shift;
+    untrack(() => {
+      if (pin && entry) {
+        pinnedTooltipItem ??= resolveCatalogVariant(entry, exactEntryById, $oreCycle);
+      } else if (pinnedTooltipItem) {
+        if (leftPinnedTile) hideTooltip();
+        else pinnedTooltipItem = undefined;
+      }
+    });
+  });
 
   function hasDescription(entry: CatalogBrowseEntry): boolean {
     if (entry.formula?.trim()) return true;
@@ -660,7 +683,7 @@
             }}
             onpointerenter={(event) => showPointerTooltip(event, entry)}
             onpointermove={movePointerTooltip}
-            onpointerleave={hideTooltip}
+            onpointerleave={leaveTooltipTile}
             onfocus={(event) => showFocusTooltip(event, entry)}
             onblur={hideTooltip}
             onclick={() => {
@@ -741,12 +764,14 @@
 </aside>
 
 {#if tooltipEntry}
-  {@const entry = resolveCatalogVariant(tooltipEntry, exactEntryById, $oreCycle)}
+  {@const entry =
+    pinnedTooltipItem ?? resolveCatalogVariant(tooltipEntry, exactEntryById, $oreCycle)}
   <FloatingCatalogTooltip
     {entry}
     x={tooltipX}
     y={tooltipY}
     action={variantAction(tooltipEntry)}
+    interactive={!!pinnedTooltipItem}
     colorScores={searchContext === 'catalog' && keyboardModifiers.shift
       ? blockColorScores(entry)
       : undefined}

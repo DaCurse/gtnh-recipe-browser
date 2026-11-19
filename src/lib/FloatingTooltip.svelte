@@ -82,6 +82,7 @@
     max-height: min(70vh, 620px);
   }
   .touch-tooltip {
+    max-height: min(70vh, 620px);
     pointer-events: auto;
     overflow: auto;
     overscroll-behavior: contain;
