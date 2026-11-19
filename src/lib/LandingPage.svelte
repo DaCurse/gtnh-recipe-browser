@@ -78,12 +78,10 @@
 
 <main class="landing">
   <section class="hero" aria-labelledby="landing-title">
-    <p class="eyebrow">GT: New Horizons Recipe Browser</p>
-    <h1 id="landing-title">Your Pocket NEI</h1>
+    <h1 id="landing-title">GTNH Recipe Browser</h1>
     <p class="intro">
-      A quick, out-of-game recipe browser for GregTech: New Horizons. Browse items and machine
-      recipes, find recipes by their ingredients, follow a production chain, or explore the
-      questbook.
+      Your pocket NEI for GregTech: New Horizons. Browse items and machine recipes, find recipes by
+      their ingredients, follow a production chain, or explore the questbook.
     </p>
     <div class="actions">
       <FeatureLink
@@ -197,7 +195,7 @@
       {/each}
     {/if}
   </section>
-  <footer><span>GT: New Horizons Recipe Browser</span><ProjectLinks /></footer>
+  <footer><span>GTNH Recipe Browser</span><ProjectLinks /></footer>
 </main>
 {#if tooltipEntry}<FloatingCatalogTooltip entry={tooltipEntry} x={tooltip.x} y={tooltip.y} />{/if}
 {#if variantGroup}
@@ -236,18 +234,10 @@
     margin: auto auto 0;
     max-width: 850px;
   }
-  .eyebrow {
-    font-family: inherit;
-    text-shadow: none;
-    color: #b9a476;
-    font-size: 11px;
-    letter-spacing: 0.22em;
-    font-weight: 650;
-  }
   h1 {
     font-family: inherit;
     text-shadow: none;
-    font-size: clamp(38px, 6vw, 72px);
+    font-size: clamp(32px, 5vw, 60px);
     letter-spacing: -0.055em;
     line-height: 1.08;
     margin: 20px 0;

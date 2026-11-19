@@ -9,6 +9,7 @@
     activeDataset,
     datasetUpdateAvailable,
     updateReady,
+    landing = false,
     showProjectLinks = true,
     showHome,
     openDatasetManager,
@@ -18,13 +19,14 @@
     activeDataset?: DatasetState;
     datasetUpdateAvailable: boolean;
     updateReady: boolean;
+    landing?: boolean;
     showProjectLinks?: boolean;
     showHome: () => void;
     openDatasetManager: () => void;
   } = $props();
 </script>
 
-<header>
+<header class:landing>
   <a
     class="brand"
     href="./"
@@ -214,6 +216,17 @@
       position: sticky;
       top: 0;
     }
+    header.landing {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+    }
+    .landing .brand {
+      justify-self: start;
+    }
+    .landing .header-utilities {
+      grid-column: 2;
+      margin-left: 0;
+    }
     :global(header .primary-nav) {
       flex: 1;
       justify-content: center;
@@ -231,6 +244,9 @@
     }
     .version {
       width: 78px;
+    }
+    .landing .version {
+      width: 94px;
     }
     .chevron-icon {
       width: 14px;

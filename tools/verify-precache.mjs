@@ -9,7 +9,10 @@ if (duplicates.length > 0) {
 }
 
 const document = await readFile(new URL('../dist/index.html', import.meta.url), 'utf8');
-if (!document.includes('data-startup-shell') || !document.includes('Your Pocket NEI')) {
+if (
+  !document.includes('data-startup-shell') ||
+  !document.includes('Your pocket NEI for GregTech')
+) {
   throw new Error('Missing prerendered startup shell');
 }
 if (/\b(?:src|href)="\/assets\//.test(document)) {

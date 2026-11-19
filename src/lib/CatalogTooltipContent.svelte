@@ -9,6 +9,7 @@
     retry,
     action,
     notes,
+    colorScores,
   }: {
     entry: CatalogEntry;
     loading?: boolean;
@@ -16,6 +17,7 @@
     retry?: () => void;
     action?: string | string[];
     notes?: readonly string[];
+    colorScores?: string;
   } = $props();
 </script>
 
@@ -25,7 +27,7 @@
         >Retry</button
       >{/if}
   </div>
-{:else}<CatalogTooltip {entry} {action} {notes} />{/if}
+{:else}<CatalogTooltip {entry} {action} {notes} {colorScores} />{/if}
 
 <style>
   .tooltip-error {

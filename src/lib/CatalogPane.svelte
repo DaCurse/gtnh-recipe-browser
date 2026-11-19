@@ -1,5 +1,6 @@
 <script lang="ts">
   import { ItemTouch, clearItemTouch, openItemActions } from './itemTouch.svelte';
+  import { keyboardModifiers } from './keyboardModifiers.svelte';
   import type { RecipeView } from './types';
   import { onMount } from 'svelte';
   import { createSearchReporter, trackEvent } from './analytics';
@@ -11,6 +12,7 @@
   import VariantPicker from './VariantPicker.svelte';
   import { resolveCatalogVariant } from './catalogVariants';
   import {
+    blockColorScores,
     buildCatalogSearchDocuments,
     catalogDocumentMatches,
     parseCatalogSearchQuery,
@@ -739,11 +741,15 @@
 </aside>
 
 {#if tooltipEntry}
+  {@const entry = resolveCatalogVariant(tooltipEntry, exactEntryById, $oreCycle)}
   <FloatingCatalogTooltip
-    entry={resolveCatalogVariant(tooltipEntry, exactEntryById, $oreCycle)}
+    {entry}
     x={tooltipX}
     y={tooltipY}
     action={variantAction(tooltipEntry)}
+    colorScores={searchContext === 'catalog' && keyboardModifiers.shift
+      ? blockColorScores(entry)
+      : undefined}
   />
 {/if}
 
@@ -878,7 +884,7 @@
     padding: 7px 0;
     margin-right: auto;
     color: #959a9f;
-    font-size: 11px;
+    font-size: 12px;
     font-weight: 400;
     white-space: nowrap;
     text-decoration: underline;

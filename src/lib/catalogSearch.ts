@@ -54,7 +54,7 @@ export type CatalogSearchQuery = SearchExpression;
 
 const sheetColors: Record<string, string> = blockColorSheets.sheets;
 
-function blockColorScores(entry: CatalogEntry): string | undefined {
+export function blockColorScores(entry: CatalogEntry): string | undefined {
   // Minecraft 1.7.10 reserves registry IDs below 4096 for blocks and their item forms.
   if (entry.kind !== 'item' || entry.numericId === undefined || entry.numericId >= 4096) return;
   const icon = entry.icon;

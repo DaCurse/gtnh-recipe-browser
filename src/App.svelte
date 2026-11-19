@@ -587,12 +587,12 @@
 <svelte:head
   ><title
     >{questsOpen
-      ? 'Questbook Browser - GT: New Horizons Recipe Browser'
+      ? 'Questbook Browser - GTNH Recipe Browser'
       : finderOpen
-        ? 'Recipe finder - GT: New Horizons Recipe Browser'
+        ? 'Recipe finder - GTNH Recipe Browser'
         : itemOverviewSelected && detailsOpen
-          ? `${itemOverviewSelected.name} - GT: New Horizons Recipe Browser`
-          : 'GT: New Horizons Recipe Browser — Your Pocket NEI'}</title
+          ? `${itemOverviewSelected.name} - GTNH Recipe Browser`
+          : 'GTNH Recipe Browser'}</title
   ></svelte:head
 >
 
@@ -641,6 +641,7 @@
     datasetUpdateAvailable={datasetManager.hasRevisionUpdate(repository?.datasetId)}
     {updateReady}
     showHome={showLanding}
+    landing={landingOpen}
     showProjectLinks={!landingOpen}
     openDatasetManager={() => datasetManager.show()}
   />

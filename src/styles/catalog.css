@@ -292,7 +292,7 @@ aside footer {
   overflow: hidden;
   color: #aca1ab;
   font:
-    400 16px/22px Minecraft,
+    400 15px/22px Minecraft,
     ui-monospace,
     monospace;
   text-shadow: 2px 2px #342c34;
@@ -304,7 +304,7 @@ aside footer {
 .item-grid.list-view .tooltip-preview b {
   margin-right: 5px;
   color: #fff;
-  font: 400 16px/22px Minecraft;
+  font: inherit;
   text-shadow: 2px 2px #342c34;
 }
 .item-grid.list-view .row-arrow {

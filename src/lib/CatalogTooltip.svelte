@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { blockColors, blockColorPalette } from './blockColors';
   import MinecraftText from './MinecraftText.svelte';
   import NbtTree from './NbtTree.svelte';
   import { keyboardModifiers } from './keyboardModifiers.svelte';
@@ -8,12 +9,23 @@
     entry,
     action,
     notes,
+    colorScores,
   }: {
     entry: CatalogEntry;
     action?: string | string[];
     /** Additional plain-text lines supplied by a specialized view. */
     notes?: readonly string[];
+    colorScores?: string;
   } = $props();
+
+  const visibleColors = $derived(
+    blockColors.flatMap((color, index) => {
+      const score = Number.parseInt(colorScores?.[index] ?? '0', 16);
+      return score > 0
+        ? [{ color, dye: blockColorPalette[index]!, percent: Math.round((score / 15) * 100) }]
+        : [];
+    }),
+  );
 </script>
 
 <div
@@ -34,6 +46,16 @@
         raw={entry.rawTooltip}
         fallback={entry.tooltip}
       />
+    </div>
+  {/if}
+  {#if visibleColors.length}
+    <div class="tooltip-colors" aria-label="Block color scores">
+      {#each visibleColors as { color, dye, percent } (color)}
+        <span class="color-score" style:--dye={`#${dye.toString(16).padStart(6, '0')}`}>
+          {color}
+          {percent}%
+        </span>
+      {/each}
     </div>
   {/if}
   {#if notes?.length}
@@ -57,6 +79,24 @@
 </div>
 
 <style>
+  .tooltip-colors {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: 4px;
+    margin-top: 4px;
+    font:
+      14px/1.4 Minecraft,
+      monospace;
+    text-shadow: 1px 1px #342c34;
+  }
+  .color-score {
+    color: color-mix(in srgb, var(--dye) 72%, white);
+    white-space: nowrap;
+  }
+  .color-score:not(:last-child)::after {
+    content: ' ·';
+    color: #a69aa9;
+  }
   .tooltip-notes {
     margin-top: 4px;
     color: #ffff55;

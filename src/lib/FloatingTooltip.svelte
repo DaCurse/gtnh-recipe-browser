@@ -6,12 +6,14 @@
     interactive = false,
     anchor,
     children,
+    widthLimit = 460,
   }: {
     x: number;
     y: number;
     interactive?: boolean;
     anchor?: DOMRect;
     children: Snippet;
+    widthLimit?: number;
   } = $props();
   let element = $state<HTMLDivElement>();
   let viewportWidth = $state(0),
@@ -60,6 +62,7 @@
   class="floating-tooltip"
   class:touch-tooltip={interactive}
   style={position}
+  style:--tooltip-width={`${widthLimit}px`}
   style:visibility={width > 0 ? 'visible' : 'hidden'}
   bind:this={element}
 >
@@ -70,7 +73,7 @@
   .floating-tooltip {
     position: fixed;
     z-index: 2000;
-    width: min(460px, calc(100vw - 24px));
+    width: min(var(--tooltip-width), calc(100vw - 24px));
     pointer-events: none;
     text-align: left;
   }

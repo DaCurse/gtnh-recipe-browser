@@ -234,7 +234,7 @@ describe('NEI special browser presentation', () => {
     expect(goodsSource).toContain('notes={tooltipNotes}');
     expect(floatingSource).toContain('<CatalogTooltipContent');
     expect(floatingSource).toMatch(/\{action\}\s+\{notes\}/);
-    expect(contentSource).toContain('<CatalogTooltip {entry} {action} {notes} />');
+    expect(contentSource).toContain('<CatalogTooltip {entry} {action} {notes} {colorScores} />');
     expect(tooltipSource).toContain('notes?: readonly string[];');
     expect(tooltipSource).toContain('class="tooltip-notes"');
   });

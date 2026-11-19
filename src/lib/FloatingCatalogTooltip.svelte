@@ -10,6 +10,7 @@
     y,
     action,
     notes,
+    colorScores,
     interactive = false,
     anchor,
   }: {
@@ -19,6 +20,7 @@
     action?: string;
     /** Additional plain-text lines supplied by a specialized goods view. */
     notes?: readonly string[];
+    colorScores?: string;
     interactive?: boolean;
     anchor?: DOMRect;
   } = $props();
@@ -26,7 +28,7 @@
   const detail = useCatalogEntry(() => entry.id);
 </script>
 
-<FloatingTooltip {x} {y} {interactive} {anchor}>
+<FloatingTooltip {x} {y} {interactive} {anchor} widthLimit={colorScores ? 620 : undefined}>
   <CatalogTooltipContent
     entry={detail.entry ?? entry}
     loading={detail.loading}
@@ -34,5 +36,6 @@
     retry={() => detail.retry()}
     {action}
     {notes}
+    {colorScores}
   />
 </FloatingTooltip>

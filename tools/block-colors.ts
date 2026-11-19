@@ -1,12 +1,7 @@
-import { colorScoreDigits } from '../src/lib/blockColors';
+import { blockColorPalette, colorScoreDigits } from '../src/lib/blockColors';
 import { join } from 'node:path';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';
-
-const palette = [
-  0xf5f5f5, 0xf9801d, 0xc74ebd, 0x6699d9, 0xfed83d, 0x80c71f, 0xf38baa, 0x474f52, 0x9d9d97,
-  0x169c9c, 0x8932b8, 0x3c44aa, 0x835432, 0x5e7c16, 0xb02e26, 0x1d1d21,
-];
 
 function coordinates(r: number, g: number, b: number) {
   // Separate brightness from chroma so shadows don't dominate hue matching.
@@ -14,7 +9,7 @@ function coordinates(r: number, g: number, b: number) {
   return [y, r - b, g - (r + b) / 2];
 }
 
-const anchors = palette.map((rgb) => coordinates(rgb >> 16, (rgb >> 8) & 255, rgb & 255));
+const anchors = blockColorPalette.map((rgb) => coordinates(rgb >> 16, (rgb >> 8) & 255, rgb & 255));
 const nearest = new Uint8Array(32768);
 const runnerUp = new Uint8Array(nearest.length);
 const runnerUpShare = new Uint8Array(nearest.length);
