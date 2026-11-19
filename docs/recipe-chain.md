@@ -1,9 +1,7 @@
-# Recipe chain mode
+# Recipe chain internals
 
-Open **Recipe finder → Recipe chain**, supply at least one available input and one target output,
-and search across every ordinary recipe in the selected release. Inputs can be items or fluids.
-Each requested output gets a route from the available inputs; not every starting input has to be used.
-The selected identities and chain mode are stored in the URL.
+The solver searches ordinary recipes in the selected dataset. It solves each target independently
+and can use a subset of the supplied starting items or fluids.
 
 **Allow additional ingredients** is enabled by default. A route follows a consumed starting material
 through real recipes and lists other required ingredients, molds, circuits, and tools under **Also needs**.
