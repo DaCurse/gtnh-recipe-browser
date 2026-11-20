@@ -15,11 +15,15 @@ const requireSpecial = process.argv.includes('--require-special') || !directMani
 const SHA256_PATTERN = /^[a-f0-9]{64}$/i;
 
 async function fetchOk(url, label) {
-  const response = await fetch(url, { redirect: 'follow' });
-  if (!response.ok) {
-    throw new Error(`${label}: ${response.status} ${response.statusText} (${url})`);
+  for (let attempt = 0; ; attempt++) {
+    const response = await fetch(url, { redirect: 'follow' });
+    if (response.ok) return response;
+    if (attempt === 3 || (response.status !== 429 && response.status < 500)) {
+      throw new Error(`${label}: ${response.status} ${response.statusText} (${url})`);
+    }
+    await response.body?.cancel();
+    await new Promise((resolve) => setTimeout(resolve, 500 * 2 ** attempt));
   }
-  return response;
 }
 
 async function fetchJson(url, label) {

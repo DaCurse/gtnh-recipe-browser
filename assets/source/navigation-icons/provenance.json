@@ -1,26 +1,26 @@
 {
-  "datasetId": "2.9.0-v7-r9ec25114d4a7",
+  "datasetId": "2.9.0-v7-rae28c145974d",
   "icons": [
     {
       "name": "items",
       "goodsId": "i:minecraft:crafting_table:0",
-      "sheetSha256": "44d16dbaca87aa7ab2b43546d3127634bfd44aeda08ec2ebee8de2069b273f2b",
-      "index": 269,
-      "sha256": "a81a1c20894e3670a0b0c5f02c85ead8cb16b73d59c3d3991ae603bd66fd99a1"
+      "sheetSha256": "d477d25d017a334a635b783362139a6bb8ce7ba11419bd1b2cecbb93cf765272",
+      "index": 203,
+      "sha256": "7d12ac48e402a95777ad82e0bd698cb5a5d397134e3d51b62a29ec626b61d550"
     },
     {
       "name": "finder",
       "goodsId": "i:cropsnh:plantLens:0",
-      "sheetSha256": "5047f51ae253ff6caea6df6b61670a033f1054d50466ce97f7f82ae6a700e92b",
-      "index": 402,
-      "sha256": "8e71f0191c91431d895648ba96a94452a039c21ab898032c97d2a21969c84230"
+      "sheetSha256": "b0bd4429e5de8e0c60ed2f9c91b74e086151355f31d79f0d91f7bc04eec360e7",
+      "index": 1007,
+      "sha256": "c392c90d31a9316318b13cfb6b352fde7208693437178f3b4c47b09c0b84103c"
     },
     {
       "name": "quests",
       "goodsId": "i:questbook:ItemQuestBook:0",
-      "sheetSha256": "bf13a999a453404e0336646aef38078b974abc56a2aeae4dda6493ec034b352f",
-      "index": 491,
-      "sha256": "655a2d1d86c2295d715a8925775b31e60c01baba32cd251ae84dd8cb98b51046"
+      "sheetSha256": "83560e499c46eee7452123e63fef849e61f61452f2f1018fd22a8cbc20a7a57b",
+      "index": 585,
+      "sha256": "cf7a26f4de7d5a14ef0399a0896c42de8b8c7c8ae399d0f641b79180fd9cb91c"
     }
   ]
 }

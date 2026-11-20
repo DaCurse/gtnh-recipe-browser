@@ -50,7 +50,7 @@ export async function prepareBootstrapCatalog(
   const { catalog } = await loadCatalogBootstrap(manifest, manifestUrl, report, readAsset);
   report(92, 'Preparing items');
   const resolved = materializeCatalog(manifest, manifestUrl, catalog, false);
-  await applyCatalogOrder(resolved.entries, manifest, manifestUrl);
+  await applyCatalogOrder(resolved.entries, manifest, manifestUrl, readAsset);
   clearBootstrapRelations(resolved.entries);
   const browse = buildCatalogBrowseEntries(resolved.entries);
   return {

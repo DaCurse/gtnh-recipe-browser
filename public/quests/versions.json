@@ -2,14 +2,14 @@
   "schemaVersion": 1,
   "versions": [
     {
-      "id": "quests-2.9.0-6c2ac806c332",
+      "id": "quests-2.9.0-8288fa329184",
       "version": "2.9.0",
       "questCount": 3814,
       "chapterCount": 46,
       "sourceCommit": "79f9a03b5dd9e492d28998b9dee0ea1d1822a6b1",
-      "sha256": "6c2ac806c332ba3639e90069932386cd42b29d6a3cb9db7853a0e39c4c683ea7",
-      "bytes": 1666034,
-      "url": "./6c2ac806c332ba3639e90069932386cd42b29d6a3cb9db7853a0e39c4c683ea7.mpk",
+      "sha256": "8288fa3291840d25cbaac2c261147db31ba963f6f3c78e3dc5b4ab7b1339b581",
+      "bytes": 1667134,
+      "url": "./8288fa3291840d25cbaac2c261147db31ba963f6f3c78e3dc5b4ab7b1339b581.mpk",
       "encoding": "gzip"
     }
   ]

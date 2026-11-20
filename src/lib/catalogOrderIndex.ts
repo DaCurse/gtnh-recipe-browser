@@ -31,10 +31,11 @@ export async function applyCatalogOrder(
   entries: CatalogEntry[],
   manifest: DatasetManifest,
   manifestUrl: string,
+  readAsset?: (asset: DatasetAsset) => Promise<Uint8Array>,
 ): Promise<void> {
   const asset = catalogOrderAsset(manifest, manifestUrl);
   if (!asset) return;
-  const bytes = await fetchVerified(asset, manifestUrl);
+  const bytes = await (readAsset ? readAsset(asset) : fetchVerified(asset, manifestUrl));
   const index = JSON.parse(new TextDecoder().decode(await decompress(bytes))) as OrderIndex;
   if (
     index.schemaVersion !== 1 ||

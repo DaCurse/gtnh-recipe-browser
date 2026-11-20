@@ -65,6 +65,15 @@ export default defineConfig({
   // Disposable game clients and upstream source trees are tooling inputs, not
   // frontend entry points. Scanning/watching them can stall a local preview.
   optimizeDeps: { entries: ['index.html'] },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (id.endsWith('/src/lib/generated/block-colors.json')) return 'block-color-data';
+        },
+      },
+    },
+  },
   server: {
     watch: {
       ignored: [

@@ -41,16 +41,6 @@
       "recipes": 190080,
       "nodes": 43265
     },
-    "2.9.0-v7-r9ec25114d4a7": {
-      "id": "recipe-chain-index",
-      "bytes": 4687695,
-      "sha256": "5441444dd848ff68ef1d849ac0b5c29537f4c43fe354d78e0b3c0109e75239f8",
-      "url": "./assets/recipe-chains/5441444dd848ff68ef1d849ac0b5c29537f4c43fe354d78e0b3c0109e75239f8",
-      "encoding": "gzip",
-      "manifestSha256": "d7a1ae748ea03d1ebcc5bf193720fd9abea6a619d6e6e2cf360a122e0e4a6ce7",
-      "recipes": 283927,
-      "nodes": 137291
-    },
     "2.9.0-v7-rae28c145974d": {
       "id": "recipe-chain-index",
       "bytes": 4778526,

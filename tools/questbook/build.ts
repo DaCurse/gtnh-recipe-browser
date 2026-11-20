@@ -62,8 +62,17 @@ if (!recipeVersion) throw new Error('Missing 2.9.0 item dataset');
 const manifestPath = join(publicRoot, recipeVersion.packManifestUrl);
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as DatasetManifest &
   GeneratedPackManifest;
-const readAsset = (asset: DatasetAsset) =>
-  readLogicalAsset(asset, manifest, join(publicRoot, 'assets/sha256'));
+const readAsset = async (asset: DatasetAsset) => {
+  const store = join(publicRoot, 'assets/sha256');
+  if (asset.segments) return readLogicalAsset(asset, manifest, store);
+  const bytes = await readFile(join(store, asset.sha256));
+  if (
+    bytes.length !== asset.bytes ||
+    createHash('sha256').update(bytes).digest('hex') !== asset.sha256
+  )
+    throw new Error(`Invalid quest build asset ${asset.id}`);
+  return bytes;
+};
 const prepared = await prepareBootstrapCatalog(
   manifest,
   'https://quest-build.invalid/' + relative(publicRoot, manifestPath).replaceAll('\\', '/'),
@@ -344,6 +353,7 @@ await writeFile(
 for (const filename of await readdir(join(publicRoot, 'quests')))
   if (/^[a-f0-9]{64}\.mpk$/.test(filename) && filename !== `${sha256}.mpk`)
     await unlink(join(publicRoot, 'quests', filename));
+await mkdir('.pack-output', { recursive: true });
 await writeFile(
   '.pack-output/quest-unresolved.json',
   JSON.stringify([...unresolved.values()], null, 2),
