@@ -432,6 +432,7 @@
     background: #58a94a;
   }
   i.implicit {
+    height: 2.25px;
     background: #777;
     margin-left: 8px;
   }

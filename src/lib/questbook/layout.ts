@@ -23,7 +23,8 @@ export function questEdges(
         dy = end.y + end.height / 2 - y;
       const length = Math.hypot(dx, dy);
       // DirectionalLine's repeated chevrons, including main-quest line width.
-      const width = quests.get(end.id)?.main ? 8 : 4;
+      const baseWidth = quests.get(end.id)?.main ? 8 : 4;
+      const width = requirement.type === 'implicit' ? baseWidth * 0.75 : baseWidth;
       const count = Math.ceil(length / 20),
         offset = count % 2 === 1 ? 0 : 1 / (count + 1) / 2;
       const arrows = Array.from({ length: count + 1 }, (_, index) => {

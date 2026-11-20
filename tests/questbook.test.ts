@@ -188,7 +188,7 @@ describe('quest text and canvas semantics', () => {
     expect(questBounds(chapter)).toEqual({ minX: -24, minY: 0, width: 120, height: 96 });
     const edges = questEdges(chapter, quests);
     expect(edges).toHaveLength(1);
-    expect(edges[0]).toMatchObject({ type: 'implicit', width: 8, x: -12, y: 12 });
+    expect(edges[0]).toMatchObject({ type: 'implicit', width: 6, x: -12, y: 12 });
     expect(placementVisible(chapter.quests[0], 0, 0, 1, 390, 800)).toBe(true);
     expect(placementVisible(chapter.quests[0], -1000, 0, 1, 390, 800)).toBe(false);
   });
