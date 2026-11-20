@@ -13,6 +13,7 @@
     colorScores,
     interactive = false,
     anchor,
+    onPointerPresence,
   }: {
     entry: CatalogEntry;
     x: number;
@@ -23,12 +24,20 @@
     colorScores?: string;
     interactive?: boolean;
     anchor?: DOMRect;
+    onPointerPresence?: (inside: boolean) => void;
   } = $props();
 
   const detail = useCatalogEntry(() => entry.id);
 </script>
 
-<FloatingTooltip {x} {y} {interactive} {anchor} widthLimit={colorScores ? 620 : undefined}>
+<FloatingTooltip
+  {x}
+  {y}
+  {interactive}
+  {anchor}
+  {onPointerPresence}
+  widthLimit={colorScores ? 620 : undefined}
+>
   <CatalogTooltipContent
     entry={detail.entry ?? entry}
     loading={detail.loading}

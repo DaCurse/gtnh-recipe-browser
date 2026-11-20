@@ -26,7 +26,7 @@ import type {
   SpecialDataShardAsset,
 } from './manifest';
 import {
-  SPECIAL_CATEGORY_IDS,
+  SPECIAL_CATEGORY_ORDER,
   buildSpecialViewTypes,
   canonicalSpecialDataJson,
   normalizeBrowserNeiSpecial,
@@ -641,7 +641,7 @@ async function buildSharedSpecialDataShards(
         family: 'special',
         kind: 'specialData',
         specialViewTypeId: viewType.id,
-        specialViewTypeOrder: SPECIAL_CATEGORY_IDS.indexOf(viewType.id),
+        specialViewTypeOrder: SPECIAL_CATEGORY_ORDER.indexOf(viewType.id),
         part,
         recordCount: specialRecords.length,
         prefix,

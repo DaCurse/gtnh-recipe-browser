@@ -13,6 +13,14 @@ of the underlying mods and the browser's source code.
 [Author and source](https://github.com/Ranzuu/Shadow-UI) ·
 [Pinned release](https://github.com/Ranzuu/Shadow-UI/releases/tag/v2.9.X/v5.47)
 
+The Mob Info header uses the 168×105 region at (0, 0) from
+`assets/mobsinfo/textures/gui/MobHandler.png` in that release. The crop in
+`public/assets/machine-ui/mob-info-header.png` follows MobsInfo 0.6.2's
+`MobHandler.drawBackground` and carries the same Shadow UI attribution.
+The Infernal Drops header uses the same region from
+`assets/mobsinfo/textures/gui/MobHandlerInfernal.png` and follows
+`MobHandlerInfernal.drawBackground`.
+
 `buttons/` preserves the same pack's Minecraft `widgets.png` and exact crop
 provenance for the normal, hovered and disabled web controls. These crops use
 the same CC-BY-NC-SA-4.0 licence. Reproduction and text colours are documented

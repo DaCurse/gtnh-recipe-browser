@@ -13,6 +13,7 @@ import {
   repairSpecialServiceIcons,
 } from '../tools/pack-builder/specialServiceIcons';
 import { specialGoodsForDirection } from '../tools/pack-builder/special';
+import { specialLookupMatchesView } from '../src/lib/specialData';
 import type {
   DecodedItem,
   DecodedOreDictionary,
@@ -22,6 +23,19 @@ import type {
 const fixturePath = 'tests/fixtures/nei-special-v1/browser-nei-special.json';
 
 describe('special-data packing', () => {
+  it('indexes Mob Info drops only under Recipes', () => {
+    const goodsId = 'i:minecraft:rotten_flesh:0';
+    const record = {
+      goodsIds: [goodsId],
+      productionGoodsIds: [goodsId],
+      usageGoodsIds: [],
+      payload: {},
+    };
+    expect(specialGoodsForDirection(record, 'recipes')).toEqual([goodsId]);
+    expect(specialGoodsForDirection(record, 'usages')).toEqual([]);
+    expect(specialLookupMatchesView('special:mob-info:zombie:recipes', 'mob-info')).toBe(true);
+  });
+
   it('uses canonical view order and retains every nested goods reference', async () => {
     const data = await readSpecialSidecar(fixturePath, { requireNonEmptyCategories: true });
     expect(buildSpecialViewTypes(data).map((view) => view.id)).toEqual(data.categories);

@@ -10,11 +10,8 @@ export function specialGoodsForDirection(
 ): string[] {
   const extensionKey = direction === 'recipes' ? 'productionGoodsIds' : 'usageGoodsIds';
   const extension = record[extensionKey];
-  const ids = new Set<string>(
-    Array.isArray(extension) && extension.every((value) => typeof value === 'string')
-      ? extension
-      : (record.goodsIds ?? []),
-  );
+  if (extension !== undefined) return [...new Set(extension)].sort();
+  const ids = new Set<string>(record.goodsIds ?? []);
   const visit = (value: unknown): void => {
     if (Array.isArray(value)) {
       value.forEach(visit);

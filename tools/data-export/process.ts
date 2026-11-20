@@ -115,9 +115,22 @@ try {
 }
 // Fail malformed or incomplete special exports before the expensive .NET
 // conversion. Cross-checking against processed goods happens during build.
-const specialData = await readSpecialSidecar(sidecarPath);
+const specialDataPath = join(nesqlDirectory, 'browser-nei-special-enriched.json');
+run('python3', [
+  join(repositoryRoot, 'tools/data-export/mob-info.py'),
+  '--script',
+  scripts[0]!,
+  '--sidecar',
+  sidecarPath,
+  '--images',
+  imageZip,
+  '--infernal-config',
+  join(session.instanceDirectory, '.minecraft/config/InfernalMobs.cfg'),
+  '--output',
+  specialDataPath,
+]);
+const specialData = await readSpecialSidecar(specialDataPath);
 validateCropsNhSeedReferences(specialData);
-const specialDataPath = sidecarPath;
 const questRequestsPath = join(session.workDirectory, 'quest-item-requests.json');
 const questReportPath = join(nesqlDirectory, 'browser-quest-items.json');
 const questRequests = JSON.parse(await readFile(questRequestsPath, 'utf8')) as {

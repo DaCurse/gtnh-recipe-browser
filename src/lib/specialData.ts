@@ -21,6 +21,8 @@ const SPECIAL_CATEGORY_ORDER = [
   'vending',
   'worldgenLoot',
   'oreProcessing',
+  'mob-info',
+  'infernal-drops',
 ] as const;
 
 // Legacy inferred ore graphs remain disabled. RecipeBrowserState enables the
@@ -360,6 +362,8 @@ const SPECIAL_LOOKUP_PREFIXES: Record<SpecialCategory, readonly string[]> = {
   vending: ['vending'],
   worldgenLoot: ['worldgen'],
   oreProcessing: ['ore-processing'],
+  'mob-info': ['mob-info'],
+  'infernal-drops': ['infernal-drops'],
 };
 
 export function specialLookupMatchesView(lookupId: string, viewTypeId: string): boolean {
@@ -613,7 +617,11 @@ export function specialSearchText(record: SpecialRecord): string {
     record.recipesLookupId,
     record.usagesLookupId,
     ...(record.goodsIds ?? []),
-    flatten(payload),
+    flatten(
+      record.category === 'mob-info'
+        ? Object.fromEntries(Object.entries(payload).filter(([key]) => key !== 'portraitPng'))
+        : payload,
+    ),
   ]
     .filter(Boolean)
     .join(' ')

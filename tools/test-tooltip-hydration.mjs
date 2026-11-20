@@ -15,8 +15,64 @@ const manifest = await fetch(new URL(version.packManifestUrl, versionsUrl)).then
 const detailHashes = new Set(
   manifest.recordPages.filter((page) => page.family === 'goods-details').map((page) => page.sha256),
 );
-const browser = await chromium.launch({ headless: true });
+const browser = await chromium.launch({ headless: true, ignoreDefaultArgs: ['--hide-scrollbars'] });
 try {
+  const pinnedPage = await browser.newPage();
+  await pinnedPage.route('**/*', (route) =>
+    new URL(route.request().url()).hostname.includes('posthog') ? route.abort() : route.continue(),
+  );
+  await pinnedPage.goto(new URL('?page=items', base).href);
+  const search = pinnedPage.getByRole('textbox', { name: 'Search catalog', exact: true });
+  await search.fill('i:TConstruct:BoltPart:1538:f3c4b1e9c004a5510acdf2787d1c666bf2208208');
+  const pinnedTile = pinnedPage.getByRole('button', { name: /bolt/i }).first();
+  await pinnedTile.focus({ timeout: 120000 });
+  await pinnedPage.keyboard.down('Shift');
+  const pinned = pinnedPage.locator('.floating-tooltip.touch-tooltip');
+  const title = pinned.locator('.tooltip-header');
+  await title.waitFor();
+  await pinned.locator('.tooltip-text .fmt-6').first().waitFor();
+  await pinnedPage.addStyleTag({
+    content: '.floating-tooltip.touch-tooltip { max-height: 110px; }',
+  });
+  const content = pinned;
+  await title.hover();
+  const scroll = await content.evaluate((element) => {
+    const rect = element.getBoundingClientRect();
+    return {
+      x: rect.right - (element.offsetWidth - element.clientWidth) / 2,
+      y: rect.top + 25,
+      width: element.offsetWidth - element.clientWidth,
+      overflow: element.scrollHeight - element.clientHeight,
+    };
+  });
+  assert(scroll.width > 0 && scroll.overflow > 0, JSON.stringify(scroll));
+  await pinnedPage.mouse.move(scroll.x, scroll.y);
+  await pinnedPage.mouse.down();
+  await pinnedPage.mouse.move(scroll.x, scroll.y + 45, { steps: 6 });
+  await pinnedPage.mouse.up();
+  assert(
+    await content.evaluate((element) => element.scrollTop > 0),
+    'Pinned scrollbar is draggable',
+  );
+  await pinnedPage.keyboard.up('Shift');
+  await content.evaluate((element) => {
+    element.scrollTop = 0;
+  });
+  const text = await title.locator('.minecraft-line > span').first().boundingBox();
+  await pinnedPage.mouse.move(text.x + 2, text.y + text.height / 2);
+  await pinnedPage.mouse.down();
+  await pinnedPage.mouse.move(text.x + text.width - 2, text.y + text.height / 2, { steps: 8 });
+  await pinnedPage.mouse.up();
+  assert(
+    await pinned.evaluate((element) => {
+      const selection = window.getSelection();
+      return selection?.toString().trim() && element.contains(selection.anchorNode);
+    }),
+    'Pinned tooltip text can be selected by dragging',
+  );
+  await pinnedPage.mouse.move(0, 0);
+  await pinned.waitFor({ state: 'detached' });
+  await pinnedPage.close();
   const context = await browser.newContext({ serviceWorkers: 'block' });
   await context.route('**/*', (route) =>
     new URL(route.request().url()).hostname.includes('posthog') ? route.abort() : route.fallback(),

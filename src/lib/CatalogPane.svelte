@@ -100,6 +100,7 @@
   let searchGeneration = 0;
   let tooltipEntry = $state<CatalogBrowseEntry>();
   let pinnedTooltipItem = $state<CatalogEntry>();
+  let pointerInsideTooltip = $state(false);
   let leftPinnedTile = false;
   let variantGroup = $state<CatalogBrowseEntry>();
   let variantActions = $state(false);
@@ -135,7 +136,7 @@
 
   $effect(() => {
     void query;
-    tooltipEntry = undefined;
+    hideTooltip();
   });
 
   const searchRequested = $derived(query.trim().length > 0);
@@ -372,6 +373,7 @@
     tooltipEntry = undefined;
     pinnedTooltipItem = undefined;
     leftPinnedTile = false;
+    pointerInsideTooltip = false;
   }
 
   function leaveTooltipTile() {
@@ -382,10 +384,11 @@
   $effect(() => {
     const entry = tooltipEntry;
     const pin = searchContext === 'catalog' && keyboardModifiers.shift;
+    const inside = pointerInsideTooltip;
     untrack(() => {
       if (pin && entry) {
         pinnedTooltipItem ??= resolveCatalogVariant(entry, exactEntryById, $oreCycle);
-      } else if (pinnedTooltipItem) {
+      } else if (pinnedTooltipItem && !inside) {
         if (leftPinnedTile) hideTooltip();
         else pinnedTooltipItem = undefined;
       }
@@ -685,7 +688,7 @@
             onpointermove={movePointerTooltip}
             onpointerleave={leaveTooltipTile}
             onfocus={(event) => showFocusTooltip(event, entry)}
-            onblur={hideTooltip}
+            onblur={leaveTooltipTile}
             onclick={() => {
               hideTooltip();
               if (entry.variantKind !== 'single') openVariant(entry, false);
@@ -772,9 +775,8 @@
     y={tooltipY}
     action={variantAction(tooltipEntry)}
     interactive={!!pinnedTooltipItem}
-    colorScores={searchContext === 'catalog' && keyboardModifiers.shift
-      ? blockColorScores(entry)
-      : undefined}
+    onPointerPresence={(inside) => (pointerInsideTooltip = inside)}
+    colorScores={pinnedTooltipItem ? blockColorScores(entry) : undefined}
   />
 {/if}
 

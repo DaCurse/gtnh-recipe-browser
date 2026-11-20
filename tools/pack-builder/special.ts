@@ -14,7 +14,7 @@ import {
   type SpecialData,
 } from '../data-export/special';
 
-export { SPECIAL_CATEGORY_IDS, buildSpecialViewTypes } from '../data-export/special';
+export { SPECIAL_CATEGORY_ORDER, buildSpecialViewTypes } from '../data-export/special';
 
 export type { SpecialData, SpecialRecord } from '../data-export/special';
 

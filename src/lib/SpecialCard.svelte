@@ -1,6 +1,8 @@
 <script lang="ts">
   import CropSpecialCard from './CropSpecialCard.svelte';
   import ItemIcon from './ItemIcon.svelte';
+  import InfernalDropsSpecialCard from './InfernalDropsSpecialCard.svelte';
+  import MobInfoSpecialCard from './MobInfoSpecialCard.svelte';
   import LootBagSpecialCard from './LootBagSpecialCard.svelte';
   import MeteorSpecialCard from './MeteorSpecialCard.svelte';
   import OreProcessingDiagram from './OreProcessingDiagram.svelte';
@@ -168,6 +170,10 @@
       />
     {:else if category === 'worldgenLoot'}
       <WorldgenLootSpecialCard {record} {resolve} {navigate} />
+    {:else if category === 'mob-info'}
+      <MobInfoSpecialCard {record} {resolve} {navigate} />
+    {:else if category === 'infernal-drops'}
+      <InfernalDropsSpecialCard {record} {resolve} {navigate} />
     {:else if category === 'oreProcessing'}
       {#if nativeScene}
         <OreProcessingDiagram scene={nativeScene} {resolve} {navigate} />

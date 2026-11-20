@@ -22,7 +22,12 @@ export const SPECIAL_CATEGORY_IDS = [
   'gt-ore-processing',
 ] as const;
 
-type SpecialCategoryId = (typeof SPECIAL_CATEGORY_IDS)[number];
+export const SPECIAL_CATEGORY_ORDER = [
+  ...SPECIAL_CATEGORY_IDS,
+  'mob-info',
+  'infernal-drops',
+] as const;
+type SpecialCategoryId = (typeof SPECIAL_CATEGORY_ORDER)[number];
 
 /** Names accepted by the overlay when adapting older NEI terminology. */
 const CATEGORY_ALIASES: Record<string, SpecialCategoryId> = {
@@ -160,7 +165,7 @@ function finiteNumber(value: unknown, path: string): number {
 
 function normalizeCategory(value: unknown, path: string): SpecialCategoryId {
   const category = requiredString(value, path);
-  if ((SPECIAL_CATEGORY_IDS as readonly string[]).includes(category)) {
+  if ((SPECIAL_CATEGORY_ORDER as readonly string[]).includes(category)) {
     return category as SpecialCategoryId;
   }
   const alias = CATEGORY_ALIASES[category];
@@ -333,7 +338,8 @@ function viewTypes(value: unknown, iconIds: ReadonlySet<string>): SpecialViewTyp
     ids.add(view.id);
   }
   return views.sort(
-    (left, right) => SPECIAL_CATEGORY_IDS.indexOf(left.id) - SPECIAL_CATEGORY_IDS.indexOf(right.id),
+    (left, right) =>
+      SPECIAL_CATEGORY_ORDER.indexOf(left.id) - SPECIAL_CATEGORY_ORDER.indexOf(right.id),
   );
 }
 
@@ -496,7 +502,7 @@ function normalizeGtOreVeinChances(records: SpecialRecord[]): void {
 
 function categories(value: unknown, records: readonly SpecialRecord[]): SpecialCategoryId[] {
   if (value === undefined) {
-    return SPECIAL_CATEGORY_IDS.filter((category) =>
+    return SPECIAL_CATEGORY_ORDER.filter((category) =>
       records.some((record) => record.category === category),
     );
   }
@@ -504,7 +510,7 @@ function categories(value: unknown, records: readonly SpecialRecord[]): SpecialC
   return listed
     .map((category, index) => normalizeCategory(category, `categories[${index}]`))
     .sort(
-      (left, right) => SPECIAL_CATEGORY_IDS.indexOf(left) - SPECIAL_CATEGORY_IDS.indexOf(right),
+      (left, right) => SPECIAL_CATEGORY_ORDER.indexOf(left) - SPECIAL_CATEGORY_ORDER.indexOf(right),
     );
 }
 
@@ -642,7 +648,8 @@ export function canonicalizeSpecialData(
     serviceIcons: normalizedIcons,
     records: normalizedRecords.sort((left, right) => {
       const categoryOrder =
-        SPECIAL_CATEGORY_IDS.indexOf(left.category) - SPECIAL_CATEGORY_IDS.indexOf(right.category);
+        SPECIAL_CATEGORY_ORDER.indexOf(left.category) -
+        SPECIAL_CATEGORY_ORDER.indexOf(right.category);
       return categoryOrder || left.id.localeCompare(right.id);
     }),
   };
@@ -722,7 +729,7 @@ export function buildSpecialViewTypes(data: SpecialData): SpecialViewType[] {
   for (const record of data.records)
     if (!iconByCategory.has(record.category))
       iconByCategory.set(record.category, record.serviceIconId);
-  return SPECIAL_CATEGORY_IDS.filter((category) => iconByCategory.has(category)).map(
+  return SPECIAL_CATEGORY_ORDER.filter((category) => iconByCategory.has(category)).map(
     (category) => ({
       id: category,
       label: category.replaceAll('-', ' '),

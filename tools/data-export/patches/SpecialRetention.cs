@@ -94,7 +94,7 @@ namespace Source
         private static HashSet<string> ReadReferences(string databasePath, Action<JsonElement, HashSet<string>> visit)
         {
             var references = new HashSet<string>(StringComparer.Ordinal);
-            foreach (var name in new[] { "browser-nei-special.json", "browser-quest-items.json" })
+            foreach (var name in new[] { "browser-nei-special.json", "browser-nei-special-enriched.json", "browser-quest-items.json" })
             {
                 var path = Path.Combine(Path.GetDirectoryName(databasePath) ?? ".", name);
                 if (!File.Exists(path)) continue;

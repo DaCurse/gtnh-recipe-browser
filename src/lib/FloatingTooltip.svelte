@@ -5,6 +5,7 @@
     y,
     interactive = false,
     anchor,
+    onPointerPresence,
     children,
     widthLimit = 460,
   }: {
@@ -12,6 +13,7 @@
     y: number;
     interactive?: boolean;
     anchor?: DOMRect;
+    onPointerPresence?: (inside: boolean) => void;
     children: Snippet;
     widthLimit?: number;
   } = $props();
@@ -65,6 +67,8 @@
   style:--tooltip-width={`${widthLimit}px`}
   style:visibility={width > 0 ? 'visible' : 'hidden'}
   bind:this={element}
+  onpointerenter={() => onPointerPresence?.(true)}
+  onpointerleave={() => onPointerPresence?.(false)}
 >
   {@render children()}
 </div>
@@ -86,6 +90,8 @@
     pointer-events: auto;
     overflow: auto;
     overscroll-behavior: contain;
+    user-select: text;
+    scrollbar-color: #51455b #100010;
   }
   .touch-tooltip :global(.minecraft-tooltip) {
     max-height: none;
