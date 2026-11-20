@@ -192,6 +192,9 @@ const exportAutomationPatch = join(
 );
 run('patch', ['--dry-run', '--batch', '-p1', '-i', exportAutomationPatch], patchedExporter);
 run('patch', ['--batch', '-p1', '-i', exportAutomationPatch], patchedExporter);
+const mobInfoPatch = join(repositoryRoot, 'tools/data-export/patches/mob-info-nei.patch');
+run('patch', ['--dry-run', '--batch', '-p1', '-i', mobInfoPatch], patchedExporter);
+run('patch', ['--batch', '-p1', '-i', mobInfoPatch], patchedExporter);
 
 const providerTarget = join(
   patchedExporter,
@@ -361,6 +364,7 @@ const session: ExportSession = {
     patchSha256: await sha256File(patchPath),
     specialOverlayPatchSha256: await sha256File(specialOverlayPatch),
     exportAutomationPatchSha256: await sha256File(exportAutomationPatch),
+    mobInfoPatchSha256: await sha256File(mobInfoPatch),
     mainJar: basename(mainJar),
     mainJarSha256: await sha256File(mainJar),
     dependenciesJar: basename(dependenciesJar),

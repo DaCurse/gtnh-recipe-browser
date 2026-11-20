@@ -53,7 +53,10 @@ def records(script, images):
             elif table == "MOB_INFO":
                 info[key] = fields
             else:
-                drop_type = fields[6]
+                native_notes = (
+                    decode(fields[6]).splitlines() if len(fields) == 8 else None
+                )
+                drop_type = fields[-1]
                 if drop_type == "INFERNAL":
                     continue
                 if drop_type not in DROP_GROUPS:
@@ -62,17 +65,23 @@ def records(script, images):
                 amount = int(fields[5])
                 if not math.isfinite(chance) or not 0 <= chance <= 1 or amount < 1:
                     raise ValueError(f"Invalid Mob Info drop for {key}")
-                notes = []
-                if fields[2] == "TRUE":
-                    notes.append("Affected by Looting")
-                if fields[3] == "TRUE":
-                    notes.append("Player kill required")
+                if native_notes is None:
+                    notes = []
+                    if fields[2] == "TRUE":
+                        notes.append("Affected by Looting")
+                    if fields[3] == "TRUE":
+                        notes.append("Player kill required")
+                    chance_fields = {"chance": chance}
+                else:
+                    # NEI supplies the exact chance line or the applicable conditions.
+                    notes = native_notes
+                    chance_fields = {}
                 drops[key].append(
                     (
                         decode(fields[1]),
                         {
                             "groupId": drop_type,
-                            "chance": chance,
+                            **chance_fields,
                             "amount": amount,
                             "tooltipNotes": notes,
                         },

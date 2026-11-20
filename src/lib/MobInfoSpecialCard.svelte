@@ -184,6 +184,13 @@
       400 18px/22px Minecraft,
       monospace;
   }
+  .mob-drop-groups :global(.special-goods-label) {
+    font:
+      400 16px/22px Minecraft,
+      monospace;
+    letter-spacing: 0;
+    text-transform: none;
+  }
   .mob-drop-groups {
     padding: 0 18px 14px;
   }

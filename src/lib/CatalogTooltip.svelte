@@ -13,7 +13,7 @@
   }: {
     entry: CatalogEntry;
     action?: string | string[];
-    /** Additional plain-text lines supplied by a specialized view. */
+    /** Additional lines supplied by a specialized view, optionally with Minecraft formatting. */
     notes?: readonly string[];
     colorScores?: string;
   } = $props();
@@ -60,7 +60,9 @@
   {/if}
   {#if notes?.length}
     <div class="tooltip-notes">
-      {#each notes as note, index (`${index}:${note}`)}<div>{note}</div>{/each}
+      {#each notes as note, index (`${index}:${note}`)}
+        <div><MinecraftText text={note} inline /></div>
+      {/each}
     </div>
   {/if}
   {#if keyboardModifiers.shift && entry.showNbt && entry.nbt}<NbtTree source={entry.nbt} />{/if}

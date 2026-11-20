@@ -23,6 +23,7 @@ export interface ExportSession {
     specialOverlayPatchSha256?: string;
     /** Opt-in unattended-client controller patch applied only to that copy. */
     exportAutomationPatchSha256?: string;
+    mobInfoPatchSha256?: string;
     mainJar: string;
     mainJarSha256: string;
     dependenciesJar: string;

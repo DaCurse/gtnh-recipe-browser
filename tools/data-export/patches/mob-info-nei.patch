@@ -1,0 +1,197 @@
+--- a/src/main/java/com/github/dcysteine/nesql/exporter/plugin/mobsinfo/MobsInfoProcessor.java
++++ b/src/main/java/com/github/dcysteine/nesql/exporter/plugin/mobsinfo/MobsInfoProcessor.java
+@@ -3,9 +3,19 @@
+ import com.github.dcysteine.nesql.exporter.main.Logger;
+ import com.github.dcysteine.nesql.exporter.plugin.PluginExporter;
+ import com.github.dcysteine.nesql.exporter.plugin.PluginHelper;
++import com.kuba6000.mobsinfo.api.MobRecipe;
++import com.kuba6000.mobsinfo.nei.MobHandler;
+ import com.kuba6000.mobsinfo.loader.MobRecipeLoader;
++import codechicken.nei.PositionedStack;
++import net.minecraft.entity.EntityLiving;
++
++import java.lang.reflect.Field;
++import java.util.IdentityHashMap;
++import java.util.List;
+ 
+ import java.util.Map;
++import java.util.Objects;
++import java.util.stream.Collectors;
+ 
+ public class MobsInfoProcessor extends PluginHelper {
+     public MobsInfoProcessor(PluginExporter exporter) {
+@@ -13,24 +23,58 @@
+     }
+ 
+     public void process() {
+-        Map<String, MobRecipeLoader.GeneralMappedMob> mobInfoMap = MobRecipeLoader.GeneralMobList;
+-        int total = mobInfoMap.size();
++        List<?> recipes = (List<?>) readField(MobHandler.class, null, "cachedRecipes");
++        if (recipes.isEmpty()) {
++            throw new IllegalStateException("MobsInfo has not populated the client NEI drop table");
++        }
++        Map<String, MobRecipe> mobInfoMap = MobRecipe.MobNameToRecipeMap;
++        // The cached name is "Skeleton" for both skeleton variants. Resolve the
++        // actual registration key from the same entity passed to NEI.
++        Map<EntityLiving, String> mobNames = new IdentityHashMap<>();
++        MobRecipeLoader.GeneralMobList.forEach((name, mob) -> mobNames.put(mob.mob, name));
++        int total = recipes.size();
+         logger.info("Processing {} mob info...", total);
+ 
+         MobInfoFactory mobInfoFactory = new MobInfoFactory(exporter);
+         int count = 0;
+-        for (Map.Entry<String, MobRecipeLoader.GeneralMappedMob> entry : mobInfoMap.entrySet()) {
++        for (Object recipe : recipes) {
+             count++;
+-
+-            mobInfoFactory.get(entry.getKey(), entry.getValue());
++            Object mob = readField(recipe.getClass(), recipe, "mob");
++            String name = Objects.requireNonNull(mobNames.get(mob),
++                    "Unregistered entity in the MobsInfo NEI drop table: " + mob);
++            MobRecipe info = Objects.requireNonNull(mobInfoMap.get(name),
++                    "Missing finalized MobsInfo recipe for " + name);
++            List<?> outputs = (List<?>) readField(recipe.getClass(), recipe, "mOutputs");
++            mobInfoFactory.get(name, info, outputs.stream().map(output -> {
++                PositionedStack stack = (PositionedStack) output;
++                Class<?> type = output.getClass();
++                List<?> notes = (List<?>) readField(type, output, "extraTooltip");
++                return mobInfoFactory.buildDrop(
++                        (com.kuba6000.mobsinfo.api.MobDrop.DropType) readField(type, output, "type"),
++                        stack.items[0],
++                        (int) readField(type, output, "chance"),
++                        String.join("\n", notes.stream().map(String.class::cast)
++                                .collect(Collectors.toList())));
++            }));
+ 
+             if (Logger.intermittentLog(count)) {
+                 logger.info("Processed mob info {} of {}", count, total);
+-                logger.info("Most recent mob info: {}", entry.getKey());
++                logger.info("Most recent mob info: {}", name);
+             }
+         }
+ 
+         exporterState.flushEntityManager();
+         logger.info("Finished processing mob info!");
+     }
++
++    private static Object readField(Class<?> type, Object instance, String name) {
++        try {
++            Field field = type.getDeclaredField(name);
++            field.setAccessible(true);
++            return field.get(instance);
++        } catch (ReflectiveOperationException error) {
++            throw new IllegalStateException("Cannot read MobsInfo NEI field " + type.getName()
++                    + "." + name, error);
++        }
++    }
+ }
+--- a/src/main/java/com/github/dcysteine/nesql/exporter/plugin/mobsinfo/MobInfoFactory.java
++++ b/src/main/java/com/github/dcysteine/nesql/exporter/plugin/mobsinfo/MobInfoFactory.java
+@@ -12,11 +12,12 @@
+ import com.github.dcysteine.nesql.sql.mobinfo.MobDropType;
+ import com.github.dcysteine.nesql.sql.mobinfo.MobInfo;
+ import com.kuba6000.mobsinfo.api.SpawnInfo;
+-import com.kuba6000.mobsinfo.loader.MobRecipeLoader;
++import com.kuba6000.mobsinfo.api.MobRecipe;
+ 
+ import java.util.HashSet;
+ import java.util.Set;
+ import java.util.stream.Collectors;
++import java.util.stream.Stream;
+ 
+ public class MobInfoFactory extends EntityFactory<MobInfo, String> {
+     private final MobFactory mobFactory;
+@@ -48,7 +49,7 @@
+         this.itemFactory = new ItemFactory(exporter);
+     }
+ 
+-    public MobInfo get(String mobName, MobRecipeLoader.GeneralMappedMob info) {
++    public MobInfo get(String mobName, MobRecipe info, Stream<MobDrop> drops) {
+         Mob mob;
+         if (mobName.equals("witherSkeleton")) {
+             // MobsInfo has special handling for wither skeletons, which we must also handle here.
+@@ -59,11 +60,11 @@
+         String id = IdPrefixUtil.MOB_INFO.applyPrefix(mob.getId());
+ 
+         Set<String> spawnInfo;
+-        if (info.recipe.spawnList == null) {
++        if (info.spawnList == null) {
+             spawnInfo = new HashSet<>();
+         } else {
+             spawnInfo =
+-                    info.recipe.spawnList.stream()
++                    info.spawnList.stream()
+                             .map(SpawnInfo::getInfo)
+                             .collect(Collectors.toSet());
+         }
+@@ -71,27 +72,19 @@
+         MobInfo mobInfo = new MobInfo(
+                 id,
+                 mob,
+-                info.recipe.isPeacefulAllowed,
+-                info.recipe.isUsableInVial,
+-                info.recipe.infernalityAllowed,
+-                info.recipe.alwaysinfernal,
++                info.isPeacefulAllowed,
++                info.isUsableInVial,
++                info.infernalityAllowed,
++                info.alwaysinfernal,
+                 spawnInfo);
+-        info.drops.forEach(d -> mobInfo.addDrop(buildDrop(d)));
++        drops.forEachOrdered(mobInfo::addDrop);
+ 
+         return findOrPersist(MobInfo.class, mobInfo);
+     }
+ 
+-    public MobDrop buildDrop(com.kuba6000.mobsinfo.api.MobDrop drop) {
+-        MobDropType dropType = convertDropType(drop.type);
+-        net.minecraft.item.ItemStack itemStack = drop.stack;
+-        Item item = itemFactory.get(itemStack);
+-
+-        return new MobDrop(
+-                dropType,
+-                item,
+-                itemStack.stackSize,
+-                drop.chance / 100_00d,
+-                drop.lootable,
+-                drop.playerOnly);
++    public MobDrop buildDrop(com.kuba6000.mobsinfo.api.MobDrop.DropType type,
++                             net.minecraft.item.ItemStack stack, int chance, String tooltipNotes) {
++        return new MobDrop(convertDropType(type), itemFactory.get(stack), stack.stackSize,
++                chance / 100_00d, tooltipNotes);
+     }
+ }
+--- a/src/main/java/com/github/dcysteine/nesql/sql/mobinfo/MobDrop.java
++++ b/src/main/java/com/github/dcysteine/nesql/sql/mobinfo/MobDrop.java
+@@ -32,18 +32,20 @@
+     private boolean lootable;
+     private boolean playerOnly;
+ 
++    @Column(length = 16384)
++    private String tooltipNotes;
++
+     /** Needed by Hibernate. */
+     protected MobDrop() {}
+ 
+     public MobDrop(
+             MobDropType type, Item item, int stackSize,
+-            double probability, boolean lootable, boolean playerOnly) {
++            double probability, String tooltipNotes) {
+         this.type = type;
+         this.item = item;
+         this.stackSize = stackSize;
+         this.probability = probability;
+-        this.lootable = lootable;
+-        this.playerOnly = playerOnly;
++        this.tooltipNotes = tooltipNotes;
+     }
+ 
+     public ItemStack asItemStack() {
+@@ -62,6 +64,7 @@
+                 .thenComparing(MobDrop::getStackSize)
+                 .thenComparing(MobDrop::isLootable)
+                 .thenComparing(MobDrop::isPlayerOnly)
++                .thenComparing(MobDrop::getTooltipNotes, Comparator.nullsFirst(Comparator.naturalOrder()))
+                 .compare(this, other);
+     }
+ }
