@@ -50,6 +50,16 @@
       "manifestSha256": "d7a1ae748ea03d1ebcc5bf193720fd9abea6a619d6e6e2cf360a122e0e4a6ce7",
       "recipes": 283927,
       "nodes": 137291
+    },
+    "2.9.0-v7-rae28c145974d": {
+      "id": "recipe-chain-index",
+      "bytes": 4778526,
+      "sha256": "1c831426e8d1f1fd90e3ecfa1eaa61046a241f4325ac98aef039288e515c5afe",
+      "url": "./assets/recipe-chains/1c831426e8d1f1fd90e3ecfa1eaa61046a241f4325ac98aef039288e515c5afe",
+      "encoding": "gzip",
+      "manifestSha256": "7a174f547b08451c6b16a1c2c1fe8b8b2f29e2108dfd6fa6058076283ef9753f",
+      "recipes": 284200,
+      "nodes": 137975
     }
   }
 }

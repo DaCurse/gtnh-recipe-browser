@@ -10,6 +10,7 @@ import type { DecodedRepository } from '../tools/pack-builder/model';
 import type { GeneratedPackManifest } from '../tools/pack-builder/manifest';
 import type { DatasetManifest } from '../src/lib/datasetSchema';
 import type { CatalogEntry } from '../src/lib/types';
+import versions from '../public/versions-v7.json';
 
 const fetchAsset = vi.hoisted(() => vi.fn());
 vi.mock('../src/lib/datasetAssets', async (original) => ({
@@ -67,8 +68,9 @@ describe('numeric catalogue order', () => {
     expect(() => buildCatalogOrder(source, manifest)).toThrow('Conflicting registry ID');
   });
   it('binds the published companion to the export and puts Stone first without hardcoding an order', async () => {
+    const active = versions.versions.find((version) => version.gtnhVersion === '2.9.0')!;
     const manifest = JSON.parse(
-      await readFile('public/data/2.9.0-v7-r9ec25114d4a7/pack-manifest.json', 'utf8'),
+      await readFile(`public/${active.packManifestUrl}`, 'utf8'),
     ) as DatasetManifest;
     const url = 'https://example.test/browser/data/2.9.0/pack-manifest.json';
     const asset = catalogOrderAsset(manifest, url)!;

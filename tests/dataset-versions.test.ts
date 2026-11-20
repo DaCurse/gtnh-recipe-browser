@@ -37,6 +37,12 @@ function stored(datasetId: string, active = false): DatasetState {
 }
 
 describe('dataset revision availability', () => {
+  it('opens a superseded v7 link for a published GTNH version on a fresh browser', () => {
+    const current = version('2.9.0-v7-rae28c145974d', '2.9.0');
+    expect(preferredDatasetId([current], [], '2.9.0-v7-r9ec25114d4a7')).toBe(current.datasetId);
+    expect(preferredDatasetId([current], [], '2.8.0-v7-r123456789abc')).toBeUndefined();
+  });
+
   it('transfers active state when a semantic version gets a new dataset ID', () => {
     expect(replacementDatasetActive(undefined, [{ active: true }], [{ active: true }])).toBe(true);
     expect(replacementDatasetActive(undefined, [{ active: false }], [{ active: false }])).toBe(

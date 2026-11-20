@@ -249,7 +249,6 @@ if (await pathExists(catalogOrderPath)) {
 }
 
 if (mode === 'stage') {
-  await buildBlockColors(repositoryRoot);
   const { count: prunedSharedObjects } = await prunePublishedObjects(repositoryRoot);
   console.log(
     JSON.stringify(

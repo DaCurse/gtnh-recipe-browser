@@ -9,13 +9,15 @@ import { writeCompanionRelease } from '../pack-builder/companionRelease';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
 import type { PackedGoods } from '../../src/lib/datasetSchema';
 
-const [packPath, sourcePath] = process.argv.slice(2);
+const [packPath, sourcePath, previewDescriptorPath] = process.argv.slice(2);
 if (!packPath || !sourcePath)
   throw new Error(
-    'Usage: tsx tools/high-resolution-icons/build.ts <published-pack> <recovered-sources>',
+    'Usage: tsx tools/high-resolution-icons/build.ts <pack> <recovered-sources> [preview-descriptor.json]',
   );
 const root = resolve('.');
-const store = join(root, 'public/assets/sha256');
+const store = previewDescriptorPath
+  ? join(packPath, 'assets/sha256')
+  : join(root, 'public/assets/sha256');
 const sources = JSON.parse(await readFile(join(sourcePath, 'sources.json'), 'utf8')) as {
   spriteSize: number;
   scriptSha256: string;
@@ -210,12 +212,16 @@ const provenance = {
   assets,
   root: descriptor,
 };
-await writeCompanionRelease(
-  registryPath,
-  join(root, 'assets/source/high-resolution-icons'),
-  descriptor,
-  provenance,
-);
+if (previewDescriptorPath) {
+  await writeFile(previewDescriptorPath, JSON.stringify(descriptor), { flag: 'wx' });
+} else {
+  await writeCompanionRelease(
+    registryPath,
+    join(root, 'assets/source/high-resolution-icons'),
+    descriptor,
+    provenance,
+  );
+}
 console.log(
   JSON.stringify({
     sprites: unique,

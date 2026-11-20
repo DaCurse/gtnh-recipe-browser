@@ -4,6 +4,7 @@ import { argumentsMap, assertPathMissing, requiredArgument } from '../data-expor
 import { resolveRuntime, createLaunchPlan, launchRuntime } from '../data-export/direct-runtime';
 
 const args = argumentsMap(process.argv.slice(2));
+const captureNeiHandlers = args.get('nei-handlers') === 'true';
 const heap = args.get('xmx') ?? '7G';
 if (!/^\d+[mMgG]$/.test(heap)) throw new Error('--xmx must be a JVM memory size such as 5G');
 const root = resolve(requiredArgument(args, 'instance'));
@@ -30,6 +31,7 @@ runtime.jvmArgs.push(
   '-Dorg.lwjgl.opengl.Display.allowSoftwareOpenGL=true',
   '-Dorg.lwjgl.opengl.Display.enableSoftwareOpenGL=true',
   `-Dbrowser.ui.output=${output}`,
+  `-Dbrowser.ui.neiHandlers=${captureNeiHandlers}`,
 );
 const plan = createLaunchPlan(runtime, {
   java: args.get('java') ?? 'java',
@@ -44,6 +46,7 @@ const snapshot = JSON.parse(await readFile(output, 'utf8')) as {
   schemaVersion?: number;
   error?: string;
   maps?: unknown[];
+  neiHandlers?: Record<string, { label?: string; recipes?: unknown[] }>;
 };
 if (
   snapshot.schemaVersion !== 1 ||
@@ -52,5 +55,17 @@ if (
   snapshot.maps.length < 100
 ) {
   throw new Error(`Incomplete UI snapshot: ${snapshot.error ?? 'missing frontend registry'}`);
+}
+if (captureNeiHandlers) {
+  const handlers = Object.entries(snapshot.neiHandlers ?? {});
+  if (
+    handlers.length === 0 ||
+    handlers.some(([, handler]) => !handler.label || !handler.recipes?.length)
+  ) {
+    throw new Error('Incomplete NEI handler snapshot');
+  }
+  for (const [, handler] of handlers) {
+    console.log(`${handler.label}: ${handler.recipes!.length} recipes`);
+  }
 }
 console.log(`UI snapshot: ${output}`);

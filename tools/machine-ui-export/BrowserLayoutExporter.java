@@ -1,5 +1,6 @@
 package com.github.dcysteine.nesql.exporter.main;
 
+import codechicken.nei.ItemList;
 import com.google.gson.*;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -10,11 +11,15 @@ import java.nio.file.*;
 import java.util.*;
 import java.util.function.IntFunction;
 import net.minecraft.client.Minecraft;
+import net.minecraft.world.WorldSettings;
+import net.minecraft.world.WorldType;
 
 /** Opt-in, read-only recipe-map frontend snapshot for a disposable GTNH client. */
 public final class BrowserLayoutExporter {
 
   private int ticks;
+  private boolean itemLoadRequested;
+  private boolean worldRequested;
   private boolean finished;
 
   public static void install() {
@@ -255,8 +260,32 @@ public final class BrowserLayoutExporter {
       event.phase != TickEvent.Phase.END ||
       finished ||
       ++ticks < 40 ||
-      Minecraft.getMinecraft().currentScreen == null
+      (!worldRequested && Minecraft.getMinecraft().currentScreen == null)
     ) return;
+    if (Boolean.getBoolean("browser.ui.neiHandlers")) {
+      Minecraft client = Minecraft.getMinecraft();
+      if (client.thePlayer == null) {
+        if (!worldRequested) {
+          worldRequested = true;
+          WorldSettings settings = new WorldSettings(
+            8675309L,
+            WorldSettings.GameType.CREATIVE,
+            false,
+            false,
+            WorldType.FLAT
+          );
+          client.launchIntegratedServer("browser-nei-snapshot", "browser-nei-snapshot", settings);
+        }
+        return;
+      }
+      if (!itemLoadRequested) {
+        itemLoadRequested = true;
+        ItemList.loadItems();
+      }
+      // NEI expands wildcard stacks through ItemList.itemMap. Before loading
+      // finishes, PositionedStack falls back to a single metadata-zero stack.
+      if (!ItemList.loadFinished || ItemList.items.isEmpty()) return;
+    }
     finished = true;
     JsonObject root = new JsonObject();
     root.addProperty("schemaVersion", 1);
@@ -318,6 +347,10 @@ public final class BrowserLayoutExporter {
       );
       root.add("recipePresentation", recipePresentation(registry));
       root.add("oreDiagrams", BrowserOreDiagramExporter.export());
+      if (Boolean.getBoolean("browser.ui.neiHandlers")) {
+        root.addProperty("neiHandlerItemCount", ItemList.items.size());
+        root.add("neiHandlers", BrowserNeiHandlerExporter.export());
+      }
     } catch (Throwable e) {
       root.addProperty("error", e.toString());
       e.printStackTrace();

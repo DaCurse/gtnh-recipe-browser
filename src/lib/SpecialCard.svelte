@@ -6,6 +6,7 @@
   import LootBagSpecialCard from './LootBagSpecialCard.svelte';
   import MeteorSpecialCard from './MeteorSpecialCard.svelte';
   import OreProcessingDiagram from './OreProcessingDiagram.svelte';
+  import PureDaisySpecialCard from './PureDaisySpecialCard.svelte';
   import type { OreScene } from './oreDiagram';
   import SpecialGoods from './SpecialGoods.svelte';
   import VeinSpecialCard from './VeinSpecialCard.svelte';
@@ -99,6 +100,10 @@
       if (focusEntry?.name) return focusEntry.name;
       return value.title.replace(/^Meteor Ritual:\s*/i, '');
     }
+    if (valueCategory === 'botania-pure-daisy') {
+      const output = value.outputs?.[0];
+      return (output && resolver(output.goodsId)?.name) || value.title;
+    }
     if (valueCategory !== 'cropBreeding') return value.title;
     const payload = value.payload as unknown as Record<string, unknown>;
     const outputSeed = toSpecialGoods(payload.outputSeed);
@@ -174,6 +179,8 @@
       <MobInfoSpecialCard {record} {resolve} {navigate} />
     {:else if category === 'infernal-drops'}
       <InfernalDropsSpecialCard {record} {resolve} {navigate} />
+    {:else if category === 'botania-pure-daisy'}
+      <PureDaisySpecialCard {record} {resolve} {navigate} />
     {:else if category === 'oreProcessing'}
       {#if nativeScene}
         <OreProcessingDiagram scene={nativeScene} {resolve} {navigate} />

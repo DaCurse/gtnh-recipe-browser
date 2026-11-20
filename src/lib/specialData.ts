@@ -23,6 +23,7 @@ const SPECIAL_CATEGORY_ORDER = [
   'oreProcessing',
   'mob-info',
   'infernal-drops',
+  'botania-pure-daisy',
 ] as const;
 
 // Legacy inferred ore graphs remain disabled. RecipeBrowserState enables the
@@ -364,6 +365,7 @@ const SPECIAL_LOOKUP_PREFIXES: Record<SpecialCategory, readonly string[]> = {
   oreProcessing: ['ore-processing'],
   'mob-info': ['mob-info'],
   'infernal-drops': ['infernal-drops'],
+  'botania-pure-daisy': ['botania-pure-daisy'],
 };
 
 export function specialLookupMatchesView(lookupId: string, viewTypeId: string): boolean {

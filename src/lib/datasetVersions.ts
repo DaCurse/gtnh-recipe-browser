@@ -49,7 +49,9 @@ export function preferredDatasetId(
   const active = stored.find((state) => state.active);
   const source = requested ? stored.find((state) => state.datasetId === requested) : active;
   const semanticVersion =
-    (requested ? legacyVersions[requested] : undefined) ?? source?.gtnhVersion;
+    (requested ? legacyVersions[requested] : undefined) ??
+    source?.gtnhVersion ??
+    requested?.match(/^(.+)-v7-r[0-9a-f]{12}$/)?.[1];
   const replacement = available.find((version) => version.gtnhVersion === semanticVersion);
   if (replacement) return replacement.datasetId;
   if (source && !isLegacyDatasetState(source) && !source.datasetId.includes('-v6-'))

@@ -7,6 +7,7 @@ export interface VersionsIndex {
   schemaVersion: number;
   versions: DatasetVersion[];
   rollout?: { epoch: number; targetDatasetId: string };
+  highResolutionIcons?: Record<string, { sha256: string; bytes: number }>;
 }
 
 export interface DatasetAsset {

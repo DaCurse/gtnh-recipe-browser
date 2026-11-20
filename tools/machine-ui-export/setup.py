@@ -44,6 +44,10 @@ shutil.copy2(
     package / "BrowserOreDiagramExporter.java",
 )
 main = package / "Main.java"
+shutil.copy2(
+    root / "tools/machine-ui-export/BrowserNeiHandlerExporter.java",
+    package / "BrowserNeiHandlerExporter.java",
+)
 text = main.read_text(encoding="utf-8")
 anchor = "ExportAutomationController.install();"
 if text.count(anchor) != 1:

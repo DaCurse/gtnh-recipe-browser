@@ -239,7 +239,8 @@
             >
               {#if icon}<ItemIcon
                   entry={icon}
-                  size={54}
+                  size={64}
+                  spritePixels={64}
                   selected={finderState.machine === machine.name}
                 />{:else}<span class="all-machines-icon" aria-hidden="true">⚙</span>{/if}
               <span class="machine-name">{machine.name}</span><small
@@ -543,8 +544,8 @@
     border-radius: 10px;
   }
   .all-machines-icon {
-    width: 54px;
-    height: 54px;
+    width: 64px;
+    height: 64px;
     display: grid;
     place-items: center;
     border: 1px solid #586575;

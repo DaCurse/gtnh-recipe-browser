@@ -11,6 +11,8 @@ from collections import defaultdict
 from pathlib import Path
 from zipfile import ZipFile
 
+from nei_handler_data import add_nei_handlers
+
 CATALYST = "i:minecraft:diamond_sword:0"
 DROP_GROUPS = ("NORMAL", "RARE", "ADDITIONAL")
 
@@ -135,6 +137,7 @@ def main():
     parser.add_argument("--images", type=Path, required=True)
     parser.add_argument("--infernal-config", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--nei-snapshot", type=Path)
     args = parser.parse_args()
     sidecar = json.loads(args.sidecar.read_text(encoding="utf-8"))
     with ZipFile(args.images) as images:
@@ -174,6 +177,9 @@ def main():
         }
     )
     sidecar["records"].append(infernal)
+    if args.nei_snapshot:
+        snapshot = json.loads(args.nei_snapshot.read_text(encoding="utf-8"))
+        add_nei_handlers(sidecar, snapshot)
     args.output.write_text(
         json.dumps(sidecar, ensure_ascii=False, separators=(",", ":")) + "\n",
         encoding="utf-8",

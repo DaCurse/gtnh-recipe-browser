@@ -1,0 +1,22 @@
+{
+  "datasetId": "2.9.0-v7-rae28c145974d",
+  "baseManifestSha256": "82b85639638eb424d6de59a4dc8acf86d1d7dc5611782fc3638706a655721b28",
+  "runtimeSnapshotSha256": "9f86d281f0a5e8cd040bcc57094684c07953686b1b6f4e78a15f1aa8e5739f80",
+  "generator": "NEI Custom Diagram 1.8.36",
+  "sourceCommit": "042a8c7f643b26e2645252ef58dea9bdf41a34c6",
+  "diagrams": 331,
+  "assets": [
+    {
+      "sha256": "c8825c444409e221d0c442b27531f00df0c1a569626689b12552686cdfc6976d",
+      "bytes": 100063
+    },
+    {
+      "sha256": "feb11fd29e7d75a60ba542891123edd3282943c062e442177088480ee90177ab",
+      "bytes": 74935
+    }
+  ],
+  "index": {
+    "sha256": "feb11fd29e7d75a60ba542891123edd3282943c062e442177088480ee90177ab",
+    "bytes": 74935
+  }
+}

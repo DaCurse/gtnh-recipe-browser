@@ -123,11 +123,13 @@ describe('questbook export inventory', () => {
       ).toEqual({ goodsIds: [], unavailableReason: 'unregistered-item' });
       await writeFile(
         join(root, 'options.txt'),
-        'renderDistance:7\npauseOnLostFocus:true\nfullscreen:true\n',
+        'renderDistance:7\npauseOnLostFocus:true\nfullscreen:true\nsoundCategory_master:1.0\n',
       );
       await configureUnattendedClient(root);
       const options = await readFile(join(root, 'options.txt'), 'utf8');
-      expect(options).toBe('renderDistance:7\npauseOnLostFocus:false\nfullscreen:false\n');
+      expect(options).toBe(
+        'renderDistance:7\npauseOnLostFocus:false\nfullscreen:false\nsoundCategory_master:0.0\n',
+      );
       await configureUnattendedClient(root);
       expect(await readFile(join(root, 'options.txt'), 'utf8')).toBe(options);
     } finally {

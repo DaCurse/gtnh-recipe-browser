@@ -116,7 +116,7 @@
   height: 92px;
   flex-basis: 92px;
   gap: 1px;
-  grid-template-rows: 60px 26px;
+  grid-template-rows: 64px 26px;
   align-content: start;
   font-size: 19px;
 }
@@ -127,8 +127,8 @@
   position: relative;
   display: grid;
   place-items: center;
-  width: 60px;
-  height: 60px;
+  width: 64px;
+  height: 64px;
   isolation: isolate;
 }
 .machine-tab-count {

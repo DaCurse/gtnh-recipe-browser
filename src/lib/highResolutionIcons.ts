@@ -30,7 +30,12 @@ export interface RenderedIcon {
   columns: number;
   resolution: 32 | 64;
 }
-const registry: Record<string, Descriptor> = releases.releases;
+const registry: Record<string, Descriptor> = { ...releases.releases };
+export function registerHighResolutionIcons(releases: Record<string, Descriptor>): void {
+  for (const [id, descriptor] of Object.entries(releases)) {
+    if (isDescriptor(descriptor)) registry[id] ??= descriptor;
+  }
+}
 export function supportsHighResolutionIcon(
   icon: NonNullable<CatalogEntry['icon']>,
   displayedPixels: number,

@@ -26,6 +26,7 @@ export const SPECIAL_CATEGORY_ORDER = [
   ...SPECIAL_CATEGORY_IDS,
   'mob-info',
   'infernal-drops',
+  'botania-pure-daisy',
 ] as const;
 type SpecialCategoryId = (typeof SPECIAL_CATEGORY_ORDER)[number];
 

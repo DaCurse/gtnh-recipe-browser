@@ -363,7 +363,12 @@
     >
       <span class="machine-tab-icon">
         {#if tabCrafter}
-          <ItemIcon entry={tabCrafter} size={60} selected={browserState.type === tab} />
+          <ItemIcon
+            entry={tabCrafter}
+            size={64}
+            spritePixels={64}
+            selected={browserState.type === tab}
+          />
         {:else}
           <span class="machine-fallback">⚙</span>
         {/if}
@@ -387,7 +392,12 @@
     >
       <span class="machine-tab-icon">
         {#if tabIcon}
-          <ItemIcon entry={tabIcon} size={60} selected={browserState.specialType === tab.id} />
+          <ItemIcon
+            entry={tabIcon}
+            size={64}
+            spritePixels={64}
+            selected={browserState.specialType === tab.id}
+          />
         {:else}
           <span class="special-fallback">{tab.glyph ?? '✦'}</span>
         {/if}

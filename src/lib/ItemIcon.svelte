@@ -18,6 +18,7 @@
     bare = false,
     frame = true,
     renderScale = 1,
+    spritePixels,
   }: {
     entry: CatalogEntry;
     size?: number;
@@ -25,9 +26,12 @@
     bare?: boolean;
     frame?: boolean;
     renderScale?: number;
+    spritePixels?: 32 | 64;
   } = $props();
   let presentation = $state.raw<{ identity: string; value: RenderedIcon }>();
-  const spriteSize = $derived(Math.max(1, size - 2 * Math.round(size * (bare ? 0.075 : 1 / 18))));
+  const spriteSize = $derived(
+    spritePixels ?? Math.max(1, size - 2 * Math.round(size * (bare ? 0.075 : 1 / 18))),
+  );
   const owner = $derived(
     entry.icon?.ownerId ??
       (/^[if]:/.test(entry.id)

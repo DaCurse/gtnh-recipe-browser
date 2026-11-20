@@ -14,6 +14,7 @@ import {
   type PreparedCatalog,
 } from './preparedCatalogCache';
 import { decompress, fetchJsonNetworkFirst, fetchVerified, yieldToBrowser } from './datasetAssets';
+import { registerHighResolutionIcons } from './highResolutionIcons';
 import type {
   DatasetAsset,
   DatasetManifest,
@@ -532,9 +533,17 @@ export class DatasetRepository {
       });
     };
     report(3, 'Checking available GTNH versions');
-    const versionsResult = await loadVersionsIndex(150);
-    const versions = versionsResult.value;
+    let versionsResult = await loadVersionsIndex(150);
     const installed = await listDatasets();
+    // A preview/deep link can name a revision published after the cached index.
+    if (
+      datasetId?.includes('-v7-') &&
+      !installed.some((state) => state.datasetId === datasetId) &&
+      !versionsResult.value.versions.some((version) => version.datasetId === datasetId)
+    )
+      versionsResult = await loadVersionsIndex();
+    const versions = versionsResult.value;
+    if (versions.highResolutionIcons) registerHighResolutionIcons(versions.highResolutionIcons);
     const applied = startup ? await getCachedMetadata<number>('dataset-rollout-epoch') : null;
     const selection = startup
       ? startupDatasetSelection(versions, installed, datasetId, applied?.value)

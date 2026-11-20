@@ -31,7 +31,7 @@ function usage(): string {
     'Usage:',
     '  npm run export:process -- --session <export-session.json> [--work-dir <directory>]',
     '    --layout <shared-layout.json> [--reuse-packs <pack-directory,...>]',
-    '    [--resume-processed true]',
+    '    [--resume-processed true] [--nei-snapshot <native-handler-snapshot.json>]',
     '',
     'The source exporter and processed input remain ShadowTheAge format-v5.',
     'This command emits and verifies the canonical shared format-7 pack.',
@@ -116,7 +116,11 @@ try {
 // Fail malformed or incomplete special exports before the expensive .NET
 // conversion. Cross-checking against processed goods happens during build.
 const specialDataPath = join(nesqlDirectory, 'browser-nei-special-enriched.json');
+const neiSnapshot = args.get('nei-snapshot');
+if (neiSnapshot && session.gtnhVersion !== '2.9.0')
+  throw new Error('--nei-snapshot currently supports the pinned GTNH 2.9.0 client');
 run('python3', [
+  '-B',
   join(repositoryRoot, 'tools/data-export/mob-info.py'),
   '--script',
   scripts[0]!,
@@ -128,6 +132,7 @@ run('python3', [
   join(session.instanceDirectory, '.minecraft/config/InfernalMobs.cfg'),
   '--output',
   specialDataPath,
+  ...(neiSnapshot ? ['--nei-snapshot', resolve(neiSnapshot)] : []),
 ]);
 const specialData = await readSpecialSidecar(specialDataPath);
 validateCropsNhSeedReferences(specialData);
@@ -360,6 +365,7 @@ const provenance = {
   revision,
   generatedAt: new Date().toISOString(),
   sourceArchive: session.archive,
+  ...(neiSnapshot ? { neiSnapshotSha256: await sha256File(resolve(neiSnapshot)) } : {}),
   exporter: session.exporter,
   processor: session.processor,
   browserCatalogPolicy: {
