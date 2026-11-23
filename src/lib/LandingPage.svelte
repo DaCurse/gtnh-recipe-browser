@@ -106,7 +106,7 @@
         onclick={openQuests}
       />
     </div>
-    <p class="details">GTNH 2.9.0 &amp; earlier versions · Offline browsing · JSON data exports</p>
+    <p class="details">GTNH 2.9.1 &amp; earlier versions · Offline browsing · JSON data exports</p>
   </section>
   <div class="landing-load" class:complete={!loading} aria-hidden={!loading}>
     <div class="loading-caption">
