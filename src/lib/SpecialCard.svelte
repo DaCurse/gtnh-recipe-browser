@@ -142,8 +142,12 @@
       {/if}
     </button>
     <div>
-      <span class="special-eyebrow">{viewType?.label ?? record.category}</span>
-      <h2>{title}</h2>
+      {#if record.category === 'botania-lexica'}
+        <h2>{iconLabel}</h2>
+      {:else}
+        <span class="special-eyebrow">{iconLabel}</span>
+        <h2>{title}</h2>
+      {/if}
       {#if record.subtitle}<p>{record.subtitle}</p>{/if}
     </div>
     <span class="special-id" title={record.lookupId ?? record.id}

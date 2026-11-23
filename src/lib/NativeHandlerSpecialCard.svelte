@@ -2,8 +2,9 @@
   import SpecialGoods from './SpecialGoods.svelte';
   import SlotSurface from './SlotSurface.svelte';
   import ItemIcon from './ItemIcon.svelte';
+  import RecipeProgress from './RecipeProgress.svelte';
   import MinecraftText from './MinecraftText.svelte';
-  import { machineUiAsset, RECIPE_UI_SCALE } from './machineUi';
+  import { defaultProgressWidget, machineUiAsset, RECIPE_UI_SCALE } from './machineUi';
   import type { SpecialRecord, SpecialResolver } from './specialData';
   import type { CatalogEntry, RecipeView } from './types';
 
@@ -42,6 +43,7 @@
     },
   );
   const goods = $derived([...(record.inputs ?? []), ...(record.outputs ?? [])]);
+  const lexica = $derived(record.category === 'botania-lexica');
   const orbGrid = $derived(record.category === 'blood-magic-orb-shaped');
   // Placement is the destination rectangle in each pinned handler's drawBackground.
   const backdrops: Record<
@@ -94,14 +96,18 @@
           fluidRegion: [width, height] as [number, number],
         };
       }
+      // The handlers append the finisher to the inputs. Its browser slot is
+      // 18 units wide, while the decorative altar sprite is 16 units wide.
+      const slotX = altarCircle && index === (record.inputs?.length ?? 0) - 1 ? x - 1 : x;
       return {
-        pos: [x + Math.round((width - 16) / 2), y + Math.round((height - 16) / 2)] as [
+        pos: [slotX + Math.round((width - 16) / 2), y + Math.round((height - 16) / 2)] as [
           number,
           number,
         ],
       };
     }),
   );
+  const orbOutput = $derived(orbGrid ? positions.at(-1)?.pos : undefined);
   const metadata = $derived([
     ['Mana', layout.mana, ''],
     ['Cost', layout.lifePoints, ' LP'],
@@ -114,100 +120,127 @@
   ] as const);
 </script>
 
-<div class="native-page">
-  <div
-    class="canvas"
-    style:--native-scale={RECIPE_UI_SCALE}
-    style:min-width={`${layout.width * RECIPE_UI_SCALE}px`}
-    style:min-height={`${layout.height * RECIPE_UI_SCALE}px`}
-  >
-    {#if backdrop}
-      <img
-        class="native-art"
-        src={machineUiAsset(`${backdrop[0]}-nei.png`)}
-        alt=""
-        style:left={`${backdrop[1] * RECIPE_UI_SCALE}px`}
-        style:top={`${backdrop[2] * RECIPE_UI_SCALE}px`}
-        style:opacity={backdrop[3] ?? 1}
-      />
-    {/if}
-    {#if altarCircle && machineIcon}
-      <!-- The native handlers paint the altar in the circle below the finisher. -->
-      <div class="altar-icon" aria-hidden="true">
-        <ItemIcon entry={machineIcon} size={16 * RECIPE_UI_SCALE} frame={false} unpadded />
-      </div>
-    {/if}
-    {#if record.category === 'botania-elven-trade'}
-      <img
-        class="native-art elven-portal"
-        src={machineUiAsset('botania-elven-portal-nei.png')}
-        alt=""
-      />
-    {/if}
-    {#if manaY !== undefined && layout.mana !== undefined}
-      <div
-        class="mana-bar"
-        aria-hidden="true"
-        style:left={`${32 * RECIPE_UI_SCALE}px`}
-        style:top={`${manaY * RECIPE_UI_SCALE}px`}
-      >
-        <img src={machineUiAsset('botania-mana-bar-nei.png')} alt="" />
-        <span style:width={`${manaFill * RECIPE_UI_SCALE}px`}></span>
-      </div>
-    {/if}
-    {#if orbGrid}
-      <div
-        class="native-grid"
-        style:left={`${25 * RECIPE_UI_SCALE}px`}
-        style:top={`${6 * RECIPE_UI_SCALE}px`}
-      >
-        <SlotSurface width={54} height={54} />
-      </div>
-    {/if}
-    {#each tanks as { x, y, width, height }, index (index)}
-      <div
-        class="tank"
-        style:left={`${x * RECIPE_UI_SCALE}px`}
-        style:top={`${y * RECIPE_UI_SCALE}px`}
-        style:width={`${width * RECIPE_UI_SCALE}px`}
-        style:height={`${height * RECIPE_UI_SCALE}px`}
-      ></div>
-    {/each}
+{#if lexica}
+  <div class="lexica-entry">
     <SpecialGoods
       {goods}
-      {positions}
       {resolve}
       {navigate}
-      pageSize={goods.length}
-      nativeBackground={Boolean(backdrop) || orbGrid || tanks.length > 0}
       hideLabels
-      showAmounts={goods.some((item) => item.amount !== 1)}
+      nativeBackground
+      showAmounts={false}
       showChance={false}
     />
+    <div class="lexica-title">
+      <MinecraftText text={layout.entryTitle ?? record.title} inline />
+    </div>
+    {#if layout.entryTagline}
+      <div><MinecraftText text={layout.entryTagline} inline /></div>
+    {/if}
   </div>
-</div>
-{#if layout.entryTitle}
-  <div class="metadata"><MinecraftText text={layout.entryTitle} inline /></div>
-  {#if layout.entryTagline}
-    <div class="metadata"><MinecraftText text={layout.entryTagline} inline /></div>
-  {/if}
+{:else}
+  <div class="native-page">
+    <div
+      class="canvas"
+      style:--native-scale={RECIPE_UI_SCALE}
+      style:min-width={`${layout.width * RECIPE_UI_SCALE}px`}
+      style:min-height={`${layout.height * RECIPE_UI_SCALE}px`}
+    >
+      {#if backdrop}
+        <img
+          class="native-art"
+          src={machineUiAsset(`${backdrop[0]}-nei.png`)}
+          alt=""
+          style:left={`${backdrop[1] * RECIPE_UI_SCALE}px`}
+          style:top={`${backdrop[2] * RECIPE_UI_SCALE}px`}
+          style:opacity={backdrop[3] ?? 1}
+        />
+      {/if}
+      {#if altarCircle && machineIcon}
+        <!-- The native handlers paint the altar in the circle below the finisher. -->
+        <div class="altar-icon" aria-hidden="true">
+          <ItemIcon entry={machineIcon} size={16 * RECIPE_UI_SCALE} frame={false} unpadded />
+        </div>
+      {/if}
+      {#if record.category === 'botania-elven-trade'}
+        <img
+          class="native-art elven-portal"
+          src={machineUiAsset('botania-elven-portal-nei.png')}
+          alt=""
+        />
+      {/if}
+      {#if manaY !== undefined && layout.mana !== undefined}
+        <div
+          class="mana-bar"
+          aria-hidden="true"
+          style:left={`${32 * RECIPE_UI_SCALE}px`}
+          style:top={`${manaY * RECIPE_UI_SCALE}px`}
+        >
+          <img src={machineUiAsset('botania-mana-bar-nei.png')} alt="" />
+          <span style:width={`${manaFill * RECIPE_UI_SCALE}px`}></span>
+        </div>
+      {/if}
+      {#if orbGrid}
+        <div
+          class="native-grid"
+          style:left={`${25 * RECIPE_UI_SCALE}px`}
+          style:top={`${6 * RECIPE_UI_SCALE}px`}
+        >
+          <SlotSurface width={54} height={54} />
+        </div>
+        <div class="orb-arrow" aria-hidden="true">
+          <RecipeProgress widget={defaultProgressWidget} />
+        </div>
+        {#if orbOutput}
+          <div
+            class="orb-output"
+            style:left={`${orbOutput[0] * RECIPE_UI_SCALE}px`}
+            style:top={`${orbOutput[1] * RECIPE_UI_SCALE}px`}
+          >
+            <SlotSurface width={18} height={18} />
+          </div>
+        {/if}
+      {/if}
+      {#each tanks as { x, y, width, height }, index (index)}
+        <div
+          class="tank"
+          style:left={`${x * RECIPE_UI_SCALE}px`}
+          style:top={`${y * RECIPE_UI_SCALE}px`}
+          style:width={`${width * RECIPE_UI_SCALE}px`}
+          style:height={`${height * RECIPE_UI_SCALE}px`}
+        ></div>
+      {/each}
+      <SpecialGoods
+        {goods}
+        {positions}
+        {resolve}
+        {navigate}
+        pageSize={goods.length}
+        nativeBackground={Boolean(backdrop) || orbGrid || tanks.length > 0}
+        hideLabels
+        showAmounts={goods.some((item) => item.amount !== 1)}
+        showChance={false}
+      />
+    </div>
+  </div>
+  <div class="metadata">
+    {#each metadata as [label, value, unit] (label)}
+      {#if value !== undefined && value > 0}<span>{label}: {value.toLocaleString()}{unit}</span
+        >{/if}
+    {/each}
+    {#if layout.consumesCast !== undefined && goods.length > 2}
+      <span>{layout.consumesCast ? 'Consumes cast' : 'Reuses cast'}</span>
+    {/if}
+    {#if layout.reagentName && layout.reagentColour !== undefined}
+      <span style:color={`#${layout.reagentColour.toString(16).padStart(6, '0')}`}>
+        Reagent: {layout.reagentAmount?.toLocaleString()}
+        {layout.reagentName}
+      </span>
+    {:else if layout.reagentAmount !== undefined}
+      <span>Reagent Amount: {layout.reagentAmount.toLocaleString()}</span>
+    {/if}
+  </div>
 {/if}
-<div class="metadata">
-  {#each metadata as [label, value, unit] (label)}
-    {#if value !== undefined && value > 0}<span>{label}: {value.toLocaleString()}{unit}</span>{/if}
-  {/each}
-  {#if layout.consumesCast !== undefined && goods.length > 2}
-    <span>{layout.consumesCast ? 'Consumes cast' : 'Reuses cast'}</span>
-  {/if}
-  {#if layout.reagentName && layout.reagentColour !== undefined}
-    <span style:color={`#${layout.reagentColour.toString(16).padStart(6, '0')}`}>
-      Reagent: {layout.reagentAmount?.toLocaleString()}
-      {layout.reagentName}
-    </span>
-  {:else if layout.reagentAmount !== undefined}
-    <span>Reagent Amount: {layout.reagentAmount.toLocaleString()}</span>
-  {/if}
-</div>
 
 <style>
   .native-page {
@@ -219,6 +252,8 @@
     margin-inline: auto;
   }
   .native-grid,
+  .orb-arrow,
+  .orb-output,
   .tank,
   .native-art,
   .altar-icon,
@@ -255,6 +290,27 @@
   .native-grid {
     width: 144px;
     height: 144px;
+  }
+  .orb-arrow {
+    left: calc(96px * var(--native-scale));
+    top: calc(32px * var(--native-scale));
+    width: 38px;
+    height: 34px;
+    transform: translate(-50%, -50%);
+  }
+  .orb-output {
+    width: 48px;
+    height: 48px;
+  }
+  .lexica-entry {
+    display: grid;
+    gap: 6px;
+    padding-block: 10px;
+    text-align: center;
+    font-family: Minecraft, monospace;
+  }
+  .lexica-title {
+    font-size: 18px;
   }
   .tank {
     background: var(--recipe-slot-bg, #251e1a);
