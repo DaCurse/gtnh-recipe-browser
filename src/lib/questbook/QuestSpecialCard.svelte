@@ -1,6 +1,6 @@
 <script lang="ts">
-  import SpecialGoods from '../SpecialGoods.svelte';
-  import type { SpecialGoods as Goods, SpecialResolver } from '../specialData';
+  import SpecialGoods from '../special/SpecialGoods.svelte';
+  import type { SpecialGoods as Goods, SpecialResolver } from '../special/specialData';
   import type { RecipeView } from '../types';
   import QuestIconButton from './QuestIconButton.svelte';
   import type { QuestLinksRepository } from './linksRepository';

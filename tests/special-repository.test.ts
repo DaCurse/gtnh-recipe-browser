@@ -6,11 +6,16 @@ import { tmpdir } from 'node:os';
 import { encode } from '@msgpack/msgpack';
 import { gzipSync } from 'node:zlib';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { DatasetRepository } from '../src/lib/dataset';
-import { getCachedMetadata, getDataset, removeDataset, saveDataset } from '../src/lib/storage';
+import { DatasetRepository } from '../src/lib/dataset/dataset';
+import {
+  getCachedMetadata,
+  getDataset,
+  removeDataset,
+  saveDataset,
+} from '../src/lib/dataset/storage';
 import { sharedPrefixLayoutFingerprint } from '../tools/pack-builder/sharedLayout';
 import { buildRecordPages } from '../tools/pack-builder/recordPages';
-import { recordPageSelections } from '../src/lib/recordPages';
+import { recordPageSelections } from '../src/lib/dataset/recordPages';
 
 const temporaryPacks: string[] = [];
 

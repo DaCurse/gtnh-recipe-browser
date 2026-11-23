@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { compactRelations, expandRelations } from '../src/lib/packedRelations';
-import { goodsIdentityFromId } from '../src/lib/goodsIdentity';
-import { compactRecordPageSelections, recordPageSelections } from '../src/lib/recordPages';
+import { compactRelations, expandRelations } from '../src/lib/dataset/packedRelations';
+import { goodsIdentityFromId } from '../src/lib/items/goodsIdentity';
+import { compactRecordPageSelections, recordPageSelections } from '../src/lib/dataset/recordPages';
 import {
   minecraftFormattingSpans,
   parseMinecraftHtml,
   restoreMinecraftFormatting,
-} from '../src/lib/minecraftText';
+} from '../src/lib/ui/minecraftText';
 
 describe('incremental wire records', () => {
   it('round-trips compact selectors and rejects truncated or overflowing varints', () => {

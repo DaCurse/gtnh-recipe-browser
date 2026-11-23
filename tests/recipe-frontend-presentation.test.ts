@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { applyFrontendPresentation } from '../src/lib/recipeFrontendPresentation';
+import { applyFrontendPresentation } from '../src/lib/recipes/recipeFrontendPresentation';
 import snapshot from '../src/lib/generated/recipe-presentation.json';
 import type { Recipe } from '../src/lib/types';
 

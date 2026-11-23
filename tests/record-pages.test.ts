@@ -7,7 +7,7 @@ import { encode, decode } from '@msgpack/msgpack';
 import { afterEach, describe, expect, it } from 'vitest';
 import { buildRecordPages, readLogicalAsset } from '../tools/pack-builder/recordPages';
 import type { GeneratedPackManifest, ImmutableAsset } from '../tools/pack-builder/manifest';
-import { assembleRecordPages } from '../src/lib/recordPages';
+import { assembleRecordPages } from '../src/lib/dataset/recordPages';
 
 const directories: string[] = [];
 afterEach(async () => {

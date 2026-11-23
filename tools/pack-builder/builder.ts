@@ -1,5 +1,5 @@
 import { buildCatalogOrder } from '../catalog-order';
-import { specialGroupMatchesItem } from '../../src/lib/specialMatching';
+import { specialGroupMatchesItem } from '../../src/lib/special/specialMatching';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, rename, stat, writeFile, readdir, unlink } from 'node:fs/promises';
 import { basename, dirname, join, resolve } from 'node:path';
@@ -38,22 +38,22 @@ import {
 } from './special';
 import { expandGtOreSpecialData } from './specialOreAliases';
 import { repairSpecialServiceIcons } from './specialServiceIcons';
-import { fluidRecipeScope } from '../../src/lib/fluidContainers';
-import { canonicalVariantNbt } from '../../src/lib/catalogVariants';
-import { goodsIdentityFromId } from '../../src/lib/goodsIdentity';
-import { compactRelations } from '../../src/lib/packedRelations';
-import { specialLookupMatchesView } from '../../src/lib/specialData';
-import { minecraftFormattingSpans, minecraftHtmlPlainText } from '../../src/lib/minecraftText';
-import { productionFallbackDictionary } from '../../src/lib/oreDictionary';
+import { fluidRecipeScope } from '../../src/lib/items/fluidContainers';
+import { canonicalVariantNbt } from '../../src/lib/catalog/catalogVariants';
+import { goodsIdentityFromId } from '../../src/lib/items/goodsIdentity';
+import { compactRelations } from '../../src/lib/dataset/packedRelations';
+import { specialLookupMatchesView } from '../../src/lib/special/specialData';
+import { minecraftFormattingSpans, minecraftHtmlPlainText } from '../../src/lib/ui/minecraftText';
+import { productionFallbackDictionary } from '../../src/lib/items/oreDictionary';
 import {
   machineCapabilitiesByCrafter,
   propagateOreMachineCapabilities,
-} from '../../src/lib/recipePresentation';
+} from '../../src/lib/recipes/recipePresentation';
 import {
   addRecipeTypeCrafters,
   parseMachineCrafters,
   type MachineCrafterSource,
-} from '../../src/lib/machineCrafters';
+} from '../../src/lib/recipes/machineCrafters';
 import {
   groupSharedRecords,
   sharedLogicalId,

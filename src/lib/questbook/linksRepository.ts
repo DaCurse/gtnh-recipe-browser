@@ -1,8 +1,8 @@
 import { decode } from '@msgpack/msgpack';
-import { assetDigest } from '../integrity';
-import { decompress, fetchJsonNetworkFirst, fetchVerified } from '../datasetAssets';
+import { assetDigest } from '../dataset/integrity';
+import { decompress, fetchJsonNetworkFirst, fetchVerified } from '../dataset/datasetAssets';
 import type { CatalogEntry, RecipeView } from '../types';
-import type { SpecialRecord, SpecialRepository, SpecialViewType } from '../specialData';
+import type { SpecialRecord, SpecialRepository, SpecialViewType } from '../special/specialData';
 import type { Quest } from './types';
 import type {
   QuestItemRelations,

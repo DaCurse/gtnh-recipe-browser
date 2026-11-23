@@ -3,8 +3,8 @@ import {
   buildCatalogSearchDocument,
   catalogDocumentMatches,
   parseCatalogSearchQuery,
-} from '../src/lib/catalogSearch';
-import { parseSearchExpression } from '../src/lib/searchSyntax';
+} from '../src/lib/search/catalogSearch';
+import { parseSearchExpression } from '../src/lib/search/searchSyntax';
 
 const document = buildCatalogSearchDocument({
   id: 'family:hammer',

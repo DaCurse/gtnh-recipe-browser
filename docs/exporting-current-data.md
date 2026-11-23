@@ -48,7 +48,7 @@ The builder verifies the processed database and atlas against the recipe
 manifest's source hashes before using raw NBT for semantic navigation and exact
 quest tooltips. Published recipe shards deliberately omit most raw NBT for size.
 The shared resolver and its source-backed family defaults live in
-`src/lib/itemNavigation.ts`; mappings are rebuilt from export data, not maintained
+`src/lib/items/itemNavigation.ts`; mappings are rebuilt from export data, not maintained
 as individual item aliases.
 
 The same build generates the item-to-quest companion: shared quest preview

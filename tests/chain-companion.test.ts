@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import { decode } from '@msgpack/msgpack';
 import { describe, it, expect } from 'vitest';
-import { validateChainGraph } from '../src/lib/recipeChain';
+import { validateChainGraph } from '../src/lib/finder/recipeChain';
 describe('published chain companions', () => {
   it('provides a verified graph bound to every published recipe manifest', () => {
     const versions = JSON.parse(readFileSync('public/versions-v7.json', 'utf8'));

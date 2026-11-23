@@ -11,7 +11,7 @@ import {
   recordPageSelections,
   RECORD_PAGE_TARGET_BYTES,
   type RecordPageSelection,
-} from '../../src/lib/recordPages';
+} from '../../src/lib/dataset/recordPages';
 import type { GeneratedPackManifest, ImmutableAsset, RecordPageFamily } from './manifest';
 
 const digest = (bytes: Uint8Array) => createHash('sha256').update(bytes).digest('hex');

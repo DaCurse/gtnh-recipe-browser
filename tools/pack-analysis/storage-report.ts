@@ -5,8 +5,8 @@ import { gunzipSync } from 'node:zlib';
 import { decode } from '@msgpack/msgpack';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
 import { readLogicalAsset } from '../pack-builder/recordPages';
-import { decodeRecordPage, recordPageSelections } from '../../src/lib/recordPages';
-import { expandRelations, type PackedRelationList } from '../../src/lib/packedRelations';
+import { decodeRecordPage, recordPageSelections } from '../../src/lib/dataset/recordPages';
+import { expandRelations, type PackedRelationList } from '../../src/lib/dataset/packedRelations';
 
 const paths = process.argv.slice(2);
 if (paths.length < 2)

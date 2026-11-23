@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { createSpecialContextEntry } from '../src/lib/specialContext';
+import { createSpecialContextEntry } from '../src/lib/special/specialContext';
 import type { CatalogEntry } from '../src/lib/types';
 
 const source: CatalogEntry = {

@@ -12,7 +12,7 @@ import {
   toSpecialGoods,
   toSpecialGoodsList,
   type SpecialRecord,
-} from '../src/lib/specialData';
+} from '../src/lib/special/specialData';
 
 describe('NEI special browser presentation', () => {
   it('maps canonical sidecar category IDs to focused renderers', () => {
@@ -86,7 +86,7 @@ describe('NEI special browser presentation', () => {
   });
 
   it('keeps the GT stat card aligned with the embedded NEI page structure', async () => {
-    const source = await readFile('src/lib/VeinSpecialCard.svelte', 'utf8');
+    const source = await readFile('src/lib/special/VeinSpecialCard.svelte', 'utf8');
     for (const label of ['Primary', 'Secondary', 'Between', 'Sporadic', 'Generated World']) {
       expect(source).toContain(label);
     }
@@ -100,15 +100,15 @@ describe('NEI special browser presentation', () => {
   });
 
   it('labels machine tabs and keeps variant metadata separators stable', async () => {
-    const browser = await readFile('src/lib/RecipeBrowser.svelte', 'utf8');
-    const variants = await readFile('src/lib/VariantPicker.svelte', 'utf8');
+    const browser = await readFile('src/lib/recipes/RecipeBrowser.svelte', 'utf8');
+    const variants = await readFile('src/lib/catalog/VariantPicker.svelte', 'utf8');
     expect(browser).toContain('class="machine-tab"');
     expect(browser).toContain('<small class:single-word={!/\\s/.test(tab)}>{tab}</small>');
     expect(variants).toMatch(/\.filter\(Boolean\)\s*\.join\(' · '\)/);
   });
 
   it('keeps the all-category export beside the direction tabs', async () => {
-    const browser = await readFile('src/lib/RecipeBrowser.svelte', 'utf8');
+    const browser = await readFile('src/lib/recipes/RecipeBrowser.svelte', 'utf8');
     const viewTabs = browser.indexOf('<nav class="view-tabs"');
     const categoryExport = browser.search(/class="[^"]*\bcategory-export\b[^"]*"/);
     const machineTabs = browser.indexOf('<div class="type-row">');
@@ -128,7 +128,7 @@ describe('NEI special browser presentation', () => {
   });
 
   it('does not carry a special tab into another item or recipe direction', async () => {
-    const state = await readFile('src/lib/recipeBrowserState.svelte.ts', 'utf8');
+    const state = await readFile('src/lib/recipes/recipeBrowserState.svelte.ts', 'utf8');
     expect(state).toContain('private lastRecipeContextKey: string | undefined;');
     expect(state).toContain('const contextKey = `${mode}:${selected.id}`;');
     expect(state).toContain("this.specialType = '';");
@@ -185,25 +185,25 @@ describe('NEI special browser presentation', () => {
   });
 
   it('wraps loot-table names and Fortune summaries instead of ellipsizing them', async () => {
-    const source = await readFile('src/lib/SpecialGoods.svelte', 'utf8');
+    const source = await readFile('src/lib/special/SpecialGoods.svelte', 'utf8');
     expect(source).toContain('wrapLabels = false');
     expect(source).toContain('class:wrap-labels={wrapLabels}');
     expect(source).toContain('.special-goods.wrap-labels .special-goods-grid');
     expect(source).toMatch(/text-overflow:\s*clip;/);
     expect(source).toMatch(/font-weight:\s*400;/);
-    const lootSource = await readFile('src/lib/LootBagSpecialCard.svelte', 'utf8');
+    const lootSource = await readFile('src/lib/special/LootBagSpecialCard.svelte', 'utf8');
     expect(lootSource).toContain('joined label="Drops"');
   });
 
   it('renders world-generation tables as chance grids and vending trades as NEI slots', async () => {
-    const worldgenSource = await readFile('src/lib/WorldgenLootSpecialCard.svelte', 'utf8');
+    const worldgenSource = await readFile('src/lib/special/WorldgenLootSpecialCard.svelte', 'utf8');
     expect(worldgenSource).toContain('entry.weight ?? entry.rarity');
     expect(worldgenSource).toContain('Math.max(0, weight) / totalWeight');
     expect(worldgenSource).toContain('table.entries ?? table.items ?? table.drops');
     expect(worldgenSource).toContain('Possible loot');
-    expect(worldgenSource).toContain('Previous tables');
+    expect(worldgenSource).toContain('noun="tables"');
 
-    const vendingSource = await readFile('src/lib/VendingSpecialCard.svelte', 'utf8');
+    const vendingSource = await readFile('src/lib/special/VendingSpecialCard.svelte', 'utf8');
     expect(vendingSource).toContain('rawPayload.fromCurrency');
     expect(vendingSource).toContain('rawPayload.fromItems');
     expect(vendingSource).toContain('rawPayload.toItems');
@@ -213,12 +213,12 @@ describe('NEI special browser presentation', () => {
   });
 
   it('removes legacy world-generation title prefixes at the card boundary', async () => {
-    const source = await readFile('src/lib/SpecialCard.svelte', 'utf8');
+    const source = await readFile('src/lib/special/SpecialCard.svelte', 'utf8');
     expect(source).toContain('^(?:Forge|Twilight) Loot:');
   });
 
   it('flows meteor focus into outputs and keeps hidden details out of the card', async () => {
-    const source = await readFile('src/lib/MeteorSpecialCard.svelte', 'utf8');
+    const source = await readFile('src/lib/special/MeteorSpecialCard.svelte', 'utf8');
     expect(source).toContain('meteor-flow-arrow');
     expect(source).toContain('Weighted outputs');
     expect(source).toContain('tooltipNotes');
@@ -227,10 +227,10 @@ describe('NEI special browser presentation', () => {
   });
 
   it('supports reusable tooltip notes for special goods', async () => {
-    const goodsSource = await readFile('src/lib/SpecialGoods.svelte', 'utf8');
-    const floatingSource = await readFile('src/lib/FloatingCatalogTooltip.svelte', 'utf8');
-    const contentSource = await readFile('src/lib/CatalogTooltipContent.svelte', 'utf8');
-    const tooltipSource = await readFile('src/lib/CatalogTooltip.svelte', 'utf8');
+    const goodsSource = await readFile('src/lib/special/SpecialGoods.svelte', 'utf8');
+    const floatingSource = await readFile('src/lib/tooltips/FloatingCatalogTooltip.svelte', 'utf8');
+    const contentSource = await readFile('src/lib/tooltips/CatalogTooltipContent.svelte', 'utf8');
+    const tooltipSource = await readFile('src/lib/tooltips/CatalogTooltip.svelte', 'utf8');
     expect(goodsSource).toContain('notes={tooltipNotes}');
     expect(floatingSource).toContain('<CatalogTooltipContent');
     expect(floatingSource).toMatch(/\{action\}\s+\{notes\}/);

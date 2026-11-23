@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import ItemIcon from '../ItemIcon.svelte';
-  import CatalogVariantIcon from '../CatalogVariantIcon.svelte';
+  import ItemIcon from '../items/ItemIcon.svelte';
+  import CatalogVariantIcon from '../catalog/CatalogVariantIcon.svelte';
   import type { CatalogBrowseEntry, CatalogEntry } from '../types';
   let {
     entry,

@@ -1,0 +1,212 @@
+<script lang="ts">
+  import LootPagination from './LootPagination.svelte';
+  import SpecialGoods from './SpecialGoods.svelte';
+  import type { RecipeView } from '../types';
+  import {
+    boundedSpecialPage,
+    toSpecialDrops,
+    toSpecialGoods,
+    type LootBagSpecialPayload,
+    type SpecialRecord,
+    type SpecialResolver,
+  } from './specialData';
+  let {
+    record,
+    resolve,
+    navigate,
+  }: {
+    record: SpecialRecord;
+    resolve: SpecialResolver;
+    navigate: (id: string, view: RecipeView) => void;
+  } = $props();
+  const payload = $derived(record.payload as LootBagSpecialPayload);
+  const rawPayload = $derived(record.payload as unknown as Record<string, unknown>);
+  const bag = $derived(toSpecialGoods(payload.bag ?? rawPayload.bagGoodsId));
+  const groups = $derived(
+    Array.isArray(rawPayload.groups) ? rawPayload.groups : (payload.groups ?? []),
+  );
+  let groupPage = $state(0);
+  const groupPageSize = 4;
+  const groupPageCount = $derived(Math.max(1, Math.ceil(groups.length / groupPageSize)));
+  const visibleGroups = $derived(boundedSpecialPage(groups, groupPage, groupPageSize));
+  const drops = $derived(toSpecialDrops(payload.drops ?? rawPayload.drops ?? record.outputs ?? []));
+  const fortuneChances = $derived(
+    Array.isArray(rawPayload.fortuneChances)
+      ? rawPayload.fortuneChances.filter((value): value is number => typeof value === 'number')
+      : [],
+  );
+  const hasPerDropFortune = $derived(
+    drops.some((drop) => drop.fortune?.length === 4) ||
+      groups.some((group) => {
+        const value = group as Record<string, unknown>;
+        const alternatives = toSpecialDrops(value.alternatives ?? value.drops ?? []);
+        return alternatives.some((drop) => drop.fortune?.length === 4);
+      }),
+  );
+  const limits = $derived(rawPayload.limits as Record<string, unknown> | undefined);
+
+  function percentLabel(value: number): string {
+    const percent = value <= 1 ? value * 100 : value;
+    const bounded = Math.min(100, Math.max(0, percent));
+    return `${Number(bounded.toFixed(2))}%`;
+  }
+
+  $effect(() => {
+    if (groupPage >= groupPageCount) groupPage = groupPageCount - 1;
+  });
+</script>
+
+<div class="loot-card">
+  <SpecialGoods
+    goods={bag ? [bag] : []}
+    {resolve}
+    {navigate}
+    joined
+    label="Loot bag"
+    showAmounts={false}
+    showChance={false}
+  />
+  {#if payload.trashGroup || typeof rawPayload.trashGroupInheritance === 'string'}<p
+      class="special-line"
+    >
+      <b>Trash group inheritance</b>
+      {payload.trashGroup ?? rawPayload.trashGroupInheritance}
+    </p>{/if}
+  {#each visibleGroups as rawGroup, index (`${groupPage * groupPageSize + index}:${JSON.stringify(rawGroup)}`)}
+    {@const group = rawGroup as Record<string, unknown>}
+    {@const alternatives = toSpecialDrops(group.alternatives ?? group.drops ?? [])}
+    <section class:inherited={group.inherited === true} class="loot-group">
+      <header>
+        <b
+          >{typeof group.label === 'string'
+            ? group.label
+            : typeof group.id === 'string'
+              ? group.id
+              : 'Drop group'}</b
+        >{#if typeof group.weight === 'number'}<span>weight {group.weight}</span
+          >{/if}{#if typeof group.limit === 'number'}<span>limit {group.limit}</span>{/if}
+      </header>
+      <SpecialGoods
+        goods={alternatives}
+        {resolve}
+        {navigate}
+        joined
+        label={group.inherited === true ? 'Inherited alternatives' : undefined}
+      />
+    </section>
+  {/each}
+  <LootPagination bind:page={groupPage} count={groupPageCount} label="Loot groups" noun="groups" />
+  <SpecialGoods goods={drops} {resolve} {navigate} joined label="Drops" />
+  {#if fortuneChances.length && !hasPerDropFortune}
+    <section class="fortune-summary" aria-label="Legacy Fortune reference">
+      <b>Legacy Fortune reference</b>
+      <div class="fortune-grid">
+        {#each fortuneChances.slice(0, 4) as chance, index (`fortune:${index}`)}
+          <span><small>Fortune {index}</small><strong>{percentLabel(chance)}</strong></span>
+        {/each}
+      </div>
+      <small class="fortune-note"
+        >Older export summary; current drop counts and player effects are unavailable. New records
+        show Fortune 0–3 beside each drop.</small
+      >
+    </section>
+  {/if}
+  {#if limits && Object.keys(limits).length}<p class="special-line">
+      <b>Static limits</b>
+      {Object.entries(limits)
+        .map(([id, limit]) => `${id}: ${String(limit)}`)
+        .join(' · ')}
+    </p>{/if}
+</div>
+
+<style>
+  .loot-card {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .loot-group {
+    padding: 9px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .loot-group.inherited {
+    border-style: dashed;
+  }
+  .loot-group header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 7px;
+    color: var(--recipe-text);
+    font:
+      18px/24px Minecraft,
+      monospace;
+  }
+  .loot-group header span {
+    color: var(--recipe-text);
+    font:
+      9px/13px Minecraft,
+      monospace;
+  }
+
+  .special-line {
+    margin: 0;
+    color: var(--recipe-text);
+    font:
+      18px/24px Minecraft,
+      monospace;
+  }
+  .special-line b,
+  .fortune-summary > b {
+    color: var(--recipe-text);
+    font:
+      9px/13px Minecraft,
+      monospace;
+    text-transform: uppercase;
+  }
+  .fortune-summary {
+    padding: 9px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .fortune-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 7px;
+  }
+  .fortune-grid span {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    padding: 6px;
+    border-radius: 5px;
+    background: transparent;
+    text-align: center;
+  }
+  .fortune-grid small {
+    color: var(--recipe-text);
+    font:
+      9px/13px Minecraft,
+      monospace;
+  }
+  .fortune-grid strong {
+    color: #ffff55;
+    font:
+      9px/13px Minecraft,
+      monospace;
+    text-shadow: 2px 2px #342c34;
+  }
+  .fortune-note {
+    display: block;
+    margin-top: 7px;
+    color: var(--recipe-text);
+    font:
+      9px/13px Minecraft,
+      monospace;
+    line-height: 1.35;
+  }
+</style>

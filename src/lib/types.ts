@@ -1,4 +1,4 @@
-import type { MinecraftTextLine } from './minecraftText';
+import type { MinecraftTextLine } from './ui/minecraftText';
 
 type Kind = 'item' | 'fluid' | 'oreDict' | 'itemGroup';
 export type RecipeView = 'recipes' | 'usages' | 'machineUsages';

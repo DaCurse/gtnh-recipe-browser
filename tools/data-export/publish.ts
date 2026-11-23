@@ -19,7 +19,7 @@ import { createHash } from 'node:crypto';
 import type { GeneratedPackManifest, ImmutableAsset } from '../pack-builder/manifest';
 import { verifyPack } from '../pack-builder/verifier';
 import { retireCompanionReleases } from '../pack-builder/companionRelease';
-import { recordPageSelections } from '../../src/lib/recordPages';
+import { recordPageSelections } from '../../src/lib/dataset/recordPages';
 import { assertSharedLayoutExtension, type SharedPrefixLayout } from '../pack-builder/sharedLayout';
 import {
   argumentsMap,

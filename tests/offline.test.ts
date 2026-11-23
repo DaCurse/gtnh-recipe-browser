@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { installOfflineAssets, storageShortfall } from '../src/lib/offline';
+import { installOfflineAssets, storageShortfall } from '../src/lib/dataset/offline';
 import type { AssetDescriptor } from '../src/lib/types';
 
 const assets: AssetDescriptor[] = Array.from({ length: 5 }, (_, index) => ({

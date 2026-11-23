@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto';
-import { cacheAsset, getCachedAsset } from '../src/lib/storage';
-import { fetchVerified } from '../src/lib/datasetAssets';
+import { cacheAsset, getCachedAsset } from '../src/lib/dataset/storage';
+import { fetchVerified } from '../src/lib/dataset/datasetAssets';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { assetDigest, verifyAssetBytesAsync } from '../src/lib/integrity';
+import { assetDigest, verifyAssetBytesAsync } from '../src/lib/dataset/integrity';
 
 afterEach(() => vi.unstubAllGlobals());
 describe('asynchronous asset integrity', () => {

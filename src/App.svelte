@@ -1,32 +1,32 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import { trackEvent } from './lib/analytics';
-  import { initializeShellUpdate } from './lib/shellUpdate';
-  import AppHeader from './lib/AppHeader.svelte';
-  import ApplicationState from './lib/ApplicationState.svelte';
-  import CatalogPane from './lib/CatalogPane.svelte';
-  import DatasetManager from './lib/DatasetManager.svelte';
-  import { DatasetManagerState } from './lib/datasetManagerState.svelte';
-  import ItemOverview from './lib/ItemOverview.svelte';
-  import RecipeBrowser from './lib/RecipeBrowser.svelte';
-  import ProjectLinks from './lib/ProjectLinks.svelte';
-  import LandingPage from './lib/LandingPage.svelte';
-  let finderModule: Promise<typeof import('./lib/RecipeFinder.svelte')> | undefined;
-  const loadFinder = () => (finderModule ??= import('./lib/RecipeFinder.svelte'));
-  import FeatureLink from './lib/FeatureLink.svelte';
+  import { initializeShellUpdate } from './lib/shell/shellUpdate';
+  import AppHeader from './lib/shell/AppHeader.svelte';
+  import ApplicationState from './lib/shell/ApplicationState.svelte';
+  import CatalogPane from './lib/catalog/CatalogPane.svelte';
+  import DatasetManager from './lib/dataset/DatasetManager.svelte';
+  import { DatasetManagerState } from './lib/dataset/datasetManagerState.svelte';
+  import ItemOverview from './lib/items/ItemOverview.svelte';
+  import RecipeBrowser from './lib/recipes/RecipeBrowser.svelte';
+  import ProjectLinks from './lib/shell/ProjectLinks.svelte';
+  import LandingPage from './lib/landing/LandingPage.svelte';
+  let finderModule: Promise<typeof import('./lib/finder/RecipeFinder.svelte')> | undefined;
+  const loadFinder = () => (finderModule ??= import('./lib/finder/RecipeFinder.svelte'));
+  import PrimaryNavigation from './lib/shell/PrimaryNavigation.svelte';
   let questModule: Promise<typeof import('./lib/questbook/QuestBrowser.svelte')> | undefined;
   const loadQuests = () => (questModule ??= import('./lib/questbook/QuestBrowser.svelte'));
   import QuestPreviewLayer from './lib/questbook/QuestPreviewLayer.svelte';
-  import { keyboardModifiers, updateKeyboardModifiers } from './lib/keyboardModifiers.svelte';
+  import { keyboardModifiers, updateKeyboardModifiers } from './lib/ui/keyboardModifiers.svelte';
   import { questbook } from './lib/questbook/state.svelte';
-  import ItemTouchOverlay from './lib/ItemTouchOverlay.svelte';
-  import { clearItemTouch, itemTouchState } from './lib/itemTouch.svelte';
-  import type { RecipeConstraints } from './lib/recipeFinder';
-  import { DatasetRepository } from './lib/dataset';
-  import { provideCatalogEntrySource, useCatalogEntry } from './lib/catalogEntryLoad.svelte';
-  import BackIcon from './lib/BackIcon.svelte';
-  import { clearIconSheetCache } from './lib/iconCache';
-  import { createSpecialContextEntry } from './lib/specialContext';
+  import ItemTouchOverlay from './lib/items/ItemTouchOverlay.svelte';
+  import { clearItemTouch, itemTouchState } from './lib/items/itemTouch.svelte';
+  import type { RecipeConstraints } from './lib/finder/recipeFinder';
+  import { DatasetRepository } from './lib/dataset/dataset';
+  import { provideCatalogEntrySource, useCatalogEntry } from './lib/items/catalogEntryLoad.svelte';
+  import BackIcon from './lib/ui/BackIcon.svelte';
+  import { clearIconSheetCache } from './lib/items/iconCache';
+  import { createSpecialContextEntry } from './lib/special/specialContext';
   import {
     finderFromUrl,
     finderUrl,
@@ -39,7 +39,7 @@
     recipeViewUrlValue,
     specialNavigationFromUrl,
     specialNavigationUrl,
-  } from './lib/navigation';
+  } from './lib/shell/navigation';
   import type { CatalogEntry, RecipeView, SpecialScope } from './lib/types';
 
   let datasetLoadSequence = 0;
@@ -65,7 +65,6 @@
   let datasetError = $state('');
   let datasetProgress = $state(0);
   let datasetStage = $state('Starting');
-  let errorCopied = $state(false);
   let loadTargetDatasetId = $state<string>();
   let loadTargetVersion = $state<string>();
   let loadPreserveSelection = $state(false);
@@ -321,27 +320,6 @@
     return String(error);
   }
 
-  async function copyError() {
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(datasetError);
-      } else {
-        const field = document.createElement('textarea');
-        field.value = datasetError;
-        field.style.position = 'fixed';
-        field.style.opacity = '0';
-        document.body.append(field);
-        field.select();
-        document.execCommand('copy');
-        field.remove();
-      }
-      errorCopied = true;
-      window.setTimeout(() => (errorCopied = false), 1800);
-    } catch {
-      errorCopied = false;
-    }
-  }
-
   function validateRepository(loaded: DatasetRepository) {
     if (!loaded.entries.some((entry) => entry.searchable !== false)) {
       throw new Error('The verified catalog does not contain any searchable items or fluids');
@@ -402,7 +380,6 @@
     datasetError = '';
     datasetProgress = 0;
     datasetStage = 'Starting';
-    errorCopied = false;
     const previousRepository = repository;
     repository = null;
     if (!preserveSelection) selectedId = '';
@@ -600,38 +577,23 @@
   <QuestPreviewLayer />
   {#snippet navigation()}
     {#if !landingOpen}
-      <nav class="primary-nav" aria-label="Main navigation">
-        <FeatureLink
-          label="Items"
-          icon={`${import.meta.env.BASE_URL}assets/navigation/items.png`}
-          href={catalogUrl(navigationBase).href}
-          active={!finderOpen && !questsOpen}
-          onclick={() => showItemList()}
-        />
-        <FeatureLink
-          label="Recipe Finder"
-          shortLabel="Finder"
-          icon={`${import.meta.env.BASE_URL}assets/navigation/finder.png`}
-          href={finderUrl(navigationBase, finderConstraints, finderMode).href}
-          active={finderOpen}
-          undiscovered={!finderDiscovered}
-          onclick={() => {
-            acknowledgeFinder();
-            if (!finderOpen) showFinder();
-          }}
-        />
-        <FeatureLink
-          label="Questbook Browser"
-          shortLabel="Quests"
-          icon={`${import.meta.env.BASE_URL}assets/navigation/quests.png`}
-          href={questbook.url(navigationBase).href}
-          active={questsOpen}
-          undiscovered={!questsDiscovered}
-          onclick={() => {
-            if (!questsOpen) showQuests();
-          }}
-        />
-      </nav>
+      <PrimaryNavigation
+        itemsHref={catalogUrl(navigationBase).href}
+        finderHref={finderUrl(navigationBase, finderConstraints, finderMode).href}
+        questsHref={questbook.url(navigationBase).href}
+        {finderOpen}
+        {questsOpen}
+        {finderDiscovered}
+        {questsDiscovered}
+        openItems={() => showItemList()}
+        openFinder={() => {
+          acknowledgeFinder();
+          if (!finderOpen) showFinder();
+        }}
+        openQuests={() => {
+          if (!questsOpen) showQuests();
+        }}
+      />
     {/if}
   {/snippet}
   <AppHeader
@@ -688,9 +650,7 @@
       progress={datasetProgress}
       loadingVersion={datasetVersion === '…' ? undefined : datasetVersion}
       error={datasetError}
-      {errorCopied}
       retry={() => loadDataset(loadTargetDatasetId, loadPreserveSelection, loadTargetVersion)}
-      {copyError}
     />
   {:else if finderOpen && repository}
     {#await loadFinder()}
@@ -806,14 +766,5 @@
       padding: 4px 12px;
       border-top: 1px solid #343a42;
     }
-  }
-  .primary-nav {
-    font-family:
-      ui-sans-serif,
-      system-ui,
-      -apple-system,
-      'Segoe UI',
-      sans-serif;
-    font-weight: 600;
   }
 </style>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { entries } from './support/demo';
-import { normalize, searchCatalog } from '../src/lib/search';
+import { normalize, searchCatalog } from '../src/lib/search/search';
 
 describe('catalog search', () => {
   it('normalizes punctuation and case', () =>

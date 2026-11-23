@@ -4,8 +4,8 @@ import {
   validateChainGraph,
   type ChainGraph,
   type ChainRecipe,
-} from '../src/lib/recipeChain';
-import { finderUrl, itemListUrl } from '../src/lib/navigation';
+} from '../src/lib/finder/recipeChain';
+import { finderUrl, itemListUrl } from '../src/lib/shell/navigation';
 
 function fixture(
   ids: string[],

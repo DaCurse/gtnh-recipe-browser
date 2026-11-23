@@ -9,7 +9,7 @@ import sharp from 'sharp';
 import { readLogicalAsset } from '../pack-builder/recordPages';
 import type { GeneratedPackManifest, ImmutableAsset } from '../pack-builder/manifest';
 import { sharedIconPixelHash } from '../pack-builder/sharedIcons';
-import { expandRelations, type PackedRelationList } from '../../src/lib/packedRelations';
+import { expandRelations, type PackedRelationList } from '../../src/lib/dataset/packedRelations';
 
 type JsonObject = Record<string, unknown>;
 type PackAsset = {

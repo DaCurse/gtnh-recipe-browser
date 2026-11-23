@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { itemNavigationResolver } from '../src/lib/itemNavigation';
+import { itemNavigationResolver } from '../src/lib/items/itemNavigation';
 import type { CatalogEntry } from '../src/lib/types';
 
 const tool = (id: string, nbt: string, productionCount = 0): CatalogEntry => ({

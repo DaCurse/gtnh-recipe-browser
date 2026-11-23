@@ -1,20 +1,20 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeFormat5 } from '../tools/pack-builder/decoder';
-import { fluidRecipeScope } from '../src/lib/fluidContainers';
-import { parseMinecraftHtml } from '../src/lib/minecraftText';
+import { fluidRecipeScope } from '../src/lib/items/fluidContainers';
+import { parseMinecraftHtml } from '../src/lib/ui/minecraftText';
 import {
   formatCircuitConflicts,
   formatGtMetadata,
   voltageTierName,
-} from '../src/lib/recipeMetadata';
+} from '../src/lib/recipes/recipeMetadata';
 import {
   boundedPage,
   ingredientsByGridSlot,
   propagateOreMachineCapabilities,
   recipeCrafterId,
   recipeTypeIconId,
-} from '../src/lib/recipePresentation';
+} from '../src/lib/recipes/recipePresentation';
 
 const fixturePath = 'tests/fixtures/shadowtheage-v5-2.8.0/data.bin';
 

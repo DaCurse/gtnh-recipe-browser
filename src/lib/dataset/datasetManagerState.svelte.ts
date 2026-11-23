@@ -1,0 +1,222 @@
+import { DatasetRepository } from './dataset';
+import { hasRevisionUpdate, reconcileDatasetVersions } from './datasetVersions';
+import { storageShortfall } from './offline';
+import {
+  estimateStorage,
+  cachedAssetSizes,
+  calculateDatasetStorageReport,
+  listDatasets,
+  removeDataset,
+  requestPersistentStorage,
+  storageIsPersistent,
+} from './storage';
+import type {
+  DatasetState,
+  DatasetStorageReport,
+  DatasetVersion,
+  ManagedDataset,
+  OfflineInstallProgress,
+} from '../types';
+
+interface DatasetManagerCallbacks {
+  getRepository: () => DatasetRepository | null;
+  validateRepository: (repository: DatasetRepository) => void;
+  /** Load through the app-level startup state, preserving the current item. */
+  loadDataset: (version: DatasetVersion, preserveSelection: boolean) => Promise<boolean>;
+}
+
+function diagnostic(error: unknown): string {
+  if (error instanceof Error) return error.stack || error.message;
+  return String(error);
+}
+
+function formatBytes(bytes?: number): string {
+  if (bytes === undefined || !Number.isFinite(bytes)) return 'Unknown size';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 ** 2) return `${(bytes / 1024).toFixed(1)} KiB`;
+  return `${(bytes / 1024 ** 2).toFixed(1)} MiB`;
+}
+
+export class DatasetManagerState {
+  open = $state(false);
+  availableDatasets = $state<DatasetVersion[]>([]);
+  datasetRecords = $state<DatasetState[]>([]);
+  loading = $state(false);
+  error = $state('');
+  installingDatasetId = $state('');
+  switchingDatasetId = $state('');
+  installProgress = $state<OfflineInstallProgress>();
+  storageUsage = $state<number>();
+  storageQuota = $state<number>();
+  storageReport = $state<DatasetStorageReport>({
+    logicalBytes: 0,
+    referencedBytes: 0,
+    sharedSavingsBytes: 0,
+    untrackedBytes: 0,
+    sharedAssets: 0,
+    untrackedAssets: 0,
+    byDataset: {},
+  });
+  persistentStorage = $state<boolean>();
+  private installController: AbortController | null = null;
+
+  constructor(private readonly callbacks: DatasetManagerCallbacks) {}
+
+  get datasets(): ManagedDataset[] {
+    return reconcileDatasetVersions(this.availableDatasets, this.datasetRecords);
+  }
+
+  get activeDataset(): DatasetState | undefined {
+    return this.datasetRecords.find((state) => state.active);
+  }
+
+  hasRevisionUpdate(datasetId?: string): boolean {
+    return hasRevisionUpdate(this.availableDatasets, this.datasetRecords, datasetId);
+  }
+
+  show() {
+    this.open = true;
+    void this.refresh();
+  }
+
+  async refresh() {
+    this.loading = true;
+    this.error = '';
+    try {
+      const [versions, records, storage, persisted, assetSizes] = await Promise.all([
+        DatasetRepository.availableVersions(),
+        listDatasets(),
+        estimateStorage(),
+        storageIsPersistent(),
+        cachedAssetSizes(),
+      ]);
+      this.availableDatasets = versions;
+      this.datasetRecords = records;
+      this.storageUsage = storage.usage;
+      this.storageQuota = storage.quota;
+      this.persistentStorage = persisted;
+      this.applyStorageReport(records, assetSizes);
+    } catch (error) {
+      this.error = diagnostic(error);
+      this.datasetRecords = await listDatasets();
+    } finally {
+      this.loading = false;
+    }
+  }
+
+  async refreshRecords() {
+    const [records, assetSizes] = await Promise.all([listDatasets(), cachedAssetSizes()]);
+    this.datasetRecords = records;
+    this.applyStorageReport(records, assetSizes);
+  }
+
+  private applyStorageReport(records: DatasetState[], assetSizes: ReadonlyMap<string, number>) {
+    this.storageReport = calculateDatasetStorageReport(records, assetSizes);
+  }
+
+  async refreshAvailability() {
+    try {
+      const [versions, records, assetSizes] = await Promise.all([
+        DatasetRepository.availableVersions(),
+        listDatasets(),
+        cachedAssetSizes(),
+      ]);
+      this.availableDatasets = versions;
+      this.datasetRecords = records;
+      this.applyStorageReport(records, assetSizes);
+    } catch (error) {
+      console.warn('Unable to refresh available GTNH datasets', error);
+      this.datasetRecords = await listDatasets();
+    }
+  }
+
+  async install(version: DatasetVersion) {
+    if (this.installingDatasetId) return;
+    this.error = '';
+    this.installProgress = undefined;
+    this.installingDatasetId = version.datasetId;
+    const controller = new AbortController();
+    this.installController = controller;
+    try {
+      const repository = this.callbacks.getRepository();
+      const installer =
+        repository?.datasetId === version.datasetId
+          ? repository
+          : await DatasetRepository.load(version.datasetId, undefined, repository ?? undefined);
+      const remainingBytes = await installer.uncachedOfflineBytes();
+      const estimate = await estimateStorage();
+      this.storageUsage = estimate.usage;
+      this.storageQuota = estimate.quota;
+      const shortfall = storageShortfall(remainingBytes, estimate.usage, estimate.quota);
+      if (shortfall !== undefined && shortfall > 0) {
+        const availableBytes = Math.max(0, estimate.quota! - estimate.usage!);
+        throw new Error(
+          `Not enough browser storage. ${formatBytes(remainingBytes)} is still required, ` +
+            `but only ${formatBytes(availableBytes)} is estimated available.`,
+        );
+      }
+      const persisted = await requestPersistentStorage();
+      if (persisted !== undefined) this.persistentStorage = persisted;
+      this.callbacks.validateRepository(installer);
+      await installer.installOffline((progress) => {
+        if (this.installingDatasetId === version.datasetId) this.installProgress = progress;
+      }, controller.signal);
+      if (repository?.datasetId === version.datasetId) await installer.activate();
+      await this.refresh();
+    } catch (error) {
+      if (!(error instanceof DOMException && error.name === 'AbortError')) {
+        this.error = diagnostic(error);
+      }
+      this.datasetRecords = await listDatasets();
+    } finally {
+      if (this.installingDatasetId === version.datasetId) {
+        this.installingDatasetId = '';
+        this.installController = null;
+      }
+    }
+  }
+
+  cancelInstall() {
+    this.installController?.abort();
+  }
+
+  async switchDataset(version: DatasetVersion) {
+    const repository = this.callbacks.getRepository();
+    if (this.switchingDatasetId || version.datasetId === repository?.datasetId) return;
+    this.switchingDatasetId = version.datasetId;
+    this.error = '';
+    this.open = false;
+    try {
+      if (await this.callbacks.loadDataset(version, true)) await this.refresh();
+    } catch (error) {
+      // The app-level loader normally owns this error. Keep a defensive
+      // fallback here for integrations that reject from their callback.
+      this.error = diagnostic(error);
+    } finally {
+      this.switchingDatasetId = '';
+    }
+  }
+
+  async deleteDataset(state: DatasetState) {
+    if (this.installingDatasetId === state.datasetId) return;
+    const repository = this.callbacks.getRepository();
+    const currentNote =
+      repository?.datasetId === state.datasetId
+        ? ' The currently open catalog will continue working until this page is reloaded.'
+        : '';
+    if (
+      !confirm(
+        `Delete locally stored data for GTNH ${state.gtnhVersion} ` +
+          `(revision ${state.revision.slice(0, 8)})?${currentNote}`,
+      )
+    )
+      return;
+    this.error = '';
+    try {
+      await removeDataset(state.datasetId);
+      await this.refresh();
+    } catch (error) {
+      this.error = diagnostic(error);
+    }
+  }
+}

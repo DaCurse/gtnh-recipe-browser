@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { RecipeSearchRecord } from '../src/lib/recipeSearch';
+import type { RecipeSearchRecord } from '../src/lib/recipes/recipeSearch';
 const mocks = vi.hoisted(() => ({ build: vi.fn() }));
-vi.mock('../src/lib/recipeSearch', async (importOriginal) => {
-  const original = await importOriginal<typeof import('../src/lib/recipeSearch')>();
+vi.mock('../src/lib/recipes/recipeSearch', async (importOriginal) => {
+  const original = await importOriginal<typeof import('../src/lib/recipes/recipeSearch')>();
   return {
     ...original,
     buildRecipeSearchDocument: mocks.build.mockImplementation(original.buildRecipeSearchDocument),

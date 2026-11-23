@@ -11,6 +11,8 @@ An out-of-game recipe and quest browser for GregTech: New Horizons.
 
 ## Development
 
+This project uses AI assistance to accelerate development and iterate quickly.
+
 With Node.js 22:
 
 ```sh

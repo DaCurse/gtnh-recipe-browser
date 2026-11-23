@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { buildCatalogBrowseEntries } from '../src/lib/catalogVariants';
-import { landingShowcase } from '../src/lib/landingShowcase';
+import { buildCatalogBrowseEntries } from '../src/lib/catalog/catalogVariants';
+import { landingShowcase } from '../src/lib/landing/landingShowcase';
 import type { CatalogEntry } from '../src/lib/types';
 
 function item(id: string, sheet = 'sheet-0', family?: string): CatalogEntry {

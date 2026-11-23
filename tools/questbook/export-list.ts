@@ -2,7 +2,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { questItemReferences } from './references';
 import { questSnbt, type NbtObject } from './source';
-import { nbtIdentity } from '../../src/lib/nbt';
+import { nbtIdentity } from '../../src/lib/items/nbt';
 
 const [version, root, output] = process.argv.slice(2);
 if (!version || !root || !output)

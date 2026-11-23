@@ -1,5 +1,5 @@
 <script lang="ts">
-  import LoadingProgress from '../LoadingProgress.svelte';
+  import LoadingProgress from '../ui/LoadingProgress.svelte';
   import { trackEvent, createSearchReporter } from '../analytics';
   import { questAnalyticsProperties } from './analytics';
   import { onMount } from 'svelte';

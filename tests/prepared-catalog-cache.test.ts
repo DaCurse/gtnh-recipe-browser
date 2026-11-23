@@ -7,9 +7,9 @@ import {
   getPreparedSearch,
   preparedCatalogKey,
   type PreparedCatalog,
-} from '../src/lib/preparedCatalogCache';
-import { cacheRuntimeData, removeDataset, saveDataset } from '../src/lib/storage';
-import type { DatasetManifest } from '../src/lib/datasetSchema';
+} from '../src/lib/catalog/preparedCatalogCache';
+import { cacheRuntimeData, removeDataset, saveDataset } from '../src/lib/dataset/storage';
+import type { DatasetManifest } from '../src/lib/dataset/datasetSchema';
 import type { DatasetState } from '../src/lib/types';
 
 const datasetId = 'prepared-fixture';

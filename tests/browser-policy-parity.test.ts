@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import fixture from './fixtures/gtnh-2.9.0-beta-2-browser-policy-r6845cab1f95b/parity.json';
 import oreDictionaryFixture from './fixtures/gtnh-2.9.0-beta-2-browser-policy-rece64b477cd6/parity.json';
-import { buildCatalogBrowseEntries } from '../src/lib/catalogVariants';
-import { parseMinecraftHtml } from '../src/lib/minecraftText';
+import { buildCatalogBrowseEntries } from '../src/lib/catalog/catalogVariants';
+import { parseMinecraftHtml } from '../src/lib/ui/minecraftText';
 import type { CatalogEntry } from '../src/lib/types';
 import type { DecodedItem } from '../tools/pack-builder/model';
 

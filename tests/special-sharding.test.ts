@@ -13,7 +13,7 @@ import {
   repairSpecialServiceIcons,
 } from '../tools/pack-builder/specialServiceIcons';
 import { specialGoodsForDirection } from '../tools/pack-builder/special';
-import { specialLookupMatchesView } from '../src/lib/specialData';
+import { specialLookupMatchesView } from '../src/lib/special/specialData';
 import type {
   DecodedItem,
   DecodedOreDictionary,

@@ -17,8 +17,8 @@ import {
   recordDatasetAssets,
   removeCachedAsset,
   saveDataset,
-} from '../src/lib/storage';
-import { CURRENT_DATASET_CACHE_VERSION } from '../src/lib/datasetVersions';
+} from '../src/lib/dataset/storage';
+import { CURRENT_DATASET_CACHE_VERSION } from '../src/lib/dataset/datasetVersions';
 import type { DatasetState } from '../src/lib/types';
 
 const DATABASE_NAME = 'gtnh-recipe-browser';

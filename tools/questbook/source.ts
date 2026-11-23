@@ -1,6 +1,6 @@
 import { questLinkId, questUuid } from '../../src/lib/questbook/types';
 import type { Quest, QuestChapter, QuestSection } from '../../src/lib/questbook/types';
-import type { SpecialGoods } from '../../src/lib/specialData';
+import type { SpecialGoods } from '../../src/lib/special/specialData';
 
 export type NbtObject = Record<string, unknown>;
 const object = (value: unknown): NbtObject =>

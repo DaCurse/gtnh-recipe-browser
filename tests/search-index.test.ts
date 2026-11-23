@@ -1,16 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { DatasetRepository } from '../src/lib/dataset';
-import { buildCatalogBrowseEntries } from '../src/lib/catalogVariants';
+import { DatasetRepository } from '../src/lib/dataset/dataset';
+import { buildCatalogBrowseEntries } from '../src/lib/catalog/catalogVariants';
 import {
   catalogDocumentMatches,
   parseCatalogSearchQuery,
   type CatalogSearchDocument,
-} from '../src/lib/catalogSearch';
+} from '../src/lib/search/catalogSearch';
 import type { CatalogEntry } from '../src/lib/types';
 
 const cache = vi.hoisted(() => ({ read: vi.fn(), write: vi.fn() }));
-vi.mock('../src/lib/preparedCatalogCache', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../src/lib/preparedCatalogCache')>()),
+vi.mock('../src/lib/catalog/preparedCatalogCache', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/lib/catalog/preparedCatalogCache')>()),
   getPreparedSearch: cache.read,
   cachePreparedSearch: cache.write,
 }));

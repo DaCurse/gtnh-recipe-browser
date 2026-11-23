@@ -2,19 +2,19 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import { gunzipSync } from 'node:zlib';
 import { describe, expect, it, vi } from 'vitest';
-import { compareCatalogOrder } from '../src/lib/catalogOrder';
-import { applyCatalogOrder, catalogOrderAsset } from '../src/lib/catalogOrderIndex';
-import { buildCatalogBrowseEntries } from '../src/lib/catalogVariants';
+import { compareCatalogOrder } from '../src/lib/catalog/catalogOrder';
+import { applyCatalogOrder, catalogOrderAsset } from '../src/lib/catalog/catalogOrderIndex';
+import { buildCatalogBrowseEntries } from '../src/lib/catalog/catalogVariants';
 import { buildCatalogOrder } from '../tools/catalog-order';
 import type { DecodedRepository } from '../tools/pack-builder/model';
 import type { GeneratedPackManifest } from '../tools/pack-builder/manifest';
-import type { DatasetManifest } from '../src/lib/datasetSchema';
+import type { DatasetManifest } from '../src/lib/dataset/datasetSchema';
 import type { CatalogEntry } from '../src/lib/types';
 import versions from '../public/versions-v7.json';
 
 const fetchAsset = vi.hoisted(() => vi.fn());
-vi.mock('../src/lib/datasetAssets', async (original) => ({
-  ...(await original<typeof import('../src/lib/datasetAssets')>()),
+vi.mock('../src/lib/dataset/datasetAssets', async (original) => ({
+  ...(await original<typeof import('../src/lib/dataset/datasetAssets')>()),
   fetchVerified: fetchAsset,
 }));
 const entry = (id: string, numericId: number, damage = 0): CatalogEntry => ({

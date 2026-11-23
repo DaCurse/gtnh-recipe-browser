@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { gunzipSync } from 'node:zlib';
 import { decode } from '@msgpack/msgpack';
 import { describe, expect, it } from 'vitest';
-import { questNbtMatches } from '../src/lib/nbt';
+import { questNbtMatches } from '../src/lib/items/nbt';
 import { vendingQuestId } from '../src/lib/questbook/vending';
 import { questUuid } from '../src/lib/questbook/types';
 import type {

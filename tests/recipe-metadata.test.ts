@@ -4,7 +4,7 @@ import {
   formatGtMetadata,
   hasRelevantPower,
   voltageTierName,
-} from '../src/lib/recipeMetadata';
+} from '../src/lib/recipes/recipeMetadata';
 
 describe('GT recipe metadata', () => {
   it('formats semi-fluid fuel values in EU per litre', () => {

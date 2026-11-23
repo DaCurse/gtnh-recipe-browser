@@ -1,6 +1,6 @@
 /// <reference lib="webworker" />
 import { decode } from '@msgpack/msgpack';
-import { RecipeChainGraph, validateChainGraph } from '../lib/recipeChain';
+import { RecipeChainGraph, validateChainGraph } from '../lib/finder/recipeChain';
 
 let graph: RecipeChainGraph | undefined;
 let generation = 0;

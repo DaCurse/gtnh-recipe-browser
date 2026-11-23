@@ -5,7 +5,7 @@ import {
   toRecipeSearchRecord,
   type RecipeSearchCatalogEntry,
   type RecipeSearchDocument,
-} from '../src/lib/recipeSearch';
+} from '../src/lib/recipes/recipeSearch';
 import type { Recipe } from '../src/lib/types';
 
 const catalog = new Map<string, RecipeSearchCatalogEntry>([

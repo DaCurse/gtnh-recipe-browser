@@ -1,5 +1,5 @@
 <script lang="ts">
-  import MinecraftText from '../MinecraftText.svelte';
+  import MinecraftText from '../ui/MinecraftText.svelte';
   import { questText } from './text';
   let {
     text,

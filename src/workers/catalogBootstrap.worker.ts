@@ -1,5 +1,5 @@
-import { prepareBootstrapCatalog } from '../lib/catalogBootstrap';
-import type { DatasetManifest } from '../lib/datasetSchema';
+import { prepareBootstrapCatalog } from '../lib/catalog/catalogBootstrap';
+import type { DatasetManifest } from '../lib/dataset/datasetSchema';
 
 self.onmessage = async (
   event: MessageEvent<{ manifest: DatasetManifest; manifestUrl: string }>,

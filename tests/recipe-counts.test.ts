@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { recipeViewCount } from '../src/lib/recipeCounts';
+import { recipeViewCount } from '../src/lib/recipes/recipeCounts';
 import type { CatalogEntry } from '../src/lib/types';
 
 const entry = {

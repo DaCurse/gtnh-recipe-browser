@@ -4,13 +4,13 @@ import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { decode, encode } from '@msgpack/msgpack';
 import { readLogicalAsset } from './pack-builder/recordPages';
-import { expandRelations } from '../src/lib/packedRelations';
-import { validateChainGraph, type ChainGraph } from '../src/lib/recipeChain';
+import { expandRelations } from '../src/lib/dataset/packedRelations';
+import { validateChainGraph, type ChainGraph } from '../src/lib/finder/recipeChain';
 import type {
   PackedRecipe,
   PackedIngredientGroupsShard,
   PackedCatalogGoods,
-} from '../src/lib/datasetSchema';
+} from '../src/lib/dataset/datasetSchema';
 import type { GeneratedPackManifest, ImmutableAsset } from './pack-builder/manifest';
 
 type ChainDescriptor = {

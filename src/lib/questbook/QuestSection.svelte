@@ -1,5 +1,5 @@
 <script lang="ts">
-  import SpecialGoods from '../SpecialGoods.svelte';
+  import SpecialGoods from '../special/SpecialGoods.svelte';
   import QuestText from './QuestText.svelte';
   import LocationMap from './LocationMap.svelte';
   import { questHighlight } from './theme';

@@ -3,7 +3,7 @@ import {
   ingredientMatchesEntry,
   materializeIngredient,
   productionFallbackDictionary,
-} from '../src/lib/oreDictionary';
+} from '../src/lib/items/oreDictionary';
 
 const dictionaries = new Map([
   ['o:dustIron', { itemIds: ['i:gregtech:iron-dust', 'i:ic2:iron-dust'] }],

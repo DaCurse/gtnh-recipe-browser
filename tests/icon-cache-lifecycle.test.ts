@@ -5,12 +5,12 @@ const mocks = vi.hoisted(() => ({
   record: vi.fn(),
   verify: vi.fn(),
 }));
-vi.mock('../src/lib/datasetAssets', () => ({ fetchVerified: mocks.fetch }));
-vi.mock('../src/lib/storage', () => ({
+vi.mock('../src/lib/dataset/datasetAssets', () => ({ fetchVerified: mocks.fetch }));
+vi.mock('../src/lib/dataset/storage', () => ({
   getCachedAsset: mocks.cached,
   recordDatasetAsset: mocks.record,
 }));
-vi.mock('../src/lib/integrity', () => ({ verifyAssetBytesAsync: mocks.verify }));
+vi.mock('../src/lib/dataset/integrity', () => ({ verifyAssetBytesAsync: mocks.verify }));
 const icon = {
   url: 'https://example.test/icon',
   sha256: 'a'.repeat(64),
@@ -42,7 +42,7 @@ describe('optional icon sheet lifecycle', () => {
         decode = decode;
       },
     );
-    const cache = await import('../src/lib/iconCache');
+    const cache = await import('../src/lib/items/iconCache');
     const first = cache.decodeIconSheetUrl('blob:decoded');
     expect(cache.decodeIconSheetUrl('blob:decoded')).toBe(first);
     await first;
@@ -55,7 +55,7 @@ describe('optional icon sheet lifecycle', () => {
   });
 
   it('keeps active dataset companions alive even when the base manifest does not list them', async () => {
-    const cache = await import('../src/lib/iconCache');
+    const cache = await import('../src/lib/items/iconCache');
     await cache.resolveIconSheetUrl(icon, { fallbackToUrl: false });
     cache.clearIconSheetCache(new Set(), 'active');
     await Promise.resolve();
@@ -65,7 +65,7 @@ describe('optional icon sheet lifecycle', () => {
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:icon');
   });
   it('tracks reuse across owning datasets without refetching a sheet', async () => {
-    const cache = await import('../src/lib/iconCache');
+    const cache = await import('../src/lib/items/iconCache');
     await cache.resolveIconSheetUrl(icon);
     await cache.resolveIconSheetUrl({ ...icon, datasetId: 'second' });
     cache.clearIconSheetCache(new Set(), 'second');
@@ -75,7 +75,7 @@ describe('optional icon sheet lifecycle', () => {
   });
   it('shows cached previews without a network request', async () => {
     mocks.cached.mockResolvedValue(new Uint8Array(4));
-    const cache = await import('../src/lib/iconCache');
+    const cache = await import('../src/lib/items/iconCache');
     expect(await cache.resolveCachedIconSheetUrl(icon)).toBe('blob:icon');
     expect(mocks.fetch).not.toHaveBeenCalled();
     expect(mocks.verify).toHaveBeenCalledTimes(1);
@@ -87,7 +87,7 @@ describe('optional icon sheet lifecycle', () => {
         release = resolve;
       }),
     );
-    const cache = await import('../src/lib/iconCache');
+    const cache = await import('../src/lib/items/iconCache');
     const pending = cache.resolveCachedIconSheetUrl(icon);
     cache.clearIconSheetCache();
     release(new Uint8Array(4));

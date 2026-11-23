@@ -1,7 +1,7 @@
 import { readFile } from 'node:fs/promises';
 import { validateQuestExport, type QuestExportReport } from '../data-export/quest-items';
 import type { QuestItemReference } from './references';
-import { nbtIdentity } from '../../src/lib/nbt';
+import { nbtIdentity } from '../../src/lib/items/nbt';
 import { parseQuestJson, questSnbt, type SourceStack } from './source';
 
 export function questStackIdentity(stack: SourceStack): string {

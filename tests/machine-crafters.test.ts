@@ -4,7 +4,7 @@ import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { addRecipeTypeCrafters, parseMachineCrafters } from '../src/lib/machineCrafters';
+import { addRecipeTypeCrafters, parseMachineCrafters } from '../src/lib/recipes/machineCrafters';
 import {
   machineCanProcessVoltage,
   machineCapabilitiesByCrafter,
@@ -12,7 +12,7 @@ import {
   recipeTypeCrafters,
   recipeTypeMachineCapabilities,
   type AdditionalCrafter,
-} from '../src/lib/recipePresentation';
+} from '../src/lib/recipes/recipePresentation';
 
 const type = {
   id: 'recipeType:gregtech:Furnace',

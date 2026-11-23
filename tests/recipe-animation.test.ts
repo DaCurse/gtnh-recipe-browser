@@ -3,8 +3,8 @@ import {
   progressClip,
   recipeProgressFrames,
   RECIPE_ANIMATION_MS,
-} from '../src/lib/recipeAnimation';
-import { machineUiProfiles } from '../src/lib/machineUi';
+} from '../src/lib/recipes/recipeAnimation';
+import { machineUiProfiles } from '../src/lib/recipes/machineUi';
 
 describe('native NEI progress animation', () => {
   it('clips source pixels in the declared fill direction and clamps split suppliers', () => {

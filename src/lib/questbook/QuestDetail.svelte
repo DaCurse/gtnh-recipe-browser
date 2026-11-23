@@ -2,8 +2,8 @@
   import QuestIcon from './QuestIcon.svelte';
   import QuestText from './QuestText.svelte';
   import QuestSection from './QuestSection.svelte';
-  import BackIcon from '../BackIcon.svelte';
-  import { swipeBack } from '../swipeBack';
+  import BackIcon from '../ui/BackIcon.svelte';
+  import { swipeBack } from '../ui/swipeBack';
   import type { Quest } from './types';
   import type { QuestRepository } from './repository';
   import type { RecipeView } from '../types';

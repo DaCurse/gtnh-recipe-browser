@@ -7,7 +7,7 @@ import sharp from 'sharp';
 import { readLogicalAsset } from '../pack-builder/recordPages';
 import { writeCompanionRelease } from '../pack-builder/companionRelease';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
-import type { PackedGoods } from '../../src/lib/datasetSchema';
+import type { PackedGoods } from '../../src/lib/dataset/datasetSchema';
 
 const [packPath, sourcePath, previewDescriptorPath] = process.argv.slice(2);
 if (!packPath || !sourcePath)

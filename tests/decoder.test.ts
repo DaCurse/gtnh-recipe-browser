@@ -3,9 +3,12 @@ import { gzipSync } from 'node:zlib';
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { decodeFormat5, PackDecodeError } from '../tools/pack-builder/decoder';
-import { fluidRecipeScope } from '../src/lib/fluidContainers';
-import { productionFallbackDictionary } from '../src/lib/oreDictionary';
-import { recipeCrafterId, recipeTypeMachineCapabilities } from '../src/lib/recipePresentation';
+import { fluidRecipeScope } from '../src/lib/items/fluidContainers';
+import { productionFallbackDictionary } from '../src/lib/items/oreDictionary';
+import {
+  recipeCrafterId,
+  recipeTypeMachineCapabilities,
+} from '../src/lib/recipes/recipePresentation';
 
 function words(...values: number[]): Buffer {
   const buffer = Buffer.alloc(values.length * 4);

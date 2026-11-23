@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { assetDigest, verifyAssetBytes } from '../src/lib/integrity';
-import { activeDatasetSnapshot, unreferencedDatasetAssets } from '../src/lib/storage';
+import { assetDigest, verifyAssetBytes } from '../src/lib/dataset/integrity';
+import { activeDatasetSnapshot, unreferencedDatasetAssets } from '../src/lib/dataset/storage';
 import type { DatasetState } from '../src/lib/types';
 
 function state(datasetId: string, active: boolean, assetHashes: string[]): DatasetState {

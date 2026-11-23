@@ -7,7 +7,7 @@ import { decode } from '@msgpack/msgpack';
 import sharp from 'sharp';
 import { readLogicalAsset } from '../pack-builder/recordPages';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
-import type { PackedGoods } from '../../src/lib/datasetSchema';
+import type { PackedGoods } from '../../src/lib/dataset/datasetSchema';
 
 const [pack, source] = process.argv.slice(2);
 if (!pack || !source)

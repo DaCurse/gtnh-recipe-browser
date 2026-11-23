@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 
 describe('modal tooltip layering', () => {
   it('clears and suppresses recipe-grid tooltips while the ore chooser is open', async () => {
-    const source = await readFile('src/lib/RecipeGrid.svelte', 'utf8');
+    const source = await readFile('src/lib/recipes/RecipeGrid.svelte', 'utf8');
     expect(source).toContain(
       'function openGroupChooser(itemId: string, groupId: string) {\n    hideTooltip();',
     );
@@ -11,7 +11,7 @@ describe('modal tooltip layering', () => {
   });
 
   it('clears and suppresses special-goods tooltips while the ore chooser is open', async () => {
-    const source = await readFile('src/lib/SpecialGoods.svelte', 'utf8');
+    const source = await readFile('src/lib/special/SpecialGoods.svelte', 'utf8');
     expect(source).toContain(
       'if (item.oreDictionaryId && resolve(item.oreDictionaryId)) {\n      hideTooltip();',
     );
@@ -19,7 +19,7 @@ describe('modal tooltip layering', () => {
   });
 
   it('keeps variant-picker modal rows inline-only', async () => {
-    const source = await readFile('src/lib/VariantPicker.svelte', 'utf8');
+    const source = await readFile('src/lib/catalog/VariantPicker.svelte', 'utf8');
     expect(source).not.toContain('FloatingCatalogTooltip');
     expect(source).not.toContain('tooltipEntry');
     expect(source).not.toContain('onpointerenter');

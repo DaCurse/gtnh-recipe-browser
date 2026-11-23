@@ -4,7 +4,7 @@ import { createHash } from 'node:crypto';
 import { gunzipSync } from 'node:zlib';
 import { decode } from '@msgpack/msgpack';
 import { parseQuestJson, questSnbt, readQuest } from '../tools/questbook/source';
-import { formatNbt, nbtIdentity } from '../src/lib/nbt';
+import { formatNbt, nbtIdentity } from '../src/lib/items/nbt';
 import { questLinkId, questUuid, questUrlId } from '../src/lib/questbook/types';
 import type { QuestPack, QuestChapter, QuestVersion } from '../src/lib/questbook/types';
 import {
@@ -14,7 +14,7 @@ import {
   placementVisible,
 } from '../src/lib/questbook/layout';
 import { plainQuestText, questText } from '../src/lib/questbook/text';
-import { parseMinecraftCodes } from '../src/lib/minecraftText';
+import { parseMinecraftCodes } from '../src/lib/ui/minecraftText';
 import sharp from 'sharp';
 
 describe('BetterQuesting source compatibility', () => {

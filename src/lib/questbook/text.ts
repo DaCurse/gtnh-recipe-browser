@@ -1,4 +1,4 @@
-import { parseMinecraftCodes } from '../minecraftText';
+import { parseMinecraftCodes } from '../ui/minecraftText';
 import { questLinkId } from './types';
 
 export interface QuestTextRun {

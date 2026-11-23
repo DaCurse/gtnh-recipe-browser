@@ -7,17 +7,17 @@ const mocks = vi.hoisted(() => ({
   metadata: vi.fn(),
   cache: vi.fn(),
 }));
-vi.mock('../src/lib/datasetAssets', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../src/lib/datasetAssets')>()),
+vi.mock('../src/lib/dataset/datasetAssets', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/lib/dataset/datasetAssets')>()),
   fetchJsonNetworkFirst: mocks.index,
 }));
-vi.mock('../src/lib/storage', async (importOriginal) => ({
-  ...(await importOriginal<typeof import('../src/lib/storage')>()),
+vi.mock('../src/lib/dataset/storage', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../src/lib/dataset/storage')>()),
   listDatasets: mocks.installed,
   getCachedMetadata: mocks.metadata,
   cacheMetadata: mocks.cache,
 }));
-import { DatasetRepository } from '../src/lib/dataset';
+import { DatasetRepository } from '../src/lib/dataset/dataset';
 
 const previous: DatasetVersion = {
   datasetId: 'rc1',

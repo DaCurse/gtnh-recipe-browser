@@ -1,11 +1,11 @@
-import { compareCatalogOrder } from '../lib/catalogOrder';
+import { compareCatalogOrder } from '../lib/catalog/catalogOrder';
 import {
   buildCatalogSearchDocument,
   catalogDocumentMatches,
   parseCatalogSearchQuery,
   type CatalogSearchDocument,
   type CatalogSearchEntry,
-} from '../lib/catalogSearch';
+} from '../lib/search/catalogSearch';
 
 type WorkerRequest =
   | { type: 'init'; generation: number }

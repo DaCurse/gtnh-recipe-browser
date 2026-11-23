@@ -3,16 +3,16 @@ import {
   buildCatalogSearchDocument,
   catalogDocumentMatches,
   parseCatalogSearchQuery,
-} from '../src/lib/catalogSearch';
+} from '../src/lib/search/catalogSearch';
 import {
   buildCatalogBrowseEntries,
   canonicalVariantNbt,
   deduplicateVariantMembers,
   resolveCatalogVariant,
   variantNbtLabel,
-} from '../src/lib/catalogVariants';
-import { describeGtOreVariant } from '../src/lib/gtOreVariants';
-import { querySearchMask, searchMaskContains } from '../src/lib/searchMask';
+} from '../src/lib/catalog/catalogVariants';
+import { describeGtOreVariant } from '../src/lib/catalog/gtOreVariants';
+import { querySearchMask, searchMaskContains } from '../src/lib/search/searchMask';
 import type { CatalogEntry } from '../src/lib/types';
 import oreFixture from './fixtures/gtnh-gt-ore-groups.json';
 

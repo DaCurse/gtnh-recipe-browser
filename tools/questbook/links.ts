@@ -3,10 +3,10 @@ import { readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { gunzipSync, gzipSync } from 'node:zlib';
 import { decode, encode } from '@msgpack/msgpack';
-import { itemNavigationIdentity } from '../../src/lib/itemNavigation';
-import { questNbtMatches } from '../../src/lib/nbt';
+import { itemNavigationIdentity } from '../../src/lib/items/itemNavigation';
+import { questNbtMatches } from '../../src/lib/items/nbt';
 import type { CatalogEntry, AssetDescriptor } from '../../src/lib/types';
-import type { SpecialGoods } from '../../src/lib/specialData';
+import type { SpecialGoods } from '../../src/lib/special/specialData';
 import type { QuestPack } from '../../src/lib/questbook/types';
 import type {
   QuestItemRelations,

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { fluidRecipeScope } from '../src/lib/fluidContainers';
+import { fluidRecipeScope } from '../src/lib/items/fluidContainers';
 
 const goods = new Map([
   [

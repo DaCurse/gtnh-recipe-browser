@@ -1,7 +1,7 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import FloatingTooltip from '../FloatingTooltip.svelte';
-  import { itemTouchState } from '../itemTouch.svelte';
+  import FloatingTooltip from '../tooltips/FloatingTooltip.svelte';
+  import { itemTouchState } from '../items/itemTouch.svelte';
   import QuestTooltip from './QuestTooltip.svelte';
   import { questPreview } from './preview.svelte';
   const preview = $derived(questPreview.current);

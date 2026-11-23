@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DatasetRepository } from '../src/lib/dataset';
-import { matchesRecipeConstraints } from '../src/lib/recipeFinder';
-import { finderFromUrl, finderUrl, itemListUrl } from '../src/lib/navigation';
+import { DatasetRepository } from '../src/lib/dataset/dataset';
+import { matchesRecipeConstraints } from '../src/lib/finder/recipeFinder';
+import { finderFromUrl, finderUrl, itemListUrl } from '../src/lib/shell/navigation';
 import type { CatalogEntry, Recipe } from '../src/lib/types';
 
 const recipe: Recipe = {

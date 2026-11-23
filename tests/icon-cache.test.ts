@@ -1,8 +1,8 @@
 import 'fake-indexeddb/auto';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { assetDigest } from '../src/lib/integrity';
-import { clearIconSheetCache, resolveIconSheetUrl } from '../src/lib/iconCache';
-import { getCachedAsset, getDataset, saveDataset } from '../src/lib/storage';
+import { assetDigest } from '../src/lib/dataset/integrity';
+import { clearIconSheetCache, resolveIconSheetUrl } from '../src/lib/items/iconCache';
+import { getCachedAsset, getDataset, saveDataset } from '../src/lib/dataset/storage';
 
 describe('verified icon sheet cache', () => {
   afterEach(() => {

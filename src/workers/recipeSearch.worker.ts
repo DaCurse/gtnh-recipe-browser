@@ -5,7 +5,7 @@ import {
   type RecipeSearchCatalogEntry,
   type RecipeSearchDocument,
   type RecipeSearchRecord,
-} from '../lib/recipeSearch';
+} from '../lib/recipes/recipeSearch';
 
 type WorkerRequest =
   | { type: 'init'; generation: number }

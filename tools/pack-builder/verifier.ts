@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { expandRelations, type PackedRelationList } from '../../src/lib/packedRelations';
+import { expandRelations, type PackedRelationList } from '../../src/lib/dataset/packedRelations';
 import { readFile } from 'node:fs/promises';
 import { basename, join } from 'node:path';
 import { gzipSync, gunzipSync } from 'node:zlib';
@@ -8,13 +8,13 @@ import {
   decodeRecordPage,
   recordPageSelections,
   RECORD_PAGE_TARGET_BYTES,
-} from '../../src/lib/recordPages';
+} from '../../src/lib/dataset/recordPages';
 import { decode } from '@msgpack/msgpack';
 import sharp from 'sharp';
 import { sharedIconPixelsEquivalent } from './sharedIcons';
-import { parseMachineCrafters } from '../../src/lib/machineCrafters';
-import { recipeTypeMachineCapabilities } from '../../src/lib/recipePresentation';
-import type { PackedRecipeType } from '../../src/lib/datasetSchema';
+import { parseMachineCrafters } from '../../src/lib/recipes/machineCrafters';
+import { recipeTypeMachineCapabilities } from '../../src/lib/recipes/recipePresentation';
+import type { PackedRecipeType } from '../../src/lib/dataset/datasetSchema';
 import { decodeFormat5 } from './decoder';
 import type { GeneratedPackManifest, ImmutableAsset } from './manifest';
 import { canonicalSpecialDataJson, parseBrowserNeiSpecial, type SpecialRecord } from './special';

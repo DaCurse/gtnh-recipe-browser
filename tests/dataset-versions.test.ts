@@ -8,7 +8,7 @@ import {
   startupDatasetSelection,
   replacementDatasetActive,
   reconcileDatasetVersions,
-} from '../src/lib/datasetVersions';
+} from '../src/lib/dataset/datasetVersions';
 import type { DatasetState, DatasetVersion } from '../src/lib/types';
 
 function version(datasetId: string, gtnhVersion = '2.9.0-beta-2'): DatasetVersion {

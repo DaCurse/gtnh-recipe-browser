@@ -7,16 +7,16 @@ const mocks = vi.hoisted(() => ({
   decode: vi.fn(),
   epoch: vi.fn(),
 }));
-vi.mock('../src/lib/datasetAssets', () => ({
+vi.mock('../src/lib/dataset/datasetAssets', () => ({
   fetchVerified: mocks.fetch,
   decompress: async (bytes: Uint8Array) => bytes,
 }));
-vi.mock('../src/lib/iconCache', () => ({
+vi.mock('../src/lib/items/iconCache', () => ({
   resolveIconSheetUrl: mocks.sheet,
   decodeIconSheetUrl: mocks.decode,
   iconSheetCacheEpoch: mocks.epoch,
 }));
-vi.mock('../src/lib/storage', () => ({ recordDatasetAsset: mocks.record }));
+vi.mock('../src/lib/dataset/storage', () => ({ recordDatasetAsset: mocks.record }));
 const datasetId = Object.keys(registry.releases)[0]!;
 const base = {
   url: 'low.webp',
@@ -71,7 +71,7 @@ describe('original resolution icon companions', () => {
         release = resolve;
       }),
     );
-    const icons = await import('../src/lib/highResolutionIcons');
+    const icons = await import('../src/lib/items/highResolutionIcons');
     const key = icons.iconRenderKey(base, 'item', 42);
     expect(icons.iconRenderKey({ ...base }, 'item', 86)).toBe(key);
     const first = icons.resolveRenderedIcon(base, 'item', 42);
@@ -87,7 +87,7 @@ describe('original resolution icon companions', () => {
     expect(mocks.sheet).toHaveBeenCalledTimes(1);
   });
   it('binds asynchronous results to the requested immutable sprite identity', async () => {
-    const icons = await import('../src/lib/highResolutionIcons');
+    const icons = await import('../src/lib/items/highResolutionIcons');
     const mutable = { ...base };
     const key = icons.iconRenderKey(mutable, 'item', 42);
     const pending = icons.resolveRenderedIcon(mutable, 'item', 42);
@@ -98,7 +98,7 @@ describe('original resolution icon companions', () => {
     expect(icons.cachedRenderedIcon(icons.iconRenderKey(mutable, 'item', 42))).toBeUndefined();
   });
   it('does not reuse decoded sprites after their object URL cache is cleared', async () => {
-    const icons = await import('../src/lib/highResolutionIcons');
+    const icons = await import('../src/lib/items/highResolutionIcons');
     await icons.resolveRenderedIcon(base, 'item', 42);
     mocks.epoch.mockReturnValue(1);
     expect(icons.cachedRenderedIcon(icons.iconRenderKey(base, 'item', 42))).toBeUndefined();
@@ -109,13 +109,13 @@ describe('original resolution icon companions', () => {
     mocks.decode.mockImplementation(async (url) => {
       if (url === 'high.webp') throw new Error('Decode failed');
     });
-    const icons = await import('../src/lib/highResolutionIcons');
+    const icons = await import('../src/lib/items/highResolutionIcons');
     expect((await icons.resolveRenderedIcon(base, 'item', 42)).resolution).toBe(32);
     expect(icons.cachedRenderedIcon(icons.iconRenderKey(base, 'item', 42))?.resolution).toBe(32);
   });
 
   it('uses existing sheets for small icons and unsupported datasets without HD requests', async () => {
-    const { resolveRenderedIcon } = await import('../src/lib/highResolutionIcons');
+    const { resolveRenderedIcon } = await import('../src/lib/items/highResolutionIcons');
     expect(await resolveRenderedIcon(base, 'item', 32)).toEqual({
       url: 'low.webp',
       index: 7,
@@ -128,7 +128,7 @@ describe('original resolution icon companions', () => {
     expect(mocks.fetch).not.toHaveBeenCalled();
   });
   it('selects 64px crops and shares verified metadata loads across icons', async () => {
-    const { resolveRenderedIcon } = await import('../src/lib/highResolutionIcons');
+    const { resolveRenderedIcon } = await import('../src/lib/items/highResolutionIcons');
     expect(await resolveRenderedIcon(base, 'item', 42)).toEqual({
       url: 'high.webp',
       index: 3,
@@ -143,13 +143,13 @@ describe('original resolution icon companions', () => {
     expect(new URL(mocks.sheet.mock.calls[0]![0].url).origin).toBe('https://example.test');
   });
   it('preserves owner-specific original images when 32px sprites lost distinguishing detail', async () => {
-    const { resolveRenderedIcon } = await import('../src/lib/highResolutionIcons');
+    const { resolveRenderedIcon } = await import('../src/lib/items/highResolutionIcons');
     expect((await resolveRenderedIcon(base, 'i:special:0', 42)).index).toBe(4);
     expect((await resolveRenderedIcon(base, 'other', 42)).index).toBe(3);
   });
   it('falls back without blanking icons when optional metadata is offline', async () => {
     mocks.fetch.mockRejectedValue(new Error('Offline'));
-    const { resolveRenderedIcon } = await import('../src/lib/highResolutionIcons');
+    const { resolveRenderedIcon } = await import('../src/lib/items/highResolutionIcons');
     expect((await resolveRenderedIcon(base, 'item', 42)).url).toBe('low.webp');
   });
   it('keeps entries with missing original renders on their existing fallback', async () => {
@@ -158,18 +158,18 @@ describe('original resolution icon companions', () => {
         JSON.stringify({ schemaVersion: 1, datasetId, unavailable: ['missing'], lookups: {} }),
       ),
     );
-    const { resolveRenderedIcon } = await import('../src/lib/highResolutionIcons');
+    const { resolveRenderedIcon } = await import('../src/lib/items/highResolutionIcons');
     expect((await resolveRenderedIcon(base, 'missing', 80)).resolution).toBe(32);
     expect(mocks.fetch).toHaveBeenCalledTimes(1);
   });
   it('rejects a wrong release, wrong sheet, or invalid crop', async () => {
     lookup.lowSheet = 'wrong';
-    const { resolveRenderedIcon } = await import('../src/lib/highResolutionIcons');
+    const { resolveRenderedIcon } = await import('../src/lib/items/highResolutionIcons');
     expect((await resolveRenderedIcon(base, 'item', 42)).resolution).toBe(32);
     lookup.lowSheet = base.sha256;
     lookup.cells = { '7': [0, 99] };
     vi.resetModules();
-    const fresh = await import('../src/lib/highResolutionIcons');
+    const fresh = await import('../src/lib/items/highResolutionIcons');
     expect((await fresh.resolveRenderedIcon(base, 'item', 42)).resolution).toBe(32);
   });
   it('falls back if the high-resolution image cannot be verified or loaded', async () => {
@@ -177,7 +177,7 @@ describe('original resolution icon companions', () => {
       if (options?.fallbackToUrl === false) throw new Error('Corrupt HD image');
       return icon.url;
     });
-    const { resolveRenderedIcon } = await import('../src/lib/highResolutionIcons');
+    const { resolveRenderedIcon } = await import('../src/lib/items/highResolutionIcons');
     expect(await resolveRenderedIcon(base, 'item', 42)).toEqual({
       url: 'low.webp',
       index: 7,

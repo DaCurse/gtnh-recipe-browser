@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchJsonNetworkFirst } from '../src/lib/datasetAssets';
-import { cacheMetadata, getCachedMetadata } from '../src/lib/storage';
+import { fetchJsonNetworkFirst } from '../src/lib/dataset/datasetAssets';
+import { cacheMetadata, getCachedMetadata } from '../src/lib/dataset/storage';
 
-vi.mock('../src/lib/storage', () => ({
+vi.mock('../src/lib/dataset/storage', () => ({
   cacheMetadata: vi.fn(),
   getCachedMetadata: vi.fn(),
   cacheAsset: vi.fn(),

@@ -44,7 +44,7 @@ also retain matched item stacks and their quantities, including choice-reward
 annotations, for the item browser quest cards. Exact stack
 navigation only normalizes source-proven defaults such as GregTech's absent
 tool Mode byte being zero; other material, charge and enchantment data remain
-significant. See `src/lib/itemNavigation.ts` and `tools/questbook/links.ts`.
+significant. See `src/lib/items/itemNavigation.ts` and `tools/questbook/links.ts`.
 
 Quest and chapter query IDs use `q` followed by the base-36 unsigned value of
 the complete 128-bit UUID. All exported IDs are checked for round-trip

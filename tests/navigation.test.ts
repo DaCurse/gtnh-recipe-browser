@@ -9,7 +9,7 @@ import {
   recipeViewUrlValue,
   specialNavigationFromUrl,
   specialNavigationUrl,
-} from '../src/lib/navigation';
+} from '../src/lib/shell/navigation';
 
 describe('catalog search navigation', () => {
   it('round-trips the sidebar filter through the shareable search parameter', () => {

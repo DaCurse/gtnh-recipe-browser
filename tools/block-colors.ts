@@ -1,4 +1,4 @@
-import { blockColorPalette, colorScoreDigits } from '../src/lib/blockColors';
+import { blockColorPalette, colorScoreDigits } from '../src/lib/search/blockColors';
 import { join } from 'node:path';
 import { readFile, readdir, writeFile } from 'node:fs/promises';
 import sharp from 'sharp';

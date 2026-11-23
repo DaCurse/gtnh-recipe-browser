@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isCatalogSort, sortCatalog } from '../src/lib/catalogSort';
+import { isCatalogSort, sortCatalog } from '../src/lib/catalog/catalogSort';
 import type { CatalogBrowseEntry } from '../src/lib/types';
 
 const entries = Array.from(

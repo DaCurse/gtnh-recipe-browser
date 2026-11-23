@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { DatasetRepository } from '../src/lib/dataset';
+import { DatasetRepository } from '../src/lib/dataset/dataset';
 import type { CatalogEntry } from '../src/lib/types';
 
 const entry = (id: string, kind: CatalogEntry['kind']): CatalogEntry => ({

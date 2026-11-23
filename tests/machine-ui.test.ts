@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { machineUiFor, machineUiBounds, UI_GROUPS, machineUiProfiles } from '../src/lib/machineUi';
-import { voltageTierDescription, voltageTierFormats } from '../src/lib/recipeMetadata';
+import {
+  machineUiFor,
+  machineUiBounds,
+  UI_GROUPS,
+  machineUiProfiles,
+} from '../src/lib/recipes/machineUi';
+import { voltageTierDescription, voltageTierFormats } from '../src/lib/recipes/recipeMetadata';
 import type { Recipe } from '../src/lib/types';
 
 const profiles = machineUiProfiles;

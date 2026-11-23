@@ -5,9 +5,9 @@ import {
   createSpecialExport,
   recipeRecordsForExport,
   serializeBrowserExport,
-} from '../src/lib/browserExport';
+} from '../src/lib/export/browserExport';
 import type { CatalogEntry, Recipe } from '../src/lib/types';
-import type { SpecialRecord } from '../src/lib/specialData';
+import type { SpecialRecord } from '../src/lib/special/specialData';
 
 const iron: CatalogEntry = {
   id: 'i:minecraft:iron_ingot:0',

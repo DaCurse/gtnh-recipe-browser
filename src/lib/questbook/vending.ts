@@ -1,4 +1,4 @@
-import { nbtScalar } from '../nbt';
+import { nbtScalar } from '../items/nbt';
 import { questUuid } from './types';
 
 /** Preserve both signed 64-bit halves from VendingMachine's BQ condition. */

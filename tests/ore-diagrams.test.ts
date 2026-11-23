@@ -11,7 +11,7 @@ import {
   oreSceneBounds,
   type OreDiagramIndex,
   type OreScene,
-} from '../src/lib/oreDiagram';
+} from '../src/lib/special/oreDiagram';
 import type { CatalogEntry } from '../src/lib/types';
 
 const datasetId = versions.versions.find((version) => version.gtnhVersion === '2.9.0')!.datasetId;

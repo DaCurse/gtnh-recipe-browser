@@ -1,6 +1,6 @@
 import { trackEvent } from '../analytics';
 import { questAnalyticsProperties } from './analytics';
-import { completeTouchGesture } from '../itemTouch.svelte';
+import { completeTouchGesture } from '../items/itemTouch.svelte';
 import type { QuestPreviewRepository } from './linksTypes';
 
 interface Preview {

@@ -3,7 +3,7 @@ import { questAnalyticsProperties } from './analytics';
 import { loadQuestbook, questVersions, type QuestRepository } from './repository';
 import type { QuestVersion } from './types';
 import { questLinkId, questUrlId } from './types';
-import { clearItemTouch, itemTouchState } from '../itemTouch.svelte';
+import { clearItemTouch, itemTouchState } from '../items/itemTouch.svelte';
 
 function questbookUrl(base: string | URL): URL {
   const url = new URL(base);

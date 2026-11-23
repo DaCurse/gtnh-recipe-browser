@@ -1,5 +1,10 @@
 import { decode } from '@msgpack/msgpack';
-import { fetchJsonNetworkFirst, fetchVerified, decompress, yieldToBrowser } from '../datasetAssets';
+import {
+  fetchJsonNetworkFirst,
+  fetchVerified,
+  decompress,
+  yieldToBrowser,
+} from '../dataset/datasetAssets';
 import type { QuestPack, QuestVersion, QuestVersions, Quest, QuestChapter } from './types';
 import type { CatalogEntry } from '../types';
 import { plainQuestText } from './text';

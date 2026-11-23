@@ -1,4 +1,4 @@
-import type { RecordPageSelection } from '../../src/lib/recordPages';
+import type { RecordPageSelection } from '../../src/lib/dataset/recordPages';
 
 type AssetEncoding = 'gzip' | 'identity';
 export type RecordPageFamily =

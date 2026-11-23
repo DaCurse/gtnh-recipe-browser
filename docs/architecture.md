@@ -6,7 +6,7 @@ The browser is organized around feature-owned state and a small application coor
 
 `src/App.svelte` owns startup, URL/history synchronization, the selected catalog entry, and wiring between features. It should not implement search workers, recipe loading, or dataset-manager workflows.
 
-Feature views live in `src/lib/*.svelte`:
+Under `src/lib/`, each feature keeps its views, state, and data helpers together. The main browsing features are `landing/`, `catalog/`, `recipes/`, `special/`, `finder/`, and `questbook/`. Cross-feature item presentation and interaction live in `items/` and `tooltips/`. Search syntax and controls live in `search/`, dataset loading and storage in `dataset/`, and downloads in `export/`. The app frame lives in `shell/` and shared visual controls in `ui/`.
 
 - `CatalogPane.svelte` owns catalog search, incremental result paging, tooltips, and sidebar resizing. Shared NEI-style syntax, native-input highlighting, help, and lazy ore-dictionary search are documented in [`search.md`](search.md).
 - `catalogEntryLoad.svelte.ts` shares complete-entry readiness and cancellation between selected item details and every floating tooltip through repository context; see [`tooltip-loading.md`](tooltip-loading.md).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { minecraftHtmlPlainText, parseMinecraftHtml } from '../src/lib/minecraftText';
+import { minecraftHtmlPlainText, parseMinecraftHtml } from '../src/lib/ui/minecraftText';
 
 describe('Minecraft tooltip formatting', () => {
   it('extracts plain text without materializing formatting segments', () => {

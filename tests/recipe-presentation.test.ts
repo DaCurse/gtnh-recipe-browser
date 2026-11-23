@@ -11,7 +11,7 @@ import {
   recipeTypeCrafters,
   recipeTypeIconId,
   recipeTypeMachineCapabilities,
-} from '../src/lib/recipePresentation';
+} from '../src/lib/recipes/recipePresentation';
 
 const type = {
   singleblocks: [{ id: 'machine:lv' }, { id: 'machine:mv' }, { id: 'machine:hv' }],

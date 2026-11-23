@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { gzipSync } from 'node:zlib';
-import { catalogRegistryKey } from '../src/lib/catalogOrder';
+import { catalogRegistryKey } from '../src/lib/catalog/catalogOrder';
 import { writeCompanionRelease } from './pack-builder/companionRelease';
 import type { DecodedRepository } from './pack-builder/model';
 import type { GeneratedPackManifest } from './pack-builder/manifest';

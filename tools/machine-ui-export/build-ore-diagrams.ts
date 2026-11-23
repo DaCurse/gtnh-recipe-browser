@@ -5,8 +5,8 @@ import { decode } from '@msgpack/msgpack';
 import { readLogicalAsset } from '../pack-builder/recordPages';
 import { writeCompanionRelease } from '../pack-builder/companionRelease';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
-import type { PackedGoods } from '../../src/lib/datasetSchema';
-import type { OreScene } from '../../src/lib/oreDiagram';
+import type { PackedGoods } from '../../src/lib/dataset/datasetSchema';
+import type { OreScene } from '../../src/lib/special/oreDiagram';
 
 const [snapshotPath, packPath] = process.argv.slice(2);
 if (!snapshotPath || !packPath)

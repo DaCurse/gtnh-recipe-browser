@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { buildCatalogSearchDocument } from '../src/lib/catalogSearch';
+import { buildCatalogSearchDocument } from '../src/lib/search/catalogSearch';
 
 // Exercise the worker protocol: sorting must happen before slicing result pages.
 afterEach(() => {

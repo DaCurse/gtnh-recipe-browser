@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { thaumcraftUiFor } from '../src/lib/thaumcraftUi';
-import { recipeUiIngredients, machineUiBounds } from '../src/lib/machineUi';
+import { thaumcraftUiFor } from '../src/lib/recipes/thaumcraftUi';
+import { recipeUiIngredients, machineUiBounds } from '../src/lib/recipes/machineUi';
 import type { Recipe, Ingredient } from '../src/lib/types';
 
 function recipe(infusion: boolean, inputs: Ingredient[]): Recipe {

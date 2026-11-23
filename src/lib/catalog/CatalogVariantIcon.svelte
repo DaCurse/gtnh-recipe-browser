@@ -1,0 +1,68 @@
+<script lang="ts">
+  import { onMount } from 'svelte';
+  import ItemIcon from '../items/ItemIcon.svelte';
+  import { resolveCatalogVariant } from './catalogVariants';
+  import { oreCycle } from '../items/oreCycle';
+  import type { CatalogBrowseEntry, CatalogEntry } from '../types';
+
+  let {
+    entry,
+    exactEntries,
+    size = 56,
+    frame = true,
+    bare = false,
+    renderScale = 1,
+    frozen,
+  }: {
+    entry: CatalogBrowseEntry;
+    exactEntries: ReadonlyMap<string, CatalogEntry>;
+    size?: number;
+    frame?: boolean;
+    bare?: boolean;
+    renderScale?: number;
+    frozen?: CatalogEntry;
+  } = $props();
+
+  let element: HTMLSpanElement;
+  let visible = $state(false);
+  let cycle = $state(0);
+  const displayEntry = $derived(frozen ?? resolveCatalogVariant(entry, exactEntries, cycle));
+
+  $effect(() => {
+    if (entry.variantKind === 'single' || !visible) return;
+    return oreCycle.subscribe((value) => (cycle = value));
+  });
+
+  onMount(() => {
+    if (entry.variantKind === 'single' || !('IntersectionObserver' in window)) {
+      visible = true;
+      return;
+    }
+    const root = element.closest('.item-grid');
+    const observer = new IntersectionObserver(
+      ([observed]) => {
+        visible = observed?.isIntersecting ?? false;
+      },
+      { root, rootMargin: '120px 0px' },
+    );
+    observer.observe(element);
+    return () => observer.disconnect();
+  });
+</script>
+
+<span
+  class="catalog-variant-icon"
+  style:width={`${size}px`}
+  style:height={`${size}px`}
+  aria-hidden="true"
+  bind:this={element}
+>
+  <ItemIcon entry={displayEntry} {size} {frame} {bare} {renderScale} />
+</span>
+
+<style>
+  .catalog-variant-icon {
+    display: block;
+    flex: 0 0 auto;
+  }
+</style>

@@ -58,4 +58,4 @@ export function validateSpecialGoodsReferences(
   }
 }
 
-export { specialGoodsForDirection } from '../../src/lib/specialMatching';
+export { specialGoodsForDirection } from '../../src/lib/special/specialMatching';

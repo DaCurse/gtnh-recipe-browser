@@ -5,8 +5,8 @@ import { execFileSync } from 'node:child_process';
 import { gzipSync } from 'node:zlib';
 import { decode, encode } from '@msgpack/msgpack';
 import sharp from 'sharp';
-import { prepareBootstrapCatalog } from '../../src/lib/catalogBootstrap';
-import { ingredientGroupPreview } from '../../src/lib/catalogMaterialization';
+import { prepareBootstrapCatalog } from '../../src/lib/catalog/catalogBootstrap';
+import { ingredientGroupPreview } from '../../src/lib/catalog/catalogMaterialization';
 import { readLogicalAsset } from '../pack-builder/recordPages';
 import type { GeneratedPackManifest } from '../pack-builder/manifest';
 import type {
@@ -14,16 +14,16 @@ import type {
   DatasetManifest,
   PackedGoodsDetailsShard,
   PackedIngredientGroupsShard,
-} from '../../src/lib/datasetSchema';
-import { parseMinecraftCodes, restoreMinecraftFormatting } from '../../src/lib/minecraftText';
-import { expandRelations } from '../../src/lib/packedRelations';
+} from '../../src/lib/dataset/datasetSchema';
+import { parseMinecraftCodes, restoreMinecraftFormatting } from '../../src/lib/ui/minecraftText';
+import { expandRelations } from '../../src/lib/dataset/packedRelations';
 import type { CatalogEntry } from '../../src/lib/types';
-import type { SpecialGoods } from '../../src/lib/specialData';
+import type { SpecialGoods } from '../../src/lib/special/specialData';
 import type { QuestPack, QuestVersion, QuestVersions } from '../../src/lib/questbook/types';
 import { questLinkId } from '../../src/lib/questbook/types';
 import { parseQuestJson, readQuest, readChapter, type NbtObject, type SourceStack } from './source';
-import { nbtIdentity } from '../../src/lib/nbt';
-import { itemNavigationResolver } from '../../src/lib/itemNavigation';
+import { nbtIdentity } from '../../src/lib/items/nbt';
+import { itemNavigationResolver } from '../../src/lib/items/itemNavigation';
 import { writeQuestLinks } from './links';
 import { writeNavigationIcons } from './navigationIcons';
 import { writeQuestFrames } from './frames';

@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { initializeShellUpdate } from '../src/lib/shellUpdate';
+import { initializeShellUpdate } from '../src/lib/shell/shellUpdate';
 
 afterEach(() => {
   vi.unstubAllGlobals();

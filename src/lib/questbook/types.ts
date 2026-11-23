@@ -1,5 +1,5 @@
 import type { AssetDescriptor, CatalogEntry } from '../types';
-import type { SpecialGoods } from '../specialData';
+import type { SpecialGoods } from '../special/specialData';
 
 export interface QuestSection {
   type: string;
