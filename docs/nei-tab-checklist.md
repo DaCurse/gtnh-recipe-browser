@@ -1,14 +1,11 @@
 # NEI tab checklist
 
-Target the pinned GTNH 2.9.0-RC-2, 2.9.0, and 2.9.1 clients. Finish the runtime collectors, goods retention,
-and validation before launching a single disposable NESQL export. Capture handler
-icons, geometry, and metadata in that same run. Compare representative pages
-against NEI before activating the generated pack.
+Use this release checklist for the native NEI handlers published in GTNH 2.9.0-RC-2, 2.9.0, and 2.9.1. Capture handler icons, geometry, and metadata in the disposable NESQL export. Compare representative pages against NEI before activating a new pack.
 
 | Tab                          | Export checklist                                                                                                       | Browser checklist                                                                                                 |
 | ---------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| Mob Info                     | Exporter uses NEI's finalized tables, including conditional drops and tooltip text.                                    | Shipped in the activated 2.9.0 pack.                                                                              |
-| Infernal Drops               | Configured pools and tier odds implemented. Capture NEI's exact Ender IO mob-container matches.                        | Shipped in the activated 2.9.0 pack. Check Mob Info shortcut and eligible container usages.                       |
+| Mob Info                     | Exporter uses NEI's finalized tables, including conditional drops and tooltip text.                                    | Check conditional drop tooltips and drop chances.                                                                 |
+| Infernal Drops               | Configured pools and tier odds implemented. Capture NEI's exact Ender IO mob-container matches.                        | Check the Mob Info shortcut and eligible container usages.                                                        |
 | Tinkers' Casting Table       | Read live casting recipes. Retain casts, outputs, fluid amounts, cast consumption and cooling time.                    | Match table icon, cast slot, fluid region and output. Check item and fluid lookups.                               |
 | Tinkers' Smeltery Melting    | Read live melting recipes, output fluid volumes, input alternatives and temperatures.                                  | Match melting handler icon, ingredient slot, tank and temperature. Check molten-fluid Recipes.                    |
 | Alchemic Chemistry Set       | Read the Blood Magic alchemy handler. Capture reagent slots, orb tier and LP.                                          | Match handler icon and reagent geometry. Check orb and ingredient Usages.                                         |
@@ -20,7 +17,7 @@ against NEI before activating the generated pack.
 | Botania Mana Pool            | Capture conversion inputs, outputs and mana costs or restrictions.                                                     | Match the pool handler's icon, slots and mana indicator.                                                          |
 | Botania Petal Apothecary     | Capture petal recipes, water/seed requirements and ingredient alternatives.                                            | Match the apothecary layout and tooltip requirements.                                                             |
 | Botania Runic Altar          | Capture ordered display slots, mana cost, catalysts and outputs.                                                       | Match altar layout and distinguish catalysts from consumed items.                                                 |
-| Botania Pure Daisy           | Import all six native conversions and retain exact input alternatives, including placed Water.                         | Shipped in the activated 2.9.0 pack.                                                                              |
+| Botania Pure Daisy           | Import all six native conversions and retain exact input alternatives, including placed Water.                         | Check the conversion panel and placed Water usages.                                                               |
 | Botania Elven Trade          | Capture multiset inputs and the output exposed by the pinned handlers.                                                 | Match portal layout and check each trade direction.                                                               |
 | Botania Brewery              | Capture recipe inputs, vessel variants, mana and resulting brew NBT.                                                   | Match brewery icon and vessel placement.                                                                          |
 | Botania Floating Flowers     | Query the native handler per floating special flower. It builds the recipe from the flower NBT on demand.              | Check both directions and preserve the flower's NBT through the conversion.                                       |
@@ -44,10 +41,7 @@ The Petal Apothecary and Runic Altar append a finishing ingredient in the center
 slot. The snapshot records that slot separately so canonical goods conversion
 can treat the renamed “Any Seed” display stack as a requirement. Mana Infusion
 exposes alchemy and conjuration catalyst blocks through NEI's other slots and
-includes them in its native Usages matcher. The existing NESQL catalogue lacks
-some exact Botania stack alternatives, including Forestry bees with specific
-genomes. Retain these stacks through the live exporter before building the
-combined pack.
+includes them in its native Usages matcher. The live exporter retains exact alternatives missing from the base NESQL catalogue, including Forestry bees with specific genomes.
 
 For the Pure Daisy preview, pass `--nei-snapshot <snapshot.json>` to
 `export:process` with the GTNH 2.9.0 export session. This adds the captured

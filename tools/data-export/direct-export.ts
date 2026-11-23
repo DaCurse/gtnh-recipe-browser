@@ -28,6 +28,7 @@ import {
 import { assertPathMissing, readExportSession, type ExportSession } from './lib';
 
 const DEFAULT_CACHE_DIRECTORY = '.export-work/direct-export-cache';
+const DEFAULT_EXPORT_VERSION = '2.9.1';
 const DEFAULT_XMS = '2G';
 const DEFAULT_XMX = '8G';
 const DEFAULT_LAUNCH_TIMEOUT_MS = 90 * 60 * 1_000;
@@ -55,144 +56,6 @@ interface RuntimeModPin {
   version: string;
   sourceName: string;
 }
-
-const BETA_2_RUNTIME_MODS: readonly RuntimeModPin[] = [
-  { jarName: 'cropsnh-2.0.91.jar', modId: 'cropsnh', version: '2.0.91', sourceName: 'CropsNH' },
-  {
-    jarName: 'gregtech-5.09.54.20.jar',
-    modId: 'gregtech',
-    version: '5.09.54.20',
-    sourceName: 'GT5-Unofficial',
-  },
-  {
-    jarName: 'BloodMagic-1.9.4.jar',
-    modId: 'AWWayofTime',
-    version: '1.9.4',
-    sourceName: 'BloodMagic',
-  },
-  {
-    jarName: 'EnhancedLootBags-1.3.4.jar',
-    modId: 'enhancedlootbags',
-    version: '1.3.4',
-    sourceName: 'EnhancedLootBags',
-  },
-  {
-    jarName: 'vendingmachine-0.4.95.jar',
-    modId: 'vendingmachine',
-    version: '0.4.95',
-    sourceName: 'VendingMachine',
-  },
-  {
-    jarName: 'NEICustomDiagram-1.8.30.jar',
-    modId: 'neicustomdiagram',
-    version: '1.8.30',
-    sourceName: 'NEICustomDiagram',
-  },
-  {
-    jarName: 'roguelike-1.6.6-GTNH.jar',
-    modId: 'Roguelike',
-    version: '1.6.6-GTNH',
-    sourceName: 'RoguelikeDungeons',
-  },
-  {
-    jarName: 'TwilightForest-2.7.36.jar',
-    modId: 'TwilightForest',
-    version: '2.7.36',
-    sourceName: 'TwilightForest',
-  },
-];
-
-const BETA_3_RUNTIME_MODS: readonly RuntimeModPin[] = [
-  { jarName: 'cropsnh-2.0.114.jar', modId: 'cropsnh', version: '2.0.114', sourceName: 'CropsNH' },
-  {
-    jarName: 'gregtech-5.09.54.133.jar',
-    modId: 'gregtech',
-    version: '5.09.54.133',
-    sourceName: 'GT5-Unofficial',
-  },
-  {
-    jarName: 'BloodMagic-1.9.13.jar',
-    modId: 'AWWayofTime',
-    version: '1.9.13',
-    sourceName: 'BloodMagic',
-  },
-  {
-    jarName: 'EnhancedLootBags-1.3.4.jar',
-    modId: 'enhancedlootbags',
-    version: '1.3.4',
-    sourceName: 'EnhancedLootBags',
-  },
-  {
-    jarName: 'vendingmachine-0.4.100.jar',
-    modId: 'vendingmachine',
-    version: '0.4.100',
-    sourceName: 'VendingMachine',
-  },
-  {
-    jarName: 'NEICustomDiagram-1.8.34.jar',
-    modId: 'neicustomdiagram',
-    version: '1.8.34',
-    sourceName: 'NEICustomDiagram',
-  },
-  {
-    jarName: 'roguelike-1.6.6-GTNH.jar',
-    modId: 'Roguelike',
-    version: '1.6.6-GTNH',
-    sourceName: 'RoguelikeDungeons',
-  },
-  {
-    jarName: 'TwilightForest-2.7.40.jar',
-    modId: 'TwilightForest',
-    version: '2.7.40',
-    sourceName: 'TwilightForest',
-  },
-];
-
-const RC_1_RUNTIME_MODS: readonly RuntimeModPin[] = [
-  { jarName: 'cropsnh-2.0.129.jar', modId: 'cropsnh', version: '2.0.129', sourceName: 'CropsNH' },
-  {
-    jarName: 'gregtech-5.09.54.183.jar',
-    modId: 'gregtech',
-    version: '5.09.54.183',
-    sourceName: 'GT5-Unofficial',
-  },
-  {
-    jarName: 'BloodMagic-1.9.13.jar',
-    modId: 'AWWayofTime',
-    version: '1.9.13',
-    sourceName: 'BloodMagic',
-  },
-  {
-    jarName: 'EnhancedLootBags-1.3.5.jar',
-    modId: 'enhancedlootbags',
-    version: '1.3.5',
-    sourceName: 'EnhancedLootBags',
-  },
-  {
-    jarName: 'vendingmachine-0.4.100.jar',
-    modId: 'vendingmachine',
-    version: '0.4.100',
-    sourceName: 'VendingMachine',
-  },
-  {
-    jarName: 'NEICustomDiagram-1.8.35.jar',
-    modId: 'neicustomdiagram',
-    version: '1.8.35',
-    sourceName: 'NEICustomDiagram',
-  },
-  {
-    jarName: 'roguelike-1.6.6-GTNH.jar',
-    modId: 'Roguelike',
-    version: '1.6.6-GTNH',
-    sourceName: 'RoguelikeDungeons',
-  },
-  {
-    jarName: 'TwilightForest-2.7.42.jar',
-    modId: 'TwilightForest',
-    version: '2.7.42',
-    sourceName: 'TwilightForest',
-  },
-];
 
 const RELEASE_290_RUNTIME_MODS: readonly RuntimeModPin[] = [
   { jarName: 'cropsnh-2.0.140.jar', modId: 'cropsnh', version: '2.0.140', sourceName: 'CropsNH' },
@@ -368,36 +231,6 @@ export const DIRECT_EXPORT_PROFILES: Readonly<Record<string, DirectExportProfile
       'https://github.com/GTNewHorizons/DreamAssemblerXXL/blob/1b62ef00ad679c51ab0ec67f8a8e42778a059ce6/releases/manifests/2.9.0.json',
     runtimeMods: RELEASE_290_RUNTIME_MODS,
   },
-  '2.9.0-beta-2': {
-    version: '2.9.0-beta-2',
-    archiveFileName: 'GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip',
-    clientUrl:
-      'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip',
-    bytes: 680_333_339,
-    sha256: 'adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee',
-    sourcePage: 'https://www.gtnewhorizons.com/version-history/',
-    runtimeMods: BETA_2_RUNTIME_MODS,
-  },
-  '2.9.0-beta-3': {
-    version: '2.9.0-beta-3',
-    archiveFileName: 'GT_New_Horizons_2.9.0-beta-3_Java_17-26.zip',
-    clientUrl:
-      'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-3_Java_17-26.zip',
-    bytes: 719_551_573,
-    sha256: 'f814cca68c7d4be529ce1247c5dcc9d665a65e7136a885b69f52175a4e0c8aed',
-    sourcePage: 'https://www.gtnewhorizons.com/version-history/',
-    runtimeMods: BETA_3_RUNTIME_MODS,
-  },
-  '2.9.0-RC-1': {
-    version: '2.9.0-RC-1',
-    archiveFileName: 'GT_New_Horizons_2.9.0-RC-1_Java_17-26.zip',
-    clientUrl:
-      'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-RC-1_Java_17-26.zip',
-    bytes: 727_184_781,
-    sha256: 'a665e7cfdfa79cd260a7c60816658a75a3c58eaacf9268478ac07e3413241368',
-    sourcePage: 'https://www.gtnewhorizons.com/version-history/',
-    runtimeMods: RC_1_RUNTIME_MODS,
-  },
 };
 
 export interface ArchiveDownloadResult {
@@ -547,7 +380,7 @@ export interface DirectExportResult {
 function profileFromInput(profile: string | DirectExportProfile | undefined): DirectExportProfile {
   const value =
     typeof profile === 'string' || profile === undefined
-      ? DIRECT_EXPORT_PROFILES[profile ?? '2.9.0-beta-2']
+      ? DIRECT_EXPORT_PROFILES[profile ?? DEFAULT_EXPORT_VERSION]
       : profile;
   if (!value) throw new Error(`Unsupported direct export profile ${String(profile)}`);
   if (!value.version || !SAFE_NAME_PATTERN.test(value.version))
@@ -585,7 +418,7 @@ function profileFromInput(profile: string | DirectExportProfile | undefined): Di
   return { ...value, sha256: value.sha256.toLowerCase() };
 }
 
-export function getDirectExportProfile(version = '2.9.0-beta-2'): DirectExportProfile {
+export function getDirectExportProfile(version?: string): DirectExportProfile {
   return profileFromInput(version);
 }
 

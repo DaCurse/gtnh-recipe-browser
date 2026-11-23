@@ -912,14 +912,10 @@ if (!leftPath || !rightPath) {
 }
 
 const assetDirectory = argument('asset-directory');
-const left = await loadPack(
-  leftPath,
-  'beta-2',
-  assetDirectory ? resolve(assetDirectory) : undefined,
-);
+const left = await loadPack(leftPath, 'left', assetDirectory ? resolve(assetDirectory) : undefined);
 const right = await loadPack(
   rightPath,
-  'beta-3',
+  'right',
   assetDirectory ? resolve(assetDirectory) : undefined,
 );
 const recordNames = [

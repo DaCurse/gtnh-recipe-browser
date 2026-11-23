@@ -23,7 +23,7 @@ with the direct-export timeout options.
 The current 2.9.0 profile uses the official runnable client ZIP at
 `https://downloads.gtnewhorizons.com/Multi_mc_downloads/GT_New_Horizons_2.9.0_Java_17-26.zip`,
 747,848,389 bytes, SHA-256 `6d0ebe7e6be18fb74b4fc920916cc5710e142a3f885072d324da05244d398b16`.
-This is a newly reviewed source, distinct from the historical local assembly documented below.
+The default direct-export profile is 2.9.1. The 2.9.0 and 2.9.0-RC-2 profiles are also pinned.
 
 The preparation/launch boundary inventories every native quest stack. The game
 loads exact typed NBT using BetterQuesting's decoder, retains rewards, choices,
@@ -112,7 +112,7 @@ npm run export:direct -- \
 
 The profile pins the reviewed archive location, byte size, and SHA-256. A local archive can be supplied with
 `--archive <file>`; it is still verified before use. The orchestrator resolves the archive's component metadata,
-libraries, natives, assets, and launch arguments, starts the client under Xvfb, creates the deterministic creative
+libraries, natives, assets, and launch arguments, starts the client hidden on Windows or under Xvfb on Linux, creates the deterministic creative
 world, waits for NEI, grants static Thaumcraft state, runs the exporter, and waits for the controller's explicit
 `complete` state. It then invokes processing automatically.
 
@@ -122,20 +122,20 @@ and processing must write `process-result.json`.
 
 ## Verify and release
 
-Processing validates the combined tooltip schema, all ten special-data categories, every goods/ore-dictionary/icon
+Processing validates the combined tooltip schema, required special-data categories, every goods/ore-dictionary/icon
 reference, the browser retention policy, deterministic format-7 pack bytes, hashes, shard limits, and sprite samples. The
 sidecar digest participates in the generated revision, but the raw sidecar is not copied into the browser pack: its
 records are already present in the shared special shards. Verify a generated pack explicitly when diagnosing a run:
 
 ```sh
 npm run verify-pack -- \
-  --pack .export-work/2.9.0-beta-2-direct/pack \
-  --atlas .export-work/2.9.0-beta-2-direct/processed/atlas.webp \
-  --data .export-work/2.9.0-beta-2-direct/processed/data.bin \
-  --layout .export-work/2.9.0-beta-2-direct/shared-layout.json
+  --pack .export-work/2.9.0-direct/pack \
+  --atlas .export-work/2.9.0-direct/processed/atlas.webp \
+  --data .export-work/2.9.0-direct/processed/data.bin \
+  --layout .export-work/2.9.0-direct/shared-layout.json
 ```
 
-Format-6 logical catalog, recipe, and special descriptors reconstruct from record-page segments; only record pages
+Format-7 logical catalog, recipe, and special descriptors reconstruct from record-page segments; only record pages
 and icon sheets are physical assets. A local build's physical objects are verified from its `assets/sha256/` directory. Add
 `--special-data <browser-nei-special.json>` with `--data <processed-data.bin>` when you also want the verifier to check the recorded
 normalized input digest, including repaired service icons and generated ore aliases.
@@ -147,10 +147,10 @@ their local `assets/sha256` store; published dataset directories use the manifes
 
 ```sh
 npm run export:process -- \
-  --session .export-work/2.9.0-beta-3-direct/export-session.json \
-  --work-dir .export-work/2.9.0-beta-3-direct \
+  --session .export-work/2.9.1-direct/export-session.json \
+  --work-dir .export-work/2.9.1-direct \
   --layout tools/pack-builder/layouts/2.9.0.json \
-  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-v7-r<revision>
+  --reuse-packs public/data/2.9.0-v7-ra1cc5062aef3
 ```
 
 Processing append-only extends the supplied published layout with the processed records and writes
@@ -169,7 +169,7 @@ Stage the immutable format-7 manifest and its physical objects first:
 
 ```sh
 npm run export:publish -- \
-  --pack .export-work/2.9.0-beta-2-direct/pack \
+  --pack .export-work/2.9.0-direct/pack \
   --mode stage
 ```
 
@@ -187,16 +187,14 @@ Only after that succeeds, activate the already staged bytes:
 
 ```sh
 npm run export:publish -- \
-  --pack .export-work/2.9.0-beta-2-direct/pack \
+  --pack .export-work/2.9.0-direct/pack \
   --mode activate \
   --rollout-epoch <new-positive-epoch>
 ```
 
-Use a rollout epoch greater than the current `versions-v7.json` epoch (RC1 uses 2; 2.9.0 final currently uses 4). It targets the
+Use a rollout epoch greater than the current `versions-v7.json` epoch. It targets the
 activated dataset once for returning users; subsequent deliberate version choices persist.
-Run `npm run quality` before committing the index change. The 2.9.0 beta
-releases and RC1 use the persistent shared layout; the 2.8.0 pack remains as a small
-historical/benchmark dataset.
+Run `npm run quality` before committing the index change. The 2.9.x packs use the persistent shared layout. The original 2.8.0 pack remains supported.
 
 Staging and activation garbage-collect global SHA objects not referenced by
 any published format-7 manifest or registered companion, so replaced or abandoned builds do not remain

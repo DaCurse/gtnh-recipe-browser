@@ -392,7 +392,7 @@ describe('NEI special sidecar contract', () => {
       .join('\n');
     expect(javaSource).toContain('Map<String, Object> SOURCE_VERSIONS');
     expect(javaSource).toContain(
-      'versions.put("gtnhVersion", System.getProperty("nesql.special.gtnhVersion", "2.9.0-beta-2"))',
+      'versions.put("gtnhVersion", System.getProperty("nesql.special.gtnhVersion"))',
     );
     expect(javaSource).toContain('versions.put("exporter", exporter)');
     expect(javaSource).toContain('versions.put("overlay", overlay)');

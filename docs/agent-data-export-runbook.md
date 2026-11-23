@@ -21,17 +21,7 @@ that must remain true as new GTNH profiles are added.
 Each profile pins the official GTNH archive URL, size, SHA-256, and version. A future profile must be independently
 verified before it is added; an existing profile must never be silently retargeted.
 
-The maintained exporter overlay and processor patches are applied only to disposable copies. The 2.9.0-beta-2
-runtime pins are:
-
-- CropsNH 2.0.91
-- GT5-Unofficial 5.09.54.20
-- BloodMagic 1.9.4
-- EnhancedLootBags 1.3.4
-- VendingMachine 0.4.95
-- NEI Custom Diagram 1.8.30
-- Roguelike Dungeons 1.6.6-GTNH
-- Twilight Forest 2.7.36
+Apply the exporter overlay and processor patches only to disposable copies. The supported direct-export profiles and their runtime mod pins live in [direct-export.ts](../tools/data-export/direct-export.ts).
 
 For GregTech ore pages, the source of truth is the embedded GTNEIOrePlugin in
 GT5-Unofficial, not an old standalone checkout. Its four-layer vein model,
@@ -110,9 +100,9 @@ published layout with `--existing-layout`:
 
 ```sh
 npm run shared-layout -- \
-  --data <beta-2-processed-data.bin> --data <beta-3-processed-data.bin> \
-  --special-data <beta-2-browser-nei-special.json> \
-  --special-data <beta-3-browser-nei-special.json> \
+  --data <older-processed-data.bin> --data <newer-processed-data.bin> \
+  --special-data <older-browser-nei-special.json> \
+  --special-data <newer-browser-nei-special.json> \
   --output .export-work/shared-layout.json
 ```
 
@@ -132,10 +122,10 @@ resolved list is passed to both deterministic builds, and only complete record p
 
 ```sh
 npm run export:process -- \
-  --session .export-work/2.9.0-beta-3-direct/export-session.json \
-  --work-dir .export-work/2.9.0-beta-3-direct \
+  --session .export-work/2.9.1-direct/export-session.json \
+  --work-dir .export-work/2.9.1-direct \
   --layout tools/pack-builder/layouts/2.9.0.json \
-  --reuse-packs .export-work/2.9.0-beta-2-direct/pack,public/data/2.9.0-beta-2-v7-r<revision>
+  --reuse-packs public/data/2.9.0-v7-ra1cc5062aef3
 ```
 
 Do not include the output directory in its own reuse list. Reuse preserves page-level physical bytes while each
@@ -146,14 +136,13 @@ The analysis command compares actual packs at record level and evaluates both pe
 record-aware CDC simulations:
 
 ```sh
-npm run analyze:pack-reuse -- --left <beta-2-pack> --right <beta-3-pack> \
-  --json .export-work/beta2-beta3-reuse.json \
-  --markdown .export-work/beta2-beta3-reuse.md
+npm run analyze:pack-reuse -- --left <older-pack> --right <newer-pack> \
+  --json .export-work/pack-reuse.json \
+  --markdown .export-work/pack-reuse.md
 ```
 
 Use its object counts and incremental-byte results to choose targets. CDC boundaries must remain between complete
-records, but independently computed CDC layouts do not preserve a stable logical shard map across datasets; the
-beta2/beta3 measurements therefore favor the persistent trie. See [`architecture.md`](architecture.md) for the persistent-layout invariants.
+records, but independently computed CDC layouts do not preserve a stable logical shard map across datasets; the persistent trie preserves that map. See [`architecture.md`](architecture.md) for the persistent-layout invariants.
 Compare intrinsic item identity separately from generated search/relation metadata;
 numeric NEI indexes and tooltip changes are not changes to item identity.
 
@@ -163,10 +152,9 @@ and semantic-version migration so returning clients reach v7 without fetching re
 Do not pass v6 packs as reuse inputs to the v7 builder. First successful v7 bootstrap load migrates obsolete same-version cache
 rows using the generic cache marker; only their unreferenced blobs are pruning candidates.
 
-Run `npm run analyze:storage -- <beta-2-pack> <beta-3-pack>` for bootstrap physical bytes/pages, detail
+Run `npm run analyze:storage -- <older-pack> <newer-pack>` for bootstrap physical bytes/pages, detail
 fan-out, unique storage including manifests, incremental installation bytes, and object counts.
-Acceptance requires beta-3 bootstrap <=10 MiB/16 pages, p95 detail lookup <=4 physical pages,
-beta-pair total storage <=82,370,877 bytes, and beta-3 incremental installation <=12,509,650 bytes.
+Compare these measures against the previous release to catch regressions.
 Profile cold/warm loads on a mobile-sized viewport and verify no lazy pages before selection and no
 dataset-asset network requests on warm reload. Warm reload must read each bootstrap page at most once.
 
@@ -179,5 +167,3 @@ dataset. Existing global objects are accepted only when their bytes match the re
 one revision per GTNH version and retains the 2.8.0 benchmark. After staging or activation, the publisher removes
 global objects that are not referenced by any published v7 manifest or registered companion. Do not call a revision released until the
 deployed-origin fetch succeeds.
-
-The retired interactive export procedure is intentionally documented only as history in Git.

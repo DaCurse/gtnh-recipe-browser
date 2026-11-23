@@ -1,7 +1,11 @@
 #!/usr/bin/env node
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { orchestrateDirectExport, type DirectExportOptions } from './direct-export';
+import {
+  getDirectExportProfile,
+  orchestrateDirectExport,
+  type DirectExportOptions,
+} from './direct-export';
 
 interface CliOptions extends DirectExportOptions {
   help: boolean;
@@ -15,7 +19,7 @@ function usage(): string {
     '  npm run export:direct -- [options]',
     '',
     'Profile/cache/workspace:',
-    '  --version <version>       Reviewed profile (default: 2.9.0-beta-2)',
+    `  --version <version>       Reviewed profile (default: ${getDirectExportProfile().version})`,
     '  --cache-dir <directory>   Archive/runtime/status cache root',
     '  --archive <file>          Verify and use a local archive instead of downloading',
     '  --work-dir <directory>    Fresh disposable export workspace',

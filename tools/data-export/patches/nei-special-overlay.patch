@@ -108,7 +108,7 @@ new file mode 100644
 +        Map<String, Object> overlay = new LinkedHashMap<>();
 +        overlay.put("version", "nei-special-v1");
 +        Map<String, Object> versions = new LinkedHashMap<>();
-+        versions.put("gtnhVersion", System.getProperty("nesql.special.gtnhVersion", "2.9.0-beta-2"));
++        versions.put("gtnhVersion", System.getProperty("nesql.special.gtnhVersion"));
 +        versions.put("exporter", exporter);
 +        versions.put("overlay", overlay);
 +        versions.put("mods", mods);

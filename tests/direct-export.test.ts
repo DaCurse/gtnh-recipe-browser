@@ -129,33 +129,11 @@ void publicTypeCoverage;
 
 describe('direct export orchestration', () => {
   it('pins the reviewed current client profile', () => {
-    expect(getDirectExportProfile('2.9.0-beta-2').version).toBe('2.9.0-beta-2');
-    expect(DIRECT_EXPORT_PROFILES['2.9.0-beta-2']).toMatchObject({
-      clientUrl:
-        'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-2_Java_17-25.zip',
-      bytes: 680333339,
-      sha256: 'adb853b49e5e17cfe595a8c63c85e2f230c2d03d8aed0ac42bc83c475a1bcbee',
-    });
-    expect(getDirectExportProfile('2.9.0-RC-1')).toMatchObject({
-      bytes: 727184781,
-      sha256: 'a665e7cfdfa79cd260a7c60816658a75a3c58eaacf9268478ac07e3413241368',
-      runtimeMods: expect.arrayContaining([
-        expect.objectContaining({ modId: 'gregtech', version: '5.09.54.183' }),
-        expect.objectContaining({ modId: 'cropsnh', version: '2.0.129' }),
-        expect.objectContaining({ modId: 'enhancedlootbags', version: '1.3.5' }),
-        expect.objectContaining({ modId: 'neicustomdiagram', version: '1.8.35' }),
-        expect.objectContaining({ modId: 'TwilightForest', version: '2.7.42' }),
-      ]),
-    });
-    expect(getDirectExportProfile('2.9.0-beta-3')).toMatchObject({
-      clientUrl:
-        'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-beta-3_Java_17-26.zip',
-      bytes: 719551573,
-      sha256: 'f814cca68c7d4be529ce1247c5dcc9d665a65e7136a885b69f52175a4e0c8aed',
-      runtimeMods: expect.arrayContaining([
-        expect.objectContaining({ modId: 'gregtech', version: '5.09.54.133' }),
-        expect.objectContaining({ modId: 'cropsnh', version: '2.0.114' }),
-      ]),
+    expect(getDirectExportProfile()).toEqual(DIRECT_EXPORT_PROFILES['2.9.1']);
+    expect(Object.keys(DIRECT_EXPORT_PROFILES).sort()).toEqual(['2.9.0', '2.9.0-RC-2', '2.9.1']);
+    expect(getDirectExportProfile('2.9.0')).toMatchObject({
+      bytes: 747848389,
+      sha256: '6d0ebe7e6be18fb74b4fc920916cc5710e142a3f885072d324da05244d398b16',
     });
   });
 
