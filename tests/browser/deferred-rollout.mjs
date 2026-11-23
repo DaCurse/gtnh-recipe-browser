@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 const [appUrl, previousId, targetId, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-deferred-rollout.mjs <app-url> <previous-id> <target-id> <playwright-module>',
+    'Usage: node tests/browser/deferred-rollout.mjs <app-url> <previous-id> <target-id> <playwright-module>',
   );
 const { chromium } = await import(playwrightModule);
 const index = await fetch(new URL('versions-v7.json', appUrl)).then((response) => response.json());

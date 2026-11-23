@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 /* global getComputedStyle */
 const [base, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule)
-  throw new Error('Usage: node tools/test-tooltip-spacing.mjs <app-url> <playwright-module>');
+  throw new Error('Usage: node tests/browser/tooltip-spacing.mjs <app-url> <playwright-module>');
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch({ headless: true });
 try {

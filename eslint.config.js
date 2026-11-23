@@ -26,7 +26,7 @@ export default defineConfig(
     },
   },
   {
-    files: ['tools/**/*.{ts,mjs}', 'tests/**/*.ts', '*.{ts,js}'],
+    files: ['tools/**/*.{ts,mjs}', 'tests/**/*.{ts,mjs}', '*.{ts,js}'],
     languageOptions: {
       globals: globals.node,
     },

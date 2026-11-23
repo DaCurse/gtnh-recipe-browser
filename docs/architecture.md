@@ -237,10 +237,10 @@ bootstrap is unavailable, startup falls back to the usable active cache without 
 rollout, so it can retry on a later visit. Subsequent deliberate version choices acknowledge the current
 policy and are not overridden repeatedly.
 
-`test-startup-rollout.mjs` holds the network index until the old cached page is ready, then verifies the
-same-visit automatic switch and later choice persistence. `test-deferred-rollout.mjs` covers target
+`tests/browser/startup-rollout.mjs` holds the network index until the old cached page is ready, then verifies the
+same-visit automatic switch and later choice persistence. `tests/browser/deferred-rollout.mjs` covers target
 failure and manual choice during the held request. These synthetic index-routing checks block service
-workers; `test-cached-startup.mjs` separately exercises the production service worker and offline cache.
+workers; `tests/browser/cached-startup.mjs` separately exercises the production service worker and offline cache.
 
 ## Recipe chunk loading
 
@@ -269,7 +269,7 @@ Results stream into bounded pages of 20 cards, with an optional machine filter.
 The feature state cancels superseded queries and suppresses stale progress. A completed candidate set
 can answer stricter constraints synchronously in memory; removing a constraint reloads through the
 normal shared/cache-aware facade when the previous candidate set cannot prove completeness.
-No additional global index or dataset format change is required. `test-recipe-finder.mjs` compares
+No additional global index or dataset format change is required. `tests/browser/recipe-finder.mjs` compares
 real-data subsets against the existing item browser export and checks navigation, variants, mobile
 keyboard handling, cached refinement, and clearing a held network request.
 

@@ -4,7 +4,7 @@ import { mkdir } from 'node:fs/promises';
 const [base, playwrightModule, screenshots] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-mc-controls.mjs <app-url> <playwright-module> [screenshots]',
+    'Usage: node tests/browser/mc-controls.mjs <app-url> <playwright-module> [screenshots]',
   );
 const { chromium } = await import(playwrightModule);
 if (screenshots) await mkdir(screenshots, { recursive: true });

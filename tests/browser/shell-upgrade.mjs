@@ -7,7 +7,7 @@ import assert from 'node:assert/strict';
 const [oldDirectory, newDirectory, playwrightModule, workerOnly] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-shell-upgrade.mjs <old-dist> <new-dist> <playwright-module>',
+    'Usage: node tests/browser/shell-upgrade.mjs <old-dist> <new-dist> <playwright-module>',
   );
 const { chromium } = await import(playwrightModule);
 const oldRoot = resolve(oldDirectory);

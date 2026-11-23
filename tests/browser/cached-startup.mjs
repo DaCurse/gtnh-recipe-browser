@@ -4,7 +4,7 @@ import { performance } from 'node:perf_hooks';
 
 const [appUrl, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule)
-  throw new Error('Usage: node tools/test-cached-startup.mjs <app-url> <playwright-module>');
+  throw new Error('Usage: node tests/browser/cached-startup.mjs <app-url> <playwright-module>');
 const indexUrl = new URL('versions-v7.json', appUrl);
 const index = await fetch(indexUrl).then((response) => response.json());
 const version =

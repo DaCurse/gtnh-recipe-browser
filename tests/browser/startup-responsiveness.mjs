@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const [base, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-startup-responsiveness.mjs <app-url> <playwright-module>',
+    'Usage: node tests/browser/startup-responsiveness.mjs <app-url> <playwright-module>',
   );
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch();

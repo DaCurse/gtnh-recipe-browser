@@ -4,7 +4,7 @@ import { mkdir } from 'node:fs/promises';
 const [base, playwrightModule, screenshots] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-landing-loading.mjs <app-url> <playwright-module> [screenshots]',
+    'Usage: node tests/browser/landing-loading.mjs <app-url> <playwright-module> [screenshots]',
   );
 const { chromium } = await import(playwrightModule);
 const versionsUrl = new URL('versions-v7.json', base);

@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto';
 const baseUrl = process.argv[2];
 if (!baseUrl) {
   throw new Error(
-    'Usage: node tools/deployment-smoke.mjs <deployed-base-url> ' +
+    'Usage: node tests/deployment/deployment-smoke.mjs <deployed-base-url> ' +
       '[--manifest <relative-manifest-url>] [--all-assets] [--require-special]',
   );
 }

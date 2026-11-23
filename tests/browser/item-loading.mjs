@@ -4,7 +4,7 @@ import { mkdir } from 'node:fs/promises';
 const [appUrl, playwrightModule, screenshotDirectory] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-item-loading.mjs <app-url> <playwright-module> [screenshot-directory]',
+    'Usage: node tests/browser/item-loading.mjs <app-url> <playwright-module> [screenshot-directory]',
   );
 const indexUrl = new URL('versions-v7.json', appUrl);
 const index = await fetch(indexUrl).then((response) => response.json());

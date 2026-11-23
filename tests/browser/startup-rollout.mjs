@@ -4,7 +4,7 @@ import assert from 'node:assert/strict';
 const [appUrl, previousId, targetId, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-startup-rollout.mjs <app-url> <previous-id> <target-id> <playwright-module>',
+    'Usage: node tests/browser/startup-rollout.mjs <app-url> <previous-id> <target-id> <playwright-module>',
   );
 const { chromium } = await import(playwrightModule);
 const index = await fetch(new URL('versions-v7.json', appUrl)).then((response) => response.json());
@@ -15,7 +15,7 @@ const browser = await chromium.launch({ headless: true });
 try {
   // The old-index response below must be deterministic: service-worker requests
   // bypass context routes. Real service-worker/offline behavior is covered by
-  // test-cached-startup.mjs against the deployed index.
+  // cached-startup.mjs against the deployed index.
   const context = await browser.newContext({
     serviceWorkers: 'block',
     viewport: { width: 390, height: 844 },

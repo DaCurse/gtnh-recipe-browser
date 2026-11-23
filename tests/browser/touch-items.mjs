@@ -5,7 +5,7 @@ import { gunzipSync } from 'node:zlib';
 const [base, playwrightModule, screenshots] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-touch-items.mjs <app-url> <playwright-module> [screenshots]',
+    'Usage: node tests/browser/touch-items.mjs <app-url> <playwright-module> [screenshots]',
   );
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch();

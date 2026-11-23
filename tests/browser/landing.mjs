@@ -3,7 +3,9 @@ import { mkdir } from 'node:fs/promises';
 /* global getComputedStyle, document, innerWidth */
 const [base, playwrightModule, screenshots] = process.argv.slice(2);
 if (!playwrightModule)
-  throw new Error('Usage: node tools/test-landing.mjs <app-url> <playwright-module> [screenshots]');
+  throw new Error(
+    'Usage: node tests/browser/landing.mjs <app-url> <playwright-module> [screenshots]',
+  );
 const { chromium } = await import(playwrightModule);
 if (screenshots) await mkdir(screenshots, { recursive: true });
 const browser = await chromium.launch({ headless: true });

@@ -5,7 +5,7 @@ import { gunzipSync } from 'node:zlib';
 const [base, playwrightModule, screenshots] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-ore-diagrams.mjs <app-url> <playwright-module> [screenshots]',
+    'Usage: node tests/browser/ore-diagrams.mjs <app-url> <playwright-module> [screenshots]',
   );
 const registry = JSON.parse(await readFile('src/lib/generated/ore-diagrams.json', 'utf8'));
 const versions = JSON.parse(await readFile('public/versions-v7.json', 'utf8'));

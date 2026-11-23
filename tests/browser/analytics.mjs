@@ -4,7 +4,7 @@ import { gunzipSync } from 'node:zlib';
 
 const [appUrl, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule)
-  throw new Error('Usage: node tools/test-analytics.mjs <app-url> <playwright-module>');
+  throw new Error('Usage: node tests/browser/analytics.mjs <app-url> <playwright-module>');
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch({ headless: true });
 const production = 'https://dacurse.github.io/gtnh-recipe-browser';

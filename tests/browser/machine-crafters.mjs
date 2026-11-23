@@ -5,7 +5,7 @@ const [base, playwrightModule] = process.argv.slice(2);
 const versions = JSON.parse(await readFile('public/versions-v7.json', 'utf8'));
 const datasetId = versions.versions.find((version) => version.gtnhVersion === '2.9.0').datasetId;
 if (!playwrightModule)
-  throw new Error('Usage: node tools/test-machine-crafters.mjs <app-url> <playwright-module>');
+  throw new Error('Usage: node tests/browser/machine-crafters.mjs <app-url> <playwright-module>');
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch();
 try {

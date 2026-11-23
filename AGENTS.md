@@ -4,7 +4,7 @@
 
 - `src/` contains the Svelte 5 + TypeScript application. Reusable UI and data modules live in `src/lib/`; the search worker is in `src/workers/`.
 - `tools/pack-builder/` decodes ShadowTheAge format-v5 exports and creates deterministic MessagePack recipe shards and WebP sprite sheets.
-- `tests/` contains Vitest suites. Immutable upstream compatibility inputs and provenance are under `tests/fixtures/`.
+- `tests/` contains Vitest suites, browser interaction checks in `tests/browser/`, and release smoke checks in `tests/deployment/`. Immutable upstream compatibility inputs and provenance are under `tests/fixtures/`.
 - `public/` contains the PWA assets, version index, and generated real-data pack served by Vite.
 - `assets/source/` preserves supplied source artwork. Use optimized copies from `public/assets/` in the app.
 - `gtnh@ShadowTheAge/` is a read-only upstream submodule. Do not edit or commit changes inside it.

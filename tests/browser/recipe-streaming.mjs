@@ -4,7 +4,7 @@ import { readFile, mkdir } from 'node:fs/promises';
 const [appUrl, playwrightModule, screenshotDirectory] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-recipe-streaming.mjs <app-url> <playwright-module> [screenshots]',
+    'Usage: node tests/browser/recipe-streaming.mjs <app-url> <playwright-module> [screenshots]',
   );
 const { chromium } = await import(playwrightModule);
 const index = await fetch(new URL('versions-v7.json', appUrl)).then((r) => r.json());

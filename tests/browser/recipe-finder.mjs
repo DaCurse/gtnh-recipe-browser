@@ -4,7 +4,7 @@ import { mkdir, readFile } from 'node:fs/promises';
 const [appUrl, playwrightModule, screenshotDirectory] = process.argv.slice(2);
 if (!playwrightModule)
   throw new Error(
-    'Usage: node tools/test-recipe-finder.mjs <app-url> <playwright-module> [screenshots]',
+    'Usage: node tests/browser/recipe-finder.mjs <app-url> <playwright-module> [screenshots]',
   );
 const { chromium } = await import(playwrightModule);
 const browser = await chromium.launch({ headless: true });

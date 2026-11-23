@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 /* global window, HTMLImageElement, MutationObserver, Element, innerWidth, document */
 const [base, modulePath] = process.argv.slice(2);
 if (!modulePath)
-  throw new Error('Usage: node tools/test-icon-stability.mjs <app-url> <playwright-module>');
+  throw new Error('Usage: node tests/browser/icon-stability.mjs <app-url> <playwright-module>');
 const { chromium } = await import(modulePath);
 const browser = await chromium.launch();
 try {

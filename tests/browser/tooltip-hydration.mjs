@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 /* global document, innerWidth, innerHeight, window, MutationObserver */
 const [base, playwrightModule] = process.argv.slice(2);
 if (!playwrightModule)
-  throw new Error('Usage: node tools/test-tooltip-hydration.mjs <app-url> <playwright-module>');
+  throw new Error('Usage: node tests/browser/tooltip-hydration.mjs <app-url> <playwright-module>');
 const { chromium } = await import(playwrightModule);
 const versionsUrl = new URL('versions-v7.json', base);
 const versions = await fetch(versionsUrl).then((response) => response.json());
