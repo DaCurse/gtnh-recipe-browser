@@ -4,6 +4,7 @@ import type { PostHog } from 'posthog-js';
 const PROJECT_TOKEN = 'phc_kkQg6nF27kwnPJFcKPhx46dRanV7zeWdnnAQCoRZQ5HX';
 const EVENT_NAMES = [
   '$pageview',
+  'pwa_installed',
   'dataset_loaded',
   'dataset_load_failed',
   'recipe_search_completed',
@@ -42,6 +43,7 @@ type Properties = Record<string, string | number | boolean>;
 let client: Pick<PostHog, 'capture'> | undefined;
 let scheduled = false;
 let failed = false;
+let watchingInstalls = false;
 const pending: Array<{ name: EventName; properties: Properties }> = [];
 
 export function analyticsSearch(value: string): string {
@@ -76,6 +78,17 @@ function enabled(): boolean {
     typeof navigator !== 'undefined' &&
     navigator.doNotTrack !== '1' &&
     !(navigator as Navigator & { globalPrivacyControl?: boolean }).globalPrivacyControl
+  );
+}
+
+function inInstalledApp(): boolean {
+  return (
+    (navigator as Navigator & { standalone?: boolean }).standalone === true ||
+    (typeof window !== 'undefined' &&
+      (window.matchMedia?.(
+        '(display-mode: standalone), (display-mode: minimal-ui), (display-mode: window-controls-overlay)',
+      ).matches ??
+        false))
   );
 }
 
@@ -130,6 +143,10 @@ function sanitizeUrlProperties(properties: Record<string, unknown>) {
 export function initializeAnalytics() {
   if (!enabled() || scheduled || failed) return;
   scheduled = true;
+  if (!watchingInstalls && typeof window !== 'undefined') {
+    watchingInstalls = true;
+    window.addEventListener('appinstalled', () => trackEvent('pwa_installed'));
+  }
   const start = () => {
     if (!enabled()) {
       pending.length = 0;
@@ -193,7 +210,10 @@ export function trackEvent(name: EventName, properties: Properties = {}) {
       ([, value]) => typeof value !== 'number' || Number.isFinite(value),
     ),
   );
-  const event = { name, properties: { ...clean, $current_url: analyticsUrl(location.href) } };
+  const event = {
+    name,
+    properties: { ...clean, is_pwa: inInstalledApp(), $current_url: analyticsUrl(location.href) },
+  };
   if (client) send(event.name, event.properties);
   else {
     if (pending.length >= MAX_PENDING_EVENTS) pending.shift();

@@ -25,6 +25,34 @@ afterEach(() => {
 });
 
 describe('focused analytics', () => {
+  it('captures confirmed PWA installs and records display mode when each event occurs', async () => {
+    const browser = new EventTarget();
+    let standalone = false;
+    const matchMedia = vi.fn((query: string) => ({
+      matches: standalone && query.includes('(display-mode: standalone)'),
+    }));
+    vi.stubGlobal('window', Object.assign(browser, { matchMedia }));
+    const { initializeAnalytics, trackEvent } = await import('../src/lib/analytics');
+    initializeAnalytics();
+    initializeAnalytics();
+    browser.dispatchEvent(new Event('appinstalled'));
+    standalone = true;
+    trackEvent('item_viewed');
+    standalone = false;
+    vi.stubGlobal('navigator', { standalone: true });
+    trackEvent('quest_viewed');
+    await vi.runAllTimersAsync();
+    await vi.dynamicImportSettled();
+    expect(sdk.capture.mock.calls).toEqual([
+      ['pwa_installed', expect.objectContaining({ is_pwa: false })],
+      ['item_viewed', expect.objectContaining({ is_pwa: true })],
+      ['quest_viewed', expect.objectContaining({ is_pwa: true })],
+    ]);
+    vi.stubGlobal('navigator', { doNotTrack: '1' });
+    browser.dispatchEvent(new Event('appinstalled'));
+    expect(sdk.capture).toHaveBeenCalledTimes(3);
+  });
+
   it.each(['catalog_search', 'quest_search'] as const)(
     'debounces %s edits, waits for results, deduplicates and cancels on unmount',
     async (event) => {
@@ -136,6 +164,7 @@ describe('focused analytics', () => {
     await vi.runAllTimersAsync();
     await vi.dynamicImportSettled();
     expect(sdk.capture).toHaveBeenCalledWith('$pageview', {
+      is_pwa: false,
       $current_url: 'https://dacurse.github.io/gtnh-recipe-browser/',
     });
   });
@@ -149,6 +178,7 @@ describe('focused analytics', () => {
     expect(sdk.capture).toHaveBeenCalledWith('chain_search_completed', {
       duration_ms: 123,
       route_count: 8,
+      is_pwa: false,
       $current_url: 'https://dacurse.github.io/gtnh-recipe-browser/?page=finder&finder-mode=chain',
     });
     const config = sdk.init.mock.calls[0]![1];
