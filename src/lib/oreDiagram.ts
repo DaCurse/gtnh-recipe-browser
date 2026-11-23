@@ -16,6 +16,7 @@ export interface OreScene {
   paths: Array<{ a: OrePoint; b: OrePoint; arrow: boolean }>;
   groups: Array<{ pos: OrePoint; components: OreComponent[]; notes: string[] }>;
   labels: Array<{ pos: OrePoint; id: string; notes: string[] }>;
+  text?: Array<{ pos: OrePoint; text: string; colour: number; small: boolean; shadow: boolean }>;
 }
 interface Descriptor {
   sha256: string;
@@ -107,6 +108,10 @@ export function oreSceneBounds(scene: OreScene) {
   const points = [
     ...scene.slots.map((slot) => [slot.pos[0] + slot.size / 2, slot.pos[1] + slot.size / 2]),
     ...scene.labels.map((label) => [label.pos[0] + 9, label.pos[1] + 9]),
+    ...(scene.text ?? []).map(({ pos, text, small }) => [
+      pos[0] + text.length * (small ? 3 : 6),
+      pos[1] + (small ? 5 : 9),
+    ]),
     ...scene.paths.flatMap((path) => [path.a, path.b]),
   ];
   return {

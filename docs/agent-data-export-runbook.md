@@ -78,6 +78,11 @@ static Thaumcraft research/aspects required by the export, clears warp, runs the
 image archive, and sidecar, then exits the JVM itself. Require distinct atomic launcher/controller/orchestrator
 status files and an explicit controller `complete` phase.
 
+Pass `--capture-nei-handlers` for the native recipe and GT material diagram
+collectors. The same client retains their items and fluids and the orchestrator
+hands the snapshot to the processor. See [the NEI checklist](nei-tab-checklist.md)
+for the directional lookups and rendering checks.
+
 The processor's format-v5 `singleblocks` array contains only one display
 representative per tier. `export:process` also recovers the full catalyst list
 from the original database, passes `machine-crafters.json` into both builds and

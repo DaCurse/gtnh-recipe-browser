@@ -1,14 +1,23 @@
 package com.github.dcysteine.nesql.exporter.main;
 
+import codechicken.nei.ItemList;
+import codechicken.nei.recipe.IRecipeHandler;
 import com.google.gson.*;
 import java.lang.reflect.*;
 import java.util.*;
+import java.util.function.Function;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.fluids.FluidRegistry;
 import net.minecraftforge.fluids.FluidStack;
 
 /** Snapshot the actual NEI Custom Diagram generator, including optional layouts. */
 public final class BrowserOreDiagramExporter {
+
+  @FunctionalInterface
+  private interface ComponentId {
+    String of(Object component) throws Exception;
+  }
 
   private static Object call(Object value, String name) throws Exception {
     Method method = value.getClass().getMethod(name);
@@ -93,9 +102,9 @@ public final class BrowserOreDiagramExporter {
     return lines;
   }
 
-  private static JsonObject display(Object value) throws Exception {
+  private static JsonObject display(Object value, ComponentId identity) throws Exception {
     JsonObject result = new JsonObject();
-    result.addProperty("id", identity(call(value, "component")));
+    result.addProperty("id", identity.of(call(value, "component")));
     Optional<?> amount = (Optional<?>) call(value, "stackSize");
     if (amount.isPresent()) result.addProperty("amount", (Number) amount.get());
     Optional<?> info = (Optional<?>) call(value, "additionalInfo");
@@ -104,7 +113,7 @@ public final class BrowserOreDiagramExporter {
     return result;
   }
 
-  private static JsonObject scene(Object diagram) throws Exception {
+  private static JsonObject scene(Object diagram, ComponentId identity) throws Exception {
     Object layout = field(diagram, "layout");
     JsonObject result = new JsonObject();
     List<JsonObject> slots = new ArrayList<>(),
@@ -149,7 +158,7 @@ public final class BrowserOreDiagramExporter {
         group.add("pos", point(call(value, "position")));
         JsonArray components = new JsonArray();
         for (Object component : (Iterable<?>) field(value, "components"))
-          components.add(display(component));
+          components.add(display(component, identity));
         group.add("components", components);
         group.add("notes", tooltip(field(value, "slotTooltip")));
         groups.add(group);
@@ -160,20 +169,36 @@ public final class BrowserOreDiagramExporter {
         ) throw new IllegalStateException("Unknown diagram label " + drawable.getClass());
         JsonObject label = new JsonObject();
         label.add("pos", point(call(value, "position")));
-        label.addProperty("id", identity(call(drawable, "component")));
+        label.addProperty("id", identity.of(call(drawable, "component")));
         label.add("notes", tooltip(call(value, "tooltip")));
         labels.add(label);
       } else if (!value.getClass().getName().endsWith("AllDiagramsButton")) {
         throw new IllegalStateException("Unknown diagram interaction " + value.getClass());
       }
     }
-    if (((Collection<?>) call(layout, "labels")).size() != 0) throw new IllegalStateException(
-      "Unhandled static labels"
-    );
+    List<JsonObject> text = new ArrayList<>();
+    for (Object drawable : (Iterable<?>) call(layout, "labels")) {
+      JsonObject label = new JsonObject();
+      label.add("pos", point(call(drawable, "position")));
+      if (drawable.getClass().getName().endsWith("ComponentLabel")) {
+        label.addProperty("id", identity.of(call(drawable, "component")));
+        label.add("notes", new JsonArray());
+        labels.add(label);
+      } else if (drawable.getClass().getName().endsWith("Text")) {
+        label.addProperty("text", (String) call(drawable, "text"));
+        label.addProperty("colour", ((Number) call(drawable, "colour")).intValue() & 0xffffff);
+        label.addProperty("small", (Boolean) call(drawable, "small"));
+        label.addProperty("shadow", (Boolean) call(drawable, "shadow"));
+        text.add(label);
+      } else {
+        throw new IllegalStateException("Unknown static diagram label " + drawable.getClass());
+      }
+    }
     result.add("slots", sorted(slots));
     result.add("paths", sorted(paths));
     result.add("groups", sorted(groups));
     result.add("labels", sorted(labels));
+    if (!text.isEmpty()) result.add("text", sorted(text));
     return result;
   }
 
@@ -197,7 +222,7 @@ public final class BrowserOreDiagramExporter {
     Map<Object, String> ids = new IdentityHashMap<>();
     Map<String, JsonObject> scenes = new TreeMap<>();
     for (Object diagram : (Collection<?>) call(matcher, "all")) {
-      JsonObject value = scene(diagram);
+      JsonObject value = scene(diagram, BrowserOreDiagramExporter::identity);
       String id = hash(value.toString());
       ids.put(diagram, id);
       scenes.put(id, value);
@@ -225,5 +250,120 @@ public final class BrowserOreDiagramExporter {
     result.add("matches", gson.toJsonTree(matches));
     System.err.println("[BrowserOreDiagramExporter] Native scenes=" + scenes.size());
     return result;
+  }
+
+  public static JsonObject exportMaterials(
+    Function<ItemStack, String> retainItem,
+    Function<FluidStack, String> retainFluid
+  ) throws Exception {
+    JsonObject result = new JsonObject();
+    for (String type : new String[] { "Tools", "Parts" }) {
+      String suffix = "material" + type.toLowerCase(Locale.ROOT);
+      Object group = registeredGroup("neicustomdiagram.diagramgroup.gregtech." + suffix);
+      Map<String, ItemStack> items = new LinkedHashMap<>();
+      Map<String, FluidStack> fluids = new LinkedHashMap<>();
+      ComponentId retain = component -> {
+        Object value = call(component, "stack");
+        if (value instanceof ItemStack) {
+          ItemStack stack = (ItemStack) value;
+          String id = retainItem.apply(stack);
+          items.putIfAbsent(id, stack);
+          return id;
+        }
+        if (value instanceof FluidStack) {
+          FluidStack stack = (FluidStack) value;
+          String id = retainFluid.apply(stack);
+          fluids.putIfAbsent(id, stack);
+          return id;
+        }
+        throw new IllegalStateException("Unknown material component " + component.getClass());
+      };
+      Object info = call(group, "info");
+      Map<Object, String> ids = new IdentityHashMap<>();
+      Map<String, JsonObject> scenes = new TreeMap<>();
+      for (Object diagram : (Iterable<?>) call(field(group, "matcher"), "all")) {
+        JsonObject value = scene(diagram, retain);
+        String id = hash(value.toString());
+        ids.put(diagram, id);
+        scenes.put(id, value);
+      }
+      JsonObject captured = new JsonObject();
+      captured.addProperty("label", (String) call(info, "groupName"));
+      captured.addProperty("icon", retain.of(call(info, "icon")));
+      Gson gson = new Gson();
+      captured.add("scenes", gson.toJsonTree(scenes));
+      captured.add("matches", materialMatches(group, ids, items, fluids, retainItem, retainFluid));
+      if (scenes.isEmpty()) throw new IllegalStateException("No material " + type + " diagrams");
+      result.add("gt-material-" + type.toLowerCase(Locale.ROOT), captured);
+    }
+    return result;
+  }
+
+  private static IRecipeHandler registeredGroup(String id) throws ReflectiveOperationException {
+    Class<?> registry = Class.forName("codechicken.nei.recipe.GuiCraftingRecipe");
+    for (String name : new String[] { "craftinghandlers", "serialCraftingHandlers" }) {
+      Field handlers = registry.getDeclaredField(name);
+      handlers.setAccessible(true);
+      for (Object candidate : (Iterable<?>) handlers.get(null)) {
+        IRecipeHandler handler = (IRecipeHandler) candidate;
+        if (id.equals(handler.getHandlerId())) return handler;
+      }
+    }
+    throw new IllegalStateException("NEI did not register diagram group " + id);
+  }
+
+  private static JsonObject materialMatches(
+    Object group,
+    Map<Object, String> ids,
+    Map<String, ItemStack> items,
+    Map<String, FluidStack> fluids,
+    Function<ItemStack, String> retainItem,
+    Function<FluidStack, String> retainFluid
+  ) throws Exception {
+    Class<?> direction = Class.forName(
+      "com.github.dcysteine.neicustomdiagram.api.diagram.interactable.Interactable$RecipeType"
+    );
+    Method match = group
+      .getClass()
+      .getMethod("loadDiagrams", String.class, direction, Object[].class);
+    JsonObject result = new JsonObject();
+    for (String name : new String[] { "CRAFTING", "USAGE" }) {
+      Object type = direction.getField(name).get(null);
+      Map<String, Set<String>> matches = new TreeMap<>();
+      List<ItemStack> candidates = new ArrayList<>(ItemList.items);
+      candidates.addAll(items.values());
+      for (ItemStack stack : candidates) {
+        Set<String> found = matchMaterial(group, match, type, "item", stack, ids);
+        if (!found.isEmpty()) matches.put(retainItem.apply(stack), found);
+      }
+      List<FluidStack> fluidCandidates = new ArrayList<>(fluids.values());
+      FluidRegistry.getRegisteredFluids()
+        .values()
+        .forEach(fluid -> fluidCandidates.add(new FluidStack(fluid, 1000)));
+      for (FluidStack stack : fluidCandidates) {
+        Set<String> found = matchMaterial(group, match, type, "fluid", stack, ids);
+        if (!found.isEmpty()) matches.put(retainFluid.apply(stack), found);
+      }
+      result.add(name, new Gson().toJsonTree(matches));
+    }
+    return result;
+  }
+
+  private static Set<String> matchMaterial(
+    Object group,
+    Method match,
+    Object direction,
+    String kind,
+    Object stack,
+    Map<Object, String> ids
+  ) throws Exception {
+    Object page = match.invoke(group, kind, direction, new Object[] { stack });
+    Set<String> matches = new TreeSet<>();
+    for (Object diagram : (Iterable<?>) field(page, "diagrams")) {
+      String id = ids.get(diagram);
+      if (id == null) throw new IllegalStateException("Unknown matched material diagram");
+      matches.add(id);
+    }
+    return matches;
   }
 }

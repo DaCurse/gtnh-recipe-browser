@@ -1119,6 +1119,7 @@ async function resolveAssetIndex(
   const entries = Object.entries(document.objects).sort(([left], [right]) =>
     left.localeCompare(right),
   );
+  const objectWrites = new Map<string, { size: number; materialized: Promise<string> }>();
   const objectResults = await mapWithConcurrency(entries, concurrency, async ([name, object]) => {
     const hash = normalizeSha1(optionalString(object?.hash));
     const size = optionalNumber(object?.size);
@@ -1132,25 +1133,31 @@ async function resolveAssetIndex(
       source: 'download',
       isNative: false,
     };
-    const cachedObject = await cache.resolve(objectRequest, download);
     const target = join(objectsDirectory, hash.slice(0, 2), hash);
-    await mkdir(dirname(target), { recursive: true });
-    await materializeAsset(cachedObject.path, target, hash, size, `Asset object ${name}`);
+    // Multiple logical names may reference the same immutable object. Windows
+    // can reject concurrent copies once the first has installed a read-only file.
+    let written = objectWrites.get(target);
+    if (!written) {
+      written = {
+        size,
+        materialized: cache.resolve(objectRequest, download).then(async (cached) => {
+          await materializeAsset(cached.path, target, hash, size, `Asset object ${name}`);
+          return cached.path;
+        }),
+      };
+      objectWrites.set(target, written);
+    }
+    if (written.size !== size) throw new Error(`Conflicting sizes for asset object ${hash}`);
+    const cachePath = await written.materialized;
     const materializedPaths = [target];
     if (virtualDirectory) {
       const virtualTarget = safeAssetPath(virtualDirectory, name);
-      await materializeAsset(cachedObject.path, virtualTarget, hash, size, `Virtual asset ${name}`);
+      await materializeAsset(cachePath, virtualTarget, hash, size, `Virtual asset ${name}`);
       materializedPaths.push(virtualTarget);
     }
     if (resourcesDirectory) {
       const resourcesTarget = safeAssetPath(resourcesDirectory, name);
-      await materializeAsset(
-        cachedObject.path,
-        resourcesTarget,
-        hash,
-        size,
-        `Resource asset ${name}`,
-      );
+      await materializeAsset(cachePath, resourcesTarget, hash, size, `Resource asset ${name}`);
       materializedPaths.push(resourcesTarget);
     }
     return {
@@ -1158,7 +1165,7 @@ async function resolveAssetIndex(
       hash,
       size,
       path: target,
-      cachePath: cachedObject.path,
+      cachePath,
       materializedPaths,
     } satisfies RuntimeAssetObject;
   });

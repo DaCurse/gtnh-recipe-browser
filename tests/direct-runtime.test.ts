@@ -83,6 +83,7 @@ describe('direct GTNH runtime resolver', () => {
         map_to_resources: true,
         objects: {
           'minecraft/test': { hash: object.sha1, size: object.size },
+          'minecraft/test-copy': { hash: object.sha1, size: object.size },
         },
       });
       const assetIndexPath = join(root, 'asset-index.json');
@@ -188,9 +189,13 @@ describe('direct GTNH runtime resolver', () => {
         'com.example:native:1:natives-windows-64',
       );
       expect(resolution.assetIndex.objects[0]?.name).toBe('minecraft/test');
+      expect(resolution.assetIndex.objects[1]?.path).toBe(resolution.assetIndex.objects[0]?.path);
       await expect(readFile(resolution.assetIndex.objects[0]!.path, 'utf8')).resolves.toBe('asset');
       await expect(
         readFile(join(resolution.assetIndex.virtualDirectory!, 'minecraft/test'), 'utf8'),
+      ).resolves.toBe('asset');
+      await expect(
+        readFile(join(resolution.assetIndex.virtualDirectory!, 'minecraft/test-copy'), 'utf8'),
       ).resolves.toBe('asset');
       await expect(
         readFile(join(resolution.assetIndex.resourcesDirectory!, 'minecraft/test'), 'utf8'),

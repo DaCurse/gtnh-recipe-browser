@@ -1,7 +1,7 @@
 import type { Ingredient, Recipe } from './types';
 import type { MachineUiProfile, UiTexture, UiWidget } from './machineUi';
 
-// ARI 1.1.6 TemplateThaumHandler + InfusionRecipeHandler + ShapedArcaneRecipeHandler.
+// ARI 1.1.6 TemplateThaumHandler, AlchemyRecipeHandler, InfusionRecipeHandler and ShapedArcaneRecipeHandler.
 // Exporter componentFillOrder is reversed to recover the original component order.
 const componentFillOrder = [
   2, 22, 10, 14, 0, 24, 4, 20, 1, 23, 3, 21, 5, 19, 15, 9, 7, 17, 11, 13, 6, 18, 8, 16, 25, 26, 27,
@@ -27,12 +27,13 @@ export function thaumcraftUiFor(
   recipe: Recipe,
 ): { recipe: Recipe; profile: MachineUiProfile } | undefined {
   const infusion = recipe.type === 'Arcane Infusion';
+  const crucible = recipe.type === 'Crucible';
   const crafting =
     recipe.type === 'Magical Crafting (Shaped)' || recipe.type === 'Magical Crafting (Shapeless)';
   if (
-    recipe.gtnhVersion !== '2.9.0' ||
+    (recipe.gtnhVersion !== '2.9.0' && recipe.gtnhVersion !== '2.9.1') ||
     !recipe.typeId?.includes(':thaumcraft:') ||
-    (!infusion && !crafting)
+    (!infusion && !crucible && !crafting)
   )
     return;
   if (
@@ -40,7 +41,7 @@ export function thaumcraftUiFor(
     recipe.outputs[0]?.kind === 'fluid' ||
     recipe.inputs.some((input) => input.kind === 'fluid') ||
     recipe.layout.itemInputs.columns !== (infusion ? 5 : 3) ||
-    recipe.layout.itemInputs.rows !== (infusion ? 7 : 5)
+    recipe.layout.itemInputs.rows !== (infusion ? 7 : crucible ? 3 : 5)
   )
     return;
   const aspects = recipe.inputs
@@ -55,7 +56,32 @@ export function thaumcraftUiFor(
     positions.push([x - 1, y - 1]);
   };
   const widgets: UiWidget[] = [resultWidget];
-  if (infusion) {
+  if (crucible) {
+    if (items.length > 1 || items.some((item) => item.slot !== 0)) return;
+    if (items[0]) add(items[0], 54, 27);
+    const rows = Math.ceil(aspects.length / 3);
+    for (let row = 0; row < rows; row++) {
+      const columns = Math.min(aspects.length - row * 3, 3);
+      const startX = 34 + (100 - columns * 20) / 2;
+      for (let column = 0; column < columns; column++) {
+        add(aspects[row * 3 + column]!, startX + column * 20, 86 - 10 * rows + row * 20);
+      }
+    }
+    widgets.push(
+      {
+        kind: 'Crucible',
+        pos: [21 * 1.75, 26 * 1.75],
+        size: [52 * 1.75, 47 * 1.75],
+        texture: texture(2, 20, 52, 47),
+      },
+      {
+        kind: 'CrucibleArrow',
+        pos: [40 * 1.75, 18 * 1.75],
+        size: [10 * 1.75, 13 * 1.75],
+        texture: texture(100, 84, 10, 13),
+      },
+    );
+  } else if (infusion) {
     const central = items.find((item) => item.slot === 12);
     const surrounding = items.filter((item) => item.slot !== 12);
     if (!central || surrounding.some((item) => !componentFillOrder.includes(item.slot ?? -1)))
@@ -132,7 +158,7 @@ export function thaumcraftUiFor(
   return {
     recipe: projected,
     profile: {
-      id: infusion ? 'thaumcraft.infusion' : 'thaumcraft.arcane',
+      id: crucible ? 'thaumcraft.alchemy' : infusion ? 'thaumcraft.infusion' : 'thaumcraft.arcane',
       name: recipe.type,
       frontend: 'AspectRecipeIndex 1.1.6',
       size: [166, height],

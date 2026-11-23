@@ -116,7 +116,7 @@ describe('complete machine crafter lists', () => {
       const script = join(directory, 'source.script'),
         output = join(directory, 'crafters.json');
       await writeFile(script, source);
-      execFileSync('python3', [
+      execFileSync(process.platform === 'win32' ? 'python' : 'python3', [
         'tools/data-export/machine-crafters.py',
         '--script',
         script,

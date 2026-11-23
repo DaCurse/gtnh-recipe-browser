@@ -37,6 +37,7 @@ function usage(): string {
     '  --xvfb-run <command>      xvfb-run executable (default: xvfb-run)',
     '  --xvfb-arg <argument>     Additional xvfb-run argument (repeatable)',
     '  --no-xvfb                 Do not wrap Java in xvfb-run',
+    '  --capture-nei-handlers    Retain and import native recipe and diagram pages',
     '  --windowed                Show the Windows export renderer (hidden by default)',
     '  --xms <size>              Initial heap (default: 2G)',
     '  --xmx <size>              Maximum heap (default: 8G)',
@@ -77,6 +78,10 @@ function parseCli(args: string[]): CliOptions {
     }
     if (flag === '--no-xvfb') {
       result.useXvfb = false;
+      continue;
+    }
+    if (flag === '--capture-nei-handlers' || flag === '--capture-botania') {
+      result.captureNeiHandlers = true;
       continue;
     }
     if (flag === '--windowed') {

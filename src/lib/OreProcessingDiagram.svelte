@@ -15,10 +15,12 @@
   import type { SpecialResolver } from './specialData';
   let {
     scene,
+    label = 'Ore processing diagram',
     resolve,
     navigate,
   }: {
     scene: OreScene;
+    label?: string;
     resolve: SpecialResolver;
     navigate: (id: string, view: RecipeView) => void;
   } = $props();
@@ -57,7 +59,7 @@
   }
 </script>
 
-<section class="native-ore-diagram" aria-label="Ore processing diagram">
+<section class="native-ore-diagram" aria-label={label}>
   <div class="diagram-scroll">
     <div
       class="diagram-canvas"
@@ -90,6 +92,16 @@
           </image>
         {/each}
       </svg>
+      {#each scene.text ?? [] as text, index (index)}
+        <span
+          class="diagram-text"
+          class:shadow={text.shadow}
+          style:left={`${text.pos[0] * scale}px`}
+          style:top={`${text.pos[1] * scale}px`}
+          style:color={`#${text.colour.toString(16).padStart(6, '0')}`}
+          style:font-size={`${(text.small ? 5 : 9) * scale}px`}>{text.text}</span
+        >
+      {/each}
       {#each scene.groups as group, index (index)}
         {@const frozen = touch.frozen(`group:${index}`)}
         {@const component =
@@ -194,6 +206,15 @@
 {/if}
 
 <style>
+  .diagram-text {
+    position: absolute;
+    font-family: Minecraft, monospace;
+    line-height: 1;
+    white-space: nowrap;
+  }
+  .diagram-text.shadow {
+    text-shadow: 1px 1px #111;
+  }
   .diagram-scroll {
     max-width: 100%;
     overflow-x: auto;

@@ -1,11 +1,16 @@
 package com.github.dcysteine.nesql.exporter.special;
 
+import codechicken.nei.ItemList;
+import com.github.dcysteine.nesql.exporter.main.BrowserNeiHandlerExporter;
+import com.github.dcysteine.nesql.exporter.main.BrowserOreDiagramExporter;
+import com.google.gson.JsonObject;
 import cpw.mods.fml.common.registry.GameRegistry;
 import java.lang.reflect.Array;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.nio.file.StandardOpenOption;
 import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -95,6 +100,7 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
     resetItemValidation();
     requirePinnedRuntime();
     RuntimeQuestItems.export(sink);
+    captureNeiHandlers(sink);
     registerViewTypes(sink);
 
     category(
@@ -196,6 +202,35 @@ public final class RuntimeSpecialAdapter implements NeiSpecialOverlay.Adapter {
           exportOreProcessing(sink);
         }
       }
+    );
+  }
+
+  private static void captureNeiHandlers(NeiSpecialOverlay.Sink sink) throws Exception {
+    String output = System.getProperty("nesql.botania.snapshot");
+    if (output == null) return;
+    JsonObject snapshot = new JsonObject();
+    snapshot.addProperty("schemaVersion", 1);
+    snapshot.addProperty("gtnhVersion", System.getProperty("nesql.special.gtnhVersion"));
+    int itemCount = ItemList.items.size();
+    if (itemCount == 0) throw new IllegalStateException("NEI item list is not ready for capture");
+    snapshot.addProperty("neiHandlerItemCount", itemCount);
+    snapshot.addProperty("retainedBotaniaStacks", true);
+    snapshot.add(
+      "neiHandlers",
+      BrowserNeiHandlerExporter.export(sink::retainItem, sink::retainFluid)
+    );
+    snapshot.add(
+      "materialDiagrams",
+      BrowserOreDiagramExporter.exportMaterials(sink::retainItem, sink::retainFluid)
+    );
+    snapshot.add(
+      "infernalUsageGoodsIds",
+      BrowserNeiHandlerExporter.infernalUsages(sink::retainItem)
+    );
+    java.nio.file.Files.write(
+      java.nio.file.Paths.get(output),
+      snapshot.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8),
+      StandardOpenOption.CREATE_NEW
     );
   }
 

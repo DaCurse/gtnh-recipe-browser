@@ -240,7 +240,121 @@ const RELEASE_290_RUNTIME_MODS: readonly RuntimeModPin[] = [
   },
 ];
 
+const RELEASE_291_RUNTIME_MODS: readonly RuntimeModPin[] = [
+  { jarName: 'cropsnh-2.0.142.jar', modId: 'cropsnh', version: '2.0.142', sourceName: 'CropsNH' },
+  {
+    jarName: 'gregtech-5.09.54.275.jar',
+    modId: 'gregtech',
+    version: '5.09.54.275',
+    sourceName: 'GT5-Unofficial',
+  },
+  {
+    jarName: 'BloodMagic-1.9.18.jar',
+    modId: 'AWWayofTime',
+    version: '1.9.18',
+    sourceName: 'BloodMagic',
+  },
+  {
+    jarName: 'EnhancedLootBags-1.3.5.jar',
+    modId: 'enhancedlootbags',
+    version: '1.3.5',
+    sourceName: 'EnhancedLootBags',
+  },
+  {
+    jarName: 'vendingmachine-0.4.104.jar',
+    modId: 'vendingmachine',
+    version: '0.4.104',
+    sourceName: 'VendingMachine',
+  },
+  {
+    jarName: 'NEICustomDiagram-1.8.36.jar',
+    modId: 'neicustomdiagram',
+    version: '1.8.36',
+    sourceName: 'NEICustomDiagram',
+  },
+  {
+    jarName: 'roguelike-1.6.6-GTNH.jar',
+    modId: 'Roguelike',
+    version: '1.6.6-GTNH',
+    sourceName: 'RoguelikeDungeons',
+  },
+  {
+    jarName: 'TwilightForest-2.7.47.jar',
+    modId: 'TwilightForest',
+    version: '2.7.47',
+    sourceName: 'TwilightForest',
+  },
+];
+
+const RC_2_RUNTIME_MODS: readonly RuntimeModPin[] = [
+  { jarName: 'cropsnh-2.0.134.jar', modId: 'cropsnh', version: '2.0.134', sourceName: 'CropsNH' },
+  {
+    jarName: 'gregtech-5.09.54.205.jar',
+    modId: 'gregtech',
+    version: '5.09.54.205',
+    sourceName: 'GT5-Unofficial',
+  },
+  {
+    jarName: 'BloodMagic-1.9.14.jar',
+    modId: 'AWWayofTime',
+    version: '1.9.14',
+    sourceName: 'BloodMagic',
+  },
+  {
+    jarName: 'EnhancedLootBags-1.3.5.jar',
+    modId: 'enhancedlootbags',
+    version: '1.3.5',
+    sourceName: 'EnhancedLootBags',
+  },
+  {
+    jarName: 'vendingmachine-0.4.101.jar',
+    modId: 'vendingmachine',
+    version: '0.4.101',
+    sourceName: 'VendingMachine',
+  },
+  {
+    jarName: 'NEICustomDiagram-1.8.36.jar',
+    modId: 'neicustomdiagram',
+    version: '1.8.36',
+    sourceName: 'NEICustomDiagram',
+  },
+  {
+    jarName: 'roguelike-1.6.6-GTNH.jar',
+    modId: 'Roguelike',
+    version: '1.6.6-GTNH',
+    sourceName: 'RoguelikeDungeons',
+  },
+  {
+    jarName: 'TwilightForest-2.7.44.jar',
+    modId: 'TwilightForest',
+    version: '2.7.44',
+    sourceName: 'TwilightForest',
+  },
+];
+
 export const DIRECT_EXPORT_PROFILES: Readonly<Record<string, DirectExportProfile>> = {
+  '2.9.0-RC-2': {
+    compileDependencyOverrides: ['com.github.GTNewHorizons:Galacticraft:3.4.34-GTNH'],
+    version: '2.9.0-RC-2',
+    archiveFileName: 'GT_New_Horizons_2.9.0-RC-2_Java_17-26.zip',
+    clientUrl:
+      'https://downloads.gtnewhorizons.com/Multi_mc_downloads/betas/GT_New_Horizons_2.9.0-RC-2_Java_17-26.zip',
+    bytes: 729_259_090,
+    sha256: '0c7da79f4ac1982c8a7dbfdcc1f1af6cf96ac5cb345a1c3387fb090d974b0a8d',
+    sourcePage: 'https://www.gtnewhorizons.com/version-history/',
+    runtimeMods: RC_2_RUNTIME_MODS,
+  },
+  '2.9.1': {
+    compileDependencyOverrides: ['com.github.GTNewHorizons:Galacticraft:3.4.39-GTNH'],
+    version: '2.9.1',
+    archiveFileName: 'GT_New_Horizons_2.9.1_Java_17-26.zip',
+    clientUrl:
+      'https://downloads.gtnewhorizons.com/Multi_mc_downloads/GT_New_Horizons_2.9.1_Java_17-26.zip',
+    bytes: 753_304_930,
+    sha256: '998875d413ed5d9b16fed9992844b61dcb82e819a15ea56e4eb868f68ea98327',
+    sourcePage: 'https://www.gtnewhorizons.com/version-history/',
+    runtimeMods: RELEASE_291_RUNTIME_MODS,
+  },
   // Official runnable client, reviewed separately from the former locally assembled ZIP.
   '2.9.0': {
     compileDependencyOverrides: ['com.github.GTNewHorizons:Galacticraft:3.4.37-GTNH'],
@@ -318,6 +432,7 @@ export interface PrepareContext {
 }
 
 export interface ProcessContext {
+  neiSnapshotPath?: string;
   session: ExportSession;
   sessionPath: string;
   workDirectory: string;
@@ -368,6 +483,7 @@ export interface DirectExportOptions {
   automationTimeoutMs?: number;
   pollIntervalMs?: number;
   jvmArgs?: string[];
+  captureNeiHandlers?: boolean;
   identity?: {
     uuid?: string;
     accessToken?: string;
@@ -907,6 +1023,7 @@ async function invokeProcess(
       context.workDirectory,
       '--layout',
       context.sharedLayoutPath,
+      ...(context.neiSnapshotPath ? ['--nei-snapshot', context.neiSnapshotPath] : []),
       ...(context.reusePacks?.length ? ['--reuse-packs', context.reusePacks.join(',')] : []),
     ]),
   );
@@ -1087,7 +1204,12 @@ export async function orchestrateDirectExport(
       },
       extractNatives: true,
     });
+    const neiSnapshotPath = options.captureNeiHandlers
+      ? join(workDirectory, 'native-nei-handlers.json')
+      : undefined;
+    if (neiSnapshotPath) await assertPathMissing(neiSnapshotPath, 'Native NEI handler snapshot');
     for (const argument of [
+      ...(neiSnapshotPath ? [`-Dnesql.botania.snapshot=${neiSnapshotPath}`] : []),
       ...defaultJvmArguments(options, profile, repositoryName, worldName, automationStatusFile),
       ...(options.jvmArgs ?? []),
     ]) {
@@ -1151,6 +1273,7 @@ export async function orchestrateDirectExport(
       },
     );
     const processContext = {
+      neiSnapshotPath,
       session,
       sessionPath,
       workDirectory,

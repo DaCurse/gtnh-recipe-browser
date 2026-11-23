@@ -100,7 +100,7 @@
             {navigate}
             hideLabels
             joined
-            showChance={false}
+            nativeChance
             pageSize={drops.length}
             grid={{ columns: 8, rows: Math.ceil(drops.length / 8) }}
           />

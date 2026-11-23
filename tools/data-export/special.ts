@@ -27,6 +27,21 @@ export const SPECIAL_CATEGORY_ORDER = [
   'mob-info',
   'infernal-drops',
   'botania-pure-daisy',
+  'botania-mana-pool',
+  'botania-petal-apothecary',
+  'botania-runic-altar',
+  'botania-elven-trade',
+  'botania-brewery',
+  'botania-floating-flowers',
+  'botania-lexica',
+  'blood-magic-alchemy',
+  'blood-magic-altar',
+  'blood-magic-calcinator',
+  'blood-magic-orb-shaped',
+  'tinkers-casting-table',
+  'tinkers-smeltery-melting',
+  'gt-material-tools',
+  'gt-material-parts',
 ] as const;
 type SpecialCategoryId = (typeof SPECIAL_CATEGORY_ORDER)[number];
 

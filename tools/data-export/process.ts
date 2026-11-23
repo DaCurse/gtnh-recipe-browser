@@ -2,6 +2,7 @@
 import { execFileSync, spawnSync } from 'node:child_process';
 import { access, cp, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
+import { setTimeout as delay } from 'node:timers/promises';
 import { buildPack } from '../pack-builder/builder';
 import { decodeFormat5 } from '../pack-builder/decoder';
 import { verifyPack } from '../pack-builder/verifier';
@@ -23,6 +24,8 @@ import {
 import { readSpecialSidecar, validateCropsNhSeedReferences } from './special';
 import { validateQuestExport, validateQuestGoods, type QuestExportReport } from './quest-items';
 import type { QuestItemReference } from '../questbook/references';
+
+const python = process.platform === 'win32' ? 'python' : 'python3';
 
 function usage(): string {
   return [
@@ -117,9 +120,16 @@ try {
 // conversion. Cross-checking against processed goods happens during build.
 const specialDataPath = join(nesqlDirectory, 'browser-nei-special-enriched.json');
 const neiSnapshot = args.get('nei-snapshot');
-if (neiSnapshot && session.gtnhVersion !== '2.9.0')
-  throw new Error('--nei-snapshot currently supports the pinned GTNH 2.9.0 client');
-run('python3', [
+if (neiSnapshot) {
+  const snapshot = JSON.parse(await readFile(resolve(neiSnapshot), 'utf8')) as {
+    gtnhVersion?: string;
+    retainedBotaniaStacks?: boolean;
+  };
+  const expectedVersion = snapshot.retainedBotaniaStacks ? snapshot.gtnhVersion : '2.9.0';
+  if (!expectedVersion || expectedVersion !== session.gtnhVersion)
+    throw new Error('NEI handler snapshot version does not match the export session');
+}
+run(python, [
   '-B',
   join(repositoryRoot, 'tools/data-export/mob-info.py'),
   '--script',
@@ -307,7 +317,7 @@ await writeFile(resolvedLayoutPath, `${JSON.stringify(releaseLayout, null, 2)}\n
 
 const sourceRevision = combinedRevision(data, atlas);
 const machineCraftersPath = join(outputWorkDirectory, 'machine-crafters.json');
-run('python3', [
+run(python, [
   join(repositoryRoot, 'tools/data-export/machine-crafters.py'),
   '--script',
   scripts[0]!,
@@ -356,7 +366,22 @@ await verifyPack({
 });
 // Windows virus scanners can briefly hold a freshly verified asset open.
 await rm(secondBuild, { recursive: true, maxRetries: 20, retryDelay: 500 });
-await rename(firstBuild, finalPack);
+for (let attempt = 0; ; attempt++) {
+  try {
+    await rename(firstBuild, finalPack);
+    break;
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (process.platform !== 'win32' || !['EBUSY', 'EPERM'].includes(code ?? '')) throw error;
+    if (attempt >= 20) {
+      await cp(firstBuild, finalPack, { recursive: true, force: false, errorOnExist: true });
+      if ((await directoryDigest(finalPack)) !== firstDigest)
+        throw new Error('Copied pack does not match the verified build', { cause: error });
+      break;
+    }
+    await delay(500);
+  }
+}
 
 const provenance = {
   schemaVersion: 1,

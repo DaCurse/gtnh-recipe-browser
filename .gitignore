@@ -3,6 +3,7 @@ dist/
 .vite/
 .svelte-kit/
 coverage/
+__pycache__/
 *.log
 *:Zone.Identifier
 .pack-output/

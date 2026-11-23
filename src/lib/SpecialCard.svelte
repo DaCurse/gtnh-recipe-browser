@@ -6,6 +6,7 @@
   import LootBagSpecialCard from './LootBagSpecialCard.svelte';
   import MeteorSpecialCard from './MeteorSpecialCard.svelte';
   import OreProcessingDiagram from './OreProcessingDiagram.svelte';
+  import NativeHandlerSpecialCard from './NativeHandlerSpecialCard.svelte';
   import PureDaisySpecialCard from './PureDaisySpecialCard.svelte';
   import type { OreScene } from './oreDiagram';
   import SpecialGoods from './SpecialGoods.svelte';
@@ -25,6 +26,10 @@
   } from './specialData';
   import type { RecipeView } from './types';
   import { machineUiTheme } from './machineUi';
+
+  function isNativeHandlerCategory(category: string) {
+    return /^(botania|blood-magic|tinkers)-/.test(category);
+  }
 
   let {
     record,
@@ -100,7 +105,7 @@
       if (focusEntry?.name) return focusEntry.name;
       return value.title.replace(/^Meteor Ritual:\s*/i, '');
     }
-    if (valueCategory === 'botania-pure-daisy') {
+    if (isNativeHandlerCategory(valueCategory)) {
       const output = value.outputs?.[0];
       return (output && resolver(output.goodsId)?.name) || value.title;
     }
@@ -181,9 +186,11 @@
       <InfernalDropsSpecialCard {record} {resolve} {navigate} />
     {:else if category === 'botania-pure-daisy'}
       <PureDaisySpecialCard {record} {resolve} {navigate} />
-    {:else if category === 'oreProcessing'}
+    {:else if isNativeHandlerCategory(category)}
+      <NativeHandlerSpecialCard {record} {resolve} {navigate} machineIcon={iconEntry} />
+    {:else if category === 'oreProcessing' || category === 'gt-material-tools' || category === 'gt-material-parts'}
       {#if nativeScene}
-        <OreProcessingDiagram scene={nativeScene} {resolve} {navigate} />
+        <OreProcessingDiagram scene={nativeScene} label={iconLabel} {resolve} {navigate} />
       {:else}
         <p class="special-empty">No native ore-processing layout is available for this dataset.</p>
       {/if}

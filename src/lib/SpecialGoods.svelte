@@ -6,6 +6,7 @@
   import ItemIcon from './ItemIcon.svelte';
   import SlotSurface from './SlotSurface.svelte';
   import MinecraftText from './MinecraftText.svelte';
+  import { parseMinecraftCodes } from './minecraftText';
   import { RECIPE_UI_SCALE, type UiSlot } from './machineUi';
   import { oreCycle } from './oreCycle';
   import {
@@ -23,6 +24,7 @@
     label,
     pageSize = 12,
     showChance = true,
+    nativeChance = false,
     showAmounts = true,
     compact = false,
     wrapLabels = false,
@@ -42,6 +44,7 @@
     label?: string;
     pageSize?: number;
     showChance?: boolean;
+    nativeChance?: boolean;
     showAmounts?: boolean;
     /** Use the denser presentation used by the CropsNH cards. */
     compact?: boolean;
@@ -55,7 +58,7 @@
     rowSeparatorColor?: string;
     /** Omit the caption under the slot when the parent supplies row text. */
     hideLabels?: boolean;
-    positions?: UiSlot[];
+    positions?: (UiSlot & { fluidRegion?: [number, number] })[];
     grid?: { columns: number; rows: number };
     /** Responsive adjacent slots, without item captions. */
     joined?: boolean;
@@ -65,7 +68,7 @@
   let availableWidth = $state(432);
   let page = $state(0);
   const touch = new ItemTouch();
-  let tooltipId = $state('');
+  let tooltipGoods = $state.raw<SpecialGoods>();
   let tooltipX = $state(0);
   let tooltipY = $state(0);
   let chooserOpen = $state(false);
@@ -86,7 +89,6 @@
           }
         : undefined),
   );
-  const tooltipGoods = $derived(goods.find((item) => item.goodsId === tooltipId));
   const tooltipEntry = $derived(
     tooltipGoods ? resolve(tooltipGoods.oreDictionaryId ?? displayId(tooltipGoods)) : undefined,
   );
@@ -100,20 +102,20 @@
 
   function showPointerTooltip(event: PointerEvent, item: SpecialGoods) {
     if (event.pointerType === 'touch') return;
-    tooltipId = item.goodsId;
+    tooltipGoods = item;
     tooltipX = event.clientX;
     tooltipY = event.clientY;
   }
 
   function movePointerTooltip(event: PointerEvent) {
-    if (!tooltipId || event.pointerType === 'touch') return;
+    if (!tooltipGoods || event.pointerType === 'touch') return;
     tooltipX = event.clientX;
     tooltipY = event.clientY;
   }
 
   function showFocusTooltip(event: FocusEvent, item: SpecialGoods) {
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    tooltipId = item.goodsId;
+    tooltipGoods = item;
     tooltipX = rect.right;
     tooltipY = rect.bottom;
   }
@@ -194,6 +196,14 @@
   }
 
   function chanceLabel(item: SpecialGoods): string {
+    if (nativeChance) {
+      for (const note of item.tooltipNotes ?? []) {
+        const match = /^Chance:\s*(\d+(?:[.,]\d+)?%)$/i.exec(
+          parseMinecraftCodes(note).plainText.trim(),
+        );
+        if (match) return match[1]!;
+      }
+    }
     if (item.chance === undefined) return '';
     return `${percentValue(item.chance)}%`;
   }
@@ -213,6 +223,9 @@
   }
 
   function itemNotes(item: SpecialGoods): string[] | undefined {
+    if (positions?.[goods.indexOf(item)]?.fluidRegion && item.amount !== undefined) {
+      return [...(item.tooltipNotes ?? []), `Amount: ${item.amount.toLocaleString()} mB`];
+    }
     if (!joined) return item.tooltipNotes;
     const amount =
       item.minAmount !== undefined || item.maxAmount !== undefined
@@ -229,7 +242,7 @@
   }
 
   function hideTooltip() {
-    tooltipId = '';
+    tooltipGoods = undefined;
   }
 </script>
 
@@ -249,6 +262,7 @@
       class="special-goods-grid"
       class:positioned={Boolean(positions)}
       class:slotted={Boolean(slotGrid)}
+      class:native-background={nativeBackground}
       style:grid-template-columns={slotGrid ? `repeat(${slotGrid.columns},48px)` : undefined}
       style:grid-template-rows={slotGrid ? `repeat(${slotGrid.rows},48px)` : undefined}
       style:width={positions
@@ -261,6 +275,8 @@
       {#if slotGrid}<SlotSurface width={slotGrid.columns * 18} height={slotGrid.rows * 18} />{/if}
       {#each visible as item, itemIndex (`${itemIndex}:${item.goodsId}:${item.role ?? ''}:${item.amount ?? ''}`)}
         {@const touchKey = `${page}:${itemIndex}:${item.goodsId}`}
+        {@const position = positions?.[itemIndex]}
+        {@const fluidRegion = position?.fluidRegion}
         {@const entry = resolve(displayId(item))}
         {@const iconEntry = resolve(iconId(item)) ?? entry}
         {@const oreIcon = iconEntry ? oreDictionaryIcon(iconEntry, item.alternatives) : undefined}
@@ -269,6 +285,7 @@
           oreIcon ? resolveCatalogVariant(oreIcon.browse, oreIcon.exactEntries, $oreCycle) : entry,
         )}
         {@const fortune = fortuneLabel(item)}
+        {@const chance = showChance ? chanceLabel(item) : ''}
         {#if rows && rowSeparator && itemIndex > 0}<span
             class="special-row-separator"
             style:color={rowSeparatorColor}>{rowSeparator}</span
@@ -276,14 +293,14 @@
         {#if entry && displayed}
           <div
             class="special-good-cell"
-            style:left={positions?.[itemIndex]
-              ? `${positions[itemIndex]!.pos[0] * RECIPE_UI_SCALE}px`
-              : undefined}
-            style:top={positions?.[itemIndex]
-              ? `${positions[itemIndex]!.pos[1] * RECIPE_UI_SCALE}px`
-              : undefined}
+            class:fluid-cell={Boolean(fluidRegion)}
+            style:left={position ? `${position.pos[0] * RECIPE_UI_SCALE}px` : undefined}
+            style:top={position ? `${position.pos[1] * RECIPE_UI_SCALE}px` : undefined}
+            style:--fluid-width={fluidRegion ? `${fluidRegion[0] * RECIPE_UI_SCALE}px` : undefined}
+            style:--fluid-height={fluidRegion ? `${fluidRegion[1] * RECIPE_UI_SCALE}px` : undefined}
           >
             <button
+              class:fluid-region={Boolean(fluidRegion)}
               class:ore-dictionary={Boolean(item.oreDictionaryId)}
               class="special-good"
               use:touch.action={{
@@ -324,7 +341,13 @@
                     fluid={entry.kind === 'fluid'}
                   />{/if}
                 <div class="special-slot-content">
-                  {#if oreIcon}
+                  {#if fluidRegion}
+                    <div class="fluid-tiles">
+                      {#each Array(Math.ceil(fluidRegion[1] / 16)).keys() as tile (tile)}
+                        <ItemIcon {entry} size={16 * RECIPE_UI_SCALE} frame={false} unpadded />
+                      {/each}
+                    </div>
+                  {:else if oreIcon}
                     <CatalogVariantIcon
                       entry={oreIcon.browse}
                       exactEntries={oreIcon.exactEntries}
@@ -336,7 +359,7 @@
                     <ItemIcon {entry} size={48} frame={false} />
                   {/if}
                 </div>
-                {#if showAmounts && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
+                {#if showAmounts && !fluidRegion && (item.amount !== undefined || item.minAmount !== undefined || item.maxAmount !== undefined)}
                   <span
                     class="special-amount"
                     class:non-consumable={item.amount === 0 && entry.kind !== 'fluid'}
@@ -348,8 +371,8 @@
                         : displaySpecialAmount(item.amount, entry.kind === 'fluid')}</span
                   >
                 {/if}
-                {#if showChance && item.chance !== undefined}
-                  <span class="special-chance">{chanceLabel(item)}</span>
+                {#if chance}
+                  <span class="special-chance">{chance}</span>
                 {/if}
                 {#if item.weight !== undefined}
                   <span class="special-weight">w {item.weight}</span>
@@ -476,6 +499,10 @@
     width: 48px;
     height: 48px;
   }
+  .positioned .fluid-cell {
+    width: var(--fluid-width);
+    height: var(--fluid-height);
+  }
   .special-goods-grid.slotted {
     position: relative;
     gap: 0;
@@ -544,6 +571,27 @@
     filter: brightness(1.08);
     outline: 0;
   }
+  .native-background .special-good:hover,
+  .native-background .special-good:focus-visible {
+    background: transparent;
+  }
+  .fluid-region,
+  .fluid-region .special-slot {
+    width: var(--fluid-width);
+    height: var(--fluid-height);
+    min-width: 0;
+    min-height: 0;
+    flex-basis: auto;
+  }
+  .fluid-region {
+    border: 0;
+    flex: none;
+  }
+  .fluid-tiles {
+    width: var(--fluid-width);
+    height: var(--fluid-height);
+    overflow: hidden;
+  }
   .special-good:focus-visible {
     border-color: #5b6167;
   }
@@ -599,6 +647,10 @@
   .special-chance {
     left: 1px;
     top: 1px;
+    max-width: calc(100% - 2px);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
     font-size: 9px;
     line-height: 13px;
     color: #ffff55;

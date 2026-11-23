@@ -24,6 +24,21 @@ const SPECIAL_CATEGORY_ORDER = [
   'mob-info',
   'infernal-drops',
   'botania-pure-daisy',
+  'botania-mana-pool',
+  'botania-petal-apothecary',
+  'botania-runic-altar',
+  'botania-elven-trade',
+  'botania-brewery',
+  'botania-floating-flowers',
+  'botania-lexica',
+  'blood-magic-alchemy',
+  'blood-magic-altar',
+  'blood-magic-calcinator',
+  'blood-magic-orb-shaped',
+  'tinkers-casting-table',
+  'tinkers-smeltery-melting',
+  'gt-material-tools',
+  'gt-material-parts',
 ] as const;
 
 // Legacy inferred ore graphs remain disabled. RecipeBrowserState enables the
@@ -366,6 +381,21 @@ const SPECIAL_LOOKUP_PREFIXES: Record<SpecialCategory, readonly string[]> = {
   'mob-info': ['mob-info'],
   'infernal-drops': ['infernal-drops'],
   'botania-pure-daisy': ['botania-pure-daisy'],
+  'botania-mana-pool': ['botania-mana-pool'],
+  'botania-petal-apothecary': ['botania-petal-apothecary'],
+  'botania-runic-altar': ['botania-runic-altar'],
+  'botania-elven-trade': ['botania-elven-trade'],
+  'botania-brewery': ['botania-brewery'],
+  'botania-floating-flowers': ['botania-floating-flowers'],
+  'botania-lexica': ['botania-lexica'],
+  'blood-magic-alchemy': ['blood-magic-alchemy'],
+  'blood-magic-altar': ['blood-magic-altar'],
+  'blood-magic-calcinator': ['blood-magic-calcinator'],
+  'blood-magic-orb-shaped': ['blood-magic-orb-shaped'],
+  'tinkers-casting-table': ['tinkers-casting-table'],
+  'tinkers-smeltery-melting': ['tinkers-smeltery-melting'],
+  'gt-material-tools': ['gt-material-tools'],
+  'gt-material-parts': ['gt-material-parts'],
 };
 
 export function specialLookupMatchesView(lookupId: string, viewTypeId: string): boolean {

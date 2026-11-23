@@ -100,8 +100,9 @@ ZIP is not a runnable client.
 ```sh
 npm run export:direct -- \
   --version 2.9.0 \
+  --capture-nei-handlers \
   --shared-layout tools/pack-builder/layouts/2.9.0.json \
-  --reuse-packs public/data/2.9.0-RC-1-v7-rbf5fd70ecad0 \
+  --reuse-packs public/data/2.8.0-v7-r6d351536 \
   --java /usr/lib/jvm/java-21-openjdk/bin/java
 ```
 

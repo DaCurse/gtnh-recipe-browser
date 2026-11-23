@@ -98,4 +98,26 @@ describe('Thaumcraft NEI recipe geometry', () => {
     expect(thaumcraftUiFor(recipe(true, [item('unknown', 99)]))).toBeUndefined();
     expect(thaumcraftUiFor(recipe(false, [item('unknown', 9)]))).toBeUndefined();
   });
+  it('places the Crucible catalyst and centered rows of aspects without creating a second recipe', () => {
+    const original = recipe(false, [
+      { ...item('catalyst', 0), alternatives: ['a', 'b'] },
+      ...[2, 24, 8, 6].map((amount, index) =>
+        item(`i:aspectrecipeindex:aspect:0:${index}`, 5 + index, amount),
+      ),
+    ]);
+    original.type = 'Crucible';
+    original.gtnhVersion = '2.9.1';
+    original.layout.itemInputs.rows = 3;
+    const scene = thaumcraftUiFor(original)!;
+    expect(scene.recipe.inputs[0]?.alternatives).toEqual(['a', 'b']);
+    expect(scene.recipe.inputs.slice(1).map((input) => input.amount)).toEqual([24, 8, 6, 2]);
+    expect(scene.profile.itemInputs.map((slot) => slot.pos)).toEqual([
+      [53, 26],
+      [53, 65],
+      [73, 65],
+      [93, 65],
+      [73, 85],
+    ]);
+    expect(scene.profile.widgets.map((widget) => widget.kind)).toContain('Crucible');
+  });
 });

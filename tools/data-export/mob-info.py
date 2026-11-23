@@ -158,7 +158,14 @@ def main():
         {"id": "mob-info", "label": "Mob Info", "serviceIconId": "service:mob-info"}
     )
     sidecar["records"].extend(entries)
-    infernal = infernal_record(args.infernal_config)
+    snapshot = (
+        json.loads(args.nei_snapshot.read_text(encoding="utf-8"))
+        if args.nei_snapshot
+        else {}
+    )
+    infernal = infernal_record(
+        args.infernal_config, snapshot.get("infernalUsageGoodsIds", ())
+    )
     sidecar["categories"].append("infernal-drops")
     sidecar["serviceIconIds"].append("service:infernal-drops")
     sidecar["serviceIcons"].append(
@@ -177,8 +184,7 @@ def main():
         }
     )
     sidecar["records"].append(infernal)
-    if args.nei_snapshot:
-        snapshot = json.loads(args.nei_snapshot.read_text(encoding="utf-8"))
+    if snapshot:
         add_nei_handlers(sidecar, snapshot)
     args.output.write_text(
         json.dumps(sidecar, ensure_ascii=False, separators=(",", ":")) + "\n",
@@ -187,7 +193,7 @@ def main():
     print(f"Exported {len(entries)} Mob Info drop tables")
 
 
-def infernal_record(path):
+def infernal_record(path, usage_goods=()):
     config = dict(
         re.findall(
             r"^\s*[IS]:([A-Za-z]+)=(.*)$", path.read_text(encoding="utf-8"), re.M
@@ -242,15 +248,16 @@ def infernal_record(path):
             {"name": tier, "chance": normal_chance, "alwaysChance": forced_chance}
         )
     ids = sorted({drop["goodsId"] for drop in outputs})
+    usages = sorted({CATALYST, *usage_goods})
     return {
         "id": "infernal-drops:configured-pools",
         "category": "infernal-drops",
         "title": "Infernal Mobs Drop Table",
         "searchText": "Infernal Mobs Elite Ultra Inferno " + " ".join(ids),
         "serviceIconId": "service:infernal-drops",
-        "goodsIds": sorted(set(ids) | {CATALYST}),
+        "goodsIds": sorted(set(ids) | set(usages)),
         "productionGoodsIds": ids,
-        "usageGoodsIds": [CATALYST],
+        "usageGoodsIds": usages,
         "recipesLookupId": "special:infernal-drops:configured-pools:recipes",
         "usagesLookupId": "special:infernal-drops:configured-pools:usages",
         "outputs": outputs,

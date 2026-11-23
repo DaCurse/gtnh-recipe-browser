@@ -2,13 +2,13 @@
   "schemaVersion": 1,
   "versions": [
     {
-      "recipeDatasetId": "2.9.0-v7-rae28c145974d",
+      "recipeDatasetId": "2.9.0-v7-ra1cc5062aef3",
       "version": "2.9.0",
       "root": {
-        "id": "quest-links-c732cac7561b",
-        "url": "./c732cac7561b88f17a32f9f09fa58e0633e7cd32ab591325e76f3fc45c8813cf.links.mpk",
-        "sha256": "c732cac7561b88f17a32f9f09fa58e0633e7cd32ab591325e76f3fc45c8813cf",
-        "bytes": 336952,
+        "id": "quest-links-eb691fb76567",
+        "url": "./eb691fb76567ac5ef1af77e77dc31fc14fed8004e9ee3d5902cd00fcbf67509d.links.mpk",
+        "sha256": "eb691fb76567ac5ef1af77e77dc31fc14fed8004e9ee3d5902cd00fcbf67509d",
+        "bytes": 332937,
         "encoding": "gzip"
       }
     }

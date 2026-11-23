@@ -201,6 +201,12 @@ const providerTarget = join(
   'src/main/java/com/github/dcysteine/nesql/exporter/special/RuntimeSpecialAdapter.java',
 );
 await cp(specialProviderSource, providerTarget);
+for (const filename of ['BrowserNeiHandlerExporter.java', 'BrowserOreDiagramExporter.java']) {
+  await cp(
+    join(repositoryRoot, 'tools/machine-ui-export', filename),
+    join(patchedExporter, 'src/main/java/com/github/dcysteine/nesql/exporter/main', filename),
+  );
+}
 await cp(
   join(repositoryRoot, 'tools/data-export/overlay/RuntimeQuestItems.java'),
   join(
