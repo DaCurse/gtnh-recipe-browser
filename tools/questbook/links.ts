@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
-import { readdir, unlink, writeFile } from 'node:fs/promises';
+import { readFile, readdir, unlink, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { gzipSync } from 'node:zlib';
-import { encode } from '@msgpack/msgpack';
+import { gunzipSync, gzipSync } from 'node:zlib';
+import { decode, encode } from '@msgpack/msgpack';
 import { itemNavigationIdentity } from '../../src/lib/itemNavigation';
 import { questNbtMatches } from '../../src/lib/nbt';
 import type { CatalogEntry, AssetDescriptor } from '../../src/lib/types';
@@ -139,23 +139,28 @@ export async function writeQuestLinks(
   for (const [prefix, rows] of [...partitions].sort()) buckets[prefix] = await asset(rows);
   const bookId = 'i:questbook:ItemQuestBook:0';
   const iconIds = new Set([bookId, ...pack.quests.map((quest) => quest.icon.goodsId)]);
-  const items = [...iconIds].sort().map((id) => {
-    const item = entries.get(id);
-    if (!item?.icon) throw new Error(`Missing quest-link icon ${id}`);
-    return {
-      id: item.id,
-      name: item.name,
-      mod: item.mod,
-      kind: item.kind,
-      tooltip: [],
-      color: item.color,
-      glyph: item.glyph,
-      searchable: false,
-      icon: {
-        ...item.icon,
-        url: './' + new URL(item.icon.url, 'https://quest-build.invalid/').pathname.slice(1),
-      },
-    } satisfies CatalogEntry;
+  const questItems = new Map(pack.items.map((item) => [item.id, item]));
+  const items = [...iconIds].sort().flatMap((id) => {
+    const item = questItems.get(id) ?? entries.get(id);
+    // The browser uses its missing-icon marker for legacy references absent
+    // from the original item pack. Keep the quest and its valid relations.
+    if (!item?.icon) return [];
+    return [
+      {
+        id: item.id,
+        name: item.name,
+        mod: item.mod,
+        kind: item.kind,
+        tooltip: [],
+        color: item.color,
+        glyph: item.glyph,
+        searchable: false,
+        icon: {
+          ...item.icon,
+          url: './' + new URL(item.icon.url, 'https://quest-build.invalid/').pathname.slice(1),
+        },
+      } satisfies CatalogEntry,
+    ];
   });
   const chapters = Object.fromEntries(
     pack.quests.map((quest) => [
@@ -186,19 +191,25 @@ export async function writeQuestLinks(
     })),
   };
   const descriptor = await asset(root);
+  const indexPath = join(directory, 'links-versions.json');
+  const previous = JSON.parse(await readFile(indexPath, 'utf8')) as QuestLinksVersions;
+  const versions = [
+    ...previous.versions.filter((row) => row.version !== pack.version),
+    { recipeDatasetId, version: pack.version, root: descriptor },
+  ].sort((a, b) => a.recipeDatasetId.localeCompare(b.recipeDatasetId));
+  const retained = new Set<string>();
+  for (const version of versions) {
+    const filename = `${version.root.sha256}.links.mpk`;
+    retained.add(filename);
+    const index =
+      version.root === descriptor
+        ? root
+        : (decode(gunzipSync(await readFile(join(directory, filename)))) as QuestLinksData);
+    for (const asset of Object.values(index.buckets)) retained.add(`${asset.sha256}.links.mpk`);
+  }
   await writeFile(
-    join(directory, 'links-versions.json'),
-    JSON.stringify(
-      {
-        schemaVersion: 1,
-        versions: [{ recipeDatasetId, version: pack.version, root: descriptor }],
-      } satisfies QuestLinksVersions,
-      null,
-      2,
-    ) + '\n',
-  );
-  const retained = new Set(
-    [...Object.values(buckets), descriptor].map((asset) => `${asset.sha256}.links.mpk`),
+    indexPath,
+    JSON.stringify({ schemaVersion: 1, versions } satisfies QuestLinksVersions, null, 2) + '\n',
   );
   for (const filename of await readdir(directory))
     if (/^[a-f0-9]{64}\.links\.mpk$/.test(filename) && !retained.has(filename))

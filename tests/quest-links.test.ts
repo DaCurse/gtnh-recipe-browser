@@ -136,7 +136,7 @@ describe('generated quest companions', () => {
   const versions = JSON.parse(
     readFileSync('public/quests/links-versions.json', 'utf8'),
   ) as QuestLinksVersions;
-  const version = versions.versions[0];
+  const version = versions.versions.find((version) => version.version === '2.9.0')!;
   const read = (asset: { url: string; sha256: string; bytes: number }) => {
     const bytes = readFileSync(
       new URL(asset.url, new URL('../public/quests/links-versions.json', import.meta.url)),
@@ -146,6 +146,24 @@ describe('generated quest companions', () => {
     return decode(gunzipSync(bytes));
   };
   const root = read(version.root) as QuestLinksData;
+  it('matches each supported recipe dataset and its pinned questbook', () => {
+    const recipes = JSON.parse(readFileSync('public/versions-v7.json', 'utf8'));
+    const books = JSON.parse(readFileSync('public/quests/versions.json', 'utf8'));
+    expect(versions.versions).toHaveLength(recipes.versions.length);
+    for (const { gtnhVersion, datasetId } of recipes.versions) {
+      const book = books.versions.find((row: { version: string }) => row.version === gtnhVersion);
+      const companion = versions.versions.find((row) => row.recipeDatasetId === datasetId)!;
+      expect(companion.version).toBe(gtnhVersion);
+      const quests = read(book) as QuestPack;
+      const previews = read(companion.root) as QuestLinksData;
+      expect(quests.version).toBe(gtnhVersion);
+      expect(previews.version).toBe(gtnhVersion);
+      expect(previews.recipeDatasetId).toBe(datasetId);
+      expect(previews.quests.map((quest) => quest.id)).toEqual(
+        quests.quests.map((quest) => quest.id),
+      );
+    }
+  });
   it('binds lightweight previews to the recipe release, with verified lazy relations', () => {
     const recipes = JSON.parse(readFileSync('public/versions-v7.json', 'utf8'));
     expect(root.recipeDatasetId).toBe(

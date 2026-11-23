@@ -38,7 +38,7 @@ After staging the verified recipe pack and selecting it in the local version
 index, build the separate quest dataset with the native resolution report:
 
 ```sh
-npm run build:quests -- <modpack-checkout> <betterquesting-checkout> \
+npm run build:quests -- <version> <modpack-checkout> <betterquesting-checkout> \
   <game-dir>/nesql/browser-export/browser-quest-items.json \
   <export-work-dir>/quest-item-requests.json \
   <export-work-dir>/processed/data.bin
@@ -60,6 +60,10 @@ item tabs and vending requirements use these previews without downloading the
 full questbook; opening a quest downloads the separately cached full pack.
 Generated links and pack files no longer referenced by the quest indexes are
 pruned by the builder.
+
+Build each supported version from its pinned modpack tag. The existing 2.8.0
+recipe pack can be used without a native export report. Its questbook reuses
+the original catalogue icons and records unresolved stacks in the versioned audit.
 
 Navigation button PNGs are cropped from the verified recipe sprites during this
 build, with source IDs, sheet hashes and output hashes recorded in

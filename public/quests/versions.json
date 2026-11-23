@@ -2,14 +2,47 @@
   "schemaVersion": 1,
   "versions": [
     {
-      "id": "quests-2.9.0-f29470b54c1f",
+      "id": "quests-2.9.1-2f46ac8b3175",
+      "version": "2.9.1",
+      "questCount": 3816,
+      "chapterCount": 46,
+      "sourceCommit": "adce6fe0a22d4bb7c7cb73cff2efe112440ee68d",
+      "sha256": "2f46ac8b31750fafb1c279feee20366b25262b6daa304b2034d3cf5a1f016350",
+      "bytes": 1668623,
+      "url": "./2f46ac8b31750fafb1c279feee20366b25262b6daa304b2034d3cf5a1f016350.mpk",
+      "encoding": "gzip"
+    },
+    {
+      "id": "quests-2.9.0-96ef1d7da33b",
       "version": "2.9.0",
       "questCount": 3814,
       "chapterCount": 46,
       "sourceCommit": "79f9a03b5dd9e492d28998b9dee0ea1d1822a6b1",
-      "sha256": "f29470b54c1fe8b4b56cf0e64e47f8f7872ebcdea4aabda20392456fd40b3175",
-      "bytes": 1664672,
-      "url": "./f29470b54c1fe8b4b56cf0e64e47f8f7872ebcdea4aabda20392456fd40b3175.mpk",
+      "sha256": "96ef1d7da33b931ef5669b0edbf58b5cdc3089d17ea7548129f1443df5d88601",
+      "bytes": 1664679,
+      "url": "./96ef1d7da33b931ef5669b0edbf58b5cdc3089d17ea7548129f1443df5d88601.mpk",
+      "encoding": "gzip"
+    },
+    {
+      "id": "quests-2.9.0-RC-2-9dda1cbfb6ca",
+      "version": "2.9.0-RC-2",
+      "questCount": 3813,
+      "chapterCount": 46,
+      "sourceCommit": "76e9d6c22ffdb317324a3baf562c05796663ad39",
+      "sha256": "9dda1cbfb6ca79f9d7fa03f6b3fe8a74e9387a5c001133eaee9099a5c5f9397d",
+      "bytes": 1666848,
+      "url": "./9dda1cbfb6ca79f9d7fa03f6b3fe8a74e9387a5c001133eaee9099a5c5f9397d.mpk",
+      "encoding": "gzip"
+    },
+    {
+      "id": "quests-2.8.0-064d0d2f3fed",
+      "version": "2.8.0",
+      "questCount": 3722,
+      "chapterCount": 46,
+      "sourceCommit": "c3ba07ccba1b772777f6fc57e53bb70c8547adb7",
+      "sha256": "064d0d2f3fedbb4dffb4be1952e0d38c4082b0ff04c910795e1ea29de2a1cf9f",
+      "bytes": 1354817,
+      "url": "./064d0d2f3fedbb4dffb4be1952e0d38c4082b0ff04c910795e1ea29de2a1cf9f.mpk",
       "encoding": "gzip"
     }
   ]

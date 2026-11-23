@@ -1,8 +1,8 @@
 # Questbook export inventory
 
-`npm run audit:quest-items -- <DefaultQuests> .export-work/questbook-shopping-list.json`
+`npm run audit:quest-items -- <version> <DefaultQuests> .export-work/questbook-shopping-list.json`
 creates a machine-readable inventory and a Markdown report beside it. It reads
-`.pack-output/quest-icon-audit.json` from the quest build. Generated reports stay
+`.pack-output/quest-icon-audit-<version>.json` from the quest build. Generated reports stay
 in ignored workspaces; resolved inventories belong in Git history.
 
 All quest, chapter, task, reward, choice-reward and decoration stacks enter the

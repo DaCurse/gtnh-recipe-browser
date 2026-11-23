@@ -243,8 +243,13 @@ describe('published local 2.9.0 quest dataset', () => {
     const index = JSON.parse(readFileSync(new URL('versions.json', root), 'utf8')) as {
       versions: QuestVersion[];
     };
-    expect(index.versions.map((version) => version.version)).toEqual(['2.9.0']);
-    const version = index.versions[0];
+    expect(index.versions.map((version) => version.version)).toEqual([
+      '2.9.1',
+      '2.9.0',
+      '2.9.0-RC-2',
+      '2.8.0',
+    ]);
+    const version = index.versions.find((version) => version.version === '2.9.0')!;
     const bytes = readFileSync(new URL(version.url, root));
     expect(bytes.byteLength).toBe(version.bytes);
     expect(createHash('sha256').update(bytes).digest('hex')).toBe(version.sha256);

@@ -30,10 +30,24 @@ import { writeQuestFrames } from './frames';
 import { decodeFormat5 } from '../pack-builder/decoder';
 import { exportedQuestItems, questStackIdentity } from './exportedItems';
 
-const [modpackPath, rendererPath, questReportPath, questRequestsPath, processedDataPath] =
-  process.argv.slice(2);
-if (!modpackPath || !rendererPath)
-  throw new Error('Usage: npm run build:quests -- <GTNH-2.9.0-checkout> <BetterQuesting-checkout>');
+const [
+  questVersion,
+  modpackPath,
+  rendererPath,
+  questReportPath,
+  questRequestsPath,
+  processedDataPath,
+] = process.argv.slice(2);
+const sourcePins = new Map([
+  ['2.8.0', 'c3ba07ccba1b772777f6fc57e53bb70c8547adb7'],
+  ['2.9.0-RC-2', '76e9d6c22ffdb317324a3baf562c05796663ad39'],
+  ['2.9.0', '79f9a03b5dd9e492d28998b9dee0ea1d1822a6b1'],
+  ['2.9.1', 'adce6fe0a22d4bb7c7cb73cff2efe112440ee68d'],
+]);
+if (!questVersion || !modpackPath || !rendererPath || !sourcePins.has(questVersion))
+  throw new Error(
+    'Usage: npm run build:quests -- <version> <pinned modpack checkout> <BetterQuesting checkout> [report requests processed-data]',
+  );
 if (Boolean(questReportPath) !== Boolean(questRequestsPath))
   throw new Error('Supply both the quest export report and its source requests');
 if (questReportPath && !processedDataPath)
@@ -42,7 +56,7 @@ if (questReportPath && !processedDataPath)
   );
 const exportedItems =
   questReportPath && questRequestsPath
-    ? await exportedQuestItems(questReportPath, questRequestsPath)
+    ? await exportedQuestItems(questReportPath, questRequestsPath, questVersion)
     : undefined;
 const publicRoot = resolve('public');
 const questRoot = join(modpackPath, 'config/betterquesting/DefaultQuests');
@@ -50,15 +64,15 @@ const commit = (path: string) =>
   execFileSync('git', ['-C', path, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 const sourceCommit = commit(modpackPath),
   rendererCommit = commit(rendererPath);
-if (sourceCommit !== '79f9a03b5dd9e492d28998b9dee0ea1d1822a6b1')
-  throw new Error('Expected the pinned GTNH 2.9.0 source commit');
+if (sourceCommit !== sourcePins.get(questVersion))
+  throw new Error(`Expected the pinned GTNH ${questVersion} source commit`);
 if (rendererCommit !== '81109f73cdeee72b26035d7937a170830a5074bf')
   throw new Error('Expected the pinned BetterQuesting renderer commit');
 const versions = JSON.parse(await readFile(join(publicRoot, 'versions-v7.json'), 'utf8'));
 const recipeVersion = versions.versions.find(
-  (version: { gtnhVersion: string }) => version.gtnhVersion === '2.9.0',
+  (version: { gtnhVersion: string }) => version.gtnhVersion === questVersion,
 );
-if (!recipeVersion) throw new Error('Missing 2.9.0 item dataset');
+if (!recipeVersion) throw new Error(`Missing ${questVersion} item dataset`);
 const manifestPath = join(publicRoot, recipeVersion.packManifestUrl);
 const manifest = JSON.parse(await readFile(manifestPath, 'utf8')) as DatasetManifest &
   GeneratedPackManifest;
@@ -144,7 +158,11 @@ const resolveStack = (stack: SourceStack): SpecialGoods => {
     throw new Error(
       `Quest stack absent from the native export inventory: ${questStackIdentity(stack)}`,
     );
-  const nativeIds = exported?.goodsIds;
+  const nativeIds =
+    exported?.goodsIds ??
+    (!exportedItems && !stack.ore && !stack.fluid && !stack.nbt && stack.damage === 32767
+      ? registryItems.get(stack.item)?.map((entry) => entry.id)
+      : undefined);
   if (nativeIds?.some((id) => !entries.has(id)))
     throw new Error(
       `Quest export report requires a different recipe dataset: ${nativeIds.join(', ')}`,
@@ -206,11 +224,14 @@ const resolveStack = (stack: SourceStack): SpecialGoods => {
     } else unresolved.set(id, stack);
   } else used.add(id);
   const tooltipNotes = [
+    ...(!exportedItems && unresolved.has(id)
+      ? [`No matching item in the original GTNH ${questVersion} catalogue`]
+      : []),
     ...(exported?.unavailableReason
       ? [
           exported.unavailableReason === 'empty-ore-dictionary'
-            ? `Ore dictionary unavailable in GTNH 2.9.0: ${stack.ore}`
-            : `Quest reference unavailable in GTNH 2.9.0: ${exported.unavailableReason.replaceAll('-', ' ')}`,
+            ? `Ore dictionary unavailable in GTNH ${questVersion}: ${stack.ore}`
+            : `Quest reference unavailable in GTNH ${questVersion}: ${exported.unavailableReason.replaceAll('-', ' ')}`,
         ]
       : []),
   ];
@@ -314,14 +335,20 @@ for (const [name, left, top, tint] of [
 await copyFile(join(rendererPath, 'LICENSE'), join(assets, 'BetterQuesting-LICENSE.txt'));
 const images: Record<string, string> = {};
 const imageSource = 'midnight:textures/gui/guide-nh-pictures/guide-nh-image.png';
-await copyFile(
+const guide = await readFile(
   join(modpackPath, 'config/betterquesting/resources', imageSource.replace(':', '/')),
-  join(assets, 'guide-nh-image.png'),
-);
-images[imageSource] = './quests/assets/guide-nh-image.png';
+).catch((error: NodeJS.ErrnoException) => {
+  if (error.code !== 'ENOENT') throw error;
+  return undefined;
+});
+if (guide) {
+  const filename = `guide-nh-${createHash('sha256').update(guide).digest('hex').slice(0, 12)}.png`;
+  await writeFile(join(assets, filename), guide);
+  images[imageSource] = `./quests/assets/${filename}`;
+}
 const pack: QuestPack = {
   schemaVersion: 1,
-  version: '2.9.0',
+  version: questVersion,
   sourceCommit,
   rendererCommit,
   quests,
@@ -331,13 +358,13 @@ const pack: QuestPack = {
   navigationTargets,
 };
 await writeQuestLinks(pack, entries, sourceStacks, manifest.datasetId, publicRoot);
-await writeNavigationIcons(entries, publicRoot, manifest.datasetId);
+if (questVersion === '2.9.0') await writeNavigationIcons(entries, publicRoot, manifest.datasetId);
 const packed = gzipSync(encode(pack), { level: 9 });
 const sha256 = createHash('sha256').update(packed).digest('hex');
 await writeFile(join(publicRoot, 'quests', `${sha256}.mpk`), packed);
 const version: QuestVersion = {
-  id: `quests-2.9.0-${sha256.slice(0, 12)}`,
-  version: '2.9.0',
+  id: `quests-${questVersion}-${sha256.slice(0, 12)}`,
+  version: questVersion,
   questCount: quests.length,
   chapterCount: chapters.length,
   sourceCommit,
@@ -346,16 +373,24 @@ const version: QuestVersion = {
   url: `./${sha256}.mpk`,
   encoding: 'gzip',
 };
-await writeFile(
-  join(publicRoot, 'quests/versions.json'),
-  JSON.stringify({ schemaVersion: 1, versions: [version] } satisfies QuestVersions, null, 2) + '\n',
+const versionPath = join(publicRoot, 'quests/versions.json');
+const previous = JSON.parse(await readFile(versionPath, 'utf8')) as QuestVersions;
+const retained = [...previous.versions.filter((row) => row.version !== questVersion), version].sort(
+  (a, b) =>
+    versions.versions.findIndex((row: { gtnhVersion: string }) => row.gtnhVersion === a.version) -
+    versions.versions.findIndex((row: { gtnhVersion: string }) => row.gtnhVersion === b.version),
 );
+await writeFile(
+  versionPath,
+  JSON.stringify({ schemaVersion: 1, versions: retained } satisfies QuestVersions, null, 2) + '\n',
+);
+const retainedFiles = new Set(retained.map((row) => `${row.sha256}.mpk`));
 for (const filename of await readdir(join(publicRoot, 'quests')))
-  if (/^[a-f0-9]{64}\.mpk$/.test(filename) && filename !== `${sha256}.mpk`)
+  if (/^[a-f0-9]{64}\.mpk$/.test(filename) && !retainedFiles.has(filename))
     await unlink(join(publicRoot, 'quests', filename));
 await mkdir('.pack-output', { recursive: true });
 await writeFile(
-  '.pack-output/quest-unresolved.json',
+  `.pack-output/quest-unresolved-${questVersion}.json`,
   JSON.stringify([...unresolved.values()], null, 2),
 );
 const unresolvedAudit = [...unresolved].map(([id, stack]) => {
@@ -376,7 +411,7 @@ const unresolvedAudit = [...unresolved].map(([id, stack]) => {
   };
 });
 await writeFile(
-  '.pack-output/quest-icon-audit.json',
+  `.pack-output/quest-icon-audit-${questVersion}.json`,
   JSON.stringify(
     {
       unresolved: unresolvedAudit,
@@ -389,5 +424,5 @@ await writeFile(
   ),
 );
 console.log(
-  `${quests.length} quests, ${chapters.length} chapters, ${items.length} referenced items, ${packed.length} bytes; ${unresolved.size} unresolved item variants (audit: .pack-output/quest-unresolved.json).`,
+  `${quests.length} quests, ${chapters.length} chapters, ${items.length} referenced items, ${packed.length} bytes; ${unresolved.size} unresolved item variants (audit: .pack-output/quest-icon-audit-${questVersion}.json).`,
 );

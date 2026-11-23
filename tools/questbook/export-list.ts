@@ -4,11 +4,15 @@ import { questItemReferences } from './references';
 import { questSnbt, type NbtObject } from './source';
 import { nbtIdentity } from '../../src/lib/nbt';
 
-const [root, output] = process.argv.slice(2);
-if (!root || !output)
-  throw new Error('Usage: tsx tools/questbook/export-list.ts <DefaultQuests> <output.json>');
+const [version, root, output] = process.argv.slice(2);
+if (!version || !root || !output)
+  throw new Error(
+    'Usage: tsx tools/questbook/export-list.ts <version> <DefaultQuests> <output.json>',
+  );
 const references = await questItemReferences(root);
-const audit = JSON.parse(await readFile('.pack-output/quest-icon-audit.json', 'utf8')) as {
+const audit = JSON.parse(
+  await readFile(`.pack-output/quest-icon-audit-${version}.json`, 'utf8'),
+) as {
   unresolved: {
     item: string;
     damage: number;
@@ -44,11 +48,11 @@ const missing = audit.unresolved.map((item) => {
 await mkdir(dirname(output), { recursive: true });
 await writeFile(
   output,
-  JSON.stringify({ schemaVersion: 1, version: '2.9.0', references, missing }, null, 2) + '\n',
+  JSON.stringify({ schemaVersion: 1, version, references, missing }, null, 2) + '\n',
 );
 const cell = (value: string) => value.replaceAll('|', '\\|').replace(/[\r\n]/g, ' ');
 const report = [
-  '# GTNH 2.9.0 questbook export shopping list',
+  `# GTNH ${version} questbook export shopping list`,
   '',
   `All ${references.length} native stack references (${groups.size} distinct item/fluid/ore/NBT identities) are export inputs, including requirements, rewards, choices, chapter icons and quest icons.`,
   '',
@@ -71,7 +75,7 @@ const report = [
   'The machine-readable inventory includes full typed NBT, source JSON paths, and every use. Generate it with:',
   '',
   '```sh',
-  `npx tsx tools/questbook/export-list.ts <DefaultQuests> ${output.replaceAll('\\', '/')}`,
+  `npx tsx tools/questbook/export-list.ts ${version} <DefaultQuests> ${output.replaceAll('\\', '/')}`,
   '```',
   '',
 ];

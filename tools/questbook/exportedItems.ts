@@ -19,12 +19,17 @@ export function questStackIdentity(stack: SourceStack): string {
 export async function exportedQuestItems(
   reportPath: string,
   requestsPath: string,
+  expectedVersion?: string,
 ): Promise<Map<string, { goodsIds: string[]; unavailableReason?: string }>> {
   const report = JSON.parse(await readFile(reportPath, 'utf8')) as QuestExportReport;
   const requests = parseQuestJson(await readFile(requestsPath, 'utf8')) as unknown as {
     version: string;
     references: QuestItemReference[];
   };
+  if (expectedVersion && requests.version !== expectedVersion)
+    throw new Error(
+      `Quest inventory version ${requests.version} does not match ${expectedVersion}`,
+    );
   validateQuestExport(requests.references, report, requests.version);
   const byId = new Map(requests.references.map((reference) => [reference.id, reference.stack]));
   const result = new Map<string, { goodsIds: string[]; unavailableReason?: string }>();
