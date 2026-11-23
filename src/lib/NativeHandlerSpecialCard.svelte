@@ -261,8 +261,7 @@
     position: absolute;
     pointer-events: none;
   }
-  .native-art,
-  .mana-bar img {
+  .native-art {
     scale: var(--native-scale);
     transform-origin: top left;
     image-rendering: pixelated;
@@ -278,7 +277,16 @@
     top: calc(55px * var(--native-scale));
   }
   .mana-bar {
+    width: calc(102px * var(--native-scale));
+    height: calc(5px * var(--native-scale));
     opacity: 0.75;
+  }
+  .mana-bar img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    image-rendering: pixelated;
   }
   .mana-bar span {
     position: absolute;
