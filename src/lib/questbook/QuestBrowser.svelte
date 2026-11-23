@@ -110,6 +110,11 @@
       <button class="mc-button" onclick={() => questbook.load(recipeVersion)}>Retry</button>
     </div>
   {:else if repository}
+    {#if recipeVersion && recipeVersion !== '…' && repository.pack.version !== recipeVersion}
+      <p class="quest-version-warning" role="status">
+        Questbook {repository.pack.version} · Item dataset {recipeVersion}. Some items may differ.
+      </p>
+    {/if}
     {#if !quest}<div class="mobile-search">
         <button
           class="mc-button"
@@ -373,6 +378,15 @@
   .quest-loading p {
     color: #8c949f;
     font-size: 13px;
+  }
+  .quest-version-warning {
+    flex: none;
+    margin: 0;
+    padding: 4px 12px;
+    font-size: 12px;
+    line-height: 1.4;
+    color: #c7b883;
+    border-bottom: 1px solid #4f4a3d;
   }
   .quest-message {
     display: flex;
